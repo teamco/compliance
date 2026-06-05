@@ -16,7 +16,8 @@ const BREADCRUMBS: Record<string, string> = {
 };
 
 export function LayoutHeader() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isRtl = i18n.language === 'he';
   const navigate = useNavigate();
   const { toggle } = useSidebar();
   const user = useAuthStore((s) => s.user);
@@ -91,7 +92,7 @@ export function LayoutHeader() {
           title={t('common.logout')}
           className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors ml-1"
         >
-          <LogOut size={15} />
+          <LogOut size={15} className={isRtl ? 'rotate-180' : undefined} />
         </button>
       </div>
     </header>
