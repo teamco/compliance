@@ -1,6 +1,6 @@
 import { Link, useRouterState } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@icore/template-shared';
+import { useIsAdmin } from '@icore/template-shared';
 import {
   LayoutDashboard,
   Shield,
@@ -81,9 +81,8 @@ const NAV: NavSection[] = [
 export function LayoutSider() {
   const { t } = useTranslation();
   const { collapsed, toggle } = useSidebar();
-  const user = useAuthStore((s) => s.user);
+  const isAdmin = useIsAdmin();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAdmin = user?.role === 'admin';
 
   function isActive(to: string) {
     return pathname === to || pathname.startsWith(to + '/');

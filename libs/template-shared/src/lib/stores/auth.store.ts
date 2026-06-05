@@ -27,3 +27,7 @@ export const useAuthStore = create<AuthState>()(
     { name: 'icore-auth' },
   ),
 );
+
+export function useIsAdmin(): boolean {
+  return useAuthStore((s) => s.user?.role === 'admin') ?? false;
+}

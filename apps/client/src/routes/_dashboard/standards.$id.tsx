@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Check, CheckCircle2, Circle, Pencil, Send, ShieldCheck, X } from 'lucide-react';
-import { useAuthStore } from '@icore/template-shared';
+import { useIsAdmin } from '@icore/template-shared';
 import {
   useStandardsDocument,
   useTransitionWorkflow,
@@ -154,8 +154,7 @@ function StandardsDetailPage() {
   const { id } = Route.useParams();
   const { data: doc, isPending } = useStandardsDocument(id);
   const updateControl = useUpdateControl(id);
-  const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = useIsAdmin();
 
   const [editing, setEditing] = useState<EditState | null>(null);
 
