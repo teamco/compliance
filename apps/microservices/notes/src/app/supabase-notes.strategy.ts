@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  ControlPatch,
   Framework,
   FrameworkControl,
   NotesStrategy,
@@ -180,6 +181,22 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     return (ok(data, error) as unknown[]).map((r) => this.mapDoc(r));
+  }
+
+  async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+    const doc = await this.getStandardsDocument(docId);
+    if (!doc) throw new Error('doc_not_found');
+    const idx = doc.controls.findIndex((c) => c.code === code);
+    if (idx === -1) throw new Error('control_not_found');
+    const updated = { ...doc.controls[idx], ...patch };
+    const controls = [...doc.controls];
+    controls[idx] = updated;
+    const { error } = await this.db
+      .from('generated_standards')
+      .update({ controls })
+      .eq('id', docId);
+    if (error) throw new Error(error.message);
+    return updated;
   }
 
   private mapOrg(r: unknown): Organization {

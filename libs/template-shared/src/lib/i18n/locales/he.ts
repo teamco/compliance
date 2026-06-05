@@ -150,6 +150,9 @@ export const he = {
       medium: 'בינוני',
       low: 'נמוך',
     },
+    implementation: 'יישום',
+    editPriority: 'שנה עדיפות',
+    addImplementation: 'לחץ להוספת הנחיות יישום…',
   },
   aiAssistant: {
     title: 'עוזר AI',

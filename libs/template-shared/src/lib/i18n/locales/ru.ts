@@ -150,6 +150,9 @@ export const ru = {
       medium: 'Средний',
       low: 'Низкий',
     },
+    implementation: 'Реализация',
+    editPriority: 'Изменить приоритет',
+    addImplementation: 'Нажмите, чтобы добавить инструкцию по реализации…',
   },
   aiAssistant: {
     title: 'AI Ассистент',

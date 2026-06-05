@@ -150,6 +150,9 @@ export const es = {
       medium: 'Medio',
       low: 'Bajo',
     },
+    implementation: 'Implementación',
+    editPriority: 'Cambiar prioridad',
+    addImplementation: 'Haz clic para agregar guía de implementación…',
   },
   aiAssistant: {
     title: 'Asistente AI',

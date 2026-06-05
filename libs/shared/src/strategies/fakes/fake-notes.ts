@@ -1,4 +1,5 @@
 import type {
+  ControlPatch,
   Framework,
   FrameworkControl,
   NotesStrategy,
@@ -82,5 +83,17 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async listStandardsDocuments(userId: string): Promise<StandardsDocument[]> {
     return [...this.docs.values()].filter((d) => d.userId === userId);
+  }
+
+  async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+    const doc = this.docs.get(docId);
+    if (!doc) throw new Error(`doc_not_found: ${docId}`);
+    const idx = doc.controls.findIndex((c) => c.code === code);
+    if (idx === -1) throw new Error(`control_not_found: ${code}`);
+    const updated = { ...doc.controls[idx], ...patch } as StandardControl;
+    const controls = [...doc.controls];
+    controls[idx] = updated;
+    this.docs.set(docId, { ...doc, controls });
+    return updated;
   }
 }

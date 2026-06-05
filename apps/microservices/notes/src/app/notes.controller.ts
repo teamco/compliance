@@ -1,6 +1,7 @@
 import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
+  ControlPatch,
   Framework,
   FrameworkControl,
   NotesStrategy,
@@ -68,5 +69,12 @@ export class NotesController {
   @MessagePattern('notes.standards.list')
   listStandardsDocuments(@Payload() payload: { userId: string }): Promise<StandardsDocument[]> {
     return this.strategy.listStandardsDocuments(payload.userId);
+  }
+
+  @MessagePattern('notes.standards.update-control')
+  updateControl(
+    @Payload() payload: { docId: string; code: string; patch: ControlPatch },
+  ): Promise<StandardControl> {
+    return this.strategy.updateControl(payload.docId, payload.code, payload.patch);
   }
 }

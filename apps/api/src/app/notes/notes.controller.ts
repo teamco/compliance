@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Put,
   Req,
@@ -12,7 +13,12 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
-import type { OrganizationInput, StandardControl, VerifiedToken } from '@icore/shared';
+import type {
+  ControlPatch,
+  OrganizationInput,
+  StandardControl,
+  VerifiedToken,
+} from '@icore/shared';
 import type { OrgProfile, StandardsResult } from '@icore/shared';
 
 @ApiTags('notes')
@@ -62,6 +68,13 @@ export class NotesController {
   @ApiOperation({ summary: 'Get a standards document' })
   getStandards(@Param('id') id: string) {
     return this.notes.getStandardsDocument(id);
+  }
+
+  @Patch('standards/:id/controls/:code')
+  @ApiOperation({ summary: 'Update a single generated control (priority, implementation)' })
+  @ApiBody({ schema: { type: 'object' } })
+  updateControl(@Param('id') id: string, @Param('code') code: string, @Body() patch: ControlPatch) {
+    return this.notes.updateControl(id, code, patch);
   }
 
   @Post('standards/generate')

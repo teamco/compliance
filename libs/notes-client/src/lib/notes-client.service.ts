@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import type {
+  ControlPatch,
   Framework,
   FrameworkControl,
   Organization,
@@ -62,6 +63,12 @@ export class NotesClientService {
   listStandardsDocuments(userId: string): Promise<StandardsDocument[]> {
     return firstValueFrom(
       this.client.send<StandardsDocument[]>('notes.standards.list', { userId }),
+    );
+  }
+
+  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+    return firstValueFrom(
+      this.client.send<StandardControl>('notes.standards.update-control', { docId, code, patch }),
     );
   }
 }

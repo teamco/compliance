@@ -39,6 +39,11 @@ export type OrganizationInput = Omit<Organization, 'id' | 'userId' | 'createdAt'
 
 export type StandardControlPriority = 'critical' | 'high' | 'medium' | 'low';
 
+export interface ControlPatch {
+  priority?: StandardControlPriority;
+  implementation?: string;
+}
+
 export interface StandardControl {
   code: string;
   title: string;
@@ -109,6 +114,19 @@ export function useStandardsDocument(id: string) {
     queryKey: ['notes', 'standards', id],
     queryFn: () => api<StandardsDocument | null>(`/notes/standards/${id}`),
     enabled: !!id,
+  });
+}
+
+export function useUpdateControl(docId: string) {
+  const qc = useQueryClient();
+  return useMutation<StandardControl, Error, { code: string; patch: ControlPatch }>({
+    mutationFn: ({ code, patch }) =>
+      api<StandardControl>(`/notes/standards/${docId}/controls/${code}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'standards', docId] }),
   });
 }
 

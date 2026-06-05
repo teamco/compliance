@@ -150,6 +150,9 @@ export const en = {
       medium: 'Medium',
       low: 'Low',
     },
+    implementation: 'Implementation',
+    editPriority: 'Change priority',
+    addImplementation: 'Click to add implementation guidance…',
   },
   aiAssistant: {
     title: 'AI Assistant',

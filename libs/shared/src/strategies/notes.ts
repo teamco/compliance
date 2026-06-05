@@ -61,6 +61,11 @@ export interface StandardsDocument {
   createdAt: string;
 }
 
+export interface ControlPatch {
+  priority?: StandardControlPriority;
+  implementation?: string;
+}
+
 export interface NotesStrategy {
   listFrameworks(): Promise<Framework[]>;
   getFramework(id: string): Promise<Framework | null>;
@@ -77,4 +82,6 @@ export interface NotesStrategy {
   saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void>;
   getStandardsDocument(id: string): Promise<StandardsDocument | null>;
   listStandardsDocuments(userId: string): Promise<StandardsDocument[]>;
+
+  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl>;
 }
