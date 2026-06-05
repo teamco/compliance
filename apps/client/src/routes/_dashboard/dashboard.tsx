@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
+import { useProfile } from '@/queries/profile';
 import {
   Shield,
   CheckCircle2,
@@ -45,7 +46,9 @@ function StatCard({ label, value, sub, icon: Icon, accent, trend }: StatCardProp
   return (
     <div className="bg-surface border border-border rounded-xl p-5 flex flex-col gap-3 hover:border-muted-foreground/30 transition-colors">
       <div className="flex items-start justify-between">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
+        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+          {label}
+        </p>
         <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${accent}`}>
           <Icon size={16} className="text-white" />
         </div>
@@ -67,6 +70,7 @@ function StatCard({ label, value, sub, icon: Icon, accent, trend }: StatCardProp
 function DashboardHome() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
+  const { data: profile } = useProfile();
   const hour = new Date().getHours();
   const greeting =
     hour < 12
@@ -83,7 +87,7 @@ function DashboardHome() {
           <h1 className="text-xl font-semibold text-foreground">
             {greeting},{' '}
             <span className="text-muted-foreground">
-              {user?.displayName ?? user?.email?.split('@')[0] ?? 'user'}
+              {profile?.displayName ?? user?.email?.split('@')[0] ?? 'user'}
             </span>
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('dashboard.subtitle')}</p>
@@ -134,7 +138,9 @@ function DashboardHome() {
         {/* Framework compliance */}
         <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">{t('dashboard.frameworkCompliance')}</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {t('dashboard.frameworkCompliance')}
+            </h2>
             <button
               type="button"
               className="flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed"
@@ -173,15 +179,23 @@ function DashboardHome() {
         {/* Recent activity */}
         <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-foreground">{t('dashboard.recentActivity')}</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {t('dashboard.recentActivity')}
+            </h2>
             <Clock size={14} className="text-muted-foreground" />
           </div>
           <div className="space-y-3">
             {ACTIVITY.map((a, i) => (
               <div key={i} className="flex items-start gap-3">
-                <div className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${typeIndicator[a.type]}`} />
-                <p className="flex-1 min-w-0 text-xs text-foreground/80 leading-relaxed">{a.text}</p>
-                <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">{a.time}</span>
+                <div
+                  className={`mt-1.5 h-1.5 w-1.5 rounded-full shrink-0 ${typeIndicator[a.type]}`}
+                />
+                <p className="flex-1 min-w-0 text-xs text-foreground/80 leading-relaxed">
+                  {a.text}
+                </p>
+                <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                  {a.time}
+                </span>
               </div>
             ))}
           </div>
