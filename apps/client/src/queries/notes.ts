@@ -56,6 +56,8 @@ export interface StandardControl {
 }
 
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
+export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
+export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
 
 export interface StandardsDocument {
   id: string;
@@ -64,7 +66,18 @@ export interface StandardsDocument {
   frameworkIds: string[];
   controls: StandardControl[];
   status: StandardsStatus;
+  workflowStatus: WorkflowStatus;
   createdAt: string;
+}
+
+export interface StandardsSnapshot {
+  id: string;
+  documentId: string;
+  version: number;
+  workflowStatus: WorkflowStatus;
+  controls: StandardControl[];
+  createdAt: string;
+  createdBy?: string;
 }
 
 export function useFrameworks() {
@@ -117,6 +130,25 @@ export function useStandardsDocument(id: string) {
   });
 }
 
+export function useTransitionWorkflow(docId: string) {
+  const qc = useQueryClient();
+  return useMutation<StandardsDocument, Error, WorkflowTransition>({
+    mutationFn: (transition) =>
+      api<StandardsDocument>(`/notes/standards/${docId}/workflow`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transition }),
+      }),
+    onSuccess: (_doc, transition) => {
+      qc.invalidateQueries({ queryKey: ['notes', 'standards'] });
+      qc.invalidateQueries({ queryKey: ['notes', 'standards', docId] });
+      if (transition === 'approve') {
+        qc.invalidateQueries({ queryKey: ['notes', 'snapshots', docId] });
+      }
+    },
+  });
+}
+
 export function useUpdateControl(docId: string) {
   const qc = useQueryClient();
   return useMutation<StandardControl, Error, { code: string; patch: ControlPatch }>({
@@ -127,6 +159,22 @@ export function useUpdateControl(docId: string) {
         body: JSON.stringify(patch),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'standards', docId] }),
+  });
+}
+
+export function useSnapshots(documentId: string) {
+  return useQuery<StandardsSnapshot[]>({
+    queryKey: ['notes', 'snapshots', documentId],
+    queryFn: () => api<StandardsSnapshot[]>(`/notes/standards/${documentId}/snapshots`),
+    enabled: !!documentId,
+  });
+}
+
+export function useSnapshot(snapshotId: string) {
+  return useQuery<StandardsSnapshot | null>({
+    queryKey: ['notes', 'snapshot', snapshotId],
+    queryFn: () => api<StandardsSnapshot | null>(`/notes/standards/snapshots/${snapshotId}`),
+    enabled: !!snapshotId,
   });
 }
 

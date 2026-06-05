@@ -1,14 +1,29 @@
 import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Check, CheckCircle2, Circle, Pencil, Send, ShieldCheck, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  History,
+  Pencil,
+  Send,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { useIsAdmin } from '@icore/template-shared';
 import {
+  useSnapshot,
+  useSnapshots,
   useStandardsDocument,
   useTransitionWorkflow,
   useUpdateControl,
   type ControlPatch,
   type StandardControlPriority,
+  type StandardsSnapshot,
   type WorkflowStatus,
   type WorkflowTransition,
 } from '@/queries/notes';
@@ -134,6 +149,127 @@ function WorkflowBar({
   );
 }
 
+const SNAPSHOT_WORKFLOW_COLOR: Record<WorkflowStatus, string> = {
+  draft: 'bg-muted text-muted-foreground border-border',
+  in_review: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  published: 'bg-green-500/10 text-green-500 border-green-500/20',
+};
+
+function SnapshotRow({ snap }: { snap: StandardsSnapshot }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const { data: full } = useSnapshot(open ? snap.id : '');
+  const controls = full?.controls ?? snap.controls;
+
+  return (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-surface-2 transition-colors cursor-pointer"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-mono text-muted-foreground">v{snap.version}</span>
+          <span
+            className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${SNAPSHOT_WORKFLOW_COLOR[snap.workflowStatus]}`}
+          >
+            {t(`standards.workflow.${snap.workflowStatus}`)}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {new Date(snap.createdAt).toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+          <span className="text-xs text-muted-foreground/60">
+            {t('standards.controls', { count: snap.controls.length })}
+          </span>
+        </div>
+        {open ? (
+          <ChevronDown size={14} className="text-muted-foreground shrink-0" />
+        ) : (
+          <ChevronRight size={14} className="text-muted-foreground shrink-0" />
+        )}
+      </button>
+      {open && (
+        <div className="border-t border-border divide-y divide-border">
+          {controls.map((ctrl) => (
+            <div key={ctrl.code} className="px-4 py-3 flex items-start gap-3">
+              <span className="text-xs font-mono text-muted-foreground shrink-0 w-20 truncate">
+                {ctrl.code}
+              </span>
+              <span className="text-xs text-foreground flex-1">{ctrl.title}</span>
+              <span
+                className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
+                  {
+                    critical: 'bg-red-500/10 text-red-400 border-red-500/20',
+                    high: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+                    medium: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+                    low: 'bg-muted text-muted-foreground border-border',
+                  }[ctrl.priority]
+                }`}
+              >
+                {t(`standards.priority.${ctrl.priority}`)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VersionHistory({ docId }: { docId: string }) {
+  const { t } = useTranslation();
+  const { data: snapshots, isPending } = useSnapshots(docId);
+  const [collapsed, setCollapsed] = useState(false);
+
+  if (!snapshots?.length && !isPending) return null;
+
+  return (
+    <div className="bg-surface border border-border rounded-xl p-4 space-y-3">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="w-full flex items-center justify-between cursor-pointer"
+      >
+        <div className="flex items-center gap-2">
+          <History size={14} className="text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">
+            {t('standards.versionHistory')}
+          </span>
+          {snapshots?.length ? (
+            <span className="text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+              {snapshots.length}
+            </span>
+          ) : null}
+        </div>
+        {collapsed ? (
+          <ChevronRight size={14} className="text-muted-foreground" />
+        ) : (
+          <ChevronDown size={14} className="text-muted-foreground" />
+        )}
+      </button>
+      {!collapsed && (
+        <div className="space-y-2">
+          {isPending
+            ? Array.from({ length: 2 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="h-12 bg-surface border border-border rounded-lg animate-pulse"
+                />
+              ))
+            : (snapshots ?? []).map((snap) => <SnapshotRow key={snap.id} snap={snap} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const PRIORITY_COLOR: Record<StandardControlPriority, string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
   high: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -218,6 +354,8 @@ function StandardsDetailPage() {
       </div>
 
       <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
+
+      <VersionHistory docId={id} />
 
       <div className="space-y-3">
         {doc.controls.map((ctrl) => {

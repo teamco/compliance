@@ -9,6 +9,8 @@ import type {
   OrganizationInput,
   StandardControl,
   StandardsDocument,
+  StandardsSnapshot,
+  WorkflowTransition,
 } from '@icore/shared';
 import { NOTES_CLIENT } from './notes-client.tokens';
 
@@ -66,9 +68,27 @@ export class NotesClientService {
     );
   }
 
+  transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
+    return firstValueFrom(
+      this.client.send<StandardsDocument>('notes.standards.workflow', { id, transition }),
+    );
+  }
+
   updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
     return firstValueFrom(
       this.client.send<StandardControl>('notes.standards.update-control', { docId, code, patch }),
+    );
+  }
+
+  listSnapshots(documentId: string): Promise<StandardsSnapshot[]> {
+    return firstValueFrom(
+      this.client.send<StandardsSnapshot[]>('notes.standards.snapshots.list', { documentId }),
+    );
+  }
+
+  getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null> {
+    return firstValueFrom(
+      this.client.send<StandardsSnapshot | null>('notes.standards.snapshots.get', { snapshotId }),
     );
   }
 }

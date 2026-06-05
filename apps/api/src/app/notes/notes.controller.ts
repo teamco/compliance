@@ -18,6 +18,7 @@ import type {
   OrganizationInput,
   StandardControl,
   VerifiedToken,
+  WorkflowTransition,
 } from '@icore/shared';
 import type { OrgProfile, StandardsResult } from '@icore/shared';
 
@@ -70,11 +71,38 @@ export class NotesController {
     return this.notes.getStandardsDocument(id);
   }
 
+  @Patch('standards/:id/workflow')
+  @ApiOperation({ summary: 'Transition standards document workflow state' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['transition'],
+      properties: {
+        transition: { type: 'string', enum: ['submit', 'approve', 'reject', 'publish'] },
+      },
+    },
+  })
+  transitionWorkflow(@Param('id') id: string, @Body() body: { transition: WorkflowTransition }) {
+    return this.notes.transitionWorkflow(id, body.transition);
+  }
+
   @Patch('standards/:id/controls/:code')
   @ApiOperation({ summary: 'Update a single generated control (priority, implementation)' })
   @ApiBody({ schema: { type: 'object' } })
   updateControl(@Param('id') id: string, @Param('code') code: string, @Body() patch: ControlPatch) {
     return this.notes.updateControl(id, code, patch);
+  }
+
+  @Get('standards/:id/snapshots')
+  @ApiOperation({ summary: 'List immutable approval snapshots for a standards document' })
+  listSnapshots(@Param('id') id: string) {
+    return this.notes.listSnapshots(id);
+  }
+
+  @Get('standards/snapshots/:snapshotId')
+  @ApiOperation({ summary: 'Get a single snapshot by ID' })
+  getSnapshot(@Param('snapshotId') snapshotId: string) {
+    return this.notes.getSnapshot(snapshotId);
   }
 
   @Post('standards/generate')

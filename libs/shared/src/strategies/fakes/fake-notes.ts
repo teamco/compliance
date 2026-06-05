@@ -7,13 +7,17 @@ import type {
   OrganizationInput,
   StandardControl,
   StandardsDocument,
+  StandardsSnapshot,
+  WorkflowTransition,
 } from '../notes';
+import { WORKFLOW_TRANSITIONS } from '../notes';
 
 export class FakeNotesStrategy implements NotesStrategy {
   private frameworks = new Map<string, Framework>();
   private controls = new Map<string, FrameworkControl>();
   private orgs = new Map<string, Organization>(); // key = userId
   private docs = new Map<string, StandardsDocument>(); // key = id
+  private snapshots: StandardsSnapshot[] = [];
 
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
@@ -66,6 +70,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       frameworkIds,
       controls: [],
       status: 'pending',
+      workflowStatus: 'draft',
       createdAt: new Date().toISOString(),
     });
     return { id };
@@ -95,5 +100,38 @@ export class FakeNotesStrategy implements NotesStrategy {
     controls[idx] = updated;
     this.docs.set(docId, { ...doc, controls });
     return updated;
+  }
+
+  async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
+    const doc = this.docs.get(id);
+    if (!doc) throw new Error(`doc_not_found: ${id}`);
+    const { from, to } = WORKFLOW_TRANSITIONS[transition];
+    if (doc.workflowStatus !== from) {
+      throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
+    }
+    const updated = { ...doc, workflowStatus: to };
+    this.docs.set(id, updated);
+    if (transition === 'approve') {
+      const version = this.snapshots.filter((s) => s.documentId === id).length + 1;
+      this.snapshots.push({
+        id: globalThis.crypto.randomUUID(),
+        documentId: id,
+        version,
+        workflowStatus: to,
+        controls: [...doc.controls],
+        createdAt: new Date().toISOString(),
+      });
+    }
+    return updated;
+  }
+
+  async listSnapshots(documentId: string): Promise<StandardsSnapshot[]> {
+    return this.snapshots
+      .filter((s) => s.documentId === documentId)
+      .sort((a, b) => b.version - a.version);
+  }
+
+  async getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null> {
+    return this.snapshots.find((s) => s.id === snapshotId) ?? null;
   }
 }

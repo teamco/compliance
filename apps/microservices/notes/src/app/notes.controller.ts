@@ -9,6 +9,8 @@ import type {
   OrganizationInput,
   StandardControl,
   StandardsDocument,
+  StandardsSnapshot,
+  WorkflowTransition,
 } from '@icore/shared';
 
 @Controller()
@@ -71,10 +73,27 @@ export class NotesController {
     return this.strategy.listStandardsDocuments(payload.userId);
   }
 
+  @MessagePattern('notes.standards.workflow')
+  transitionWorkflow(
+    @Payload() payload: { id: string; transition: WorkflowTransition },
+  ): Promise<StandardsDocument> {
+    return this.strategy.transitionWorkflow(payload.id, payload.transition);
+  }
+
   @MessagePattern('notes.standards.update-control')
   updateControl(
     @Payload() payload: { docId: string; code: string; patch: ControlPatch },
   ): Promise<StandardControl> {
     return this.strategy.updateControl(payload.docId, payload.code, payload.patch);
+  }
+
+  @MessagePattern('notes.standards.snapshots.list')
+  listSnapshots(@Payload() payload: { documentId: string }): Promise<StandardsSnapshot[]> {
+    return this.strategy.listSnapshots(payload.documentId);
+  }
+
+  @MessagePattern('notes.standards.snapshots.get')
+  getSnapshot(@Payload() payload: { snapshotId: string }): Promise<StandardsSnapshot | null> {
+    return this.strategy.getSnapshot(payload.snapshotId);
   }
 }

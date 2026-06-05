@@ -51,6 +51,21 @@ export interface StandardControl {
   category: string;
 }
 
+export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
+export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
+
+export const WORKFLOW_TRANSITIONS: Record<
+  WorkflowTransition,
+  { from: WorkflowStatus; to: WorkflowStatus }
+> = {
+  submit: { from: 'draft', to: 'in_review' },
+  approve: { from: 'in_review', to: 'approved' },
+  reject: { from: 'in_review', to: 'draft' },
+  publish: { from: 'approved', to: 'published' },
+};
+
+export const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish'];
+
 export interface StandardsDocument {
   id: string;
   userId: string;
@@ -58,12 +73,23 @@ export interface StandardsDocument {
   frameworkIds: string[];
   controls: StandardControl[];
   status: StandardsStatus;
+  workflowStatus: WorkflowStatus;
   createdAt: string;
 }
 
 export interface ControlPatch {
   priority?: StandardControlPriority;
   implementation?: string;
+}
+
+export interface StandardsSnapshot {
+  id: string;
+  documentId: string;
+  version: number;
+  workflowStatus: WorkflowStatus;
+  controls: StandardControl[];
+  createdAt: string;
+  createdBy?: string;
 }
 
 export interface NotesStrategy {
@@ -84,4 +110,9 @@ export interface NotesStrategy {
   listStandardsDocuments(userId: string): Promise<StandardsDocument[]>;
 
   updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl>;
+
+  transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument>;
+
+  listSnapshots(documentId: string): Promise<StandardsSnapshot[]>;
+  getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null>;
 }

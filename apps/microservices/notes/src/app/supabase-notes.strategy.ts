@@ -8,7 +8,10 @@ import type {
   OrganizationInput,
   StandardControl,
   StandardsDocument,
+  StandardsSnapshot,
+  WorkflowTransition,
 } from '@icore/shared';
+import { WORKFLOW_TRANSITIONS } from '@icore/shared';
 
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
@@ -149,6 +152,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         framework_ids: frameworkIds,
         controls: [],
         status: 'pending',
+        workflow_status: 'draft',
       })
       .select('id')
       .single();
@@ -181,6 +185,54 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     return (ok(data, error) as unknown[]).map((r) => this.mapDoc(r));
+  }
+
+  async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
+    const doc = await this.getStandardsDocument(id);
+    if (!doc) throw new Error('doc_not_found');
+    const { from, to } = WORKFLOW_TRANSITIONS[transition];
+    if (doc.workflowStatus !== from) {
+      throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
+    }
+    const { error } = await this.db
+      .from('generated_standards')
+      .update({ workflow_status: to })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+    if (transition === 'approve') {
+      const { count } = await this.db
+        .from('standards_snapshots')
+        .select('id', { count: 'exact', head: true })
+        .eq('document_id', id);
+      const version = (count ?? 0) + 1;
+      const { error: snapErr } = await this.db.from('standards_snapshots').insert({
+        document_id: id,
+        version,
+        workflow_status: to,
+        controls: doc.controls,
+      });
+      if (snapErr) throw new Error(snapErr.message);
+    }
+    return { ...doc, workflowStatus: to };
+  }
+
+  async listSnapshots(documentId: string): Promise<StandardsSnapshot[]> {
+    const { data, error } = await this.db
+      .from('standards_snapshots')
+      .select()
+      .eq('document_id', documentId)
+      .order('version', { ascending: false });
+    return (ok(data, error) as unknown[]).map((r) => this.mapSnapshot(r));
+  }
+
+  async getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null> {
+    const { data, error } = await this.db
+      .from('standards_snapshots')
+      .select()
+      .eq('id', snapshotId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.mapSnapshot(data) : null;
   }
 
   async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
@@ -226,6 +278,27 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     };
   }
 
+  private mapSnapshot(r: unknown): StandardsSnapshot {
+    const row = r as {
+      id: string;
+      document_id: string;
+      version: number;
+      workflow_status: string;
+      controls: StandardControl[];
+      created_at: string;
+      created_by?: string;
+    };
+    return {
+      id: row.id,
+      documentId: row.document_id,
+      version: row.version,
+      workflowStatus: row.workflow_status as StandardsSnapshot['workflowStatus'],
+      controls: row.controls ?? [],
+      createdAt: row.created_at,
+      createdBy: row.created_by,
+    };
+  }
+
   private mapDoc(r: unknown): StandardsDocument {
     const row = r as {
       id: string;
@@ -234,6 +307,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       framework_ids: string[];
       controls: StandardControl[];
       status: string;
+      workflow_status: string | null;
       created_at: string;
     };
     return {
@@ -243,6 +317,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       frameworkIds: row.framework_ids,
       controls: row.controls ?? [],
       status: row.status as StandardsDocument['status'],
+      workflowStatus: (row.workflow_status ?? 'draft') as StandardsDocument['workflowStatus'],
       createdAt: row.created_at,
     };
   }
