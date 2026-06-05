@@ -1,7 +1,8 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
 import { useProfile } from '@/queries/profile';
+import { useFrameworks, useStandardsDocuments } from '@/queries/notes';
 import {
   Shield,
   CheckCircle2,
@@ -12,11 +13,12 @@ import {
   ArrowRight,
 } from 'lucide-react';
 
-const FRAMEWORKS = [
-  { name: 'NIST CSF 2.0', pct: 78, color: 'bg-green-500' },
-  { name: 'ISO 27001:2022', pct: 61, color: 'bg-blue-500' },
-  { name: 'SOC 2 Type II', pct: 42, color: 'bg-amber-500' },
-  { name: 'GDPR', pct: 55, color: 'bg-purple-500' },
+const FRAMEWORK_COLORS = [
+  'bg-green-500',
+  'bg-blue-500',
+  'bg-amber-500',
+  'bg-purple-500',
+  'bg-cyan-500',
 ];
 
 const ACTIVITY = [
@@ -71,7 +73,14 @@ function DashboardHome() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const { data: profile } = useProfile();
+  const { data: frameworks } = useFrameworks();
+  const { data: docs } = useStandardsDocuments();
   const hour = new Date().getHours();
+
+  const totalControls = (docs ?? [])
+    .filter((d) => d.status === 'completed')
+    .reduce((sum, d) => sum + d.controls.length, 0);
+  const frameworkCount = (frameworks ?? []).length;
   const greeting =
     hour < 12
       ? t('dashboard.greetingMorning')
@@ -102,11 +111,10 @@ function DashboardHome() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard
           label={t('dashboard.totalControls')}
-          value="247"
-          sub={t('dashboard.totalControlsSub', { count: 4 })}
+          value={totalControls || '—'}
+          sub={t('dashboard.totalControlsSub', { count: frameworkCount })}
           icon={Shield}
           accent="bg-blue-600"
-          trend="+14 this month"
         />
         <StatCard
           label={t('dashboard.compliant')}
@@ -141,38 +149,46 @@ function DashboardHome() {
             <h2 className="text-sm font-semibold text-foreground">
               {t('dashboard.frameworkCompliance')}
             </h2>
-            <button
-              type="button"
-              className="flex items-center gap-1 text-xs text-muted-foreground cursor-not-allowed"
+            <Link
+              to="/frameworks"
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               {t('dashboard.viewAll')} <ArrowRight size={12} />
-            </button>
+            </Link>
           </div>
           <div className="space-y-4">
-            {FRAMEWORKS.map((fw) => (
-              <div key={fw.name} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-foreground font-medium">{fw.name}</span>
-                  <span
-                    className={
-                      fw.pct >= 70
-                        ? 'text-green-500'
-                        : fw.pct >= 50
-                          ? 'text-amber-500'
-                          : 'text-red-500'
-                    }
-                  >
-                    {fw.pct}%
-                  </span>
-                </div>
-                <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${fw.color}`}
-                    style={{ width: `${fw.pct}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+            {(frameworks ?? []).length === 0 ? (
+              <p className="text-xs text-muted-foreground/60 py-4 text-center">
+                {t('frameworks.loading')}
+              </p>
+            ) : (
+              (frameworks ?? []).map((fw, i) => {
+                const docsForFw = (docs ?? []).filter(
+                  (d) => d.status === 'completed' && d.frameworkIds.includes(fw.id),
+                );
+                const hasStandards = docsForFw.length > 0;
+                const pct = hasStandards ? 100 : 0;
+                const color = FRAMEWORK_COLORS[i % FRAMEWORK_COLORS.length];
+                return (
+                  <div key={fw.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-foreground font-medium">{fw.name}</span>
+                      <span
+                        className={hasStandards ? 'text-green-500' : 'text-muted-foreground/40'}
+                      >
+                        {hasStandards ? t('standards.status.completed') : t('common.soon')}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${hasStandards ? color : ''}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

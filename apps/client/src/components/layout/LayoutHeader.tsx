@@ -5,15 +5,17 @@ import { LogOut, Menu } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 import { ThemeToggle } from '../ThemeToggle';
 
-const BREADCRUMBS: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/profile': 'Profile',
-  '/admin/ai-usage': 'AI Usage',
-  '/analytics': 'Analytics',
-  '/frameworks': 'Frameworks',
-  '/controls': 'Controls',
-  '/gap-analysis': 'Gap Analysis',
-};
+const BREADCRUMB_KEYS: Array<{ prefix: string; key: string }> = [
+  { prefix: '/admin/ai-usage', key: 'nav.aiUsage' },
+  { prefix: '/dashboard', key: 'nav.dashboard' },
+  { prefix: '/profile', key: 'nav.profile' },
+  { prefix: '/analytics', key: 'nav.analytics' },
+  { prefix: '/frameworks', key: 'nav.frameworks' },
+  { prefix: '/standards', key: 'nav.standards' },
+  { prefix: '/org', key: 'nav.org' },
+  { prefix: '/controls', key: 'nav.controls' },
+  { prefix: '/gap-analysis', key: 'nav.gapAnalysis' },
+];
 
 export function LayoutHeader() {
   const { t, i18n } = useTranslation();
@@ -24,7 +26,10 @@ export function LayoutHeader() {
   const logout = useAuthStore((s) => s.logout);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  const pageTitle = BREADCRUMBS[pathname] ?? '';
+  const breadcrumbKey = BREADCRUMB_KEYS.find(
+    (b) => pathname === b.prefix || pathname.startsWith(b.prefix + '/'),
+  )?.key;
+  const pageTitle = breadcrumbKey ? t(breadcrumbKey) : '';
   const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : '??';
 
   function handleLogout() {
