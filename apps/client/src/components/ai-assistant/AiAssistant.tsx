@@ -163,7 +163,7 @@ export function AiAssistant() {
         </SheetHeader>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto min-h-0 px-4 py-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4 gap-3">
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl bg-green-500/10 border border-green-500/20">
@@ -179,33 +179,35 @@ export function AiAssistant() {
               </div>
             </div>
           ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
+            <div className="space-y-4">
+              {messages.map((msg) => (
                 <div
-                  className={[
-                    'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
-                    msg.role === 'user'
-                      ? 'bg-green-500/10 border border-green-500/20 text-foreground rounded-br-sm'
-                      : 'bg-muted border border-border text-foreground rounded-bl-sm',
-                  ].join(' ')}
+                  key={msg.id}
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {msg.content ||
-                    (msg.streaming ? (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <span className="animate-pulse">{t('aiAssistant.thinking')}</span>
-                      </span>
-                    ) : null)}
-                  {msg.streaming && msg.content && (
-                    <span className="inline-block w-1 h-3 bg-green-500 ml-0.5 animate-pulse rounded-sm" />
-                  )}
+                  <div
+                    className={[
+                      'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed',
+                      msg.role === 'user'
+                        ? 'bg-green-500/10 border border-green-500/20 text-foreground rounded-br-sm'
+                        : 'bg-muted border border-border text-foreground rounded-bl-sm',
+                    ].join(' ')}
+                  >
+                    {msg.content ||
+                      (msg.streaming ? (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <span className="animate-pulse">{t('aiAssistant.thinking')}</span>
+                        </span>
+                      ) : null)}
+                    {msg.streaming && msg.content && (
+                      <span className="inline-block w-1 h-3 bg-green-500 ml-0.5 animate-pulse rounded-sm" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+              <div ref={bottomRef} />
+            </div>
           )}
-          <div ref={bottomRef} />
         </div>
 
         {/* Input */}
