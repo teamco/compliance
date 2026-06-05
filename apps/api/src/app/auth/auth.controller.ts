@@ -14,7 +14,7 @@ import { Throttle, seconds } from '@nestjs/throttler';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { AuthClientService } from '@icore/auth-client';
-import type { OAuthProvider } from '@icore/shared';
+import type { OAuthProvider, VerifiedToken } from '@icore/shared';
 import { Public } from './public.decorator';
 
 const OAUTH_PROVIDERS: ReadonlySet<OAuthProvider> = new Set(['google', 'github']);
@@ -115,14 +115,28 @@ export class AuthController {
     return this.authClient.verifyMagicLink(body.token);
   }
 
+  @Get('me')
+  @ApiOperation({ summary: 'Return current user; assigns initial role on first call' })
+  async me(@Req() req: Request & { user?: VerifiedToken }): Promise<VerifiedToken> {
+    const user = req.user;
+    if (!user?.uid) throw new UnauthorizedException('missing_user');
+    const role = await this.authClient.ensureRole(
+      user.uid,
+      user.email ?? '',
+      user.displayName,
+      user.avatarUrl,
+    );
+    return { ...user, role };
+  }
+
   @Public()
   @Get('oauth/:provider')
   @ApiOperation({ summary: 'Start an OAuth flow — redirects to the provider' })
   @ApiParam({ name: 'provider', enum: ['google', 'github'] })
   async oauthStart(@Param('provider') providerRaw: string, @Res() res: Response) {
     const provider = assertProvider(providerRaw);
-    const origin = this.cfg.get<string>('API_ORIGIN') ?? 'http://localhost:3001';
-    const callbackUrl = `${origin}/api/auth/oauth/${provider}/callback`;
+    const origin = this.cfg.get<string>('CLIENT_ORIGIN') ?? 'http://localhost:4200';
+    const callbackUrl = `${origin}/auth/oauth/callback`;
     const { redirectUrl, state } = await this.authClient.startOAuth(provider, callbackUrl);
     res.cookie('oauth_state', state, {
       httpOnly: true,

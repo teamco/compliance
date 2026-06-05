@@ -49,11 +49,18 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     if (error || !data.user) {
       throw new Error(error?.message ?? 'invalid_token');
     }
-    const meta = (data.user as { app_metadata?: { role?: string } }).app_metadata;
+    const u = data.user as {
+      app_metadata?: { role?: string };
+      user_metadata?: { full_name?: string; name?: string; avatar_url?: string; picture?: string };
+    };
+    const displayName = u.user_metadata?.full_name ?? u.user_metadata?.name;
+    const avatarUrl = u.user_metadata?.avatar_url ?? u.user_metadata?.picture;
     return {
       uid: data.user.id,
       email: data.user.email,
-      role: meta?.role,
+      role: u.app_metadata?.role,
+      displayName,
+      avatarUrl,
     };
   }
 
@@ -62,6 +69,11 @@ export class SupabaseAuthStrategy implements AuthStrategy {
       app_metadata: { role },
     });
     if (error) throw new Error(error.message);
+    // Sync role to profiles table (best-effort; profile row created by DB trigger on signup).
+    const { error: upsertError } = await this.client
+      .from('profiles')
+      .upsert({ id: uid, role, updated_at: new Date().toISOString() });
+    if (upsertError) throw new Error(`profiles upsert failed: ${upsertError.message}`);
   }
 
   async sendMagicLink(req: MagicLinkRequest): Promise<void> {
@@ -102,6 +114,62 @@ export class SupabaseAuthStrategy implements AuthStrategy {
       throw new Error(error?.message ?? 'invalid_magic_link');
     }
     return this.toSession(data.session);
+  }
+
+  async syncProfile(
+    uid: string,
+    fields: {
+      role?: string;
+      email?: string;
+      displayName?: string;
+      avatarUrl?: string;
+      lastSignedIn?: string;
+    },
+  ): Promise<void> {
+    const row: Record<string, unknown> = { id: uid, updated_at: new Date().toISOString() };
+    if (fields.role !== undefined) row['role'] = fields.role;
+    if (fields.email !== undefined) row['email'] = fields.email;
+    if (fields.displayName !== undefined) row['display_name'] = fields.displayName;
+    if (fields.avatarUrl !== undefined) row['avatar_url'] = fields.avatarUrl;
+    if (fields.lastSignedIn !== undefined) row['last_signed_in'] = fields.lastSignedIn;
+    const { error } = await this.client.from('profiles').upsert(row);
+    if (error) throw new Error(`syncProfile failed: ${error.message}`);
+  }
+
+  async getProfile(uid: string): Promise<{
+    displayName?: string;
+    avatarUrl?: string;
+    role?: string;
+    email?: string;
+    lastSignedIn?: string;
+  } | null> {
+    const { data, error } = await this.client
+      .from('profiles')
+      .select('display_name, avatar_url, role, email, last_signed_in')
+      .eq('id', uid)
+      .single();
+    if (error || !data) return null;
+    const row = data as {
+      display_name?: string;
+      avatar_url?: string;
+      role?: string;
+      email?: string;
+      last_signed_in?: string;
+    };
+    return {
+      displayName: row.display_name ?? undefined,
+      avatarUrl: row.avatar_url ?? undefined,
+      role: row.role,
+      email: row.email,
+      lastSignedIn: row.last_signed_in ?? undefined,
+    };
+  }
+
+  async updateProfile(uid: string, fields: { displayName?: string }): Promise<void> {
+    const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (fields.displayName !== undefined) row['display_name'] = fields.displayName;
+    const { error } = await this.client.from('profiles').update(row).eq('id', uid);
+    if (error) throw new Error(`updateProfile failed: ${error.message}`);
   }
 
   async getRole(uid: string): Promise<string | null> {

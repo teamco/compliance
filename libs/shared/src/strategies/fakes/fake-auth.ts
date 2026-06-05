@@ -17,6 +17,8 @@ interface StoredUser {
   email: string;
   password: string;
   role?: string;
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 export class FakeAuthStrategy implements AuthStrategy {
@@ -66,6 +68,37 @@ export class FakeAuthStrategy implements AuthStrategy {
   async getRole(uid: string): Promise<string | null> {
     const user = this.findById(uid);
     return user.role ?? null;
+  }
+
+  async syncProfile(
+    uid: string,
+    fields: { role?: string; displayName?: string; avatarUrl?: string; lastSignedIn?: string },
+  ): Promise<void> {
+    const user = this.findById(uid);
+    if (fields.role !== undefined) user.role = fields.role;
+    if (fields.displayName !== undefined) user.displayName = fields.displayName;
+    if (fields.avatarUrl !== undefined) user.avatarUrl = fields.avatarUrl;
+  }
+
+  async getProfile(uid: string): Promise<{
+    displayName?: string;
+    avatarUrl?: string;
+    role?: string;
+    email?: string;
+    lastSignedIn?: string;
+  } | null> {
+    const user = this.findById(uid);
+    return {
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
+      email: user.email,
+    };
+  }
+
+  async updateProfile(uid: string, fields: { displayName?: string }): Promise<void> {
+    const user = this.findById(uid);
+    if (fields.displayName !== undefined) user.displayName = fields.displayName;
   }
 
   async sendMagicLink(req: MagicLinkRequest): Promise<void> {

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Can, useDraft, useLoading } from '@icore/template-shared';
+import { Can, useLoading } from '@icore/template-shared';
 import type { AbilityAction, AbilitySubject } from '@icore/shared';
 import { AccessDeniedPage } from './AccessDeniedPage';
 
@@ -26,9 +26,6 @@ export function PageLayout({
 }: PageLayoutProps) {
   const { t } = useTranslation();
   const isLoading = useLoading();
-
-  // Reset global draft state on mount/unmount so navigation is never blocked on a fresh page.
-  useDraft(false);
 
   const content = (
     <div className="p-4 md:p-6 space-y-4">

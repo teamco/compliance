@@ -1,6 +1,25 @@
 import type { InferSubjects } from '@casl/ability';
 
-export type AbilityAction = 'manage' | 'create' | 'read' | 'update' | 'delete';
+export enum Action {
+  Manage = 'manage',
+  Create = 'create',
+  Read = 'read',
+  Update = 'update',
+  Delete = 'delete',
+}
+
+export enum Subject {
+  All = 'all',
+  User = 'User',
+  Profile = 'Profile',
+  Note = 'Note',
+  AiUsage = 'AiUsage',
+  Framework = 'Framework',
+  Control = 'Control',
+  GapAnalysis = 'GapAnalysis',
+}
+
+export type AbilityAction = `${Action}`;
 
 // NoteSubject is the shaped object passed to subject('Note', { ... }) in tests
 // and on the frontend <Can>. Included in AbilitySubject so ability.can() accepts
@@ -10,10 +29,4 @@ export interface NoteSubject {
   ownerId: string;
 }
 
-export type AbilitySubject =
-  | InferSubjects<NoteSubject>
-  | 'all'
-  | 'User'
-  | 'Profile'
-  | 'Note'
-  | 'AiUsage';
+export type AbilitySubject = InferSubjects<NoteSubject> | `${Subject}`;

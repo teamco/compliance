@@ -1,25 +1,30 @@
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from '@tanstack/react-router';
-import { useAuthStore, setStoredLocale, type IcoreLocale } from '@icore/template-shared';
-import { Button } from '../ui/button';
+import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useAuthStore, setStoredLocale, SUPPORTED_LOCALES } from '@icore/template-shared';
+import { LogOut, Menu } from 'lucide-react';
+import { useSidebar } from '../../layouts/sidebar-context';
 import { ThemeToggle } from '../ThemeToggle';
 
-const LOCALES: { code: IcoreLocale; label: string }[] = [
-  { code: 'en', label: 'EN' },
-  { code: 'ru', label: 'RU' },
-  { code: 'he', label: 'HE' },
-];
+const BREADCRUMBS: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/profile': 'Profile',
+  '/admin/ai-usage': 'AI Usage',
+  '/analytics': 'Analytics',
+  '/frameworks': 'Frameworks',
+  '/controls': 'Controls',
+  '/gap-analysis': 'Gap Analysis',
+};
 
 export function LayoutHeader() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { toggle } = useSidebar();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
-  function handleLocale(code: IcoreLocale) {
-    setStoredLocale(code);
-    window.location.reload();
-  }
+  const pageTitle = BREADCRUMBS[pathname] ?? '';
+  const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : '??';
 
   function handleLogout() {
     logout();
@@ -27,33 +32,67 @@ export function LayoutHeader() {
   }
 
   return (
-    <header className="border-b border-border px-6 py-3 flex items-center justify-between bg-background">
-      <span className="font-semibold text-foreground tracking-tight">icore</span>
+    <header className="h-14 flex items-center justify-between gap-4 px-4 border-b border-border bg-surface shrink-0">
+      {/* Left */}
+      <div className="flex items-center gap-3 min-w-0">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label="Toggle sidebar"
+          className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+        >
+          <Menu size={18} />
+        </button>
+        {pageTitle && (
+          <>
+            <span className="text-muted-foreground/40 text-sm">/</span>
+            <span className="text-sm font-medium text-foreground truncate">{pageTitle}</span>
+          </>
+        )}
+      </div>
 
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1">
-          {LOCALES.map(({ code, label }) => (
+      {/* Right */}
+      <div className="flex items-center gap-1 shrink-0">
+        {/* Locale */}
+        <div className="flex items-center gap-0.5 mr-2">
+          {SUPPORTED_LOCALES.map(({ code, label }) => (
             <button
               key={code}
-              onClick={() => handleLocale(code)}
-              className="text-xs px-2 py-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
               type="button"
+              onClick={() => {
+                setStoredLocale(code);
+                window.location.reload();
+              }}
+              className="text-[11px] px-1.5 py-1 rounded text-muted-foreground/50 hover:text-foreground transition-colors font-medium"
             >
               {label}
             </button>
           ))}
         </div>
 
+        {/* Theme toggle */}
         <ThemeToggle />
 
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground hidden sm:inline">
+        {/* User avatar */}
+        <div className="flex items-center gap-2 ml-1">
+          <div className="w-7 h-7 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+            <span className="text-[10px] font-semibold text-green-500">{initials}</span>
+          </div>
+          <span className="text-xs text-muted-foreground hidden md:inline max-w-[160px] truncate">
             {user?.email ?? ''}
           </span>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            {t('common.logout')}
-          </Button>
         </div>
+
+        {/* Logout */}
+        <button
+          type="button"
+          onClick={handleLogout}
+          aria-label={t('common.logout')}
+          title={t('common.logout')}
+          className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors ml-1"
+        >
+          <LogOut size={15} />
+        </button>
       </div>
     </header>
   );

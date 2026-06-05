@@ -103,9 +103,8 @@ export class AnthropicAiStrategy implements AiStrategy {
     const response = await this.client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8192,
-      thinking: { type: 'adaptive' } as Parameters<
-        typeof this.client.messages.create
-      >[0]['thinking'],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      thinking: { type: 'adaptive' } as any,
       system,
       messages: [{ role: 'user', content: userPrompt }],
     });

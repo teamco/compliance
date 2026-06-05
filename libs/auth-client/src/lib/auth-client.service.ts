@@ -25,11 +25,50 @@ export class AuthClientService {
   }
 
   setRole(uid: string, role: string): Promise<void> {
-    return firstValueFrom(this.client.send<void>('auth.setRole', { uid, role }));
+    return firstValueFrom(this.client.send<{ ok: boolean }>('auth.setRole', { uid, role })).then(
+      () => undefined,
+    );
+  }
+
+  ensureRole(
+    uid: string,
+    email: string,
+    displayName?: string,
+    avatarUrl?: string,
+  ): Promise<string> {
+    return firstValueFrom(
+      this.client.send<string>('auth.ensureRole', { uid, email, displayName, avatarUrl }),
+    );
+  }
+
+  getProfile(uid: string): Promise<{
+    displayName?: string;
+    avatarUrl?: string;
+    role?: string;
+    email?: string;
+    lastSignedIn?: string;
+  } | null> {
+    return firstValueFrom(
+      this.client.send<{
+        displayName?: string;
+        avatarUrl?: string;
+        role?: string;
+        email?: string;
+        lastSignedIn?: string;
+      } | null>('auth.profile.get', { uid }),
+    );
+  }
+
+  updateProfile(uid: string, displayName: string): Promise<void> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('auth.profile.update', { uid, displayName }),
+    ).then(() => undefined);
   }
 
   sendMagicLink(email: string, callbackUrl: string): Promise<void> {
-    return firstValueFrom(this.client.send<void>('auth.magicLink.send', { email, callbackUrl }));
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('auth.magicLink.send', { email, callbackUrl }),
+    ).then(() => undefined);
   }
 
   verifyMagicLink(token: string): Promise<AuthSession> {

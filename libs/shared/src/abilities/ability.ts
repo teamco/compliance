@@ -14,6 +14,9 @@ export function defineAbilitiesFor(user: AbilityUser | null): AppAbility {
     can('manage', 'all');
     can('read', 'AiUsage');
   } else if (user) {
+    can('read', 'Profile');
+    can('update', 'Profile');
+    can('read', 'User');
     can('read', 'Note', { ownerId: user.id } as never);
     can('create', 'Note');
     can(['update', 'delete'], 'Note', { ownerId: user.id } as never);

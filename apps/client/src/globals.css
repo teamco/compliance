@@ -1,27 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 @import 'tailwindcss';
 
 @theme {
+  /* Light */
   --color-background: oklch(0.99 0 0);
-  --color-foreground: oklch(0.15 0 0);
-  --color-primary: oklch(0.45 0.18 250);
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-muted: oklch(0.96 0 0);
+  --color-surface: oklch(0.97 0 0);
+  --color-foreground: oklch(0.12 0 0);
+  --color-primary: oklch(0.55 0.18 145);
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-muted: oklch(0.93 0 0);
   --color-muted-foreground: oklch(0.45 0 0);
-  --color-border: oklch(0.92 0 0);
-  --color-destructive: oklch(0.55 0.25 25);
+  --color-border: oklch(0.88 0 0);
+  --color-accent: oklch(0.93 0 0);
+  --color-accent-foreground: oklch(0.12 0 0);
+  --color-destructive: oklch(0.58 0.22 25);
+  --color-positive: oklch(0.6 0.18 145);
   --radius-default: 0.5rem;
+
+  --font-sans: 'Plus Jakarta Sans', sans-serif;
 }
 
 @layer base {
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
+
+  /* Dark — Trust & Authority */
   html.dark {
-    --color-background: oklch(0.15 0 0);
-    --color-foreground: oklch(0.98 0 0);
-    --color-muted: oklch(0.25 0 0);
-    --color-muted-foreground: oklch(0.7 0 0);
-    --color-border: oklch(0.3 0 0);
+    --color-background: #020617;
+    --color-surface: #0f172a;
+    --color-foreground: #f8fafc;
+    --color-primary: #22c55e;
+    --color-primary-foreground: #020617;
+    --color-muted: #1e293b;
+    --color-muted-foreground: #94a3b8;
+    --color-border: #1e293b;
+    --color-accent: #1e293b;
+    --color-accent-foreground: #f8fafc;
+    --color-destructive: #ef4444;
+    --color-positive: #22c55e;
   }
 }

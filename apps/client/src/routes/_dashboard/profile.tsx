@@ -1,85 +1,50 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { SyntheticEvent, useEffect, useState } from 'react';
-import { useDraft, useNotify, useAuthStore } from '@icore/template-shared';
-import { PageLayout } from '@/components/PageLayout';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@icore/template-shared';
 import { api } from '@/main';
+import { ProfileHeader } from '@/components/profile/profile-header';
+import { DisplayNameSection } from '@/components/profile/display-name-section';
+import { DangerZone } from '@/components/profile/danger-zone';
 
 interface ProfilePayload {
   uid: string;
   email?: string;
   role?: string;
+  displayName?: string;
+  avatarUrl?: string;
+  lastSignedIn?: string;
 }
 
 function ProfilePage() {
-  const notify = useNotify();
-  const qc = useQueryClient();
+  const { t } = useTranslation();
   const authUser = useAuthStore((s) => s.user);
 
-  const { data, isPending } = useQuery({
+  const { data: profile, isPending } = useQuery({
     queryKey: ['profile'],
     queryFn: () => api<ProfilePayload>('/profile'),
   });
 
-  const [name, setName] = useState('');
-  const [dirty, setDirty] = useState(false);
-  useDraft(dirty);
-
-  useEffect(() => {
-    if (data?.email) setName(data.email);
-  }, [data?.email]);
-
-  const save = useMutation({
-    mutationFn: async (next: string) =>
-      api('/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: next }),
-      }),
-    onSuccess: () => {
-      setDirty(false);
-      notify.success('Saved');
-      void qc.invalidateQueries({ queryKey: ['profile'] });
-    },
-    onError: (err) => notify.error(err instanceof Error ? err.message : 'save_failed'),
-  });
-
-  function handleSubmit(e: SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault();
-    save.mutate(name);
+  if (isPending) {
+    return <div className="text-muted-foreground p-6">{t('common.loading')}</div>;
   }
 
   return (
-    <PageLayout
-      title="Profile"
-      description="Edit your account details."
-      action="read"
-      subject="Profile"
-    >
-      <form onSubmit={handleSubmit} className="max-w-md space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" value={authUser?.email ?? ''} readOnly disabled />
+    <div className="p-4 md:p-6">
+      <h1 className="text-foreground mb-6 text-2xl font-bold">{t('profile.title')}</h1>
+      <div className="space-y-6">
+        <ProfileHeader
+          avatarUrl={profile?.avatarUrl}
+          displayName={profile?.displayName}
+          email={profile?.email ?? authUser?.email}
+          lastSignedIn={profile?.lastSignedIn}
+        />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <DisplayNameSection initialName={profile?.displayName} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="name">Display name</Label>
-          <Input
-            id="name"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              setDirty(true);
-            }}
-          />
-        </div>
-        <Button type="submit" disabled={!dirty || save.isPending || isPending}>
-          {save.isPending ? 'Saving…' : 'Save'}
-        </Button>
-      </form>
-    </PageLayout>
+        <DangerZone />
+      </div>
+    </div>
   );
 }
 

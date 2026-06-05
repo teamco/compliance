@@ -10,8 +10,16 @@ interface ThemeState {
 }
 
 function detectInitial(): ThemeMode {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  if (typeof window === 'undefined') return 'dark';
+  const stored = localStorage.getItem('icore-theme');
+  if (stored) {
+    try {
+      return (JSON.parse(stored) as { state?: { mode?: ThemeMode } }).state?.mode ?? 'dark';
+    } catch {
+      return 'dark';
+    }
+  }
+  return 'dark';
 }
 
 export const useThemeStore = create<ThemeState>()(

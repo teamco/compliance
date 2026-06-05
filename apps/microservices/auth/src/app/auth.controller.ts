@@ -41,13 +41,17 @@ export class AuthController {
   }
 
   @MessagePattern('auth.setRole')
-  setRole(@Payload() payload: { uid: string; role: string }): Promise<void> {
-    return this.strategy.setRole(payload.uid, payload.role);
+  async setRole(@Payload() payload: { uid: string; role: string }): Promise<{ ok: boolean }> {
+    await this.strategy.setRole(payload.uid, payload.role);
+    return { ok: true };
   }
 
   @MessagePattern('auth.magicLink.send')
-  sendMagicLink(@Payload() payload: { email: string; callbackUrl: string }): Promise<void> {
-    return this.strategy.sendMagicLink(payload);
+  async sendMagicLink(
+    @Payload() payload: { email: string; callbackUrl: string },
+  ): Promise<{ ok: boolean }> {
+    await this.strategy.sendMagicLink(payload);
+    return { ok: true };
   }
 
   @MessagePattern('auth.magicLink.verify')
@@ -64,6 +68,29 @@ export class AuthController {
     return this.strategy.startOAuth(payload.provider, payload.callbackUrl);
   }
 
+  @MessagePattern('auth.ensureRole')
+  async ensureRole(
+    @Payload()
+    payload: {
+      uid: string;
+      email: string;
+      displayName?: string;
+      avatarUrl?: string;
+    },
+  ): Promise<string> {
+    await this.assignInitialRole(payload.uid, payload.email);
+    const role = (await this.strategy.getRole(payload.uid)) ?? 'user';
+    // Always sync profiles row — covers existing users who predate the trigger.
+    await this.strategy.syncProfile(payload.uid, {
+      role,
+      email: payload.email,
+      displayName: payload.displayName,
+      avatarUrl: payload.avatarUrl,
+      lastSignedIn: new Date().toISOString(),
+    });
+    return role;
+  }
+
   @MessagePattern('auth.oauth.complete')
   async completeOAuth(
     @Payload() payload: { provider: OAuthProvider; code: string; state: string },
@@ -75,6 +102,25 @@ export class AuthController {
     );
     await this.assignInitialRole(session.user.id, session.user.email);
     return session;
+  }
+
+  @MessagePattern('auth.profile.get')
+  getProfile(@Payload() payload: { uid: string }): Promise<{
+    displayName?: string;
+    avatarUrl?: string;
+    role?: string;
+    email?: string;
+    lastSignedIn?: string;
+  } | null> {
+    return this.strategy.getProfile(payload.uid);
+  }
+
+  @MessagePattern('auth.profile.update')
+  async updateProfile(
+    @Payload() payload: { uid: string; displayName?: string },
+  ): Promise<{ ok: boolean }> {
+    await this.strategy.updateProfile(payload.uid, { displayName: payload.displayName });
+    return { ok: true };
   }
 
   // Idempotent: skips work when a role already exists. Admin emails come

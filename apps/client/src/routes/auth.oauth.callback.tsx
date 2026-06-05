@@ -6,6 +6,15 @@ import { Loader2 } from 'lucide-react';
 
 type Status = 'restoring' | 'done' | 'error';
 
+function parseJwtPayload(token: string): Record<string, unknown> {
+  try {
+    const base64 = (token.split('.')[1] ?? '').replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64)) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
 function OAuthCallbackPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -16,23 +25,42 @@ function OAuthCallbackPage() {
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, '');
     const params = new URLSearchParams(hash);
-    const accessToken = params.get('accessToken');
-    const refreshToken = params.get('refreshToken');
-    const userId = params.get('userId');
-    const email = params.get('email');
-    if (!accessToken || !refreshToken || !userId || !email) {
+
+    // Supabase implicit flow: access_token / refresh_token (snake_case)
+    // Gateway server redirect: accessToken / refreshToken (camelCase)
+    const accessToken = params.get('access_token') ?? params.get('accessToken');
+    const refreshToken = params.get('refresh_token') ?? params.get('refreshToken');
+
+    if (!accessToken || !refreshToken) {
       setStatus('error');
       notify.error(t('auth.oauthCallbackMissingTokens'));
       void navigate({ to: '/login' });
       return;
     }
-    setAuth({
-      accessToken,
-      refreshToken,
-      user: { id: userId, email },
-    });
-    setStatus('done');
-    void navigate({ to: '/dashboard' });
+
+    const userId = params.get('userId') ?? (parseJwtPayload(accessToken)['sub'] as string) ?? '';
+    const email = params.get('email') ?? (parseJwtPayload(accessToken)['email'] as string) ?? '';
+
+    setAuth({ accessToken, refreshToken, user: { id: userId, email } });
+
+    void (async () => {
+      // Fetch role — assigns it on first OAuth login (idempotent).
+      try {
+        const res = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          const me = (await res.json()) as { uid?: string; email?: string; role?: string };
+          if (me.role) {
+            setAuth({ accessToken, refreshToken, user: { id: userId, email, role: me.role } });
+          }
+        }
+      } catch {
+        // Non-fatal: role missing but login still succeeds.
+      }
+      setStatus('done');
+      void navigate({ to: '/dashboard' });
+    })();
   }, []);
 
   return (
