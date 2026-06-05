@@ -13,3 +13,4 @@ export {
 export { runStorageContract } from './strategies/__tests__/storage.contract.unit.test';
 export { runDBContract } from './strategies/__tests__/db.contract.unit.test';
 export { runAiContract } from './strategies/__tests__/ai.contract.unit.test';
+export { runNotesContract } from './strategies/__tests__/notes.contract.unit.test';

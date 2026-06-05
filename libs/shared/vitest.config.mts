@@ -20,7 +20,7 @@ export default defineConfig(() => ({
     // the harness.
     exclude: [
       ...configDefaults.exclude,
-      '**/strategies/__tests__/{auth,storage,db,ai}.contract.unit.test.ts',
+      '**/strategies/__tests__/{auth,storage,db,ai,notes}.contract.unit.test.ts',
     ],
     reporters: ['default'],
     coverage: {
