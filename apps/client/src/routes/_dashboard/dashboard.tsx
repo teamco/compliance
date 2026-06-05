@@ -82,7 +82,9 @@ function DashboardHome() {
         <div>
           <h1 className="text-xl font-semibold text-foreground">
             {greeting},{' '}
-            <span className="text-muted-foreground">{user?.email?.split('@')[0] ?? 'user'}</span>
+            <span className="text-muted-foreground">
+              {user?.displayName ?? user?.email?.split('@')[0] ?? 'user'}
+            </span>
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t('dashboard.subtitle')}</p>
         </div>
