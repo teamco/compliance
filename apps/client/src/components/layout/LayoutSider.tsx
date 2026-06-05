@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
+  Building2,
+  ScrollText,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -26,6 +28,8 @@ type NavKey =
   | 'nav.dashboard'
   | 'nav.analytics'
   | 'nav.frameworks'
+  | 'nav.org'
+  | 'nav.standards'
   | 'nav.controls'
   | 'nav.gapAnalysis'
   | 'nav.aiUsage'
@@ -58,7 +62,9 @@ const NAV: NavSection[] = [
   {
     titleKey: 'nav.sectionCompliance',
     items: [
-      { labelKey: 'nav.frameworks', to: '/frameworks', icon: BookOpen, soon: true },
+      { labelKey: 'nav.frameworks', to: '/frameworks', icon: BookOpen },
+      { labelKey: 'nav.org', to: '/org', icon: Building2 },
+      { labelKey: 'nav.standards', to: '/standards', icon: ScrollText },
       { labelKey: 'nav.controls', to: '/controls', icon: Shield, soon: true },
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge, soon: true },
     ],
