@@ -151,6 +151,16 @@ export const he = {
       low: 'נמוך',
     },
   },
+  aiAssistant: {
+    title: 'עוזר AI',
+    subtitle: 'מופעל על ידי Claude',
+    placeholder: 'שאל כל שאלה על תאימות…',
+    send: 'שלח',
+    thinking: 'חושב…',
+    clearChat: 'נקה שיחה',
+    welcomeTitle: 'שלום, אני העוזר AI שלך',
+    welcomeBody: 'שאל אותי על מסגרות תאימות, בקרות או מצב האבטחה של הארגון.',
+  },
   error: {
     accessDenied: 'גישה נדחתה',
     accessDeniedHint: 'אין לך הרשאה לצפות בדף זה.',

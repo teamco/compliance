@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { LayoutHeader } from '../components/layout/LayoutHeader';
 import { LayoutSider } from '../components/layout/LayoutSider';
+import { AiAssistant } from '../components/ai-assistant/AiAssistant';
 import { SidebarContext } from './sidebar-context';
 
 export function MainLayout({ children }: { children: ReactNode }) {
@@ -16,6 +17,7 @@ export function MainLayout({ children }: { children: ReactNode }) {
           <main className="flex-1 overflow-auto">{children}</main>
         </div>
       </div>
+      <AiAssistant />
     </SidebarContext.Provider>
   );
 }

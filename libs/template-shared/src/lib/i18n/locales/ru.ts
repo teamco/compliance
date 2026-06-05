@@ -151,6 +151,17 @@ export const ru = {
       low: 'Низкий',
     },
   },
+  aiAssistant: {
+    title: 'AI Ассистент',
+    subtitle: 'Powered by Claude',
+    placeholder: 'Спросите о соответствии требованиям…',
+    send: 'Отправить',
+    thinking: 'Думаю…',
+    clearChat: 'Очистить чат',
+    welcomeTitle: 'Привет, я AI Ассистент',
+    welcomeBody:
+      'Спрашивайте о фреймворках, контролях или состоянии безопасности вашей организации.',
+  },
   error: {
     accessDenied: 'Доступ запрещён',
     accessDeniedHint: 'У вас нет прав для просмотра этой страницы.',

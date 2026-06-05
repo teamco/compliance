@@ -151,6 +151,17 @@ export const en = {
       low: 'Low',
     },
   },
+  aiAssistant: {
+    title: 'AI Assistant',
+    subtitle: 'Powered by Claude',
+    placeholder: 'Ask anything about compliance…',
+    send: 'Send',
+    thinking: 'Thinking…',
+    clearChat: 'Clear chat',
+    welcomeTitle: "Hi, I'm your AI Assistant",
+    welcomeBody:
+      "Ask me anything about compliance frameworks, controls, or your organization's security posture.",
+  },
   error: {
     accessDenied: 'Access denied',
     accessDeniedHint: 'You do not have permission to view this page.',

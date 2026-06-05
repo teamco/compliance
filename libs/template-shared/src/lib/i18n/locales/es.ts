@@ -151,6 +151,17 @@ export const es = {
       low: 'Bajo',
     },
   },
+  aiAssistant: {
+    title: 'Asistente AI',
+    subtitle: 'Impulsado por Claude',
+    placeholder: 'Pregunta sobre cumplimiento…',
+    send: 'Enviar',
+    thinking: 'Pensando…',
+    clearChat: 'Limpiar chat',
+    welcomeTitle: 'Hola, soy tu Asistente AI',
+    welcomeBody:
+      'Pregúntame sobre marcos de cumplimiento, controles o la postura de seguridad de tu organización.',
+  },
   error: {
     accessDenied: 'Acceso denegado',
     accessDeniedHint: 'No tienes permiso para ver esta página.',
