@@ -31,7 +31,7 @@ export function SheetContent({ side = 'right', className, children, ...props }: 
       <SheetOverlay />
       <DialogPrimitive.Content
         className={cn(
-          'fixed z-50 flex flex-col bg-surface border-border shadow-xl transition ease-in-out',
+          'fixed z-50 flex flex-col overflow-hidden bg-surface border-border shadow-xl transition ease-in-out',
           'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:duration-200 data-[state=open]:duration-300',
           side === 'right'
             ? 'inset-y-0 right-0 w-[380px] border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right'
