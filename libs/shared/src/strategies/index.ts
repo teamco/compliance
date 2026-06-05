@@ -2,6 +2,7 @@ export * from './auth';
 export * from './storage';
 export * from './db';
 export * from './ai';
+export * from './notes';
 export * from './fakes';
 // NOTE: the strategy contract harness (runAuthContract / runStorageContract /
 // runDBContract) is intentionally NOT exported here — it is test-only code and

@@ -1,0 +1,232 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type {
+  Framework,
+  FrameworkControl,
+  NotesStrategy,
+  Organization,
+  OrganizationInput,
+  StandardControl,
+  StandardsDocument,
+} from '@icore/shared';
+
+function ok<T>(data: T | null, error: { message: string } | null): T {
+  if (error) throw new Error(error.message);
+  return data as T;
+}
+
+export class SupabaseNotesStrategy implements NotesStrategy {
+  constructor(private readonly db: SupabaseClient) {}
+
+  async listFrameworks(): Promise<Framework[]> {
+    const { data, error } = await this.db
+      .from('frameworks')
+      .select('id, slug, name, description, version, category')
+      .order('name');
+    const rows = ok(data, error) as Array<{
+      id: string;
+      slug: string;
+      name: string;
+      description: string;
+      version: string;
+      category: string;
+    }>;
+
+    const counts = await Promise.all(
+      rows.map(async (fw) => {
+        const { count } = await this.db
+          .from('controls')
+          .select('id', { count: 'exact', head: true })
+          .eq('framework_id', fw.id);
+        return { id: fw.id, count: count ?? 0 };
+      }),
+    );
+    const countMap = Object.fromEntries(counts.map((c) => [c.id, c.count]));
+
+    return rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      version: r.version,
+      category: r.category as Framework['category'],
+      controlCount: countMap[r.id] ?? 0,
+    }));
+  }
+
+  async getFramework(id: string): Promise<Framework | null> {
+    const { data, error } = await this.db
+      .from('frameworks')
+      .select('id, slug, name, description, version, category')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const r = data as {
+      id: string;
+      slug: string;
+      name: string;
+      description: string;
+      version: string;
+      category: string;
+    };
+    return {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      version: r.version,
+      category: r.category as Framework['category'],
+    };
+  }
+
+  async listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]> {
+    const { data, error } = await this.db
+      .from('controls')
+      .select('id, framework_id, code, title, description, category')
+      .eq('framework_id', frameworkId)
+      .order('code');
+    const rows = ok(data, error) as Array<{
+      id: string;
+      framework_id: string;
+      code: string;
+      title: string;
+      description: string;
+      category: string;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      frameworkId: r.framework_id,
+      code: r.code,
+      title: r.title,
+      description: r.description,
+      category: r.category,
+    }));
+  }
+
+  async upsertOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
+    const now = new Date().toISOString();
+    const { data: row, error } = await this.db
+      .from('org_profiles')
+      .upsert(
+        {
+          user_id: userId,
+          name: data.name,
+          industry: data.industry,
+          size: data.size,
+          regions: data.regions,
+          tech_stack: data.techStack,
+          regulations: data.regulations,
+          updated_at: now,
+        },
+        { onConflict: 'user_id' },
+      )
+      .select()
+      .single();
+    return this.mapOrg(ok(row, error));
+  }
+
+  async getOrganization(userId: string): Promise<Organization | null> {
+    const { data, error } = await this.db
+      .from('org_profiles')
+      .select()
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.mapOrg(data) : null;
+  }
+
+  async createStandardsDocument(
+    userId: string,
+    orgId: string,
+    frameworkIds: string[],
+  ): Promise<{ id: string }> {
+    const { data, error } = await this.db
+      .from('generated_standards')
+      .insert({
+        user_id: userId,
+        org_profile_id: orgId,
+        framework_ids: frameworkIds,
+        controls: [],
+        status: 'pending',
+      })
+      .select('id')
+      .single();
+    const r = ok(data, error) as { id: string };
+    return { id: r.id };
+  }
+
+  async saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+    const { error } = await this.db
+      .from('generated_standards')
+      .update({ controls, status: 'completed' })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async getStandardsDocument(id: string): Promise<StandardsDocument | null> {
+    const { data, error } = await this.db
+      .from('generated_standards')
+      .select()
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.mapDoc(data) : null;
+  }
+
+  async listStandardsDocuments(userId: string): Promise<StandardsDocument[]> {
+    const { data, error } = await this.db
+      .from('generated_standards')
+      .select()
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return (ok(data, error) as unknown[]).map((r) => this.mapDoc(r));
+  }
+
+  private mapOrg(r: unknown): Organization {
+    const row = r as {
+      id: string;
+      user_id: string;
+      name: string;
+      industry: string;
+      size: string;
+      regions: string[];
+      tech_stack: string[];
+      regulations: string[];
+      created_at: string;
+      updated_at: string;
+    };
+    return {
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      industry: row.industry,
+      size: row.size as Organization['size'],
+      regions: row.regions,
+      techStack: row.tech_stack,
+      regulations: row.regulations,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  private mapDoc(r: unknown): StandardsDocument {
+    const row = r as {
+      id: string;
+      user_id: string;
+      org_profile_id: string;
+      framework_ids: string[];
+      controls: StandardControl[];
+      status: string;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      userId: row.user_id,
+      orgId: row.org_profile_id,
+      frameworkIds: row.framework_ids,
+      controls: row.controls ?? [],
+      status: row.status as StandardsDocument['status'],
+      createdAt: row.created_at,
+    };
+  }
+}
