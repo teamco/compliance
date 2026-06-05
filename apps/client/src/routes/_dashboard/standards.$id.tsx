@@ -1,15 +1,138 @@
 import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Check, Pencil, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, Circle, Pencil, Send, ShieldCheck, X } from 'lucide-react';
+import { useAuthStore } from '@icore/template-shared';
 import {
   useStandardsDocument,
+  useTransitionWorkflow,
   useUpdateControl,
   type ControlPatch,
   type StandardControlPriority,
+  type WorkflowStatus,
+  type WorkflowTransition,
 } from '@/queries/notes';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+
+const WORKFLOW_STEPS: WorkflowStatus[] = ['draft', 'in_review', 'approved', 'published'];
+
+const WORKFLOW_STEP_COLOR: Record<WorkflowStatus, string> = {
+  draft: 'text-muted-foreground',
+  in_review: 'text-amber-400',
+  approved: 'text-blue-400',
+  published: 'text-green-500',
+};
+
+const TRANSITION_FOR_STATUS: Record<WorkflowStatus, WorkflowTransition | null> = {
+  draft: 'submit',
+  in_review: 'approve',
+  approved: 'publish',
+  published: null,
+};
+
+const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish'];
+
+function WorkflowBar({
+  status,
+  docId,
+  isAdmin,
+}: {
+  status: WorkflowStatus;
+  docId: string;
+  isAdmin: boolean;
+}) {
+  const { t } = useTranslation();
+  const transition = useTransitionWorkflow(docId);
+
+  const primaryTransition = TRANSITION_FOR_STATUS[status];
+  const canPrimary =
+    primaryTransition !== null && (isAdmin || !ADMIN_TRANSITIONS.includes(primaryTransition));
+
+  function doTransition(tr: WorkflowTransition) {
+    transition.mutate(tr);
+  }
+
+  return (
+    <div className="bg-surface border border-border rounded-xl p-4 space-y-3">
+      {/* Stepper */}
+      <div className="flex items-center gap-0">
+        {WORKFLOW_STEPS.map((step, i) => {
+          const stepIdx = WORKFLOW_STEPS.indexOf(step);
+          const currentIdx = WORKFLOW_STEPS.indexOf(status);
+          const done = stepIdx < currentIdx;
+          const active = stepIdx === currentIdx;
+
+          return (
+            <div key={step} className="flex items-center flex-1 min-w-0">
+              <div className="flex flex-col items-center gap-1 shrink-0">
+                <div
+                  className={`flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors ${
+                    done
+                      ? 'bg-green-500/20 border-green-500 text-green-500'
+                      : active
+                        ? `bg-transparent border-current ${WORKFLOW_STEP_COLOR[step]}`
+                        : 'bg-transparent border-border text-border'
+                  }`}
+                >
+                  {done ? (
+                    <CheckCircle2 size={12} />
+                  ) : (
+                    <Circle size={12} className={active ? WORKFLOW_STEP_COLOR[step] : ''} />
+                  )}
+                </div>
+                <span
+                  className={`text-[9px] font-semibold uppercase tracking-wider whitespace-nowrap ${
+                    active ? WORKFLOW_STEP_COLOR[step] : done ? 'text-green-500' : 'text-border'
+                  }`}
+                >
+                  {t(`standards.workflow.${step}`)}
+                </span>
+              </div>
+              {i < WORKFLOW_STEPS.length - 1 && (
+                <div
+                  className={`h-px flex-1 mx-1 mb-4 transition-colors ${
+                    done ? 'bg-green-500/40' : 'bg-border'
+                  }`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Action buttons */}
+      {status !== 'published' && (
+        <div className="flex items-center gap-2 pt-1 border-t border-border">
+          {canPrimary && primaryTransition && (
+            <Button
+              size="sm"
+              onClick={() => doTransition(primaryTransition)}
+              disabled={transition.isPending}
+              className="gap-1.5 h-7 text-xs"
+            >
+              <Send size={11} />
+              {transition.isPending
+                ? t(`standards.workflow.${primaryTransition}ing`)
+                : t(`standards.workflow.${primaryTransition}`)}
+            </Button>
+          )}
+          {status === 'in_review' && isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => doTransition('reject')}
+              disabled={transition.isPending}
+              className="gap-1.5 h-7 text-xs"
+            >
+              {t('standards.workflow.reject')}
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const PRIORITY_COLOR: Record<StandardControlPriority, string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
@@ -31,6 +154,8 @@ function StandardsDetailPage() {
   const { id } = Route.useParams();
   const { data: doc, isPending } = useStandardsDocument(id);
   const updateControl = useUpdateControl(id);
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === 'admin';
 
   const [editing, setEditing] = useState<EditState | null>(null);
 
@@ -92,6 +217,8 @@ function StandardsDetailPage() {
           {new Date(doc.createdAt).toLocaleDateString()}
         </p>
       </div>
+
+      <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
 
       <div className="space-y-3">
         {doc.controls.map((ctrl) => {

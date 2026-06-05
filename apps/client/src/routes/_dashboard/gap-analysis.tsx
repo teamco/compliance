@@ -127,14 +127,24 @@ function GapAnalysisPage() {
   function setEvidence(code: string, evidence: string) {
     setFindings((prev) => ({
       ...prev,
-      [code]: { ...prev[code], evidence },
+      [code]: {
+        status: prev[code]?.status ?? 'non-compliant',
+        expanded: prev[code]?.expanded ?? false,
+        ...prev[code],
+        evidence,
+      },
     }));
   }
 
   function toggleExpanded(code: string) {
     setFindings((prev) => ({
       ...prev,
-      [code]: { ...prev[code], expanded: !prev[code]?.expanded },
+      [code]: {
+        status: prev[code]?.status ?? 'non-compliant',
+        evidence: prev[code]?.evidence ?? '',
+        ...prev[code],
+        expanded: !prev[code]?.expanded,
+      },
     }));
   }
 
