@@ -1,0 +1,76 @@
+/// <reference types='vitest' />
+import fs from 'node:fs';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
+import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
+import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
+import {
+  apiInfoPlugin,
+  commonDefines,
+  commonManualChunks,
+  commonServer,
+  commonTestConfig,
+  injectAppVersionPlugin,
+  noServerModulesPlugin,
+} from '@icore/vite-plugins';
+
+const rootPackageJsonPath = new URL('../../package.json', import.meta.url);
+const rootPackageJson = JSON.parse(fs.readFileSync(rootPackageJsonPath, 'utf-8')) as {
+  version: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+};
+
+function depVersion(name: string): string {
+  return rootPackageJson.dependencies?.[name] ?? rootPackageJson.devDependencies?.[name] ?? '?';
+}
+
+export default defineConfig(() => ({
+  root: import.meta.dirname,
+  cacheDir: '../../node_modules/.vite/apps/client',
+  server: commonServer(4200),
+  preview: {
+    port: 4200,
+    host: 'localhost',
+  },
+  define: {
+    ...commonDefines(rootPackageJson),
+    'import.meta.env.VITE_DEP_TAILWINDCSS': JSON.stringify(depVersion('tailwindcss')),
+  },
+  plugins: [
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      routeFileIgnorePattern: '(__tests__|\\.test\\.(t|j)sx?$)',
+    }),
+    react(),
+    tailwindcss(),
+    nxViteTsPaths(),
+    nxCopyAssetsPlugin(['*.md']),
+    noServerModulesPlugin(),
+    apiInfoPlugin(),
+    injectAppVersionPlugin(rootPackageJson),
+  ],
+  // Uncomment this if you are using workers.
+  // worker: {
+  //   plugins: () => [ nxViteTsPaths() ],
+  // },
+  build: {
+    outDir: '../../dist/apps/client',
+    emptyOutDir: true,
+    reportCompressedSize: true,
+    commonjsOptions: {
+      transformMixedEsModules: true,
+    },
+    rolldownOptions: {
+      output: {
+        manualChunks: commonManualChunks((id) => {
+          if (id.includes('lucide-react') || id.includes('@radix-ui')) return 'vendor-ui';
+        }),
+      },
+    },
+  },
+  test: commonTestConfig('client', '../../coverage/apps/client'),
+}));

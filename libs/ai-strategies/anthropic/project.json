@@ -1,0 +1,19 @@
+{
+  "name": "ai-anthropic",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ai-strategies/anthropic/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/ai-strategies/anthropic",
+        "main": "libs/ai-strategies/anthropic/src/index.ts",
+        "tsConfig": "libs/ai-strategies/anthropic/tsconfig.lib.json",
+        "assets": ["libs/ai-strategies/anthropic/*.md"]
+      }
+    }
+  }
+}

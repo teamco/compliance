@@ -1,0 +1,16 @@
+{
+  "name": "@icore/ai-anthropic",
+  "version": "0.0.1",
+  "private": true,
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.ts",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@icore/shared": "*",
+    "tslib": "^2.3.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.0"
+  }
+}

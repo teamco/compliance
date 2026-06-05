@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "@icore/shared": ["./libs/shared/src/index.ts"],
+      "@icore/shared/client": ["./libs/shared/src/client.ts"],
+      "@icore/shared/testing": ["./libs/shared/src/testing.ts"],
+      "@icore/auth-supabase": ["./libs/auth-strategies/supabase/src/index.ts"],
+      "@icore/auth-client": ["./libs/auth-client/src/index.ts"],
+      "@icore/package.json": ["./package.json"],
+      "@icore/storage-supabase": ["./libs/storage-strategies/supabase/src/index.ts"],
+      "@icore/upload-client": ["./libs/upload-client/src/index.ts"],
+      "@icore/template-shared": ["./libs/template-shared/src/index.ts"],
+      "@idevconn/create-icore": ["./tools/create-icore/src/index.ts"],
+      "@icore/db-supabase": ["./libs/db-strategies/supabase/src/index.ts"],
+      "@icore/ai-anthropic": ["./libs/ai-strategies/anthropic/src/index.ts"],
+      "@icore/ai-client": ["./libs/ai-client/src/index.ts"],
+      "@icore/payment-client": ["./libs/payment-client/src/index.ts"],
+      "@icore/jobs-client": ["./libs/jobs-client/src/index.ts"],
+      "@icore/vite-plugins": ["./libs/vite-plugins/src/index.d.mts"],
+    }
+  },
+  "exclude": ["node_modules", "dist", ".nx"]
+}

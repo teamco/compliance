@@ -1,0 +1,35 @@
+{
+  "mcpServers": {
+    "nx": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@nx/mcp@latest",
+        "--directory",
+        "."
+      ],
+      "type": "stdio"
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--access-token",
+        "<SUPABASE_PERSONAL_ACCESS_TOKEN>"
+      ],
+      "type": "stdio"
+    }
+  },
+  "permissions": {
+    "allow": [
+      "Bash(yarn nx *)",
+      "Bash(yarn dev)",
+      "Bash(npx nx *)",
+      "Bash(npx prettier *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ]
+  }
+}
