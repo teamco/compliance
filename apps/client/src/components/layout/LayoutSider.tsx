@@ -66,7 +66,7 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.org', to: '/org', icon: Building2 },
       { labelKey: 'nav.standards', to: '/standards', icon: ScrollText },
       { labelKey: 'nav.controls', to: '/controls', icon: Shield, soon: true },
-      { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge, soon: true },
+      { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
     ],
   },
   {
