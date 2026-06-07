@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { api } from '../main';
+import { api } from '@/lib/api';
 
 export type FindingStatus = 'compliant' | 'partial' | 'non-compliant';
 export type GapSeverity = 'critical' | 'high' | 'medium' | 'low';

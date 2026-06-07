@@ -5,7 +5,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import {
   AbilityProvider,
-  createIcoreApi,
   createIcoreI18n,
   ICORE_LOCALES,
   useThemeStore,
@@ -13,6 +12,7 @@ import {
 import { I18nextProvider } from 'react-i18next';
 import { Toaster } from 'sonner';
 import { routeTree } from './routeTree.gen';
+import { setApiUnauthorizedHandler } from './lib/api';
 import { wireShadcnNotifier } from './lib/notify';
 
 const queryClient = new QueryClient({
@@ -29,11 +29,7 @@ declare module '@tanstack/react-router' {
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
 
-// Single shared API instance — used by every query in src/queries/
-export const api = createIcoreApi({
-  baseUrl: import.meta.env.VITE_API_URL ?? '/api',
-  onUnauthorized: () => router.navigate({ to: '/login' }),
-});
+setApiUnauthorizedHandler(() => router.navigate({ to: '/login' }));
 
 wireShadcnNotifier();
 

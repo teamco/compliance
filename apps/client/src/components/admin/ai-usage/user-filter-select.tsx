@@ -16,7 +16,7 @@ interface UserFilterSelectProps {
 export function UserFilterSelect({ users, value, onChange }: UserFilterSelectProps) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-48">
+      <SelectTrigger className="w-full sm:w-48">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

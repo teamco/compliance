@@ -6,7 +6,7 @@ import { useNotify } from '@icore/template-shared';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { api } from '@/main';
+import { api } from '@/lib/api';
 
 interface DisplayNameSectionProps {
   initialName?: string | null;

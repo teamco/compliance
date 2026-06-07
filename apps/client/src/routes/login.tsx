@@ -8,7 +8,7 @@ import {
   setStoredLocale,
   SUPPORTED_LOCALES,
 } from '@icore/template-shared';
-import { api } from '../main';
+import { api } from '@/lib/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';

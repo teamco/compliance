@@ -9,9 +9,11 @@ interface StatCardProps {
 
 export function StatCard({ title, value, subtitle, loading }: StatCardProps) {
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+        <CardTitle className="truncate text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -21,7 +23,7 @@ export function StatCard({ title, value, subtitle, loading }: StatCardProps) {
           </div>
         ) : (
           <>
-            <p className="text-3xl font-bold">{value}</p>
+            <p className="break-words text-2xl font-bold leading-tight sm:text-3xl">{value}</p>
             {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
           </>
         )}

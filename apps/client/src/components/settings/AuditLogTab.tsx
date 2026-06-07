@@ -11,6 +11,18 @@ const ACTION_OPTIONS = [
   'ai.standards.generated',
 ];
 
+const ACTION_LABEL_KEYS: Record<string, string> = {
+  'workflow.submitted': 'settings.auditLog.actions.workflowSubmitted',
+  'workflow.approved': 'settings.auditLog.actions.workflowApproved',
+  'workflow.rejected': 'settings.auditLog.actions.workflowRejected',
+  'workflow.published': 'settings.auditLog.actions.workflowPublished',
+  'ai.standards.generated': 'settings.auditLog.actions.aiStandardsGenerated',
+};
+
+const RESOURCE_LABEL_KEYS: Record<string, string> = {
+  standards_document: 'settings.auditLog.resources.standardsDocument',
+};
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString();
 }
@@ -22,6 +34,8 @@ export function AuditLogTab() {
   const { data, isPending } = useAuditLog(page, action || undefined);
 
   const totalPages = data ? Math.ceil(data.total / data.limit) : 1;
+  const getActionLabel = (value: string) => t(ACTION_LABEL_KEYS[value] ?? value);
+  const getResourceLabel = (value: string) => t(RESOURCE_LABEL_KEYS[value] ?? value);
 
   if (isPending) return <div className="text-sm text-muted-foreground">{t('common.loading')}</div>;
 
@@ -40,7 +54,7 @@ export function AuditLogTab() {
           <option value="">{t('settings.auditLog.allActions')}</option>
           {ACTION_OPTIONS.filter(Boolean).map((a) => (
             <option key={a} value={a}>
-              {a}
+              {getActionLabel(a)}
             </option>
           ))}
         </select>
@@ -73,9 +87,13 @@ export function AuditLogTab() {
                   <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                     {formatDate(log.createdAt)}
                   </td>
-                  <td className="px-3 py-2 font-mono text-foreground">{log.action}</td>
+                  <td className="px-3 py-2 text-foreground" title={log.action}>
+                    {getActionLabel(log.action)}
+                  </td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {log.resourceType && <span>{log.resourceType}</span>}
+                    {log.resourceType && (
+                      <span title={log.resourceType}>{getResourceLabel(log.resourceType)}</span>
+                    )}
                     {log.resourceId && (
                       <span className="ml-1 text-muted-foreground/60 font-mono">
                         {log.resourceId.slice(0, 8)}…
