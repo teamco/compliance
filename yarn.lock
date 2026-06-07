@@ -9493,7 +9493,7 @@ __metadata:
     react-i18next: "npm:^17.0.8"
     react-is: "npm:^19.2.7"
     react-markdown: "npm:^10.1.0"
-    recharts: "npm:^3"
+    recharts: "npm:^3.8.1"
     reflect-metadata: "npm:^0.2.2"
     remark-gfm: "npm:^4.0.1"
     rxjs: "npm:^7.8.2"
@@ -17590,7 +17590,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"recharts@npm:^3":
+"recharts@npm:^3.8.1":
   version: 3.8.1
   resolution: "recharts@npm:3.8.1"
   dependencies:
