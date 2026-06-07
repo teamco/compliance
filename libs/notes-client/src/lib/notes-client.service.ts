@@ -3,6 +3,9 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import type {
   AiChatMessage,
+  AiUsageLogEntry,
+  AiUsageSummaryRpc,
+  AiUsageTimeseriesPoint,
   ApiKey,
   ApiKeyWithSecret,
   AuditLogFilters,
@@ -103,9 +106,7 @@ export class NotesClientService {
   }
 
   getUserPrefs(userId: string): Promise<UserPrefsPayload> {
-    return firstValueFrom(
-      this.client.send<UserPrefsPayload>('settings.prefs.get', { userId }),
-    );
+    return firstValueFrom(this.client.send<UserPrefsPayload>('settings.prefs.get', { userId }));
   }
 
   updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload> {
@@ -115,9 +116,7 @@ export class NotesClientService {
   }
 
   savePushSubscription(userId: string, sub: PushSubscriptionPayload): Promise<{ ok: boolean }> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('settings.push.save', { userId, sub }),
-    );
+    return firstValueFrom(this.client.send<{ ok: boolean }>('settings.push.save', { userId, sub }));
   }
 
   removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
@@ -127,21 +126,21 @@ export class NotesClientService {
   }
 
   getChatHistory(userId: string, limit?: number): Promise<AiChatMessage[]> {
-    return firstValueFrom(
-      this.client.send<AiChatMessage[]>('chat.history.get', { userId, limit }),
-    );
+    return firstValueFrom(this.client.send<AiChatMessage[]>('chat.history.get', { userId, limit }));
   }
 
-  saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage> {
+  saveChatMessage(
+    userId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<AiChatMessage> {
     return firstValueFrom(
       this.client.send<AiChatMessage>('chat.history.save', { userId, role, content }),
     );
   }
 
   clearChatHistory(userId: string): Promise<{ ok: boolean }> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('chat.history.clear', { userId }),
-    );
+    return firstValueFrom(this.client.send<{ ok: boolean }>('chat.history.clear', { userId }));
   }
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
@@ -154,14 +153,18 @@ export class NotesClientService {
     metadata?: Record<string, unknown>,
   ): Promise<void> {
     return firstValueFrom(
-      this.client.send<void>('admin.audit.log', { userId, action, resourceType, resourceId, metadata }),
+      this.client.send<void>('admin.audit.log', {
+        userId,
+        action,
+        resourceType,
+        resourceId,
+        metadata,
+      }),
     );
   }
 
   listAuditLogs(userId: string, filters?: AuditLogFilters): Promise<AuditLogPage> {
-    return firstValueFrom(
-      this.client.send<AuditLogPage>('admin.audit.list', { userId, filters }),
-    );
+    return firstValueFrom(this.client.send<AuditLogPage>('admin.audit.list', { userId, filters }));
   }
 
   createApiKey(userId: string, name: string, expiresAt?: string): Promise<ApiKeyWithSecret> {
@@ -171,9 +174,7 @@ export class NotesClientService {
   }
 
   listApiKeys(userId: string): Promise<ApiKey[]> {
-    return firstValueFrom(
-      this.client.send<ApiKey[]>('admin.apikeys.list', { userId }),
-    );
+    return firstValueFrom(this.client.send<ApiKey[]>('admin.apikeys.list', { userId }));
   }
 
   revokeApiKey(id: string, userId: string): Promise<{ ok: boolean }> {
@@ -183,15 +184,11 @@ export class NotesClientService {
   }
 
   createWebhook(userId: string, input: WebhookInput): Promise<Webhook> {
-    return firstValueFrom(
-      this.client.send<Webhook>('admin.webhooks.create', { userId, input }),
-    );
+    return firstValueFrom(this.client.send<Webhook>('admin.webhooks.create', { userId, input }));
   }
 
   listWebhooks(userId: string): Promise<Webhook[]> {
-    return firstValueFrom(
-      this.client.send<Webhook[]>('admin.webhooks.list', { userId }),
-    );
+    return firstValueFrom(this.client.send<Webhook[]>('admin.webhooks.list', { userId }));
   }
 
   updateWebhook(
@@ -216,9 +213,30 @@ export class NotesClientService {
     );
   }
 
-  updateRetentionPrefs(userId: string, patch: Partial<RetentionPrefsPayload>): Promise<RetentionPrefsPayload> {
+  updateRetentionPrefs(
+    userId: string,
+    patch: Partial<RetentionPrefsPayload>,
+  ): Promise<RetentionPrefsPayload> {
     return firstValueFrom(
       this.client.send<RetentionPrefsPayload>('admin.retention.update', { userId, patch }),
+    );
+  }
+
+  // ─── AI usage ─────────────────────────────────────────────────────────────
+
+  logAiUsage(entry: AiUsageLogEntry): void {
+    void this.client.send('admin.ai-usage.log', entry).toPromise();
+  }
+
+  getAiUsageSummary(since: string, userId?: string): Promise<AiUsageSummaryRpc> {
+    return firstValueFrom(
+      this.client.send<AiUsageSummaryRpc>('admin.ai-usage.summary', { since, userId }),
+    );
+  }
+
+  getAiUsageTimeseries(since: string, userId?: string): Promise<AiUsageTimeseriesPoint[]> {
+    return firstValueFrom(
+      this.client.send<AiUsageTimeseriesPoint[]>('admin.ai-usage.timeseries', { since, userId }),
     );
   }
 }

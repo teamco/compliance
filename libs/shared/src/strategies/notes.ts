@@ -92,6 +92,67 @@ export interface StandardsSnapshot {
   createdBy?: string;
 }
 
+export interface AiUsageLogEntry {
+  user_id: string;
+  provider: string;
+  operation: string;
+  model: string;
+  key_source: 'platform' | 'byok';
+  input_tokens?: number;
+  output_tokens?: number;
+  success: boolean;
+  error_code?: string;
+  latency_ms?: number;
+}
+
+export interface AiUsageRpcRow {
+  label: string;
+  calls: number;
+  tokens: number;
+}
+
+export interface AiUsageSummaryRpc {
+  total_calls: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  success_count: number;
+  error_count: number;
+  by_provider: Array<{
+    provider: string;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+  by_operation: Array<{
+    operation: string;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+  by_key_source: Array<{
+    key_source: string;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+  by_user: Array<{
+    user_id: string;
+    email: string;
+    full_name: string | null;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+  }>;
+}
+
+export interface AiUsageTimeseriesPoint {
+  date: string;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  errors: number;
+}
+
 export interface NotesStrategy {
   listFrameworks(): Promise<Framework[]>;
   getFramework(id: string): Promise<Framework | null>;
@@ -124,7 +185,11 @@ export interface NotesStrategy {
 
   // Chat history
   getChatHistory(userId: string, limit?: number): Promise<AiChatMessage[]>;
-  saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage>;
+  saveChatMessage(
+    userId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<AiChatMessage>;
   clearChatHistory(userId: string): Promise<{ ok: boolean }>;
 
   // Audit log
@@ -137,6 +202,11 @@ export interface NotesStrategy {
   ): Promise<void>;
   listAuditLogs(userId: string, filters?: AuditLogFilters): Promise<AuditLogPage>;
 
+  // AI usage
+  logAiUsage(entry: AiUsageLogEntry): void;
+  getAiUsageSummary(since: string, userId?: string): Promise<AiUsageSummaryRpc>;
+  getAiUsageTimeseries(since: string, userId?: string): Promise<AiUsageTimeseriesPoint[]>;
+
   // API keys
   createApiKey(userId: string, name: string, expiresAt?: string): Promise<ApiKeyWithSecret>;
   listApiKeys(userId: string): Promise<ApiKey[]>;
@@ -145,12 +215,19 @@ export interface NotesStrategy {
   // Webhooks
   createWebhook(userId: string, input: WebhookInput): Promise<Webhook>;
   listWebhooks(userId: string): Promise<Webhook[]>;
-  updateWebhook(id: string, userId: string, patch: Partial<WebhookInput> & { active?: boolean }): Promise<Webhook>;
+  updateWebhook(
+    id: string,
+    userId: string,
+    patch: Partial<WebhookInput> & { active?: boolean },
+  ): Promise<Webhook>;
   deleteWebhook(id: string, userId: string): Promise<{ ok: boolean }>;
 
   // Retention
   getRetentionPrefs(userId: string): Promise<RetentionPrefsPayload>;
-  updateRetentionPrefs(userId: string, patch: Partial<RetentionPrefsPayload>): Promise<RetentionPrefsPayload>;
+  updateRetentionPrefs(
+    userId: string,
+    patch: Partial<RetentionPrefsPayload>,
+  ): Promise<RetentionPrefsPayload>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────

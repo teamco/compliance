@@ -1,6 +1,9 @@
 import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
+  AiUsageLogEntry,
+  AiUsageSummaryRpc,
+  AiUsageTimeseriesPoint,
   ApiKey,
   ApiKeyWithSecret,
   AuditLogFilters,
@@ -96,5 +99,24 @@ export class AdminController {
     @Payload() payload: { userId: string; patch: Partial<RetentionPrefsPayload> },
   ): Promise<RetentionPrefsPayload> {
     return this.strategy.updateRetentionPrefs(payload.userId, payload.patch);
+  }
+
+  @MessagePattern('admin.ai-usage.log')
+  logAiUsage(@Payload() entry: AiUsageLogEntry): void {
+    this.strategy.logAiUsage(entry);
+  }
+
+  @MessagePattern('admin.ai-usage.summary')
+  getAiUsageSummary(
+    @Payload() payload: { since: string; userId?: string },
+  ): Promise<AiUsageSummaryRpc> {
+    return this.strategy.getAiUsageSummary(payload.since, payload.userId);
+  }
+
+  @MessagePattern('admin.ai-usage.timeseries')
+  getAiUsageTimeseries(
+    @Payload() payload: { since: string; userId?: string },
+  ): Promise<AiUsageTimeseriesPoint[]> {
+    return this.strategy.getAiUsageTimeseries(payload.since, payload.userId);
   }
 }

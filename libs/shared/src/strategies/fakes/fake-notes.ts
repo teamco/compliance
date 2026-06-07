@@ -1,5 +1,8 @@
 import type {
   AiChatMessage,
+  AiUsageLogEntry,
+  AiUsageSummaryRpc,
+  AiUsageTimeseriesPoint,
   ApiKey,
   ApiKeyWithSecret,
   AuditLog,
@@ -157,7 +160,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return this.userPrefs.get(userId) ?? { ...DEFAULT_USER_PREFS };
   }
 
-  async updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload> {
+  async updateUserPrefs(
+    userId: string,
+    patch: Partial<UserPrefsPayload>,
+  ): Promise<UserPrefsPayload> {
     const current = await this.getUserPrefs(userId);
     const updated: UserPrefsPayload = {
       ...current,
@@ -182,7 +188,10 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
     const existing = this.pushSubscriptions.get(userId) ?? [];
-    this.pushSubscriptions.set(userId, existing.filter((s) => s.endpoint !== endpoint));
+    this.pushSubscriptions.set(
+      userId,
+      existing.filter((s) => s.endpoint !== endpoint),
+    );
     return { ok: true };
   }
 
@@ -191,7 +200,11 @@ export class FakeNotesStrategy implements NotesStrategy {
     return msgs.slice(-limit);
   }
 
-  async saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage> {
+  async saveChatMessage(
+    userId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<AiChatMessage> {
     const msg: AiChatMessage = {
       id: globalThis.crypto.randomUUID(),
       role,
@@ -311,7 +324,10 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async deleteWebhook(id: string, userId: string): Promise<{ ok: boolean }> {
     const hooks = this.webhooks.get(userId) ?? [];
-    this.webhooks.set(userId, hooks.filter((w) => w.id !== id));
+    this.webhooks.set(
+      userId,
+      hooks.filter((w) => w.id !== id),
+    );
     return { ok: true };
   }
 
@@ -327,5 +343,27 @@ export class FakeNotesStrategy implements NotesStrategy {
     const updated = { ...current, ...patch };
     this.retentionPrefs.set(userId, updated);
     return updated;
+  }
+
+  logAiUsage(_entry: AiUsageLogEntry): void {
+    // fire-and-forget stub — no-op in tests
+  }
+
+  async getAiUsageSummary(_since: string, _userId?: string): Promise<AiUsageSummaryRpc> {
+    return {
+      total_calls: 0,
+      total_input_tokens: 0,
+      total_output_tokens: 0,
+      success_count: 0,
+      error_count: 0,
+      by_provider: [],
+      by_operation: [],
+      by_key_source: [],
+      by_user: [],
+    };
+  }
+
+  async getAiUsageTimeseries(_since: string, _userId?: string): Promise<AiUsageTimeseriesPoint[]> {
+    return [];
   }
 }

@@ -2,6 +2,9 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   AiChatMessage,
+  AiUsageLogEntry,
+  AiUsageSummaryRpc,
+  AiUsageTimeseriesPoint,
   AuditLog,
   AuditLogFilters,
   AuditLogPage,
@@ -591,6 +594,52 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
     if (error) throw new Error(error.message);
     return updated;
+  }
+
+  // ─── AI usage ──────────────────────────────────────────────────────────────
+
+  logAiUsage(entry: AiUsageLogEntry): void {
+    void Promise.resolve(
+      this.db.from('ai_usage_log').insert({
+        user_id: entry.user_id,
+        provider: entry.provider,
+        operation: entry.operation,
+        model: entry.model,
+        key_source: entry.key_source,
+        input_tokens: entry.input_tokens ?? 0,
+        output_tokens: entry.output_tokens ?? 0,
+        success: entry.success,
+        error_code: entry.error_code ?? null,
+        latency_ms: entry.latency_ms ?? 0,
+      }),
+    )
+      .then(({ error }) => {
+        if (error) console.warn('ai_usage_log insert failed:', error.message);
+      })
+      .catch((err: unknown) => {
+        console.warn(
+          'ai_usage_log insert threw:',
+          err instanceof Error ? err.message : String(err),
+        );
+      });
+  }
+
+  async getAiUsageSummary(since: string, userId?: string): Promise<AiUsageSummaryRpc> {
+    const { data, error } = await this.db.rpc('ai_usage_summary', {
+      p_since: since,
+      p_user_id: userId ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return data as AiUsageSummaryRpc;
+  }
+
+  async getAiUsageTimeseries(since: string, userId?: string): Promise<AiUsageTimeseriesPoint[]> {
+    const { data, error } = await this.db.rpc('ai_usage_timeseries', {
+      p_since: since,
+      p_user_id: userId ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return (data as AiUsageTimeseriesPoint[]) ?? [];
   }
 
   private mapOrg(r: unknown): Organization {
