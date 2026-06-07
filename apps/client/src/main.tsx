@@ -37,6 +37,12 @@ export const api = createIcoreApi({
 
 wireShadcnNotifier();
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {
+    // SW registration failure is non-fatal
+  });
+}
+
 // Apply the theme class before React mounts so the first paint is correct
 const applyTheme = (mode: 'light' | 'dark') => {
   document.documentElement.classList.toggle('dark', mode === 'dark');
