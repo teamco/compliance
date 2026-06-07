@@ -281,6 +281,7 @@ function GapAnalysisPage() {
             </p>
           </div>
 
+          <div className="grid grid-cols-1 wide:grid-cols-2 gap-3">
           {selectedDoc.controls.map((ctrl) => {
             const finding = findings[ctrl.code];
             const status = finding?.status;
@@ -355,12 +356,13 @@ function GapAnalysisPage() {
               </div>
             );
           })}
+          </div>
         </div>
       )}
 
       {/* Results: 2-col on xl */}
       {result && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 wide:grid-cols-2 2xl:grid-cols-3 gap-4">
           {/* Risk score */}
           <div className="bg-surface border border-border rounded-xl p-5 flex items-center gap-5">
             <RiskGauge score={result.riskScore} />
@@ -408,11 +410,11 @@ function GapAnalysisPage() {
           </div>
 
           {/* Recommendations — span full width */}
-          <div className="bg-surface border border-border rounded-xl p-5 space-y-3 xl:col-span-2">
+          <div className="bg-surface border border-border rounded-xl p-5 space-y-3 wide:col-span-2 2xl:col-span-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {t('gapAnalysis.recommendations')}
             </p>
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 wide:grid-cols-2 gap-3">
               {result.recommendations.map((rec, i) => (
                 <div key={i} className="flex items-start gap-2.5">
                   <span className="flex items-center justify-center w-4 h-4 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-500 shrink-0 mt-0.5">
