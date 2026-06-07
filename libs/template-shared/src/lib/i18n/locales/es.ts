@@ -207,6 +207,12 @@ export const es = {
     selectStatus: 'Seleccionar estado',
     saved: 'Análisis guardado',
   },
+  subscription: {
+    popular: 'Más popular',
+    price: {
+      custom: 'Contáctanos',
+    },
+  },
   aiAssistant: {
     title: 'Asistente AI',
     subtitle: 'Impulsado por Claude',
