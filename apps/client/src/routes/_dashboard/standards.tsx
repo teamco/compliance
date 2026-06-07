@@ -1,17 +1,25 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollText, Sparkles, CheckCircle2, Clock, XCircle, ChevronRight } from 'lucide-react';
+import {
+  Building2,
+  ScrollText,
+  Sparkles,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  ChevronRight,
+} from 'lucide-react';
 import { useNotify } from '@icore/template-shared';
 import {
   useFrameworks,
-  useOrganization,
   useStandardsDocuments,
   useGenerateStandards,
   type StandardsDocument,
   type StandardsStatus,
   type WorkflowStatus,
 } from '@/queries/notes';
+import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
 
 const STATUS_ICON: Record<StandardsStatus, React.ElementType> = {
@@ -96,12 +104,21 @@ function DocumentCard({
 function StandardsPage() {
   const { t } = useTranslation();
   const notify = useNotify();
+  const { activeOrgId } = useActiveOrgStore();
   const { data: frameworks } = useFrameworks();
-  const { data: org } = useOrganization();
-  const { data: docs, isPending } = useStandardsDocuments();
+  const { data: docs, isPending } = useStandardsDocuments(activeOrgId ?? '');
   const generate = useGenerateStandards();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  if (!activeOrgId) {
+    return (
+      <div className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
+        <Building2 size={16} />
+        {t('org.noActiveOrg')}
+      </div>
+    );
+  }
 
   function toggleFramework(id: string) {
     setSelected((prev) => {
@@ -113,7 +130,7 @@ function StandardsPage() {
   }
 
   async function handleGenerate() {
-    if (!org?.id) {
+    if (!activeOrgId) {
       notify.error('Complete organization profile first');
       return;
     }
@@ -122,7 +139,7 @@ function StandardsPage() {
       return;
     }
     try {
-      await generate.mutateAsync({ orgId: org.id, frameworkIds: [...selected] });
+      await generate.mutateAsync({ orgId: activeOrgId, frameworkIds: [...selected] });
       notify.success(t('standards.generate'));
       setSelected(new Set());
     } catch {
@@ -140,16 +157,6 @@ function StandardsPage() {
       {/* Generate panel */}
       <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
         <h2 className="text-sm font-semibold text-foreground">{t('standards.generate')}</h2>
-
-        {!org && (
-          <p className="text-xs text-amber-500">
-            Complete your{' '}
-            <Link to="/org" className="underline hover:text-amber-400">
-              organization profile
-            </Link>{' '}
-            first.
-          </p>
-        )}
 
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
@@ -174,10 +181,7 @@ function StandardsPage() {
           </div>
         </div>
 
-        <Button
-          onClick={handleGenerate}
-          disabled={generate.isPending || selected.size === 0 || !org}
-        >
+        <Button onClick={handleGenerate} disabled={generate.isPending || selected.size === 0}>
           <Sparkles size={14} className="mr-2" />
           {generate.isPending ? t('standards.generating') : t('standards.generateBtn')}
         </Button>
