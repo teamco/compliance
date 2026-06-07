@@ -281,6 +281,16 @@ export const ru = {
       action: 'Действие',
       resource: 'Ресурс',
       total: '{{count}} событий',
+      actions: {
+        workflowSubmitted: 'Рабочий процесс отправлен',
+        workflowApproved: 'Рабочий процесс одобрен',
+        workflowRejected: 'Рабочий процесс отклонён',
+        workflowPublished: 'Рабочий процесс опубликован',
+        aiStandardsGenerated: 'AI стандарты сгенерированы',
+      },
+      resources: {
+        standardsDocument: 'Документ стандартов',
+      },
     },
     apiKeys: {
       title: 'API ключи',
@@ -331,6 +341,11 @@ export const ru = {
       cost: 'Приблизительная стоимость',
       byOperation: 'По операции',
       operation: 'Операция',
+      operationLabels: {
+        chat: 'Чат',
+        standardsGenerate: 'Генерация стандартов',
+        gapAnalyze: 'Анализ пробелов',
+      },
       empty: 'Нет данных об использовании AI за этот период.',
     },
   },

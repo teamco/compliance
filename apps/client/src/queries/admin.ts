@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../main';
+import { api } from '@/lib/api';
 
 // ─── Types (mirror shared) ──────────────────────────────────────────────────
 
@@ -43,12 +43,12 @@ export type WebhookEvent =
   | 'ai.gap.done';
 
 export const WEBHOOK_EVENT_LABELS: Record<WebhookEvent, string> = {
-  'workflow.submitted':    'Workflow Submitted',
-  'workflow.approved':     'Workflow Approved',
-  'workflow.rejected':     'Workflow Rejected',
-  'workflow.published':    'Workflow Published',
+  'workflow.submitted': 'Workflow Submitted',
+  'workflow.approved': 'Workflow Approved',
+  'workflow.rejected': 'Workflow Rejected',
+  'workflow.published': 'Workflow Published',
   'ai.standards.generated': 'Standards Generated',
-  'ai.gap.done':           'Gap Analysis Done',
+  'ai.gap.done': 'Gap Analysis Done',
 };
 
 export interface Webhook {
@@ -98,8 +98,7 @@ export function useCreateApiKey() {
 export function useRevokeApiKey() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api<{ ok: boolean }>(`/admin/api-keys/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => api<{ ok: boolean }>(`/admin/api-keys/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'api-keys'] }),
   });
 }
@@ -125,8 +124,13 @@ export function useCreateWebhook() {
 export function useUpdateWebhook() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<{ url: string; events: WebhookEvent[]; active: boolean }> }) =>
-      api<Webhook>(`/admin/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<{ url: string; events: WebhookEvent[]; active: boolean }>;
+    }) => api<Webhook>(`/admin/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'webhooks'] }),
   });
 }
@@ -134,8 +138,7 @@ export function useUpdateWebhook() {
 export function useDeleteWebhook() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api<{ ok: boolean }>(`/admin/webhooks/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => api<{ ok: boolean }>(`/admin/webhooks/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'webhooks'] }),
   });
 }
@@ -153,7 +156,10 @@ export function useUpdateRetentionPrefs() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (patch: Partial<RetentionPrefsPayload>) =>
-      api<RetentionPrefsPayload>('/admin/retention', { method: 'PATCH', body: JSON.stringify(patch) }),
+      api<RetentionPrefsPayload>('/admin/retention', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
     onSuccess: (data) => qc.setQueryData(['admin', 'retention'], data),
   });
 }

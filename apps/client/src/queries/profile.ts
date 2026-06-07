@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../main';
+import { api } from '@/lib/api';
 
 export interface ProfilePayload {
   uid: string;
