@@ -13,6 +13,7 @@ export const ru = {
     dismiss: 'Закрыть',
     create: 'Создать',
     saving: 'Сохранение…',
+    edit: 'Редактировать',
   },
   auth: {
     signIn: 'Войти',
@@ -131,6 +132,14 @@ export const ru = {
       smb: 'SMB (51–500)',
       enterprise: 'Крупная (500+)',
     },
+    createNew: 'Создать организацию',
+    createTitle: 'Новая организация',
+    editTitle: 'Редактировать организацию',
+    created: 'Организация создана',
+    updated: 'Организация обновлена',
+    switchOrg: 'Выбрать организацию',
+    noOrgs: 'Нет организаций',
+    noActiveOrg: 'Выберите организацию для продолжения',
   },
   standards: {
     title: 'Сгенерированные стандарты',
@@ -200,6 +209,7 @@ export const ru = {
     evidence: 'Доказательства',
     evidencePlaceholder: 'Опишите доказательства…',
     selectStatus: 'Выберите статус',
+    saved: 'Анализ сохранён',
   },
   aiAssistant: {
     title: 'AI Ассистент',

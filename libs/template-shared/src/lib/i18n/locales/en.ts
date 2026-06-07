@@ -13,6 +13,7 @@ export const en = {
     dismiss: 'Dismiss',
     create: 'Create',
     saving: 'Saving…',
+    edit: 'Edit',
   },
   auth: {
     signIn: 'Sign in',
@@ -131,6 +132,14 @@ export const en = {
       smb: 'SMB (51–500)',
       enterprise: 'Enterprise (500+)',
     },
+    createNew: 'Create New Organization',
+    createTitle: 'New Organization',
+    editTitle: 'Edit Organization',
+    created: 'Organization created',
+    updated: 'Organization updated',
+    switchOrg: 'Select Organization',
+    noOrgs: 'No organizations yet',
+    noActiveOrg: 'Select an organization to continue',
   },
   standards: {
     title: 'Generated Standards',
@@ -196,6 +205,7 @@ export const en = {
     evidence: 'Evidence',
     evidencePlaceholder: 'Describe evidence or notes…',
     selectStatus: 'Select status',
+    saved: 'Analysis saved',
   },
   aiAssistant: {
     title: 'AI Assistant',

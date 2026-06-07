@@ -13,6 +13,7 @@ export const es = {
     dismiss: 'Cerrar',
     create: 'Crear',
     saving: 'Guardando…',
+    edit: 'Editar',
   },
   auth: {
     signIn: 'Iniciar sesión',
@@ -131,6 +132,14 @@ export const es = {
       smb: 'PYME (51–500)',
       enterprise: 'Empresa (500+)',
     },
+    createNew: 'Crear nueva organización',
+    createTitle: 'Nueva organización',
+    editTitle: 'Editar organización',
+    created: 'Organización creada',
+    updated: 'Organización actualizada',
+    switchOrg: 'Seleccionar organización',
+    noOrgs: 'No hay organizaciones',
+    noActiveOrg: 'Selecciona una organización para continuar',
   },
   standards: {
     title: 'Estándares generados',
@@ -196,6 +205,7 @@ export const es = {
     evidence: 'Evidencia',
     evidencePlaceholder: 'Describe la evidencia o notas…',
     selectStatus: 'Seleccionar estado',
+    saved: 'Análisis guardado',
   },
   aiAssistant: {
     title: 'Asistente AI',
