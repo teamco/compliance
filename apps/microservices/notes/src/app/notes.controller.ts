@@ -33,15 +33,15 @@ export class NotesController {
   }
 
   @MessagePattern('notes.org.get')
-  getOrganization(@Payload() payload: { userId: string }): Promise<Organization | null> {
-    return this.strategy.getOrganization(payload.userId);
+  getOrganizationById(@Payload() payload: { orgId: string }): Promise<Organization | null> {
+    return this.strategy.getOrganizationById(payload.orgId);
   }
 
   @MessagePattern('notes.org.upsert')
   upsertOrganization(
     @Payload() payload: { userId: string; data: OrganizationInput },
   ): Promise<Organization> {
-    return this.strategy.upsertOrganization(payload.userId, payload.data);
+    return this.strategy.createOrganization(payload.userId, payload.data);
   }
 
   @MessagePattern('notes.standards.create')
@@ -69,8 +69,8 @@ export class NotesController {
   }
 
   @MessagePattern('notes.standards.list')
-  listStandardsDocuments(@Payload() payload: { userId: string }): Promise<StandardsDocument[]> {
-    return this.strategy.listStandardsDocuments(payload.userId);
+  listStandardsDocuments(@Payload() payload: { orgId: string }): Promise<StandardsDocument[]> {
+    return this.strategy.listStandardsDocuments(payload.orgId);
   }
 
   @MessagePattern('notes.standards.workflow')

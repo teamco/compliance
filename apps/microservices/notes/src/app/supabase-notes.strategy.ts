@@ -13,6 +13,8 @@ import type {
   ControlPatch,
   Framework,
   FrameworkControl,
+  GapAnalysis,
+  GapAnalysisResult,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -122,36 +124,62 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     }));
   }
 
-  async upsertOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
+  async listOrganizations(userId: string): Promise<Organization[]> {
+    const { data, error } = await this.db
+      .from('org_profiles')
+      .select()
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapOrg(r));
+  }
+
+  async createOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
     const now = new Date().toISOString();
     const { data: row, error } = await this.db
       .from('org_profiles')
-      .upsert(
-        {
-          user_id: userId,
-          name: data.name,
-          industry: data.industry,
-          size: data.size,
-          regions: data.regions,
-          tech_stack: data.techStack,
-          regulations: data.regulations,
-          updated_at: now,
-        },
-        { onConflict: 'user_id' },
-      )
+      .insert({
+        user_id: userId,
+        name: data.name,
+        industry: data.industry,
+        size: data.size,
+        regions: data.regions,
+        tech_stack: data.techStack,
+        regulations: data.regulations,
+        created_at: now,
+        updated_at: now,
+      })
       .select()
       .single();
     return this.mapOrg(ok(row, error));
   }
 
-  async getOrganization(userId: string): Promise<Organization | null> {
+  async getOrganizationById(orgId: string): Promise<Organization | null> {
     const { data, error } = await this.db
       .from('org_profiles')
       .select()
-      .eq('user_id', userId)
+      .eq('id', orgId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return data ? this.mapOrg(data) : null;
+  }
+
+  async updateOrganization(orgId: string, data: OrganizationInput): Promise<Organization> {
+    const { data: row, error } = await this.db
+      .from('org_profiles')
+      .update({
+        name: data.name,
+        industry: data.industry,
+        size: data.size,
+        regions: data.regions,
+        tech_stack: data.techStack,
+        regulations: data.regulations,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', orgId)
+      .select()
+      .single();
+    return this.mapOrg(ok(row, error));
   }
 
   async createStandardsDocument(
@@ -193,13 +221,14 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.mapDoc(data) : null;
   }
 
-  async listStandardsDocuments(userId: string): Promise<StandardsDocument[]> {
+  async listStandardsDocuments(orgId: string): Promise<StandardsDocument[]> {
     const { data, error } = await this.db
       .from('generated_standards')
       .select()
-      .eq('user_id', userId)
+      .eq('org_profile_id', orgId)
       .order('created_at', { ascending: false });
-    return (ok(data, error) as unknown[]).map((r) => this.mapDoc(r));
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapDoc(r));
   }
 
   async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
@@ -687,6 +716,76 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       controls: row.controls ?? [],
       createdAt: row.created_at,
       createdBy: row.created_by,
+    };
+  }
+
+  async saveGapAnalysis(
+    orgId: string,
+    userId: string,
+    docId: string | null,
+    result: GapAnalysisResult,
+  ): Promise<GapAnalysis> {
+    const { data, error } = await this.db
+      .from('gap_analyses')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        doc_id: docId,
+        result,
+        risk_score: result.riskScore,
+      })
+      .select()
+      .single();
+    const row = ok(data, error) as {
+      id: string;
+      org_id: string;
+      user_id: string;
+      doc_id: string | null;
+      result: GapAnalysisResult;
+      risk_score: number;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      orgId: row.org_id,
+      userId: row.user_id,
+      docId: row.doc_id,
+      result: row.result,
+      riskScore: row.risk_score,
+      createdAt: row.created_at,
+    };
+  }
+
+  async listGapAnalyses(orgId: string): Promise<GapAnalysis[]> {
+    const { data, error } = await this.db
+      .from('gap_analyses')
+      .select()
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      orgId: r.org_id,
+      userId: r.user_id,
+      docId: r.doc_id,
+      result: r.result as GapAnalysisResult,
+      riskScore: r.risk_score,
+      createdAt: r.created_at,
+    }));
+  }
+
+  async getGapAnalysis(id: string): Promise<GapAnalysis | null> {
+    const { data, error } = await this.db.from('gap_analyses').select().eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    return {
+      id: data.id,
+      orgId: data.org_id,
+      userId: data.user_id,
+      docId: data.doc_id,
+      result: data.result as GapAnalysisResult,
+      riskScore: data.risk_score,
+      createdAt: data.created_at,
     };
   }
 
