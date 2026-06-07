@@ -4,6 +4,8 @@ import type {
   ControlPatch,
   Framework,
   FrameworkControl,
+  GapAnalysis,
+  GapAnalysisResult,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -32,16 +34,28 @@ export class NotesController {
     return this.strategy.listControlsByFramework(payload.frameworkId);
   }
 
-  @MessagePattern('notes.org.get')
+  @MessagePattern('notes.org.list')
+  listOrganizations(@Payload() payload: { userId: string }): Promise<Organization[]> {
+    return this.strategy.listOrganizations(payload.userId);
+  }
+
+  @MessagePattern('notes.org.create')
+  createOrganization(
+    @Payload() payload: { userId: string; data: OrganizationInput },
+  ): Promise<Organization> {
+    return this.strategy.createOrganization(payload.userId, payload.data);
+  }
+
+  @MessagePattern('notes.org.get-by-id')
   getOrganizationById(@Payload() payload: { orgId: string }): Promise<Organization | null> {
     return this.strategy.getOrganizationById(payload.orgId);
   }
 
-  @MessagePattern('notes.org.upsert')
-  upsertOrganization(
-    @Payload() payload: { userId: string; data: OrganizationInput },
+  @MessagePattern('notes.org.update')
+  updateOrganization(
+    @Payload() payload: { orgId: string; data: OrganizationInput },
   ): Promise<Organization> {
-    return this.strategy.createOrganization(payload.userId, payload.data);
+    return this.strategy.updateOrganization(payload.orgId, payload.data);
   }
 
   @MessagePattern('notes.standards.create')
@@ -95,5 +109,33 @@ export class NotesController {
   @MessagePattern('notes.standards.snapshots.get')
   getSnapshot(@Payload() payload: { snapshotId: string }): Promise<StandardsSnapshot | null> {
     return this.strategy.getSnapshot(payload.snapshotId);
+  }
+
+  @MessagePattern('notes.gap.save')
+  saveGapAnalysis(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      docId: string | null;
+      result: GapAnalysisResult;
+    },
+  ): Promise<GapAnalysis> {
+    return this.strategy.saveGapAnalysis(
+      payload.orgId,
+      payload.userId,
+      payload.docId,
+      payload.result,
+    );
+  }
+
+  @MessagePattern('notes.gap.list')
+  listGapAnalyses(@Payload() payload: { orgId: string }): Promise<GapAnalysis[]> {
+    return this.strategy.listGapAnalyses(payload.orgId);
+  }
+
+  @MessagePattern('notes.gap.get')
+  getGapAnalysis(@Payload() payload: { id: string }): Promise<GapAnalysis | null> {
+    return this.strategy.getGapAnalysis(payload.id);
   }
 }
