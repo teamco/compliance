@@ -8,6 +8,7 @@
     "vitest": "^4.1.8"
   },
   "dependencies": {
+    "@casl/ability": "^7.0.0",
     "@icore/ai-client": "*",
     "@icore/auth-client": "*",
     "@icore/notes-client": "0.0.1",
