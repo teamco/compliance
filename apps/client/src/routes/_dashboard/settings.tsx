@@ -39,7 +39,7 @@ function SettingsPage() {
     <div className="p-4 md:p-6">
       <h1 className="mb-6 text-2xl font-bold text-foreground">{t('settings.title')}</h1>
 
-      <div className="mb-6 flex gap-1 overflow-x-auto border-b border-border">
+      <div className="mb-6 flex flex-wrap gap-1 border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.id}
