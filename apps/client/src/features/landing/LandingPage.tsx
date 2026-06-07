@@ -4,6 +4,7 @@ import { PlatformModules } from './sections/PlatformModules';
 import { AIEngine } from './sections/AIEngine';
 import { Architecture } from './sections/Architecture';
 import { SecurityPosture } from './sections/SecurityPosture';
+import { Pricing } from './sections/Pricing';
 import { CTA } from './sections/CTA';
 
 export function LandingPage() {
@@ -15,6 +16,7 @@ export function LandingPage() {
       <AIEngine />
       <Architecture />
       <SecurityPosture />
+      <Pricing />
       <CTA />
     </main>
   );
