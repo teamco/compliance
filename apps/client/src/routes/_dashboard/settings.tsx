@@ -9,7 +9,6 @@ import { ApiKeysTab } from '../../components/settings/ApiKeysTab';
 import { WebhooksTab } from '../../components/settings/WebhooksTab';
 import { ExportTab } from '../../components/settings/ExportTab';
 import { RetentionTab } from '../../components/settings/RetentionTab';
-import { AiUsageTab } from '../../components/settings/AiUsageTab';
 
 function SettingsPage() {
   const { t } = useTranslation();
@@ -35,7 +34,6 @@ function SettingsPage() {
           { id: 'webhooks', label: t('settings.tabs.webhooks') },
           { id: 'export', label: t('settings.tabs.export') },
           { id: 'retention', label: t('settings.tabs.retention') },
-          { id: 'ai-usage', label: t('settings.tabs.aiUsage') },
         ]
       : []),
   ];
@@ -69,7 +67,6 @@ function SettingsPage() {
       {activeTab === 'webhooks' && <WebhooksTab />}
       {activeTab === 'export' && <ExportTab />}
       {activeTab === 'retention' && <RetentionTab />}
-      {activeTab === 'ai-usage' && <AiUsageTab />}
     </div>
   );
 }
