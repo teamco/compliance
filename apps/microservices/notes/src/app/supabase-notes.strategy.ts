@@ -6,12 +6,14 @@ import type {
   NotesStrategy,
   Organization,
   OrganizationInput,
+  PushSubscriptionPayload,
   StandardControl,
   StandardsDocument,
   StandardsSnapshot,
+  UserPrefsPayload,
   WorkflowTransition,
 } from '@icore/shared';
-import { WORKFLOW_TRANSITIONS } from '@icore/shared';
+import { DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
 
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
@@ -249,6 +251,63 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', docId);
     if (error) throw new Error(error.message);
     return updated;
+  }
+
+  async getUserPrefs(userId: string): Promise<UserPrefsPayload> {
+    const { data } = await this.db
+      .from('profiles')
+      .select('theme, language, notification_prefs')
+      .eq('id', userId)
+      .single();
+
+    if (!data) return { ...DEFAULT_USER_PREFS };
+
+    return {
+      theme: (data.theme as UserPrefsPayload['theme']) ?? 'system',
+      language: (data.language as UserPrefsPayload['language']) ?? 'en',
+      notificationPrefs: {
+        ...DEFAULT_USER_PREFS.notificationPrefs,
+        ...(data.notification_prefs as Partial<UserPrefsPayload['notificationPrefs']> ?? {}),
+      },
+    };
+  }
+
+  async updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload> {
+    const update: Record<string, unknown> = {};
+    if (patch.theme !== undefined)             update['theme'] = patch.theme;
+    if (patch.language !== undefined)          update['language'] = patch.language;
+    if (patch.notificationPrefs !== undefined) update['notification_prefs'] = patch.notificationPrefs;
+
+    const { error } = await this.db
+      .from('profiles')
+      .update(update)
+      .eq('id', userId);
+
+    if (error) throw new Error(error.message);
+    return this.getUserPrefs(userId);
+  }
+
+  async savePushSubscription(userId: string, sub: PushSubscriptionPayload): Promise<{ ok: boolean }> {
+    const { error } = await this.db
+      .from('push_subscriptions')
+      .upsert(
+        { user_id: userId, endpoint: sub.endpoint, keys: sub.keys },
+        { onConflict: 'endpoint' },
+      );
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  async removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db
+      .from('push_subscriptions')
+      .delete()
+      .eq('user_id', userId)
+      .eq('endpoint', endpoint);
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
   }
 
   private mapOrg(r: unknown): Organization {
