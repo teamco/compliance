@@ -1,8 +1,11 @@
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { useNavigate, useRouterState, Link } from '@tanstack/react-router';
 import { useAuthStore, setStoredLocale, SUPPORTED_LOCALES } from '@icore/template-shared';
-import { LogOut, Menu } from 'lucide-react';
+import { LogOut, Menu, User } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
+import { useOnClickOutside } from '../../hooks/useOnClickOutside';
+import { useProfile } from '../../queries/profile';
 import { ThemeToggle } from '../ThemeToggle';
 
 const BREADCRUMB_KEYS: Array<{ prefix: string; key: string }> = [
@@ -25,6 +28,10 @@ export function LayoutHeader() {
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useOnClickOutside(menuRef, () => setMenuOpen(false));
+  const { data: profile } = useProfile();
 
   const breadcrumbKey = BREADCRUMB_KEYS.find(
     (b) => pathname === b.prefix || pathname.startsWith(b.prefix + '/'),
@@ -79,26 +86,56 @@ export function LayoutHeader() {
         {/* Theme toggle */}
         <ThemeToggle />
 
-        {/* User avatar */}
-        <div className="flex items-center gap-2 ml-1">
-          <div className="w-7 h-7 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
-            <span className="text-[10px] font-semibold text-green-500">{initials}</span>
-          </div>
-          <span className="text-xs text-muted-foreground hidden md:inline max-w-[160px] truncate">
-            {user?.email ?? ''}
-          </span>
-        </div>
+        {/* User menu */}
+        <div ref={menuRef} className="relative ml-1">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label="User menu"
+            className="flex items-center gap-2 px-1.5 py-1 rounded-md hover:bg-muted transition-colors cursor-pointer"
+          >
+            <div className="w-7 h-7 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-semibold text-green-500">{initials}</span>
+            </div>
+            <span className="text-xs text-muted-foreground hidden md:inline max-w-[160px] truncate">
+              {user?.email ?? ''}
+            </span>
+          </button>
 
-        {/* Logout */}
-        <button
-          type="button"
-          onClick={handleLogout}
-          aria-label={t('common.logout')}
-          title={t('common.logout')}
-          className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors ml-1"
-        >
-          <LogOut size={15} className={isRtl ? 'rotate-180' : undefined} />
-        </button>
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1.5 w-56 rounded-lg border border-border bg-surface shadow-lg z-50 py-1 overflow-hidden">
+              {/* Last login */}
+              <div className="px-3 py-2 border-b border-border">
+                <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-0.5">
+                  {t('common.lastLogin')}
+                </p>
+                <p className="text-xs text-foreground font-medium">
+                  {profile?.lastSignedIn ? new Date(profile.lastSignedIn).toLocaleString() : '—'}
+                </p>
+              </div>
+
+              {/* Profile */}
+              <Link
+                to="/profile"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+              >
+                <User size={14} className="shrink-0" />
+                {t('nav.profile')}
+              </Link>
+
+              {/* Logout */}
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
+              >
+                <LogOut size={14} className={`shrink-0 ${isRtl ? 'rotate-180' : ''}`} />
+                {t('common.logout')}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

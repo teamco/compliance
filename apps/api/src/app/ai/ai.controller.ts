@@ -1,7 +1,8 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AiClientService } from '@icore/ai-client';
+import { NotesClientService } from '@icore/notes-client';
 import type {
   ChatContext,
   ChatMessage,
@@ -10,13 +11,17 @@ import type {
   GeneratedControl,
   OrgProfile,
   StandardsResult,
+  VerifiedToken,
 } from '@icore/shared';
 
 @ApiTags('ai')
 @ApiBearerAuth()
 @Controller('ai')
 export class AiController {
-  constructor(private readonly aiClient: AiClientService) {}
+  constructor(
+    private readonly aiClient: AiClientService,
+    private readonly notes: NotesClientService,
+  ) {}
 
   @Post('chat')
   @ApiOperation({ summary: 'AI copilot — streams SSE text tokens to the browser' })
@@ -49,6 +54,7 @@ export class AiController {
   async chat(
     @Body() body: { messages: ChatMessage[]; context?: ChatContext },
     @Res() res: Response,
+    @Req() req: Request & { user?: VerifiedToken },
   ): Promise<void> {
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -65,6 +71,20 @@ export class AiController {
       res.write(
         `data: ${JSON.stringify({ done: true, usage: { inputTokens: result.inputTokens, outputTokens: result.outputTokens } })}\n\n`,
       );
+      const uid = req.user?.uid;
+      if (uid) {
+        this.notes.logAiUsage({
+          user_id: uid,
+          provider: 'anthropic',
+          operation: 'chat',
+          model: 'claude-sonnet-4-6',
+          key_source: 'platform',
+          input_tokens: result.inputTokens,
+          output_tokens: result.outputTokens,
+          success: true,
+          latency_ms: 0,
+        });
+      }
     } catch (err) {
       res.write(
         `data: ${JSON.stringify({ error: err instanceof Error ? err.message : 'unknown_error' })}\n\n`,
@@ -86,10 +106,24 @@ export class AiController {
       },
     },
   })
-  generateStandards(
+  async generateStandards(
     @Body() body: { orgProfile: OrgProfile; frameworkIds: string[] },
+    @Req() req: Request & { user?: VerifiedToken },
   ): Promise<StandardsResult[]> {
-    return this.aiClient.generateStandards(body.orgProfile, body.frameworkIds);
+    const result = await this.aiClient.generateStandards(body.orgProfile, body.frameworkIds);
+    const uid = req.user?.uid;
+    if (uid) {
+      this.notes.logAiUsage({
+        user_id: uid,
+        provider: 'anthropic',
+        operation: 'standards.generate',
+        model: 'claude-opus-4-8',
+        key_source: 'platform',
+        success: true,
+        latency_ms: 0,
+      });
+    }
+    return result;
   }
 
   @Post('gap/analyze')
@@ -104,9 +138,23 @@ export class AiController {
       },
     },
   })
-  analyzeGap(
+  async analyzeGap(
     @Body() body: { controls: GeneratedControl[]; findings: ControlFinding[] },
+    @Req() req: Request & { user?: VerifiedToken },
   ): Promise<GapAnalysisResult> {
-    return this.aiClient.analyzeGap(body.controls, body.findings);
+    const result = await this.aiClient.analyzeGap(body.controls, body.findings);
+    const uid = req.user?.uid;
+    if (uid) {
+      this.notes.logAiUsage({
+        user_id: uid,
+        provider: 'anthropic',
+        operation: 'gap.analyze',
+        model: 'claude-sonnet-4-6',
+        key_source: 'platform',
+        success: true,
+        latency_ms: 0,
+      });
+    }
+    return result;
   }
 }

@@ -178,7 +178,7 @@ function GapAnalysisPage() {
     : false;
 
   return (
-    <div className="p-6 space-y-6 max-w-[1200px]">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-foreground">{t('gapAnalysis.title')}</h1>

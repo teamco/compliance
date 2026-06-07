@@ -37,6 +37,12 @@ export const api = createIcoreApi({
 
 wireShadcnNotifier();
 
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {
+    // SW registration failure is non-fatal
+  });
+}
+
 // Apply the theme class before React mounts so the first paint is correct
 const applyTheme = (mode: 'light' | 'dark') => {
   document.documentElement.classList.toggle('dark', mode === 'dark');
@@ -44,7 +50,12 @@ const applyTheme = (mode: 'light' | 'dark') => {
 applyTheme(useThemeStore.getState().mode);
 useThemeStore.subscribe((s) => applyTheme(s.mode));
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>

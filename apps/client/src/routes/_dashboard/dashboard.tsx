@@ -89,7 +89,7 @@ function DashboardHome() {
         : t('dashboard.greetingEvening');
 
   return (
-    <div className="p-6 space-y-6 max-w-[1400px]">
+    <div className="p-6 space-y-6">
       {/* Page heading */}
       <div className="flex items-start justify-between gap-4">
         <div>
