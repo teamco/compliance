@@ -4,8 +4,8 @@
   "private": true,
   "devDependencies": {
     "@types/express": "^4.17.25",
-    "@types/multer": "*",
-    "vitest": "*"
+    "@types/multer": "^2.1.0",
+    "vitest": "^4.1.8"
   },
   "dependencies": {
     "@icore/ai-client": "*",
