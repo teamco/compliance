@@ -13,6 +13,7 @@ export const he = {
     dismiss: 'סגור',
     create: 'צור',
     saving: 'שומר…',
+    edit: 'עריכה',
   },
   auth: {
     signIn: 'כניסה',
@@ -131,6 +132,14 @@ export const he = {
       smb: 'עסק קטן (51–500)',
       enterprise: 'ארגון גדול (500+)',
     },
+    createNew: 'צור ארגון חדש',
+    createTitle: 'ארגון חדש',
+    editTitle: 'ערוך ארגון',
+    created: 'הארגון נוצר',
+    updated: 'הארגון עודכן',
+    switchOrg: 'בחר ארגון',
+    noOrgs: 'אין ארגונים עדיין',
+    noActiveOrg: 'בחר ארגון להמשך',
   },
   standards: {
     title: 'תקנים שנוצרו',
@@ -196,6 +205,7 @@ export const he = {
     evidence: 'ראיות',
     evidencePlaceholder: 'תאר ראיות או הערות…',
     selectStatus: 'בחר סטטוס',
+    saved: 'הניתוח נשמר',
   },
   aiAssistant: {
     title: 'עוזר AI',
