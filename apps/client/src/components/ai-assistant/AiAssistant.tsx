@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
 import { Bot, Send, Trash2, Sparkles, X } from 'lucide-react';
@@ -28,9 +28,33 @@ export function AiAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [panelWidth, setPanelWidth] = useState(380);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const historyLoaded = useRef(false);
+  const dragging = useRef(false);
+
+  const onResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      const newWidth = window.innerWidth - ev.clientX;
+      setPanelWidth(Math.min(Math.max(newWidth, 280), 800));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, []);
 
   const { data: history } = useChatHistory();
   const { mutate: saveMsg } = useSaveChatMessage();
@@ -174,7 +198,18 @@ export function AiAssistant() {
         </button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="flex flex-col p-0 [&>button:last-child]:hidden">
+      <SheetContent
+        side="right"
+        className="flex flex-col p-0 [&>button:last-child]:hidden !w-[var(--panel-w)]"
+        style={{ '--panel-w': `${panelWidth}px` } as React.CSSProperties}
+      >
+        {/* resize handle */}
+        <div
+          onMouseDown={onResizeStart}
+          className="absolute left-0 top-0 bottom-0 w-1.5 cursor-ew-resize z-10 group"
+        >
+          <div className="absolute inset-y-0 left-0 w-px bg-border group-hover:bg-green-500/50 group-active:bg-green-500 transition-colors" />
+        </div>
         <SheetHeader>
           <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 shrink-0">
@@ -189,13 +224,13 @@ export function AiAssistant() {
                 <button
                   type="button"
                   onClick={clearChat}
-                  className="rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  className="rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer"
                   title={t('aiAssistant.clearChat')}
                 >
                   <Trash2 size={14} />
                 </button>
               )}
-              <SheetClose className="rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+              <SheetClose className="rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors cursor-pointer">
                 <X size={14} />
               </SheetClose>
             </div>

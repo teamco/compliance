@@ -229,6 +229,7 @@ export const he = {
       webhooks: 'Webhooks',
       retention: 'שמירת נתונים',
       apiKeys: 'מפתחות API',
+      aiUsage: 'שימוש ב-AI',
     },
     theme: {
       title: 'ערכת נושא',

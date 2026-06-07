@@ -230,6 +230,7 @@ export const es = {
       webhooks: 'Webhooks',
       retention: 'Retención de datos',
       apiKeys: 'Claves API',
+      aiUsage: 'Uso de IA',
     },
     theme: {
       title: 'Tema',

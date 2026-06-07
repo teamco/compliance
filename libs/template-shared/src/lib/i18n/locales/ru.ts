@@ -234,6 +234,7 @@ export const ru = {
       webhooks: 'Webhooks',
       retention: 'Хранение данных',
       apiKeys: 'API ключи',
+      aiUsage: 'Использование AI',
     },
     theme: {
       title: 'Тема',
