@@ -92,6 +92,25 @@ export interface StandardsSnapshot {
   createdBy?: string;
 }
 
+export type {
+  GapSeverity,
+  RecommendationEffort,
+  GapItem,
+  Recommendation,
+  GapAnalysisResult,
+} from './ai';
+import type { GapAnalysisResult } from './ai';
+
+export interface GapAnalysis {
+  id: string;
+  orgId: string;
+  userId: string;
+  docId: string | null;
+  result: GapAnalysisResult;
+  riskScore: number;
+  createdAt: string;
+}
+
 export interface AiUsageLogEntry {
   user_id: string;
   provider: string;
@@ -158,8 +177,10 @@ export interface NotesStrategy {
   getFramework(id: string): Promise<Framework | null>;
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]>;
 
-  upsertOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
-  getOrganization(userId: string): Promise<Organization | null>;
+  listOrganizations(userId: string): Promise<Organization[]>;
+  createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
+  getOrganizationById(orgId: string): Promise<Organization | null>;
+  updateOrganization(orgId: string, data: OrganizationInput): Promise<Organization>;
 
   createStandardsDocument(
     userId: string,
@@ -168,7 +189,7 @@ export interface NotesStrategy {
   ): Promise<{ id: string }>;
   saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void>;
   getStandardsDocument(id: string): Promise<StandardsDocument | null>;
-  listStandardsDocuments(userId: string): Promise<StandardsDocument[]>;
+  listStandardsDocuments(orgId: string): Promise<StandardsDocument[]>;
 
   updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl>;
 
@@ -176,6 +197,15 @@ export interface NotesStrategy {
 
   listSnapshots(documentId: string): Promise<StandardsSnapshot[]>;
   getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null>;
+
+  saveGapAnalysis(
+    orgId: string,
+    userId: string,
+    docId: string | null,
+    result: GapAnalysisResult,
+  ): Promise<GapAnalysis>;
+  listGapAnalyses(orgId: string): Promise<GapAnalysis[]>;
+  getGapAnalysis(id: string): Promise<GapAnalysis | null>;
 
   // Settings
   getUserPrefs(userId: string): Promise<UserPrefsPayload>;
