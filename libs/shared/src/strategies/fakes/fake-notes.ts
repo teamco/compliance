@@ -5,12 +5,14 @@ import type {
   NotesStrategy,
   Organization,
   OrganizationInput,
+  PushSubscriptionPayload,
   StandardControl,
   StandardsDocument,
   StandardsSnapshot,
+  UserPrefsPayload,
   WorkflowTransition,
 } from '../notes';
-import { WORKFLOW_TRANSITIONS } from '../notes';
+import { DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
 export class FakeNotesStrategy implements NotesStrategy {
   private frameworks = new Map<string, Framework>();
@@ -18,6 +20,8 @@ export class FakeNotesStrategy implements NotesStrategy {
   private orgs = new Map<string, Organization>(); // key = userId
   private docs = new Map<string, StandardsDocument>(); // key = id
   private snapshots: StandardsSnapshot[] = [];
+  private userPrefs = new Map<string, UserPrefsPayload>();
+  private pushSubscriptions = new Map<string, PushSubscriptionPayload[]>();
 
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
@@ -133,5 +137,38 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null> {
     return this.snapshots.find((s) => s.id === snapshotId) ?? null;
+  }
+
+  async getUserPrefs(userId: string): Promise<UserPrefsPayload> {
+    return this.userPrefs.get(userId) ?? { ...DEFAULT_USER_PREFS };
+  }
+
+  async updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload> {
+    const current = await this.getUserPrefs(userId);
+    const updated: UserPrefsPayload = {
+      ...current,
+      ...patch,
+      notificationPrefs: patch.notificationPrefs
+        ? { ...current.notificationPrefs, ...patch.notificationPrefs }
+        : current.notificationPrefs,
+    };
+    this.userPrefs.set(userId, updated);
+    return updated;
+  }
+
+  async savePushSubscription(
+    userId: string,
+    sub: PushSubscriptionPayload,
+  ): Promise<{ ok: boolean }> {
+    const existing = this.pushSubscriptions.get(userId) ?? [];
+    const filtered = existing.filter((s) => s.endpoint !== sub.endpoint);
+    this.pushSubscriptions.set(userId, [...filtered, sub]);
+    return { ok: true };
+  }
+
+  async removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
+    const existing = this.pushSubscriptions.get(userId) ?? [];
+    this.pushSubscriptions.set(userId, existing.filter((s) => s.endpoint !== endpoint));
+    return { ok: true };
   }
 }

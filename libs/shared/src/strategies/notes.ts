@@ -115,4 +115,55 @@ export interface NotesStrategy {
 
   listSnapshots(documentId: string): Promise<StandardsSnapshot[]>;
   getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null>;
+
+  // Settings
+  getUserPrefs(userId: string): Promise<UserPrefsPayload>;
+  updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload>;
+  savePushSubscription(userId: string, sub: PushSubscriptionPayload): Promise<{ ok: boolean }>;
+  removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }>;
 }
+
+// ─── Settings types ────────────────────────────────────────────────────────
+
+export interface NotificationPrefsPayload {
+  channels: { inApp: boolean; push: boolean };
+  events: {
+    workflowSubmitted: { inApp: boolean; push: boolean };
+    workflowApproved: { inApp: boolean; push: boolean };
+    workflowRejected: { inApp: boolean; push: boolean };
+    workflowPublished: { inApp: boolean; push: boolean };
+    aiStandardsGenerated: { inApp: boolean; push: boolean };
+    aiGapAnalysisDone: { inApp: boolean; push: boolean };
+    systemNewFramework: { inApp: boolean; push: boolean };
+  };
+}
+
+export interface UserPrefsPayload {
+  theme: 'dark' | 'light' | 'system';
+  language: 'en' | 'ru' | 'he' | 'es';
+  notificationPrefs: NotificationPrefsPayload;
+}
+
+export interface PushSubscriptionPayload {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefsPayload = {
+  channels: { inApp: true, push: false },
+  events: {
+    workflowSubmitted: { inApp: true, push: false },
+    workflowApproved: { inApp: true, push: false },
+    workflowRejected: { inApp: true, push: false },
+    workflowPublished: { inApp: true, push: false },
+    aiStandardsGenerated: { inApp: true, push: false },
+    aiGapAnalysisDone: { inApp: true, push: false },
+    systemNewFramework: { inApp: false, push: false },
+  },
+};
+
+export const DEFAULT_USER_PREFS: UserPrefsPayload = {
+  theme: 'system',
+  language: 'en',
+  notificationPrefs: DEFAULT_NOTIFICATION_PREFS,
+};
