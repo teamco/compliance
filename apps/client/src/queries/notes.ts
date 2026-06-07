@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import type { Organization, OrganizationInput, OrgSize } from '@icore/shared';
+
+export type { Organization, OrganizationInput, OrgSize };
 
 export interface Framework {
   id: string;
@@ -19,23 +22,6 @@ export interface FrameworkControl {
   description: string;
   category: string;
 }
-
-export type OrgSize = 'startup' | 'smb' | 'enterprise';
-
-export interface Organization {
-  id: string;
-  userId: string;
-  name: string;
-  industry: string;
-  size: OrgSize;
-  regions: string[];
-  techStack: string[];
-  regulations: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type OrganizationInput = Omit<Organization, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
 
 export type StandardControlPriority = 'critical' | 'high' | 'medium' | 'low';
 
@@ -95,30 +81,44 @@ export function useFrameworkControls(frameworkId: string) {
   });
 }
 
-export function useOrganization() {
-  return useQuery<Organization | null>({
-    queryKey: ['notes', 'org'],
-    queryFn: () => api<Organization | null>('/notes/org'),
+export function useOrganizations() {
+  return useQuery<Organization[]>({
+    queryKey: ['notes', 'orgs'],
+    queryFn: () => api<Organization[]>('/notes/orgs'),
   });
 }
 
-export function useUpsertOrganization() {
+export function useCreateOrganization() {
   const qc = useQueryClient();
   return useMutation<Organization, Error, OrganizationInput>({
     mutationFn: (data) =>
-      api<Organization>('/notes/org', {
+      api<Organization>('/notes/orgs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'orgs'] }),
+  });
+}
+
+export function useUpdateOrganization(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<Organization, Error, OrganizationInput>({
+    mutationFn: (data) =>
+      api<Organization>(`/notes/orgs/${orgId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'org'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'orgs'] }),
   });
 }
 
-export function useStandardsDocuments() {
+export function useStandardsDocuments(orgId: string) {
   return useQuery<StandardsDocument[]>({
-    queryKey: ['notes', 'standards'],
-    queryFn: () => api<StandardsDocument[]>('/notes/standards'),
+    queryKey: ['notes', 'standards', orgId],
+    queryFn: () => api<StandardsDocument[]>(`/notes/standards?orgId=${encodeURIComponent(orgId)}`),
+    enabled: !!orgId,
   });
 }
 
@@ -187,6 +187,6 @@ export function useGenerateStandards() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'standards'] }),
+    onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['notes', 'standards', vars.orgId] }),
   });
 }
