@@ -57,11 +57,38 @@ export function useUserPrefs() {
 export function useUpdatePrefs() {
   const qc = useQueryClient();
   return useMutation({
+    onMutate: async (patch: Partial<UserPrefsPayload>) => {
+      await qc.cancelQueries({ queryKey: ['settings', 'prefs'] });
+      const previous = qc.getQueryData<UserPrefsPayload>(['settings', 'prefs']);
+      if (previous) {
+        const optimistic: UserPrefsPayload = {
+          ...previous,
+          ...patch,
+          notificationPrefs: patch.notificationPrefs
+            ? {
+                ...previous.notificationPrefs,
+                ...patch.notificationPrefs,
+                channels: patch.notificationPrefs.channels
+                  ? { ...previous.notificationPrefs.channels, ...patch.notificationPrefs.channels }
+                  : previous.notificationPrefs.channels,
+                events: patch.notificationPrefs.events
+                  ? { ...previous.notificationPrefs.events, ...patch.notificationPrefs.events }
+                  : previous.notificationPrefs.events,
+              }
+            : previous.notificationPrefs,
+        };
+        qc.setQueryData(['settings', 'prefs'], optimistic);
+      }
+      return { previous };
+    },
     mutationFn: (patch: Partial<UserPrefsPayload>) =>
       api<UserPrefsPayload>('/settings/me', {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
+    onError: (_err, _patch, context) => {
+      if (context?.previous) qc.setQueryData(['settings', 'prefs'], context.previous);
+    },
     onSuccess: (data) => qc.setQueryData(['settings', 'prefs'], data),
   });
 }

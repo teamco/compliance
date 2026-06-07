@@ -120,8 +120,8 @@ export function NotificationTab() {
             >
               <span
                 className={[
-                  'absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
-                  notifPrefs.channels.inApp ? 'translate-x-4' : 'translate-x-0.5',
+                  'absolute left-0 top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform',
+                  notifPrefs.channels.inApp ? 'translate-x-[18px]' : 'translate-x-0.5',
                 ].join(' ')}
               />
             </button>

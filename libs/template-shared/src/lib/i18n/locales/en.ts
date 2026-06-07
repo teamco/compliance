@@ -231,14 +231,16 @@ export const en = {
       retention: 'Retention',
       apiKeys: 'API Keys',
     },
-    appearance: {
-      theme: 'Theme',
-      themeSubtitle: 'Choose how the interface looks',
+    theme: {
+      title: 'Theme',
+      subtitle: 'Choose how ComplianceIQ looks on this device.',
       light: 'Light',
       dark: 'Dark',
       system: 'System',
-      language: 'Language',
-      languageSubtitle: 'Choose your preferred language',
+    },
+    language: {
+      title: 'Language',
+      subtitle: 'Choose your preferred language.',
     },
     notifications: {
       channels: 'Notification Channels',

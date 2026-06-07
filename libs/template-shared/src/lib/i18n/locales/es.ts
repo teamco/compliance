@@ -231,14 +231,16 @@ export const es = {
       retention: 'Retención de datos',
       apiKeys: 'Claves API',
     },
-    appearance: {
-      theme: 'Tema',
-      themeSubtitle: 'Elige cómo se ve la interfaz',
+    theme: {
+      title: 'Tema',
+      subtitle: 'Elige cómo se ve ComplianceIQ en este dispositivo.',
       light: 'Claro',
       dark: 'Oscuro',
       system: 'Sistema',
-      language: 'Idioma',
-      languageSubtitle: 'Elige tu idioma preferido',
+    },
+    language: {
+      title: 'Idioma',
+      subtitle: 'Elige tu idioma preferido.',
     },
     notifications: {
       channels: 'Canales de notificación',

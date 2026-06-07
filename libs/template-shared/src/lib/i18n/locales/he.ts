@@ -230,14 +230,16 @@ export const he = {
       retention: 'שמירת נתונים',
       apiKeys: 'מפתחות API',
     },
-    appearance: {
-      theme: 'ערכת נושא',
-      themeSubtitle: 'בחר כיצד הממשק נראה',
+    theme: {
+      title: 'ערכת נושא',
+      subtitle: 'בחר כיצד ComplianceIQ נראה במכשיר זה.',
       light: 'בהיר',
       dark: 'כהה',
       system: 'מערכת',
-      language: 'שפה',
-      languageSubtitle: 'בחר את השפה המועדפת',
+    },
+    language: {
+      title: 'שפה',
+      subtitle: 'בחר את השפה המועדפת.',
     },
     notifications: {
       channels: 'ערוצי התראות',

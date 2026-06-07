@@ -235,14 +235,16 @@ export const ru = {
       retention: 'Хранение данных',
       apiKeys: 'API ключи',
     },
-    appearance: {
-      theme: 'Тема',
-      themeSubtitle: 'Выберите внешний вид интерфейса',
+    theme: {
+      title: 'Тема',
+      subtitle: 'Выберите, как выглядит ComplianceIQ на этом устройстве.',
       light: 'Светлая',
       dark: 'Тёмная',
       system: 'Системная',
-      language: 'Язык',
-      languageSubtitle: 'Выберите предпочитаемый язык',
+    },
+    language: {
+      title: 'Язык',
+      subtitle: 'Выберите предпочтительный язык.',
     },
     notifications: {
       channels: 'Каналы уведомлений',
