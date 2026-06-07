@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useFrameworks, useStandardsDocuments, useStandardsDocument } from '../../queries/notes';
-import { ControlsTable } from '../../components/controls/ControlsTable';
-import { PageLayout } from '../../components/PageLayout';
+import { useFrameworks, useStandardsDocuments, useStandardsDocument } from '@/queries/notes';
+import { ControlsTable } from '@/components/controls/ControlsTable';
+import { PageLayout } from '@/components/PageLayout';
+import { useActiveOrgStore } from '@/stores/active-org';
 
 export const Route = createFileRoute('/_dashboard/controls')({
   validateSearch: (s: Record<string, unknown>) => ({
@@ -15,9 +16,10 @@ export const Route = createFileRoute('/_dashboard/controls')({
 function ControlsPage() {
   const { t } = useTranslation();
   const { docId: searchDocId } = Route.useSearch();
+  const { activeOrgId } = useActiveOrgStore();
 
   const { data: frameworks = [], isPending: fwLoading } = useFrameworks();
-  const { data: documents = [], isPending: docsLoading } = useStandardsDocuments();
+  const { data: documents = [], isPending: docsLoading } = useStandardsDocuments(activeOrgId ?? '');
 
   const completedDocs = useMemo(
     () => documents.filter((d) => d.status === 'completed'),

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
 import { useProfile } from '@/queries/profile';
 import { useFrameworks, useStandardsDocuments } from '@/queries/notes';
+import { useActiveOrgStore } from '@/stores/active-org';
 import {
   Shield,
   CheckCircle2,
@@ -74,7 +75,8 @@ function DashboardHome() {
   const user = useAuthStore((s) => s.user);
   const { data: profile } = useProfile();
   const { data: frameworks } = useFrameworks();
-  const { data: docs } = useStandardsDocuments();
+  const { activeOrgId } = useActiveOrgStore();
+  const { data: docs } = useStandardsDocuments(activeOrgId ?? '');
   const hour = new Date().getHours();
 
   const totalControls = (docs ?? [])
