@@ -37,7 +37,9 @@ const TOKEN_BRIDGE: CSSProperties & Record<`--${string}`, string> = {
 
 export function Pricing() {
   const apiKey = import.meta.env.VITE_PUBLIC_TENANT_KEY as string | undefined;
-  const apiBase = (import.meta.env.VITE_ISUBSCRIBE_API_URL as string | undefined) ?? 'https://api.isubscribe.me/api/v1';
+  const apiBase =
+    (import.meta.env.VITE_ISUBSCRIBE_API_URL as string | undefined) ??
+    'https://isubscribe.me/api/v1';
   const apiBaseUrl = `${apiBase}/public/subscriptions`;
 
   return (
@@ -55,6 +57,7 @@ export function Pricing() {
               apiKey={apiKey}
               apiBaseUrl={apiBaseUrl}
               style={TOKEN_BRIDGE}
+              containerClassName="isw-pricing-grid"
               classNames={{
                 loader: 'text-center py-16 text-sm text-muted-foreground',
                 error: 'text-center py-16 text-sm text-destructive',
