@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsAdmin } from '@icore/template-shared';
+import { AppearanceTab } from '../../components/settings/AppearanceTab';
 
 const ADMIN_TABS = new Set(['audit-log', 'export', 'webhooks', 'retention', 'api-keys']);
 
@@ -55,7 +56,7 @@ function SettingsPage() {
         ))}
       </div>
 
-      {activeTab === 'appearance' && <div />}
+      {activeTab === 'appearance' && <AppearanceTab />}
       {activeTab === 'notification' && <div />}
       {ADMIN_TABS.has(activeTab) && (
         <p className="text-sm text-muted-foreground">{t('common.soon')}</p>
