@@ -4,8 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { useIsAdmin } from '@icore/template-shared';
 import { AppearanceTab } from '../../components/settings/AppearanceTab';
 import { NotificationTab } from '../../components/settings/NotificationTab';
-
-const ADMIN_TABS = new Set(['audit-log', 'export', 'webhooks', 'retention', 'api-keys']);
+import { AuditLogTab } from '../../components/settings/AuditLogTab';
+import { ApiKeysTab } from '../../components/settings/ApiKeysTab';
+import { WebhooksTab } from '../../components/settings/WebhooksTab';
+import { ExportTab } from '../../components/settings/ExportTab';
+import { RetentionTab } from '../../components/settings/RetentionTab';
+import { AiUsageTab } from '../../components/settings/AiUsageTab';
 
 function SettingsPage() {
   const { t } = useTranslation();
@@ -27,10 +31,11 @@ function SettingsPage() {
     ...(isAdmin
       ? [
           { id: 'audit-log', label: t('settings.tabs.auditLog') },
-          { id: 'export', label: t('settings.tabs.export') },
-          { id: 'webhooks', label: t('settings.tabs.webhooks') },
-          { id: 'retention', label: t('settings.tabs.retention') },
           { id: 'api-keys', label: t('settings.tabs.apiKeys') },
+          { id: 'webhooks', label: t('settings.tabs.webhooks') },
+          { id: 'export', label: t('settings.tabs.export') },
+          { id: 'retention', label: t('settings.tabs.retention') },
+          { id: 'ai-usage', label: t('settings.tabs.aiUsage') },
         ]
       : []),
   ];
@@ -46,7 +51,7 @@ function SettingsPage() {
             type="button"
             onClick={() => switchTab(tab.id)}
             className={[
-              '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors',
+              '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors cursor-pointer',
               activeTab === tab.id
                 ? 'border-green-500 text-green-500'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
@@ -59,9 +64,12 @@ function SettingsPage() {
 
       {activeTab === 'appearance' && <AppearanceTab />}
       {activeTab === 'notification' && <NotificationTab />}
-      {ADMIN_TABS.has(activeTab) && (
-        <p className="text-sm text-muted-foreground">{t('common.soon')}</p>
-      )}
+      {activeTab === 'audit-log' && <AuditLogTab />}
+      {activeTab === 'api-keys' && <ApiKeysTab />}
+      {activeTab === 'webhooks' && <WebhooksTab />}
+      {activeTab === 'export' && <ExportTab />}
+      {activeTab === 'retention' && <RetentionTab />}
+      {activeTab === 'ai-usage' && <AiUsageTab />}
     </div>
   );
 }
