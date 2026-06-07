@@ -86,7 +86,17 @@ export function AiAssistant() {
               done?: boolean;
               error?: string;
             };
-            if (payload.token) {
+            if (payload.error) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, content: t('error.unknown'), streaming: false }
+                    : m,
+                ),
+              );
+              break;
+            }
+            if (payload.token?.trim()) {
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantId ? { ...m, content: m.content + payload.token } : m,
@@ -141,25 +151,25 @@ export function AiAssistant() {
 
       <SheetContent side="right" className="flex flex-col p-0">
         <SheetHeader>
-          <div className="flex items-center gap-2.5 pr-8">
+          <div className="flex items-center gap-2.5 pr-10">
             <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 shrink-0">
               <Sparkles size={13} className="text-green-500" />
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               <SheetTitle>{t('aiAssistant.title')}</SheetTitle>
               <p className="text-[10px] text-muted-foreground">{t('aiAssistant.subtitle')}</p>
             </div>
+            {messages.length > 0 && (
+              <button
+                type="button"
+                onClick={clearChat}
+                className="shrink-0 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                title={t('aiAssistant.clearChat')}
+              >
+                <Trash2 size={14} />
+              </button>
+            )}
           </div>
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={clearChat}
-              className="absolute right-10 top-4 rounded-md text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-              title={t('aiAssistant.clearChat')}
-            >
-              <Trash2 size={13} />
-            </button>
-          )}
         </SheetHeader>
 
         {/* Messages */}
