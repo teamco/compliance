@@ -7,6 +7,7 @@ import { useSidebar } from '../../layouts/sidebar-context';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import { useProfile } from '../../queries/profile';
 import { ThemeToggle } from '../ThemeToggle';
+import { OrgSwitcher } from '../org/OrgSwitcher';
 
 const BREADCRUMB_KEYS: Array<{ prefix: string; key: string }> = [
   { prefix: '/admin/ai-usage', key: 'nav.aiUsage' },
@@ -82,6 +83,9 @@ export function LayoutHeader() {
             </button>
           ))}
         </div>
+
+        {/* Org switcher */}
+        <OrgSwitcher />
 
         {/* Theme toggle */}
         <ThemeToggle />

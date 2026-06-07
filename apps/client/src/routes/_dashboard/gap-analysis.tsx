@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
+  Building2,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -14,12 +15,14 @@ import {
 import { useStandardsDocuments } from '@/queries/notes';
 import {
   useAnalyzeGap,
+  useSaveGapAnalysis,
   type ControlFinding,
   type FindingStatus,
   type GapAnalysisResult,
   type GapSeverity,
   type RecommendationEffort,
 } from '@/queries/gap';
+import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -101,14 +104,25 @@ function RiskGauge({ score }: { score: number }) {
 
 function GapAnalysisPage() {
   const { t } = useTranslation();
-  const { data: docs, isPending: docsLoading } = useStandardsDocuments();
+  const { activeOrgId } = useActiveOrgStore();
+  const { data: docs, isPending: docsLoading } = useStandardsDocuments(activeOrgId ?? '');
   const analyzeGap = useAnalyzeGap();
+  const saveGap = useSaveGapAnalysis();
 
   const [selectedDocId, setSelectedDocId] = useState<string>('');
   const [findings, setFindings] = useState<
     Record<string, { status: FindingStatus; evidence: string; expanded: boolean }>
   >({});
   const [result, setResult] = useState<GapAnalysisResult | null>(null);
+
+  if (!activeOrgId) {
+    return (
+      <div className="p-6 flex items-center gap-2 text-sm text-muted-foreground">
+        <Building2 size={16} />
+        {t('org.noActiveOrg')}
+      </div>
+    );
+  }
 
   const completedDocs = (docs ?? []).filter((d) => d.status === 'completed');
   const selectedDoc = completedDocs.find((d) => d.id === selectedDocId);
@@ -169,7 +183,18 @@ function GapAnalysisPage() {
     }));
     analyzeGap.mutate(
       { controls, findings: findingsList },
-      { onSuccess: (data) => setResult(data) },
+      {
+        onSuccess: (data) => {
+          setResult(data);
+          if (activeOrgId) {
+            saveGap.mutate({
+              orgId: activeOrgId,
+              docId: selectedDocId || undefined,
+              result: data,
+            });
+          }
+        },
+      },
     );
   }
 
