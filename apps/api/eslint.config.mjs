@@ -24,7 +24,7 @@ export default [
             '{projectRoot}/webpack.config.{js,ts}',
             '{projectRoot}/src/**/*.unit.test.ts',
           ],
-          ignoredDependencies: ['vitest'],
+          ignoredDependencies: ['vitest', 'express'],
         },
       ],
     },
