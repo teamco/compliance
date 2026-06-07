@@ -22,7 +22,7 @@ interface RangeSelectorProps {
 export function RangeSelector({ value, onChange }: RangeSelectorProps) {
   return (
     <Select value={value} onValueChange={(v) => onChange(v as AiUsageRange)}>
-      <SelectTrigger className="w-40">
+      <SelectTrigger className="w-full sm:w-40">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>

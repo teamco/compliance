@@ -276,6 +276,16 @@ export const he = {
       action: 'פעולה',
       resource: 'משאב',
       total: '{{count}} אירועים',
+      actions: {
+        workflowSubmitted: 'תהליך עבודה הוגש',
+        workflowApproved: 'תהליך עבודה אושר',
+        workflowRejected: 'תהליך עבודה נדחה',
+        workflowPublished: 'תהליך עבודה פורסם',
+        aiStandardsGenerated: 'תקנים AI נוצרו',
+      },
+      resources: {
+        standardsDocument: 'מסמך תקנים',
+      },
     },
     apiKeys: {
       title: 'מפתחות API',
@@ -326,6 +336,11 @@ export const he = {
       cost: 'עלות משוערת',
       byOperation: 'לפי פעולה',
       operation: 'פעולה',
+      operationLabels: {
+        chat: "צ'אט",
+        standardsGenerate: 'יצירת תקנים',
+        gapAnalyze: 'ניתוח פערים',
+      },
       empty: 'אין נתוני שימוש ב-AI לתקופה זו.',
     },
   },

@@ -277,6 +277,16 @@ export const es = {
       action: 'Acción',
       resource: 'Recurso',
       total: '{{count}} eventos',
+      actions: {
+        workflowSubmitted: 'Flujo enviado',
+        workflowApproved: 'Flujo aprobado',
+        workflowRejected: 'Flujo rechazado',
+        workflowPublished: 'Flujo publicado',
+        aiStandardsGenerated: 'Estándares AI generados',
+      },
+      resources: {
+        standardsDocument: 'Documento de estándares',
+      },
     },
     apiKeys: {
       title: 'Claves API',
@@ -327,6 +337,11 @@ export const es = {
       cost: 'Coste estimado',
       byOperation: 'Por operación',
       operation: 'Operación',
+      operationLabels: {
+        chat: 'Chat',
+        standardsGenerate: 'Generación de estándares',
+        gapAnalyze: 'Análisis de brechas',
+      },
       empty: 'Sin datos de uso de IA para este período.',
     },
   },

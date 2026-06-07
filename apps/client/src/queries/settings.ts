@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../main';
+import { api } from '@/lib/api';
 
 // ─── Chat history ──────────────────────────────────────────────────────────
 

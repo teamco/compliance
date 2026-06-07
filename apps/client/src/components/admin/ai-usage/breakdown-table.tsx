@@ -23,24 +23,26 @@ export function BreakdownTable({ title, rows, loading }: BreakdownTableProps) {
       ) : !rows || rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">No data</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-[--color-border] text-xs text-muted-foreground">
-              <th className="pb-1 text-left font-medium">Label</th>
-              <th className="pb-1 text-right font-medium">Calls</th>
-              <th className="pb-1 text-right font-medium">Tokens</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.label} className="border-b border-[--color-border]/40 last:border-0">
-                <td className="py-1.5">{row.label}</td>
-                <td className="py-1.5 text-right tabular-nums">{row.calls.toLocaleString()}</td>
-                <td className="py-1.5 text-right tabular-nums">{row.tokens.toLocaleString()}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-72 text-sm">
+            <thead>
+              <tr className="border-b border-[--color-border] text-xs text-muted-foreground">
+                <th className="pb-1 text-left font-medium">Label</th>
+                <th className="pb-1 text-right font-medium">Calls</th>
+                <th className="pb-1 text-right font-medium">Tokens</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.label} className="border-b border-[--color-border]/40 last:border-0">
+                  <td className="max-w-36 truncate py-1.5 pr-3">{row.label}</td>
+                  <td className="py-1.5 text-right tabular-nums">{row.calls.toLocaleString()}</td>
+                  <td className="py-1.5 text-right tabular-nums">{row.tokens.toLocaleString()}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
