@@ -193,6 +193,7 @@ export const en = {
     controlsSubtitle: 'Set status for each control based on your current implementation',
     analyze: 'Analyze Gaps',
     analyzing: 'Analyzing…',
+    analyzingHint: 'AI is reviewing your controls and findings',
     results: 'Analysis Results',
     riskScore: 'Risk Score',
     summary: 'Executive Summary',

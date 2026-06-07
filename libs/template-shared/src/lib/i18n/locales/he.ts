@@ -193,6 +193,7 @@ export const he = {
     controlsSubtitle: 'הגדר סטטוס לכל בקרה',
     analyze: 'נתח פערים',
     analyzing: 'מנתח…',
+    analyzingHint: 'ה-AI בודק את הבקרות והממצאים שלך',
     results: 'תוצאות הניתוח',
     riskScore: 'ציון סיכון',
     summary: 'סיכום',
