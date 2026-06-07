@@ -1,6 +1,12 @@
+import { createHash, randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   AiChatMessage,
+  AuditLog,
+  AuditLogFilters,
+  AuditLogPage,
+  ApiKey,
+  ApiKeyWithSecret,
   ControlPatch,
   Framework,
   FrameworkControl,
@@ -8,13 +14,16 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  RetentionPrefsPayload,
   StandardControl,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
+  Webhook,
+  WebhookInput,
   WorkflowTransition,
 } from '@icore/shared';
-import { DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
+import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
 
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
@@ -268,27 +277,31 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       language: (data.language as UserPrefsPayload['language']) ?? 'en',
       notificationPrefs: {
         ...DEFAULT_USER_PREFS.notificationPrefs,
-        ...(data.notification_prefs as Partial<UserPrefsPayload['notificationPrefs']> ?? {}),
+        ...((data.notification_prefs as Partial<UserPrefsPayload['notificationPrefs']>) ?? {}),
       },
     };
   }
 
-  async updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload> {
+  async updateUserPrefs(
+    userId: string,
+    patch: Partial<UserPrefsPayload>,
+  ): Promise<UserPrefsPayload> {
     const update: Record<string, unknown> = {};
-    if (patch.theme !== undefined)             update['theme'] = patch.theme;
-    if (patch.language !== undefined)          update['language'] = patch.language;
-    if (patch.notificationPrefs !== undefined) update['notification_prefs'] = patch.notificationPrefs;
+    if (patch.theme !== undefined) update['theme'] = patch.theme;
+    if (patch.language !== undefined) update['language'] = patch.language;
+    if (patch.notificationPrefs !== undefined)
+      update['notification_prefs'] = patch.notificationPrefs;
 
-    const { error } = await this.db
-      .from('profiles')
-      .update(update)
-      .eq('id', userId);
+    const { error } = await this.db.from('profiles').update(update).eq('id', userId);
 
     if (error) throw new Error(error.message);
     return this.getUserPrefs(userId);
   }
 
-  async savePushSubscription(userId: string, sub: PushSubscriptionPayload): Promise<{ ok: boolean }> {
+  async savePushSubscription(
+    userId: string,
+    sub: PushSubscriptionPayload,
+  ): Promise<{ ok: boolean }> {
     const { error } = await this.db
       .from('push_subscriptions')
       .upsert(
@@ -328,7 +341,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     }));
   }
 
-  async saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage> {
+  async saveChatMessage(
+    userId: string,
+    role: 'user' | 'assistant',
+    content: string,
+  ): Promise<AiChatMessage> {
     const { data, error } = await this.db
       .from('ai_chat_messages')
       .insert({ user_id: userId, role, content })
@@ -337,17 +354,243 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
     if (error) throw new Error(error.message);
     const r = data as { id: string; role: string; content: string; created_at: string };
-    return { id: r.id, role: r.role as 'user' | 'assistant', content: r.content, createdAt: r.created_at };
+    return {
+      id: r.id,
+      role: r.role as 'user' | 'assistant',
+      content: r.content,
+      createdAt: r.created_at,
+    };
   }
 
   async clearChatHistory(userId: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db.from('ai_chat_messages').delete().eq('user_id', userId);
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  // ─── Audit log ─────────────────────────────────────────────────────────────
+
+  async logAuditEvent(
+    userId: string,
+    action: string,
+    resourceType?: string,
+    resourceId?: string,
+    metadata: Record<string, unknown> = {},
+  ): Promise<void> {
+    const { error } = await this.db.from('audit_logs').insert({
+      user_id: userId,
+      action,
+      resource_type: resourceType ?? null,
+      resource_id: resourceId ?? null,
+      metadata,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  async listAuditLogs(userId: string, filters: AuditLogFilters = {}): Promise<AuditLogPage> {
+    const { page = 1, limit = 50, action, from, to } = filters;
+    const offset = (page - 1) * limit;
+
+    let q = this.db
+      .from('audit_logs')
+      .select('*', { count: 'exact' })
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (action) q = q.eq('action', action);
+    if (from) q = q.gte('created_at', from);
+    if (to) q = q.lte('created_at', to);
+
+    const { data, count, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const items: AuditLog[] = (data ?? []).map((r) => ({
+      id: r.id as string,
+      userId: r.user_id as string,
+      action: r.action as string,
+      resourceType: r.resource_type as string | null,
+      resourceId: r.resource_id as string | null,
+      metadata: r.metadata as Record<string, unknown>,
+      createdAt: r.created_at as string,
+    }));
+
+    return { items, total: count ?? 0, page, limit };
+  }
+
+  // ─── API keys ──────────────────────────────────────────────────────────────
+
+  async createApiKey(userId: string, name: string, expiresAt?: string): Promise<ApiKeyWithSecret> {
+    const rawKey = `cpiq_${randomBytes(32).toString('hex')}`;
+    const keyHash = createHash('sha256').update(rawKey).digest('hex');
+    const keyPrefix = rawKey.slice(0, 12);
+
+    const { data, error } = await this.db
+      .from('api_keys')
+      .insert({
+        user_id: userId,
+        name,
+        key_hash: keyHash,
+        key_prefix: keyPrefix,
+        expires_at: expiresAt ?? null,
+      })
+      .select('id, user_id, name, key_prefix, expires_at, last_used_at, revoked_at, created_at')
+      .single();
+
+    if (error) throw new Error(error.message);
+    return { ...this.mapApiKey(data), fullKey: rawKey };
+  }
+
+  async listApiKeys(userId: string): Promise<ApiKey[]> {
+    const { data, error } = await this.db
+      .from('api_keys')
+      .select('id, user_id, name, key_prefix, expires_at, last_used_at, revoked_at, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapApiKey(r));
+  }
+
+  async revokeApiKey(id: string, userId: string): Promise<{ ok: boolean }> {
     const { error } = await this.db
-      .from('ai_chat_messages')
-      .delete()
+      .from('api_keys')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('id', id)
       .eq('user_id', userId);
 
     if (error) throw new Error(error.message);
     return { ok: true };
+  }
+
+  private mapApiKey(r: unknown): ApiKey {
+    const row = r as {
+      id: string;
+      user_id: string;
+      name: string;
+      key_prefix: string;
+      expires_at: string | null;
+      last_used_at: string | null;
+      revoked_at: string | null;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      userId: row.user_id,
+      name: row.name,
+      keyPrefix: row.key_prefix,
+      expiresAt: row.expires_at,
+      lastUsedAt: row.last_used_at,
+      revokedAt: row.revoked_at,
+      createdAt: row.created_at,
+    };
+  }
+
+  // ─── Webhooks ──────────────────────────────────────────────────────────────
+
+  async createWebhook(userId: string, input: WebhookInput): Promise<Webhook> {
+    const secret = randomBytes(20).toString('hex');
+    const { data, error } = await this.db
+      .from('webhooks')
+      .insert({ user_id: userId, url: input.url, events: input.events, secret })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapWebhook(data);
+  }
+
+  async listWebhooks(userId: string): Promise<Webhook[]> {
+    const { data, error } = await this.db
+      .from('webhooks')
+      .select()
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapWebhook(r));
+  }
+
+  async updateWebhook(
+    id: string,
+    userId: string,
+    patch: Partial<WebhookInput> & { active?: boolean },
+  ): Promise<Webhook> {
+    const update: Record<string, unknown> = {};
+    if (patch.url !== undefined) update['url'] = patch.url;
+    if (patch.events !== undefined) update['events'] = patch.events;
+    if (patch.active !== undefined) update['active'] = patch.active;
+
+    const { data, error } = await this.db
+      .from('webhooks')
+      .update(update)
+      .eq('id', id)
+      .eq('user_id', userId)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapWebhook(data);
+  }
+
+  async deleteWebhook(id: string, userId: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db.from('webhooks').delete().eq('id', id).eq('user_id', userId);
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  private mapWebhook(r: unknown): Webhook {
+    const row = r as {
+      id: string;
+      user_id: string;
+      url: string;
+      events: string[];
+      secret: string;
+      active: boolean;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      userId: row.user_id,
+      url: row.url,
+      events: row.events as Webhook['events'],
+      secret: row.secret,
+      active: row.active,
+      createdAt: row.created_at,
+    };
+  }
+
+  // ─── Retention ─────────────────────────────────────────────────────────────
+
+  async getRetentionPrefs(userId: string): Promise<RetentionPrefsPayload> {
+    const { data } = await this.db
+      .from('profiles')
+      .select('retention_prefs')
+      .eq('id', userId)
+      .single();
+
+    if (!data) return { ...DEFAULT_RETENTION_PREFS };
+    return {
+      ...DEFAULT_RETENTION_PREFS,
+      ...((data.retention_prefs as Partial<RetentionPrefsPayload>) ?? {}),
+    };
+  }
+
+  async updateRetentionPrefs(
+    userId: string,
+    patch: Partial<RetentionPrefsPayload>,
+  ): Promise<RetentionPrefsPayload> {
+    const current = await this.getRetentionPrefs(userId);
+    const updated = { ...current, ...patch };
+    const { error } = await this.db
+      .from('profiles')
+      .update({ retention_prefs: updated })
+      .eq('id', userId);
+
+    if (error) throw new Error(error.message);
+    return updated;
   }
 
   private mapOrg(r: unknown): Organization {
