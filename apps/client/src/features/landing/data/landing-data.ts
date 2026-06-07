@@ -5,14 +5,12 @@ import {
   CheckCircle2,
   Cloud,
   Database,
-  FileCheck2,
   GitBranch,
   Lock,
   ScanSearch,
   Shield,
   Sparkles,
   Workflow,
-  Zap,
 } from 'lucide-react';
 
 export const trustedFrameworks = ['ISO 27001', 'SOC 2', 'NIST CSF', 'PCI DSS', 'HIPAA', 'GDPR'];
