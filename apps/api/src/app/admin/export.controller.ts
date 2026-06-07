@@ -4,7 +4,9 @@ import type { Request, Response } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 type ExportType = 'standards' | 'organization' | 'audit-log';
 
@@ -30,7 +32,7 @@ export class ExportController {
     if (type === 'standards') {
       data = await this.notes.listStandardsDocuments(uid);
     } else if (type === 'organization') {
-      data = await this.notes.getOrganization(uid);
+      data = await this.notes.listOrganizations(uid);
     } else {
       const page = await this.notes.listAuditLogs(uid, { limit: 1000 });
       data = page.items;
