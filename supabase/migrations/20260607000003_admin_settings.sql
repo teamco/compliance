@@ -48,6 +48,9 @@ create policy "webhooks: own all"
   using  (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
+create index api_keys_user_id_idx on public.api_keys(user_id);
+create index webhooks_user_id_idx on public.webhooks(user_id);
+
 -- retention preferences stored on profiles
 alter table public.profiles
   add column if not exists retention_prefs jsonb not null default '{}';
