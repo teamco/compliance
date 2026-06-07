@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { SubscriptionWidget } from '@idevconn/isubscribe-widget-react';
+import { useTranslation } from 'react-i18next';
 import { SectionHeader } from '../components/SectionHeader';
 
 /* Map widget tokens → sec project CSS vars */
@@ -51,6 +52,7 @@ const FEATURED_OVERRIDE: CSSProperties & Record<string, string> = {
 };
 
 export function Pricing() {
+  const { t } = useTranslation();
   const apiKey = import.meta.env.VITE_PUBLIC_TENANT_KEY as string | undefined;
   const apiBase =
     (import.meta.env.VITE_ISUBSCRIBE_API_URL as string | undefined) ??
@@ -81,12 +83,12 @@ export function Pricing() {
               subscriptionOverrides={{
                 // cspell:disable-next-line
                 hhIbUDJnDNklg0kszQ2a: {
-                  badge: 'Most popular',
+                  badge: t('subscription.popular'),
                   style: FEATURED_OVERRIDE,
                 },
                 // cspell:disable-next-line
-                '7NDgQ0ebQsiRj2IMQw07': {
-                  buttonText: 'pricing.starter.cta',
+                qwUpL0slwC3tA6Z1XORn: {
+                  buttonText: t('subscription.price.custom'),
                 },
               }}
               onSubscribe={(sub) => console.log('subscribed:', sub)}

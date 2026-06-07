@@ -211,6 +211,12 @@ export const ru = {
     selectStatus: 'Выберите статус',
     saved: 'Анализ сохранён',
   },
+  subscription: {
+    popular: 'Популярное',
+    price: {
+      custom: 'Связаться с нами',
+    },
+  },
   aiAssistant: {
     title: 'AI Ассистент',
     subtitle: 'Powered by Claude',

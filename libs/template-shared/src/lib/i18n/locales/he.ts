@@ -207,6 +207,12 @@ export const he = {
     selectStatus: 'בחר סטטוס',
     saved: 'הניתוח נשמר',
   },
+  subscription: {
+    popular: 'הפופולרי ביותר',
+    price: {
+      custom: 'צרו קשר',
+    },
+  },
   aiAssistant: {
     title: 'עוזר AI',
     subtitle: 'מופעל על ידי Claude',
