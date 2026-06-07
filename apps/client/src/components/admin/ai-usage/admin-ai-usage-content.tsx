@@ -59,7 +59,22 @@ export function AdminAiUsageContent() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base">Activity</CardTitle>
+          <div>
+            <CardTitle className="text-base">Activity</CardTitle>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {[
+                { op: 'chat',               model: 'claude-sonnet-4-6' },
+                { op: 'standards.generate', model: 'claude-opus-4-8'   },
+                { op: 'gap.analyze',        model: 'claude-sonnet-4-6' },
+              ].map(({ op, model }) => (
+                <span key={op} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground font-mono">
+                  <span className="text-foreground/70">{op}</span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span>{model}</span>
+                </span>
+              ))}
+            </div>
+          </div>
           <UserFilterSelect users={summary?.users ?? []} value={userId} onChange={setUserId} />
         </CardHeader>
         <CardContent className="h-64">
