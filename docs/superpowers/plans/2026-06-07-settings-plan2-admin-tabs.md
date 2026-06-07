@@ -1,6 +1,6 @@
 # Settings Plan 2 — Admin Tabs Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implement all 6 admin settings tabs (Audit Log, API Keys, Webhooks, Export, Retention, AI Usage) across the full stack — DB → Notes MS → Gateway → Client.
 
@@ -53,7 +53,7 @@
 **Files:**
 - Create: `supabase/migrations/20260607000003_admin_settings.sql`
 
-- [ ] **Step 1: Create migration file**
+- [x] **Step 1: Create migration file**
 
 ```sql
 -- audit_logs: immutable record of significant system events
@@ -112,7 +112,7 @@ alter table public.profiles
   add column if not exists retention_prefs jsonb not null default '{}';
 ```
 
-- [ ] **Step 2: Apply migration**
+- [x] **Step 2: Apply migration**
 
 ```bash
 npx supabase db push
@@ -120,7 +120,7 @@ npx supabase db push
 
 Expected: migration applied, schema cache refreshed.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add supabase/migrations/20260607000003_admin_settings.sql
@@ -136,7 +136,7 @@ git commit -m "feat(db): audit_logs, api_keys, webhooks tables + retention_prefs
 - Modify: `libs/shared/src/strategies/fakes/fake-notes.ts`
 - Create: `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts`
 
-- [ ] **Step 1: Add types and method signatures to `notes.ts`**
+- [x] **Step 1: Add types and method signatures to `notes.ts`**
 
 Append to `libs/shared/src/strategies/notes.ts` after the existing `AiChatMessage` section:
 
@@ -257,7 +257,7 @@ Add to the `NotesStrategy` interface (after `clearChatHistory`):
   updateRetentionPrefs(userId: string, patch: Partial<RetentionPrefsPayload>): Promise<RetentionPrefsPayload>;
 ```
 
-- [ ] **Step 2: Write failing tests for FakeNotesStrategy**
+- [x] **Step 2: Write failing tests for FakeNotesStrategy**
 
 Create `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts`:
 
@@ -334,7 +334,7 @@ describe('FakeNotesStrategy — admin', () => {
 });
 ```
 
-- [ ] **Step 3: Run tests — expect FAIL**
+- [x] **Step 3: Run tests — expect FAIL**
 
 ```bash
 yarn nx test shared --testPathPattern=fake-notes-admin
@@ -342,7 +342,7 @@ yarn nx test shared --testPathPattern=fake-notes-admin
 
 Expected: FAIL — methods not implemented on FakeNotesStrategy.
 
-- [ ] **Step 4: Add imports to `fake-notes.ts`**
+- [x] **Step 4: Add imports to `fake-notes.ts`**
 
 Add to imports at top of `libs/shared/src/strategies/fakes/fake-notes.ts`:
 
@@ -373,7 +373,7 @@ import type {
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 ```
 
-- [ ] **Step 5: Add in-memory state + implement methods in `FakeNotesStrategy`**
+- [x] **Step 5: Add in-memory state + implement methods in `FakeNotesStrategy`**
 
 Add to the class fields:
 
@@ -509,7 +509,7 @@ Add the method implementations (append before closing `}`):
   }
 ```
 
-- [ ] **Step 6: Run tests — expect PASS**
+- [x] **Step 6: Run tests — expect PASS**
 
 ```bash
 yarn nx test shared --testPathPattern=fake-notes-admin
@@ -517,7 +517,7 @@ yarn nx test shared --testPathPattern=fake-notes-admin
 
 Expected: 8 tests pass.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add libs/shared/src/strategies/notes.ts \
@@ -533,7 +533,7 @@ git commit -m "feat(shared): admin types + NotesStrategy interface + FakeNotesSt
 **Files:**
 - Modify: `apps/microservices/notes/src/app/supabase-notes.strategy.ts`
 
-- [ ] **Step 1: Add import for crypto at top of file**
+- [x] **Step 1: Add import for crypto at top of file**
 
 The file already imports from `@supabase/supabase-js`. Add:
 
@@ -570,7 +570,7 @@ import type {
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
 ```
 
-- [ ] **Step 2: Add helper methods and implement all admin methods**
+- [x] **Step 2: Add helper methods and implement all admin methods**
 
 Add the following inside the `SupabaseNotesStrategy` class, before `private mapOrg`:
 
@@ -791,7 +791,7 @@ Add the following inside the `SupabaseNotesStrategy` class, before `private mapO
   }
 ```
 
-- [ ] **Step 3: Build notes MS to verify no TS errors**
+- [x] **Step 3: Build notes MS to verify no TS errors**
 
 ```bash
 npx nx run notes:build
@@ -799,7 +799,7 @@ npx nx run notes:build
 
 Expected: `webpack compiled successfully`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/microservices/notes/src/app/supabase-notes.strategy.ts
@@ -815,7 +815,7 @@ git commit -m "feat(notes-ms): admin strategy methods — audit log, api keys, w
 - Modify: `apps/microservices/notes/src/app/app.module.ts`
 - Create: `apps/microservices/notes/src/app/__tests__/admin.controller.unit.test.ts`
 
-- [ ] **Step 1: Write failing tests**
+- [x] **Step 1: Write failing tests**
 
 Create `apps/microservices/notes/src/app/__tests__/admin.controller.unit.test.ts`:
 
@@ -859,7 +859,7 @@ describe('AdminController', () => {
 });
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
 ```bash
 yarn nx test notes --testPathPattern=admin.controller.unit
@@ -867,7 +867,7 @@ yarn nx test notes --testPathPattern=admin.controller.unit
 
 Expected: FAIL — AdminController not found.
 
-- [ ] **Step 3: Create `admin.controller.ts`**
+- [x] **Step 3: Create `admin.controller.ts`**
 
 Create `apps/microservices/notes/src/app/admin.controller.ts`:
 
@@ -978,7 +978,7 @@ export class AdminController {
 }
 ```
 
-- [ ] **Step 4: Register in `app.module.ts`**
+- [x] **Step 4: Register in `app.module.ts`**
 
 In `apps/microservices/notes/src/app/app.module.ts`, add import and controller:
 
@@ -990,7 +990,7 @@ import { AdminController } from './admin.controller';
 controllers: [NotesController, SettingsController, ChatHistoryController, AdminController],
 ```
 
-- [ ] **Step 5: Run tests — expect PASS**
+- [x] **Step 5: Run tests — expect PASS**
 
 ```bash
 yarn nx test notes --testPathPattern=admin.controller.unit
@@ -998,7 +998,7 @@ yarn nx test notes --testPathPattern=admin.controller.unit
 
 Expected: 4 tests pass.
 
-- [ ] **Step 6: Build**
+- [x] **Step 6: Build**
 
 ```bash
 npx nx run notes:build
@@ -1006,7 +1006,7 @@ npx nx run notes:build
 
 Expected: `webpack compiled successfully`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/microservices/notes/src/app/admin.controller.ts \
@@ -1022,7 +1022,7 @@ git commit -m "feat(notes-ms): AdminController — TCP handlers for audit, api-k
 **Files:**
 - Modify: `libs/notes-client/src/lib/notes-client.service.ts`
 
-- [ ] **Step 1: Add imports**
+- [x] **Step 1: Add imports**
 
 Add to the `import type` block at the top of `libs/notes-client/src/lib/notes-client.service.ts`:
 
@@ -1050,7 +1050,7 @@ import type {
 } from '@icore/shared';
 ```
 
-- [ ] **Step 2: Add methods**
+- [x] **Step 2: Add methods**
 
 Append to the class (before closing `}`):
 
@@ -1134,7 +1134,7 @@ Append to the class (before closing `}`):
   }
 ```
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 ```bash
 npx nx run notes:build
@@ -1142,7 +1142,7 @@ npx nx run notes:build
 
 Expected: successful (notes-client is a dependency).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add libs/notes-client/src/lib/notes-client.service.ts
@@ -1161,7 +1161,7 @@ git commit -m "feat(notes-client): admin proxy methods — audit, api-keys, webh
 - Create: `apps/api/src/app/admin/export.controller.ts`
 - Create: `apps/api/src/app/admin/retention.controller.ts`
 
-- [ ] **Step 1: Create `audit-log.controller.ts`**
+- [x] **Step 1: Create `audit-log.controller.ts`**
 
 ```typescript
 import { Controller, Get, Query, Req, UnauthorizedException } from '@nestjs/common';
@@ -1202,7 +1202,7 @@ export class AuditLogController {
 }
 ```
 
-- [ ] **Step 2: Create `api-keys.controller.ts`**
+- [x] **Step 2: Create `api-keys.controller.ts`**
 
 ```typescript
 import { Body, Controller, Delete, Get, Param, Post, Req, UnauthorizedException } from '@nestjs/common';
@@ -1248,7 +1248,7 @@ export class ApiKeysController {
 }
 ```
 
-- [ ] **Step 3: Create `webhooks.controller.ts`**
+- [x] **Step 3: Create `webhooks.controller.ts`**
 
 ```typescript
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UnauthorizedException } from '@nestjs/common';
@@ -1303,7 +1303,7 @@ export class WebhooksController {
 }
 ```
 
-- [ ] **Step 4: Create `export.controller.ts`**
+- [x] **Step 4: Create `export.controller.ts`**
 
 ```typescript
 import { Controller, Get, Query, Req, Res, UnauthorizedException } from '@nestjs/common';
@@ -1351,7 +1351,7 @@ export class ExportController {
 }
 ```
 
-- [ ] **Step 5: Create `retention.controller.ts`**
+- [x] **Step 5: Create `retention.controller.ts`**
 
 ```typescript
 import { Body, Controller, Get, Patch, Req, UnauthorizedException } from '@nestjs/common';
@@ -1389,7 +1389,7 @@ export class RetentionController {
 }
 ```
 
-- [ ] **Step 6: Update `admin.module.ts`**
+- [x] **Step 6: Update `admin.module.ts`**
 
 Replace `apps/api/src/app/admin/admin.module.ts` with:
 
@@ -1417,7 +1417,7 @@ import { WebhooksController } from './webhooks.controller';
 export class AdminModule {}
 ```
 
-- [ ] **Step 7: Build API**
+- [x] **Step 7: Build API**
 
 ```bash
 npx nx run api:build
@@ -1425,7 +1425,7 @@ npx nx run api:build
 
 Expected: `webpack compiled successfully`.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add apps/api/src/app/admin/
@@ -1439,7 +1439,7 @@ git commit -m "feat(api): admin controllers — audit-log, api-keys, webhooks, e
 **Files:**
 - Create: `apps/client/src/queries/admin.ts`
 
-- [ ] **Step 1: Create `admin.ts`**
+- [x] **Step 1: Create `admin.ts`**
 
 ```typescript
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1603,7 +1603,7 @@ export function useUpdateRetentionPrefs() {
 }
 ```
 
-- [ ] **Step 2: Build client**
+- [x] **Step 2: Build client**
 
 ```bash
 cd apps/client && npx vite build 2>&1 | tail -5
@@ -1611,7 +1611,7 @@ cd apps/client && npx vite build 2>&1 | tail -5
 
 Expected: `✓ built in`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/client/src/queries/admin.ts
@@ -1625,7 +1625,7 @@ git commit -m "feat(client): admin TanStack Query hooks — audit, api-keys, web
 **Files:**
 - Create: `apps/client/src/components/settings/AuditLogTab.tsx`
 
-- [ ] **Step 1: Create `AuditLogTab.tsx`**
+- [x] **Step 1: Create `AuditLogTab.tsx`**
 
 ```tsx
 import { useState } from 'react';
@@ -1728,7 +1728,7 @@ export function AuditLogTab() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/client/src/components/settings/AuditLogTab.tsx
@@ -1742,7 +1742,7 @@ git commit -m "feat(client): AuditLogTab — paginated log with action filter"
 **Files:**
 - Create: `apps/client/src/components/settings/ApiKeysTab.tsx`
 
-- [ ] **Step 1: Create `ApiKeysTab.tsx`**
+- [x] **Step 1: Create `ApiKeysTab.tsx`**
 
 ```tsx
 import { useState } from 'react';
@@ -1891,7 +1891,7 @@ export function ApiKeysTab() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/client/src/components/settings/ApiKeysTab.tsx
@@ -1905,7 +1905,7 @@ git commit -m "feat(client): ApiKeysTab — create/list/revoke with one-time key
 **Files:**
 - Create: `apps/client/src/components/settings/WebhooksTab.tsx`
 
-- [ ] **Step 1: Create `WebhooksTab.tsx`**
+- [x] **Step 1: Create `WebhooksTab.tsx`**
 
 ```tsx
 import { useState } from 'react';
@@ -2069,7 +2069,7 @@ export function WebhooksTab() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apps/client/src/components/settings/WebhooksTab.tsx
@@ -2084,7 +2084,7 @@ git commit -m "feat(client): WebhooksTab — create/list/toggle/delete with even
 - Create: `apps/client/src/components/settings/ExportTab.tsx`
 - Create: `apps/client/src/components/settings/RetentionTab.tsx`
 
-- [ ] **Step 1: Create `ExportTab.tsx`**
+- [x] **Step 1: Create `ExportTab.tsx`**
 
 ```tsx
 import { useState } from 'react';
@@ -2169,7 +2169,7 @@ export function ExportTab() {
 }
 ```
 
-- [ ] **Step 2: Create `RetentionTab.tsx`**
+- [x] **Step 2: Create `RetentionTab.tsx`**
 
 ```tsx
 import { useState, useEffect } from 'react';
@@ -2247,7 +2247,7 @@ export function RetentionTab() {
 }
 ```
 
-- [ ] **Step 3: Build client**
+- [x] **Step 3: Build client**
 
 ```bash
 cd apps/client && npx vite build 2>&1 | tail -5
@@ -2255,7 +2255,7 @@ cd apps/client && npx vite build 2>&1 | tail -5
 
 Expected: `✓ built in`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/client/src/components/settings/ExportTab.tsx \
@@ -2272,7 +2272,7 @@ git commit -m "feat(client): ExportTab + RetentionTab components"
 
 Gateway endpoint `GET /admin/ai-usage/summary` already exists (`AdminAiUsageController`). No new backend. Tab is read-only — just fetches and displays the summary.
 
-- [ ] **Step 1: Add `useAiUsageSummary` hook to `admin.ts`**
+- [x] **Step 1: Add `useAiUsageSummary` hook to `admin.ts`**
 
 Append to `apps/client/src/queries/admin.ts`:
 
@@ -2297,7 +2297,7 @@ export function useAiUsageSummary(range: AiUsageRange = '7d') {
 }
 ```
 
-- [ ] **Step 2: Create `AiUsageTab.tsx`**
+- [x] **Step 2: Create `AiUsageTab.tsx`**
 
 Create `apps/client/src/components/settings/AiUsageTab.tsx`:
 
@@ -2397,7 +2397,7 @@ export function AiUsageTab() {
 }
 ```
 
-- [ ] **Step 3: Build client**
+- [x] **Step 3: Build client**
 
 ```bash
 cd apps/client && npx vite build 2>&1 | tail -5
@@ -2405,7 +2405,7 @@ cd apps/client && npx vite build 2>&1 | tail -5
 
 Expected: `✓ built in`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/client/src/queries/admin.ts \
@@ -2424,7 +2424,7 @@ git commit -m "feat(client): AiUsageTab — read-only AI usage summary with rang
 - Modify: `libs/template-shared/src/lib/i18n/locales/he.ts`
 - Modify: `libs/template-shared/src/lib/i18n/locales/es.ts`
 
-- [ ] **Step 1: Update `settings.tsx` — replace placeholder with actual components**
+- [x] **Step 1: Update `settings.tsx` — replace placeholder with actual components**
 
 In `apps/client/src/routes/_dashboard/settings.tsx`, replace the full file with:
 
@@ -2510,7 +2510,7 @@ export const Route = createFileRoute('/_dashboard/settings')({
 });
 ```
 
-- [ ] **Step 2: Add i18n keys to `en.ts`**
+- [x] **Step 2: Add i18n keys to `en.ts`**
 
 In `libs/template-shared/src/lib/i18n/locales/en.ts`, find the `settings:` block and add the following sections after `notifications`:
 
@@ -2588,7 +2588,7 @@ Also ensure `common` has these keys (add if missing):
     saving: 'Saving…',
 ```
 
-- [ ] **Step 3: Add same keys to `ru.ts`**
+- [x] **Step 3: Add same keys to `ru.ts`**
 
 In `libs/template-shared/src/lib/i18n/locales/ru.ts`, add Russian translations:
 
@@ -2646,7 +2646,7 @@ In `libs/template-shared/src/lib/i18n/locales/ru.ts`, add Russian translations:
     },
 ```
 
-- [ ] **Step 4: Add same keys to `he.ts`**
+- [x] **Step 4: Add same keys to `he.ts`**
 
 In `libs/template-shared/src/lib/i18n/locales/he.ts`, add Hebrew translations:
 
@@ -2704,7 +2704,7 @@ In `libs/template-shared/src/lib/i18n/locales/he.ts`, add Hebrew translations:
     },
 ```
 
-- [ ] **Step 5: Add same keys to `es.ts`**
+- [x] **Step 5: Add same keys to `es.ts`**
 
 In `libs/template-shared/src/lib/i18n/locales/es.ts`, add Spanish translations:
 
@@ -2762,7 +2762,7 @@ In `libs/template-shared/src/lib/i18n/locales/es.ts`, add Spanish translations:
     },
 ```
 
-- [ ] **Step 6: Build client**
+- [x] **Step 6: Build client**
 
 ```bash
 cd apps/client && npx vite build 2>&1 | tail -5
@@ -2770,7 +2770,7 @@ cd apps/client && npx vite build 2>&1 | tail -5
 
 Expected: `✓ built in`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/client/src/routes/_dashboard/settings.tsx \
@@ -2788,7 +2788,7 @@ git commit -m "feat(client): wire admin settings tabs + i18n keys for all 4 loca
 **Files:**
 - Modify: `apps/api/src/app/notes/notes.controller.ts`
 
-- [ ] **Step 1: Make `transitionWorkflow` async and emit audit event**
+- [x] **Step 1: Make `transitionWorkflow` async and emit audit event**
 
 In `apps/api/src/app/notes/notes.controller.ts`, find the `transitionWorkflow` method and replace it:
 
@@ -2816,7 +2816,7 @@ In `apps/api/src/app/notes/notes.controller.ts`, find the `transitionWorkflow` m
 
 Note: the existing signature does not take `@Req()`. You need to add it. Also add `VerifiedToken` to the imports from `@icore/shared` if not already there.
 
-- [ ] **Step 2: Build API**
+- [x] **Step 2: Build API**
 
 ```bash
 npx nx run api:build
@@ -2824,7 +2824,7 @@ npx nx run api:build
 
 Expected: `webpack compiled successfully`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/api/src/app/notes/notes.controller.ts

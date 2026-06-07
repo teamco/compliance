@@ -66,3 +66,5 @@ gha-creds-*.json
 .claude/settings.local.jsontmp/
 .playwright-mcp/
 /.idea/
+/.superpowers/
+/.tanstack/
