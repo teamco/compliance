@@ -96,13 +96,10 @@ describe('AuthController (gateway) — magic-link', () => {
 describe('AuthController (gateway) — OAuth', () => {
   it('oauthStart sets a state cookie and redirects to the provider URL', async () => {
     const client = makeAuthClient();
-    const controller = new AuthController(client, makeConfig({ API_ORIGIN: 'http://api' }));
+    const controller = new AuthController(client, makeConfig({ CLIENT_ORIGIN: 'http://client' }));
     const res = makeRes();
     await controller.oauthStart('google', res as unknown as import('express').Response);
-    expect(client.startOAuth).toHaveBeenCalledWith(
-      'google',
-      'http://api/api/auth/oauth/google/callback',
-    );
+    expect(client.startOAuth).toHaveBeenCalledWith('google', 'http://client/auth/oauth/callback');
     expect(res.cookies['oauth_state']).toBe('abc');
     expect(res.redirectedTo).toBe('https://provider.example.com/auth?state=abc');
   });
