@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { createFileRoute } from '@tanstack/react-router';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useFrameworks, useStandardsDocuments, useStandardsDocument } from '../../queries/notes';
 import { ControlsTable } from '../../components/controls/ControlsTable';
@@ -24,24 +24,29 @@ function ControlsPage() {
     [documents],
   );
 
-  const [docId, setDocId] = useState(searchDocId ?? '');
   const [selectedFwIds, setSelectedFwIds] = useState<Set<string>>(new Set());
   const [showGapsOnly, setShowGapsOnly] = useState(false);
+  const fwInitialized = useRef(false);
 
-  // Pre-select all frameworks once loaded
+  const navigate = useNavigate();
+
+  const docId = searchDocId ?? '';
+
+  // Pre-select all frameworks on first load only
   useEffect(() => {
-    if (frameworks.length > 0 && selectedFwIds.size === 0) {
+    if (!fwInitialized.current && frameworks.length > 0) {
+      fwInitialized.current = true;
       setSelectedFwIds(new Set(frameworks.map((f) => f.id)));
     }
-  }, [frameworks, selectedFwIds.size]);
+  }, [frameworks]);
 
-  // Auto-select first completed doc if none selected
+  // Auto-navigate to first completed doc if none selected
   useEffect(() => {
-    if (!docId && completedDocs.length > 0) {
+    if (!searchDocId && completedDocs.length > 0) {
       const first = completedDocs[0];
-      if (first) setDocId(first.id);
+      if (first) void navigate({ to: '/controls', search: { docId: first.id }, replace: true });
     }
-  }, [completedDocs, docId]);
+  }, [completedDocs, searchDocId, navigate]);
 
   const { data: doc, isPending: docLoading } = useStandardsDocument(docId);
 
@@ -78,7 +83,7 @@ function ControlsPage() {
         {/* Document selector */}
         <select
           value={docId}
-          onChange={(e) => setDocId(e.target.value)}
+          onChange={(e) => void navigate({ to: '/controls', search: { docId: e.target.value } })}
           className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40"
         >
           {completedDocs.length === 0 && (
