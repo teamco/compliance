@@ -84,7 +84,7 @@
     "typescript-eslint": "^8.60.1",
     "vite": "^8.0.16",
     "vitest": "~4.1.8",
-    "webpack-cli": "^5.1.4"
+    "webpack-cli": "^7.0.3"
   },
   "lint-staged": {
     "*.{json,md}": [
