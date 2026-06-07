@@ -1,9 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useAuthStore } from '@icore/template-shared';
+import { createFileRoute } from '@tanstack/react-router';
+import { LandingPage } from '@/features/landing/LandingPage';
 
 export const Route = createFileRoute('/')({
-  beforeLoad: () => {
-    const token = useAuthStore.getState().accessToken;
-    throw redirect({ to: token ? '/dashboard' : '/login' });
-  },
+  component: LandingPage,
 });

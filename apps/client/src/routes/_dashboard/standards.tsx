@@ -10,6 +10,7 @@ import {
   useGenerateStandards,
   type StandardsDocument,
   type StandardsStatus,
+  type WorkflowStatus,
 } from '@/queries/notes';
 import { Button } from '@/components/ui/button';
 
@@ -24,6 +25,24 @@ const STATUS_COLOR: Record<StandardsStatus, string> = {
   pending: 'text-amber-500',
   failed: 'text-red-500',
 };
+
+const WORKFLOW_COLOR: Record<WorkflowStatus, string> = {
+  draft: 'bg-muted text-muted-foreground border-border',
+  in_review: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  published: 'bg-green-500/10 text-green-500 border-green-500/20',
+};
+
+function WorkflowBadge({ status }: { status: WorkflowStatus }) {
+  const { t } = useTranslation();
+  return (
+    <span
+      className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${WORKFLOW_COLOR[status]}`}
+    >
+      {t(`standards.workflow.${status}`)}
+    </span>
+  );
+}
 
 function DocumentCard({
   doc,
@@ -58,6 +77,7 @@ function DocumentCard({
           <Icon size={13} />
           <span>{t(`standards.status.${doc.status}`)}</span>
         </div>
+        <WorkflowBadge status={doc.workflowStatus ?? 'draft'} />
         {doc.status === 'completed' && (
           <Link
             to="/standards/$id"
@@ -111,7 +131,7 @@ function StandardsPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-[1000px]">
+    <div className="p-6 space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">{t('standards.title')}</h1>
         <p className="text-sm text-muted-foreground mt-0.5">{t('standards.subtitle')}</p>

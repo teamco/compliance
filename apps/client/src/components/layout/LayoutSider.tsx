@@ -65,7 +65,7 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.frameworks', to: '/frameworks', icon: BookOpen },
       { labelKey: 'nav.org', to: '/org', icon: Building2 },
       { labelKey: 'nav.standards', to: '/standards', icon: ScrollText },
-      { labelKey: 'nav.controls', to: '/controls', icon: Shield, soon: true },
+      { labelKey: 'nav.controls', to: '/controls', icon: Shield },
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
     ],
   },
@@ -101,7 +101,7 @@ export function LayoutSider() {
         </div>
         {!collapsed && (
           <span className="font-semibold text-sm text-foreground tracking-tight">
-            Compliance<span className="text-green-500">IQ</span>
+            Compliance<span className="text-green-500 ml-0.5">IQ</span>
           </span>
         )}
       </div>
@@ -171,21 +171,20 @@ export function LayoutSider() {
           <UserCircle size={16} className="shrink-0" />
           {!collapsed && <span className="flex-1 truncate">{t('nav.profile')}</span>}
         </Link>
-        <button
-          type="button"
-          title={collapsed ? 'Settings' : undefined}
-          className="w-full flex items-center gap-2.5 px-2 py-2 rounded-md text-sm text-muted-foreground/30 cursor-not-allowed"
+        <Link
+          to="/settings"
+          title={collapsed ? t('nav.settings') : undefined}
+          aria-label={t('nav.settings')}
+          className={[
+            'flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors duration-150 cursor-pointer',
+            isActive('/settings')
+              ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+          ].join(' ')}
         >
           <Settings size={16} className="shrink-0" />
-          {!collapsed && (
-            <>
-              <span className="flex-1 text-left truncate">{t('nav.settings')}</span>
-              <span className="text-[9px] font-medium uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted text-muted-foreground/50">
-                {t('common.soon')}
-              </span>
-            </>
-          )}
-        </button>
+          {!collapsed && <span className="flex-1 truncate">{t('nav.settings')}</span>}
+        </Link>
       </div>
 
       {/* Collapse toggle */}
