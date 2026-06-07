@@ -41,6 +41,7 @@ vitest.config.*.timestamp*
 
 **/**.d.ts
 **/**.js
+!**/webpack.config.js
 **/**.js.map
 **/__screenshots__/**/**.png
 
