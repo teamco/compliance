@@ -126,6 +126,31 @@ export interface NotesStrategy {
   getChatHistory(userId: string, limit?: number): Promise<AiChatMessage[]>;
   saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage>;
   clearChatHistory(userId: string): Promise<{ ok: boolean }>;
+
+  // Audit log
+  logAuditEvent(
+    userId: string,
+    action: string,
+    resourceType?: string,
+    resourceId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void>;
+  listAuditLogs(userId: string, filters?: AuditLogFilters): Promise<AuditLogPage>;
+
+  // API keys
+  createApiKey(userId: string, name: string, expiresAt?: string): Promise<ApiKeyWithSecret>;
+  listApiKeys(userId: string): Promise<ApiKey[]>;
+  revokeApiKey(id: string, userId: string): Promise<{ ok: boolean }>;
+
+  // Webhooks
+  createWebhook(userId: string, input: WebhookInput): Promise<Webhook>;
+  listWebhooks(userId: string): Promise<Webhook[]>;
+  updateWebhook(id: string, userId: string, patch: Partial<WebhookInput> & { active?: boolean }): Promise<Webhook>;
+  deleteWebhook(id: string, userId: string): Promise<{ ok: boolean }>;
+
+  // Retention
+  getRetentionPrefs(userId: string): Promise<RetentionPrefsPayload>;
+  updateRetentionPrefs(userId: string, patch: Partial<RetentionPrefsPayload>): Promise<RetentionPrefsPayload>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
@@ -180,4 +205,90 @@ export const DEFAULT_USER_PREFS: UserPrefsPayload = {
   theme: 'system',
   language: 'en',
   notificationPrefs: DEFAULT_NOTIFICATION_PREFS,
+};
+
+// ─── Admin types ───────────────────────────────────────────────────────────
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  action: string;
+  resourceType: string | null;
+  resourceId: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AuditLogFilters {
+  page?: number;
+  limit?: number;
+  action?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface AuditLogPage {
+  items: AuditLog[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface ApiKey {
+  id: string;
+  userId: string;
+  name: string;
+  keyPrefix: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface ApiKeyWithSecret extends ApiKey {
+  fullKey: string;
+}
+
+export type WebhookEvent =
+  | 'workflow.submitted'
+  | 'workflow.approved'
+  | 'workflow.rejected'
+  | 'workflow.published'
+  | 'ai.standards.generated'
+  | 'ai.gap.done';
+
+export const WEBHOOK_EVENTS: WebhookEvent[] = [
+  'workflow.submitted',
+  'workflow.approved',
+  'workflow.rejected',
+  'workflow.published',
+  'ai.standards.generated',
+  'ai.gap.done',
+];
+
+export interface Webhook {
+  id: string;
+  userId: string;
+  url: string;
+  events: WebhookEvent[];
+  secret: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface WebhookInput {
+  url: string;
+  events: WebhookEvent[];
+}
+
+export interface RetentionPrefsPayload {
+  auditLogDays: number;
+  chatHistoryDays: number;
+  notificationDays: number;
+}
+
+export const DEFAULT_RETENTION_PREFS: RetentionPrefsPayload = {
+  auditLogDays: 90,
+  chatHistoryDays: 365,
+  notificationDays: 30,
 };
