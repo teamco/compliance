@@ -3,16 +3,23 @@ import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import type {
   AiChatMessage,
+  ApiKey,
+  ApiKeyWithSecret,
+  AuditLogFilters,
+  AuditLogPage,
   ControlPatch,
   Framework,
   FrameworkControl,
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  RetentionPrefsPayload,
   StandardControl,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
+  Webhook,
+  WebhookInput,
   WorkflowTransition,
 } from '@icore/shared';
 import { NOTES_CLIENT } from './notes-client.tokens';
@@ -134,6 +141,84 @@ export class NotesClientService {
   clearChatHistory(userId: string): Promise<{ ok: boolean }> {
     return firstValueFrom(
       this.client.send<{ ok: boolean }>('chat.history.clear', { userId }),
+    );
+  }
+
+  // ─── Admin ─────────────────────────────────────────────────────────────────
+
+  logAuditEvent(
+    userId: string,
+    action: string,
+    resourceType?: string,
+    resourceId?: string,
+    metadata?: Record<string, unknown>,
+  ): Promise<void> {
+    return firstValueFrom(
+      this.client.send<void>('admin.audit.log', { userId, action, resourceType, resourceId, metadata }),
+    );
+  }
+
+  listAuditLogs(userId: string, filters?: AuditLogFilters): Promise<AuditLogPage> {
+    return firstValueFrom(
+      this.client.send<AuditLogPage>('admin.audit.list', { userId, filters }),
+    );
+  }
+
+  createApiKey(userId: string, name: string, expiresAt?: string): Promise<ApiKeyWithSecret> {
+    return firstValueFrom(
+      this.client.send<ApiKeyWithSecret>('admin.apikeys.create', { userId, name, expiresAt }),
+    );
+  }
+
+  listApiKeys(userId: string): Promise<ApiKey[]> {
+    return firstValueFrom(
+      this.client.send<ApiKey[]>('admin.apikeys.list', { userId }),
+    );
+  }
+
+  revokeApiKey(id: string, userId: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('admin.apikeys.revoke', { id, userId }),
+    );
+  }
+
+  createWebhook(userId: string, input: WebhookInput): Promise<Webhook> {
+    return firstValueFrom(
+      this.client.send<Webhook>('admin.webhooks.create', { userId, input }),
+    );
+  }
+
+  listWebhooks(userId: string): Promise<Webhook[]> {
+    return firstValueFrom(
+      this.client.send<Webhook[]>('admin.webhooks.list', { userId }),
+    );
+  }
+
+  updateWebhook(
+    id: string,
+    userId: string,
+    patch: Partial<WebhookInput> & { active?: boolean },
+  ): Promise<Webhook> {
+    return firstValueFrom(
+      this.client.send<Webhook>('admin.webhooks.update', { id, userId, patch }),
+    );
+  }
+
+  deleteWebhook(id: string, userId: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('admin.webhooks.delete', { id, userId }),
+    );
+  }
+
+  getRetentionPrefs(userId: string): Promise<RetentionPrefsPayload> {
+    return firstValueFrom(
+      this.client.send<RetentionPrefsPayload>('admin.retention.get', { userId }),
+    );
+  }
+
+  updateRetentionPrefs(userId: string, patch: Partial<RetentionPrefsPayload>): Promise<RetentionPrefsPayload> {
+    return firstValueFrom(
+      this.client.send<RetentionPrefsPayload>('admin.retention.update', { userId, patch }),
     );
   }
 }
