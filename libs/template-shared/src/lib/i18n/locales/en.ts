@@ -5,6 +5,7 @@ export const en = {
     update: 'Update',
     cancel: 'Cancel',
     logout: 'Log out',
+    lastLogin: 'Last login',
     or: 'or',
     soon: 'soon',
     live: 'Live',
@@ -202,6 +203,14 @@ export const en = {
     welcomeTitle: "Hi, I'm your AI Assistant",
     welcomeBody:
       "Ask me anything about compliance frameworks, controls, or your organization's security posture.",
+  },
+  controls: {
+    noDocuments: 'No completed documents',
+    frameworks: 'frameworks',
+    showGapsOnly: 'Show gaps only',
+    controlsMapped: 'controls mapped',
+    generateFirst: 'Generate a standards document first to view compliance mapping.',
+    selectDocument: 'Select a document above to view the compliance matrix.',
   },
   error: {
     accessDenied: 'Access denied',

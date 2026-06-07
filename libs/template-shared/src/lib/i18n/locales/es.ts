@@ -5,6 +5,7 @@ export const es = {
     update: 'Actualizar',
     cancel: 'Cancelar',
     logout: 'Cerrar sesión',
+    lastLogin: 'Último acceso',
     or: 'o',
     soon: 'pronto',
     live: 'En vivo',
@@ -202,6 +203,14 @@ export const es = {
     welcomeTitle: 'Hola, soy tu Asistente AI',
     welcomeBody:
       'Pregúntame sobre marcos de cumplimiento, controles o la postura de seguridad de tu organización.',
+  },
+  controls: {
+    noDocuments: 'Sin documentos completados',
+    frameworks: 'marcos',
+    showGapsOnly: 'Mostrar solo brechas',
+    controlsMapped: 'controles mapeados',
+    generateFirst: 'Genera un documento de estándares primero para ver el mapeo.',
+    selectDocument: 'Selecciona un documento arriba para ver la matriz de cumplimiento.',
   },
   error: {
     accessDenied: 'Acceso denegado',

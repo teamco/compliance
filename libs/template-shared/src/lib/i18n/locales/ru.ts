@@ -5,6 +5,7 @@ export const ru = {
     update: 'Обновить',
     cancel: 'Отмена',
     logout: 'Выйти',
+    lastLogin: 'Последний вход',
     or: 'или',
     soon: 'скоро',
     live: 'Онлайн',
@@ -206,6 +207,14 @@ export const ru = {
     welcomeTitle: 'Привет, я AI Ассистент',
     welcomeBody:
       'Спрашивайте о фреймворках, контролях или состоянии безопасности вашей организации.',
+  },
+  controls: {
+    noDocuments: 'Нет завершённых документов',
+    frameworks: 'фреймворков',
+    showGapsOnly: 'Только пробелы',
+    controlsMapped: 'контролов покрыто',
+    generateFirst: 'Сначала создайте документ стандартов для просмотра маппинга.',
+    selectDocument: 'Выберите документ выше для просмотра матрицы соответствия.',
   },
   error: {
     accessDenied: 'Доступ запрещён',

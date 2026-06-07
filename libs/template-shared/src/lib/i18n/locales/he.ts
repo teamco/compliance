@@ -5,6 +5,7 @@ export const he = {
     update: 'עדכן',
     cancel: 'ביטול',
     logout: 'יציאה',
+    lastLogin: 'כניסה אחרונה',
     or: 'או',
     soon: 'בקרוב',
     live: 'חי',
@@ -201,6 +202,14 @@ export const he = {
     clearChat: 'נקה שיחה',
     welcomeTitle: 'שלום, אני העוזר AI שלך',
     welcomeBody: 'שאל אותי על מסגרות תאימות, בקרות או מצב האבטחה של הארגון.',
+  },
+  controls: {
+    noDocuments: 'אין מסמכים מושלמים',
+    frameworks: 'מסגרות',
+    showGapsOnly: 'הצג פערים בלבד',
+    controlsMapped: 'פקדים ממופים',
+    generateFirst: 'צור מסמך תקנים תחילה לצפייה במיפוי התאימות.',
+    selectDocument: 'בחר מסמך למעלה לצפייה במטריצת התאימות.',
   },
   error: {
     accessDenied: 'גישה נדחתה',
