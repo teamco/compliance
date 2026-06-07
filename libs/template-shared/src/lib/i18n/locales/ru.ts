@@ -193,6 +193,7 @@ export const ru = {
     controlsSubtitle: 'Укажите статус каждого контроля',
     analyze: 'Анализировать пробелы',
     analyzing: 'Анализ…',
+    analyzingHint: 'AI проверяет ваши контроли и результаты',
     results: 'Результаты анализа',
     riskScore: 'Оценка риска',
     summary: 'Резюме',

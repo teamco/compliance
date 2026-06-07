@@ -193,6 +193,7 @@ export const es = {
     controlsSubtitle: 'Establece el estado de cada control',
     analyze: 'Analizar brechas',
     analyzing: 'Analizando…',
+    analyzingHint: 'La IA está revisando tus controles y hallazgos',
     results: 'Resultados del análisis',
     riskScore: 'Puntuación de riesgo',
     summary: 'Resumen ejecutivo',

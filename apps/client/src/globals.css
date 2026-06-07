@@ -23,7 +23,7 @@
 /* ── iSubscribe widget overrides ─────────────────────────────────────── */
 .isw-no-price [class*='module_price'],
 .isw-no-price [class*='module_duration'] {
-  display: none
+  display: none;
 }
 
 .isw-pricing-grid {
@@ -31,14 +31,25 @@
   max-width: 100% !important;
 }
 @media (max-width: 900px) {
-  .isw-pricing-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .isw-pricing-grid > *:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .isw-pricing-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .isw-pricing-grid > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 @media (max-width: 600px) {
-  .isw-pricing-grid { grid-template-columns: 1fr !important; }
+  .isw-pricing-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @layer base {
+  /* Give native selects breathing room for the browser chevron */
+  select {
+    padding-inline-end: 2rem;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
