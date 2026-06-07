@@ -35,6 +35,21 @@ const TOKEN_BRIDGE: CSSProperties & Record<`--${string}`, string> = {
   '--isw-button-border-hover': 'var(--color-muted-foreground)',
 };
 
+/* Featured plan override — green highlight matching the landing accent */
+const FEATURED_OVERRIDE: CSSProperties & Record<string, string> = {
+  '--isw-accent': 'var(--color-primary)',
+  '--isw-accent-hover': '#16a34a',
+  '--isw-accent-text': 'var(--color-primary-foreground)',
+  '--isw-button-bg': 'var(--color-primary)',
+  '--isw-button-color': 'var(--color-primary-foreground)',
+  '--isw-button-border': 'var(--color-primary)',
+  '--isw-button-bg-hover': '#16a34a',
+  '--isw-button-border-hover': '#16a34a',
+  borderColor: 'rgba(34,197,94,0.4)',
+  background: 'radial-gradient(circle at top, rgba(34,197,94,0.08), transparent 60%), var(--color-background)',
+  boxShadow: '0 0 0 1px rgba(34,197,94,0.25), 0 8px 32px rgba(34,197,94,0.08)',
+};
+
 export function Pricing() {
   const apiKey = import.meta.env.VITE_PUBLIC_TENANT_KEY as string | undefined;
   const apiBase =
@@ -62,6 +77,17 @@ export function Pricing() {
                 loader: 'text-center py-16 text-sm text-muted-foreground',
                 error: 'text-center py-16 text-sm text-destructive',
                 empty: 'text-center py-16 text-sm text-muted-foreground',
+              }}
+              subscriptionOverrides={{
+                // cspell:disable-next-line
+                hhIbUDJnDNklg0kszQ2a: {
+                  badge: 'Most popular',
+                  style: FEATURED_OVERRIDE,
+                },
+                // cspell:disable-next-line
+                '7NDgQ0ebQsiRj2IMQw07': {
+                  buttonText: 'pricing.starter.cta',
+                },
               }}
               onSubscribe={(sub) => console.log('subscribed:', sub)}
             />
