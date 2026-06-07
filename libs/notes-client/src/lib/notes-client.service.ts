@@ -7,9 +7,11 @@ import type {
   FrameworkControl,
   Organization,
   OrganizationInput,
+  PushSubscriptionPayload,
   StandardControl,
   StandardsDocument,
   StandardsSnapshot,
+  UserPrefsPayload,
   WorkflowTransition,
 } from '@icore/shared';
 import { NOTES_CLIENT } from './notes-client.tokens';
@@ -89,6 +91,30 @@ export class NotesClientService {
   getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null> {
     return firstValueFrom(
       this.client.send<StandardsSnapshot | null>('notes.standards.snapshots.get', { snapshotId }),
+    );
+  }
+
+  getUserPrefs(userId: string): Promise<UserPrefsPayload> {
+    return firstValueFrom(
+      this.client.send<UserPrefsPayload>('settings.prefs.get', { userId }),
+    );
+  }
+
+  updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload> {
+    return firstValueFrom(
+      this.client.send<UserPrefsPayload>('settings.prefs.update', { userId, patch }),
+    );
+  }
+
+  savePushSubscription(userId: string, sub: PushSubscriptionPayload): Promise<{ ok: boolean }> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('settings.push.save', { userId, sub }),
+    );
+  }
+
+  removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('settings.push.remove', { userId, endpoint }),
     );
   }
 }
