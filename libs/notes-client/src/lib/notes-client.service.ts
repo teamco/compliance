@@ -13,6 +13,8 @@ import type {
   ControlPatch,
   Framework,
   FrameworkControl,
+  GapAnalysis,
+  GapAnalysisResult,
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
@@ -45,12 +47,20 @@ export class NotesClientService {
     );
   }
 
-  getOrganization(userId: string): Promise<Organization | null> {
-    return firstValueFrom(this.client.send<Organization | null>('notes.org.get', { userId }));
+  listOrganizations(userId: string): Promise<Organization[]> {
+    return firstValueFrom(this.client.send<Organization[]>('notes.org.list', { userId }));
   }
 
-  upsertOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
-    return firstValueFrom(this.client.send<Organization>('notes.org.upsert', { userId, data }));
+  createOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
+    return firstValueFrom(this.client.send<Organization>('notes.org.create', { userId, data }));
+  }
+
+  getOrganizationById(orgId: string): Promise<Organization | null> {
+    return firstValueFrom(this.client.send<Organization | null>('notes.org.get-by-id', { orgId }));
+  }
+
+  updateOrganization(orgId: string, data: OrganizationInput): Promise<Organization> {
+    return firstValueFrom(this.client.send<Organization>('notes.org.update', { orgId, data }));
   }
 
   createStandardsDocument(
@@ -75,10 +85,8 @@ export class NotesClientService {
     );
   }
 
-  listStandardsDocuments(userId: string): Promise<StandardsDocument[]> {
-    return firstValueFrom(
-      this.client.send<StandardsDocument[]>('notes.standards.list', { userId }),
-    );
+  listStandardsDocuments(orgId: string): Promise<StandardsDocument[]> {
+    return firstValueFrom(this.client.send<StandardsDocument[]>('notes.standards.list', { orgId }));
   }
 
   transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
@@ -220,6 +228,25 @@ export class NotesClientService {
     return firstValueFrom(
       this.client.send<RetentionPrefsPayload>('admin.retention.update', { userId, patch }),
     );
+  }
+
+  saveGapAnalysis(
+    orgId: string,
+    userId: string,
+    docId: string | null,
+    result: GapAnalysisResult,
+  ): Promise<GapAnalysis> {
+    return firstValueFrom(
+      this.client.send<GapAnalysis>('notes.gap.save', { orgId, userId, docId, result }),
+    );
+  }
+
+  listGapAnalyses(orgId: string): Promise<GapAnalysis[]> {
+    return firstValueFrom(this.client.send<GapAnalysis[]>('notes.gap.list', { orgId }));
+  }
+
+  getGapAnalysis(id: string): Promise<GapAnalysis | null> {
+    return firstValueFrom(this.client.send<GapAnalysis | null>('notes.gap.get', { id }));
   }
 
   // ─── AI usage ─────────────────────────────────────────────────────────────
