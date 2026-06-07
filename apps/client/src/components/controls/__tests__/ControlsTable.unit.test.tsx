@@ -3,17 +3,41 @@ import { describe, it, expect } from 'vitest';
 import { ControlsTable } from '../ControlsTable';
 import type { Framework, StandardControl } from '../../../queries/notes';
 
-const fw1: Framework = { id: 'fw-1', slug: 'soc2', name: 'SOC 2', description: '', version: '2017', category: 'security' };
-const fw2: Framework = { id: 'fw-2', slug: 'iso27001', name: 'ISO 27001', description: '', version: '2022', category: 'security' };
+const fw1: Framework = {
+  id: 'fw-1',
+  slug: 'soc2',
+  name: 'SOC 2',
+  description: '',
+  version: '2017',
+  category: 'security',
+};
+const fw2: Framework = {
+  id: 'fw-2',
+  slug: 'iso27001',
+  name: 'ISO 27001',
+  description: '',
+  version: '2022',
+  category: 'security',
+};
 
 const mapped: StandardControl = {
-  code: 'AC-01', title: 'Access Control Policy', description: '', implementation: '',
-  evidence: [], priority: 'critical', category: 'Access Control',
+  code: 'AC-01',
+  title: 'Access Control Policy',
+  description: '',
+  implementation: '',
+  evidence: [],
+  priority: 'critical',
+  category: 'Access Control',
   frameworkMappings: [{ frameworkId: 'fw-1', controlCode: 'CC6.1' }],
 };
 const unmapped: StandardControl = {
-  code: 'AC-02', title: 'Account Management', description: '', implementation: '',
-  evidence: [], priority: 'high', category: 'Access Control',
+  code: 'AC-02',
+  title: 'Account Management',
+  description: '',
+  implementation: '',
+  evidence: [],
+  priority: 'high',
+  category: 'Access Control',
   frameworkMappings: [],
 };
 
@@ -31,13 +55,15 @@ describe('ControlsTable', () => {
 
   it('renders a dash cell for unmapped framework', () => {
     const { container } = render(
-      <ControlsTable controls={[mapped]} frameworks={[fw2]} showGapsOnly={false} />
+      <ControlsTable controls={[mapped]} frameworks={[fw2]} showGapsOnly={false} />,
     );
     expect(container.querySelector('[data-unmapped]')).toBeTruthy();
   });
 
   it('shows gap rows when showGapsOnly=true and control is not fully covered', () => {
-    render(<ControlsTable controls={[mapped, unmapped]} frameworks={[fw1, fw2]} showGapsOnly={true} />);
+    render(
+      <ControlsTable controls={[mapped, unmapped]} frameworks={[fw1, fw2]} showGapsOnly={true} />,
+    );
     expect(screen.getByText('AC-01')).toBeTruthy();
     expect(screen.getByText('AC-02')).toBeTruthy();
   });

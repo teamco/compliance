@@ -33,10 +33,18 @@ export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTa
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-surface">
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Code</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Title</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Priority</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Category</th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Code
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Title
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Priority
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Category
+            </th>
             {frameworks.map((fw) => (
               <th
                 key={fw.id}
@@ -56,7 +64,9 @@ export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTa
               <td className="px-3 py-2.5 font-mono text-xs text-foreground whitespace-nowrap">
                 {control.code}
               </td>
-              <td className="px-3 py-2.5 text-foreground max-w-[260px] truncate">{control.title}</td>
+              <td className="px-3 py-2.5 text-foreground max-w-[260px] truncate">
+                {control.title}
+              </td>
               <td className="px-3 py-2.5">
                 <span
                   className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${PRIORITY_CLASS[control.priority]}`}
