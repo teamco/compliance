@@ -17,6 +17,7 @@ export enum Subject {
   Framework = 'Framework',
   Control = 'Control',
   GapAnalysis = 'GapAnalysis',
+  Organization = 'Organization',
 }
 
 export type AbilityAction = `${Action}`;
@@ -29,4 +30,9 @@ export interface NoteSubject {
   ownerId: string;
 }
 
-export type AbilitySubject = InferSubjects<NoteSubject> | `${Subject}`;
+export interface OrganizationSubject {
+  id: string;
+  userId: string;
+}
+
+export type AbilitySubject = InferSubjects<NoteSubject | OrganizationSubject> | `${Subject}`;

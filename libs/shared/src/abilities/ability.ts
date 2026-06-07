@@ -19,6 +19,9 @@ export function defineAbilitiesFor(user: AbilityUser | null): AppAbility {
     can('read', 'Note', { ownerId: user.id } as never);
     can('create', 'Note');
     can(['update', 'delete'], 'Note', { ownerId: user.id } as never);
+    can('read', 'Organization', { userId: user.id } as never);
+    can('create', 'Organization');
+    can(['update', 'delete'], 'Organization', { userId: user.id } as never);
   }
   return build();
 }
