@@ -24,13 +24,7 @@ export function AdminAiUsageContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">AI Usage</h1>
-          <p className="text-sm text-muted-foreground">
-            Monitor Anthropic API consumption across the platform
-          </p>
-        </div>
+      <div className="flex items-center justify-end">
         <RangeSelector value={range} onChange={setRange} />
       </div>
 
