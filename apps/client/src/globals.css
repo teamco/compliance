@@ -23,15 +23,8 @@
 /* ── iSubscribe widget overrides ─────────────────────────────────────── */
 .isw-no-price [class*='module_price'],
 .isw-no-price [class*='module_duration'] {
-  visibility: hidden;
+  display: none
 }
-@media (max-width: 900px) {
-  .isw-no-price [class*='module_price'],
-  .isw-no-price [class*='module_duration'] {
-    display: none;
-  }
-}
-
 
 .isw-pricing-grid {
   grid-template-columns: repeat(3, 1fr) !important;
