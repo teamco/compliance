@@ -28,31 +28,38 @@ export function ActivityChart({ data, loading }: ActivityChartProps) {
   }));
 
   return (
-    <ResponsiveContainer width="100%" height="100%">
-      <LineChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-        <XAxis dataKey="ts" tick={{ fontSize: 11 }} />
-        <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
-        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
-        <Tooltip />
-        <Legend />
-        <Line
-          yAxisId="left"
-          type="monotone"
-          dataKey="calls"
-          stroke="#3b82f6"
-          dot={false}
-          name="Calls"
-        />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="tokens"
-          stroke="#f59e0b"
-          dot={false}
-          name="Tokens"
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="h-56 min-w-0 sm:h-64">
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        minWidth={0}
+        initialDimension={{ width: 1, height: 256 }}
+      >
+        <LineChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+          <CartesianGrid yAxisId="left" strokeDasharray="3 3" stroke="var(--color-border)" />
+          <XAxis dataKey="ts" tick={{ fontSize: 11 }} />
+          <YAxis yAxisId="left" tick={{ fontSize: 11 }} />
+          <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11 }} />
+          <Tooltip />
+          <Legend />
+          <Line
+            yAxisId="left"
+            type="monotone"
+            dataKey="calls"
+            stroke="#3b82f6"
+            dot={false}
+            name="Calls"
+          />
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="tokens"
+            stroke="#f59e0b"
+            dot={false}
+            name="Tokens"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
