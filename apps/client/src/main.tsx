@@ -44,7 +44,12 @@ const applyTheme = (mode: 'light' | 'dark') => {
 applyTheme(useThemeStore.getState().mode);
 useThemeStore.subscribe((s) => applyTheme(s.mode));
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element not found');
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>

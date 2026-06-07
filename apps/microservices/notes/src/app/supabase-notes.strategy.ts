@@ -240,7 +240,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (!doc) throw new Error('doc_not_found');
     const idx = doc.controls.findIndex((c) => c.code === code);
     if (idx === -1) throw new Error('control_not_found');
-    const updated = { ...doc.controls[idx], ...patch };
+    const updated = { ...doc.controls[idx], ...patch } as StandardControl;
     const controls = [...doc.controls];
     controls[idx] = updated;
     const { error } = await this.db
