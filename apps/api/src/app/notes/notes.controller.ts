@@ -82,8 +82,17 @@ export class NotesController {
       },
     },
   })
-  transitionWorkflow(@Param('id') id: string, @Body() body: { transition: WorkflowTransition }) {
-    return this.notes.transitionWorkflow(id, body.transition);
+  async transitionWorkflow(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { transition: WorkflowTransition },
+  ) {
+    const result = await this.notes.transitionWorkflow(id, body.transition);
+    const uid = req.user?.uid;
+    if (uid) {
+      void this.notes.logAuditEvent(uid, `workflow.${body.transition}`, 'standards_document', id);
+    }
+    return result;
   }
 
   @Patch('standards/:id/controls/:code')
