@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { FakeNotesStrategy, missingEnv, formatEnvBanner } from '@icore/shared';
 import type { NotesStrategy } from '@icore/shared';
+import { AdminController } from './admin.controller';
 import { ChatHistoryController } from './chat-history.controller';
 import { NotesController } from './notes.controller';
 import { SettingsController } from './settings.controller';
@@ -25,7 +26,7 @@ const REQUIRED_ENV: Record<string, string[]> = {
       ],
     }),
   ],
-  controllers: [NotesController, SettingsController, ChatHistoryController],
+  controllers: [NotesController, SettingsController, ChatHistoryController, AdminController],
   providers: [
     {
       provide: 'NotesStrategy',
