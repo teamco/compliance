@@ -10,6 +10,7 @@
   "dependencies": {
     "@icore/ai-client": "*",
     "@icore/auth-client": "*",
+    "@icore/notes-client": "0.0.1",
     "@icore/shared": "*",
     "@icore/upload-client": "*",
     "@nestjs/common": "^11.1.24",
@@ -19,7 +20,6 @@
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/throttler": "^6.5.0",
     "cookie-parser": "^1.4.7",
-    "express": "^4.22.2",
-    "@icore/notes-client": "0.0.1"
+    "express": "^4.22.2"
   }
 }

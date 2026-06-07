@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
-import { Bot, Send, Trash2, Sparkles } from 'lucide-react';
+import { Bot, Send, Trash2, Sparkles, X } from 'lucide-react';
 import { useAuthStore } from '@icore/template-shared';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useChatHistory, useSaveChatMessage, useClearChatHistory } from '../../queries/settings';
 
 interface Message {
   id: string;
@@ -27,6 +30,19 @@ export function AiAssistant() {
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const historyLoaded = useRef(false);
+
+  const { data: history } = useChatHistory();
+  const { mutate: saveMsg } = useSaveChatMessage();
+  const { mutate: clearHistory } = useClearChatHistory();
+
+  // Load history into messages once on first open
+  useEffect(() => {
+    if (open && !historyLoaded.current && history && history.length > 0) {
+      historyLoaded.current = true;
+      setMessages(history.map((m) => ({ id: m.id, role: m.role, content: m.content })));
+    }
+  }, [open, history]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -48,8 +64,11 @@ export function AiAssistant() {
 
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setStreaming(true);
+    saveMsg({ role: 'user', content: text });
 
     abortRef.current = new AbortController();
+
+    let assistantContent = '';
 
     try {
       const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
@@ -97,6 +116,7 @@ export function AiAssistant() {
               break;
             }
             if (payload.token?.trim()) {
+              assistantContent += payload.token;
               setMessages((prev) =>
                 prev.map((m) =>
                   m.id === assistantId ? { ...m, content: m.content + payload.token } : m,
@@ -121,6 +141,9 @@ export function AiAssistant() {
         prev.map((m) => (m.id === assistantId ? { ...m, streaming: false } : m)),
       );
       setStreaming(false);
+      if (assistantContent) {
+        saveMsg({ role: 'assistant', content: assistantContent });
+      }
     }
   }
 
@@ -135,6 +158,8 @@ export function AiAssistant() {
     abortRef.current?.abort();
     setMessages([]);
     setStreaming(false);
+    historyLoaded.current = false;
+    clearHistory();
   }
 
   return (
@@ -149,9 +174,9 @@ export function AiAssistant() {
         </button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="flex flex-col p-0">
+      <SheetContent side="right" className="flex flex-col p-0 [&>button:last-child]:hidden">
         <SheetHeader>
-          <div className="flex items-center gap-2.5 pr-10">
+          <div className="flex items-center gap-2.5">
             <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 shrink-0">
               <Sparkles size={13} className="text-green-500" />
             </div>
@@ -159,16 +184,21 @@ export function AiAssistant() {
               <SheetTitle>{t('aiAssistant.title')}</SheetTitle>
               <p className="text-[10px] text-muted-foreground">{t('aiAssistant.subtitle')}</p>
             </div>
-            {messages.length > 0 && (
-              <button
-                type="button"
-                onClick={clearChat}
-                className="shrink-0 rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                title={t('aiAssistant.clearChat')}
-              >
-                <Trash2 size={14} />
-              </button>
-            )}
+            <div className="flex items-center gap-0.5 shrink-0">
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearChat}
+                  className="rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  title={t('aiAssistant.clearChat')}
+                >
+                  <Trash2 size={14} />
+                </button>
+              )}
+              <SheetClose className="rounded-md p-1 text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+                <X size={14} />
+              </SheetClose>
+            </div>
           </div>
         </SheetHeader>
 
@@ -203,15 +233,52 @@ export function AiAssistant() {
                         : 'bg-muted border border-border text-foreground rounded-bl-sm',
                     ].join(' ')}
                   >
-                    {msg.content ||
-                      (msg.streaming ? (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <span className="animate-pulse">{t('aiAssistant.thinking')}</span>
+                    {msg.content ? (
+                      msg.role === 'assistant' ? (
+                        <span className="block space-y-1.5">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              p: ({ children }) => <p className="text-xs leading-relaxed">{children}</p>,
+                              h1: ({ children }) => <h1 className="text-sm font-semibold mt-2 mb-1">{children}</h1>,
+                              h2: ({ children }) => <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>,
+                              h3: ({ children }) => <h3 className="text-xs font-semibold mt-1.5 mb-0.5">{children}</h3>,
+                              ul: ({ children }) => <ul className="text-xs list-disc pl-4 space-y-0.5">{children}</ul>,
+                              ol: ({ children }) => <ol className="text-xs list-decimal pl-4 space-y-0.5">{children}</ol>,
+                              li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                              code: ({ children, className }) =>
+                                className ? (
+                                  <code className="block bg-background/60 border border-border rounded px-2 py-1.5 text-[10px] font-mono overflow-x-auto whitespace-pre">{children}</code>
+                                ) : (
+                                  <code className="bg-background/60 border border-border rounded px-1 py-0.5 text-[10px] font-mono">{children}</code>
+                                ),
+                              pre: ({ children }) => <pre className="bg-background/60 border border-border rounded px-2 py-1.5 text-[10px] font-mono overflow-x-auto whitespace-pre">{children}</pre>,
+                              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                              em: ({ children }) => <em className="italic">{children}</em>,
+                              blockquote: ({ children }) => <blockquote className="border-l-2 border-green-500/50 pl-2 italic text-muted-foreground">{children}</blockquote>,
+                              a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-green-500 underline underline-offset-2 hover:text-green-400">{children}</a>,
+                              hr: () => <hr className="border-border my-1" />,
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                          {msg.streaming && (
+                            <span className="inline-block w-1 h-3 bg-green-500 ml-0.5 animate-pulse rounded-sm" />
+                          )}
                         </span>
-                      ) : null)}
-                    {msg.streaming && msg.content && (
-                      <span className="inline-block w-1 h-3 bg-green-500 ml-0.5 animate-pulse rounded-sm" />
-                    )}
+                      ) : (
+                        <>
+                          {msg.content}
+                          {msg.streaming && (
+                            <span className="inline-block w-1 h-3 bg-green-500 ml-0.5 animate-pulse rounded-sm" />
+                          )}
+                        </>
+                      )
+                    ) : msg.streaming ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <span className="animate-pulse">{t('aiAssistant.thinking')}</span>
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               ))}

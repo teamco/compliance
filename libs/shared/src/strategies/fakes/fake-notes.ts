@@ -1,4 +1,5 @@
 import type {
+  AiChatMessage,
   ControlPatch,
   Framework,
   FrameworkControl,
@@ -22,6 +23,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   private snapshots: StandardsSnapshot[] = [];
   private userPrefs = new Map<string, UserPrefsPayload>();
   private pushSubscriptions = new Map<string, PushSubscriptionPayload[]>();
+  private chatMessages = new Map<string, AiChatMessage[]>();
 
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
@@ -169,6 +171,28 @@ export class FakeNotesStrategy implements NotesStrategy {
   async removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
     const existing = this.pushSubscriptions.get(userId) ?? [];
     this.pushSubscriptions.set(userId, existing.filter((s) => s.endpoint !== endpoint));
+    return { ok: true };
+  }
+
+  async getChatHistory(userId: string, limit = 100): Promise<AiChatMessage[]> {
+    const msgs = this.chatMessages.get(userId) ?? [];
+    return msgs.slice(-limit);
+  }
+
+  async saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage> {
+    const msg: AiChatMessage = {
+      id: globalThis.crypto.randomUUID(),
+      role,
+      content,
+      createdAt: new Date().toISOString(),
+    };
+    const existing = this.chatMessages.get(userId) ?? [];
+    this.chatMessages.set(userId, [...existing, msg]);
+    return msg;
+  }
+
+  async clearChatHistory(userId: string): Promise<{ ok: boolean }> {
+    this.chatMessages.delete(userId);
     return { ok: true };
   }
 }

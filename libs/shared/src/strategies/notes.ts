@@ -121,6 +121,20 @@ export interface NotesStrategy {
   updateUserPrefs(userId: string, patch: Partial<UserPrefsPayload>): Promise<UserPrefsPayload>;
   savePushSubscription(userId: string, sub: PushSubscriptionPayload): Promise<{ ok: boolean }>;
   removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }>;
+
+  // Chat history
+  getChatHistory(userId: string, limit?: number): Promise<AiChatMessage[]>;
+  saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage>;
+  clearChatHistory(userId: string): Promise<{ ok: boolean }>;
+}
+
+// ─── Chat history types ────────────────────────────────────────────────────
+
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
 }
 
 // ─── Settings types ────────────────────────────────────────────────────────

@@ -1,6 +1,42 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../main';
 
+// ─── Chat history ──────────────────────────────────────────────────────────
+
+export interface AiChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+}
+
+export function useChatHistory() {
+  return useQuery<AiChatMessage[]>({
+    queryKey: ['chat', 'history'],
+    queryFn: () => api<AiChatMessage[]>('/ai/chat/history'),
+    staleTime: Infinity,
+  });
+}
+
+export function useSaveChatMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (msg: { role: 'user' | 'assistant'; content: string }) =>
+      api<AiChatMessage>('/ai/chat/history', { method: 'POST', body: JSON.stringify(msg) }),
+    onSuccess: (saved) => {
+      qc.setQueryData<AiChatMessage[]>(['chat', 'history'], (prev = []) => [...prev, saved]);
+    },
+  });
+}
+
+export function useClearChatHistory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ ok: boolean }>('/ai/chat/history', { method: 'DELETE' }),
+    onSuccess: () => qc.setQueryData(['chat', 'history'], []),
+  });
+}
+
 export type Theme = 'dark' | 'light' | 'system';
 export type Language = 'en' | 'ru' | 'he' | 'es';
 

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
+  AiChatMessage,
   ControlPatch,
   Framework,
   FrameworkControl,
@@ -305,6 +306,45 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .delete()
       .eq('user_id', userId)
       .eq('endpoint', endpoint);
+
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  async getChatHistory(userId: string, limit = 100): Promise<AiChatMessage[]> {
+    const { data, error } = await this.db
+      .from('ai_chat_messages')
+      .select('id, role, content, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => ({
+      id: r.id as string,
+      role: r.role as 'user' | 'assistant',
+      content: r.content as string,
+      createdAt: r.created_at as string,
+    }));
+  }
+
+  async saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage> {
+    const { data, error } = await this.db
+      .from('ai_chat_messages')
+      .insert({ user_id: userId, role, content })
+      .select('id, role, content, created_at')
+      .single();
+
+    if (error) throw new Error(error.message);
+    const r = data as { id: string; role: string; content: string; created_at: string };
+    return { id: r.id, role: r.role as 'user' | 'assistant', content: r.content, createdAt: r.created_at };
+  }
+
+  async clearChatHistory(userId: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db
+      .from('ai_chat_messages')
+      .delete()
+      .eq('user_id', userId);
 
     if (error) throw new Error(error.message);
     return { ok: true };

@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import type {
+  AiChatMessage,
   ControlPatch,
   Framework,
   FrameworkControl,
@@ -115,6 +116,24 @@ export class NotesClientService {
   removePushSubscription(userId: string, endpoint: string): Promise<{ ok: boolean }> {
     return firstValueFrom(
       this.client.send<{ ok: boolean }>('settings.push.remove', { userId, endpoint }),
+    );
+  }
+
+  getChatHistory(userId: string, limit?: number): Promise<AiChatMessage[]> {
+    return firstValueFrom(
+      this.client.send<AiChatMessage[]>('chat.history.get', { userId, limit }),
+    );
+  }
+
+  saveChatMessage(userId: string, role: 'user' | 'assistant', content: string): Promise<AiChatMessage> {
+    return firstValueFrom(
+      this.client.send<AiChatMessage>('chat.history.save', { userId, role, content }),
+    );
+  }
+
+  clearChatHistory(userId: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('chat.history.clear', { userId }),
     );
   }
 }
