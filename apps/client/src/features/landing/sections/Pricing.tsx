@@ -89,6 +89,7 @@ export function Pricing() {
                 // cspell:disable-next-line
                 qwUpL0slwC3tA6Z1XORn: {
                   buttonText: t('subscription.price.custom'),
+                  className: 'isw-no-price',
                 },
               }}
               onSubscribe={(sub) => console.log('subscribed:', sub)}
