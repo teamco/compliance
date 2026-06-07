@@ -38,7 +38,8 @@ function ControlsPage() {
   // Auto-select first completed doc if none selected
   useEffect(() => {
     if (!docId && completedDocs.length > 0) {
-      setDocId(completedDocs[0].id);
+      const first = completedDocs[0];
+      if (first) setDocId(first.id);
     }
   }, [completedDocs, docId]);
 
