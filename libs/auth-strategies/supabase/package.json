@@ -7,10 +7,10 @@
   "types": "./src/index.ts",
   "dependencies": {
     "@icore/shared": "*",
-    "@supabase/supabase-js": "^2.0.0",
-    "tslib": "^2.3.0"
+    "@supabase/supabase-js": "^2.107.0",
+    "tslib": "^2.8.1"
   },
   "devDependencies": {
-    "vitest": "^4.0.0"
+    "vitest": "^4.1.8"
   }
 }
