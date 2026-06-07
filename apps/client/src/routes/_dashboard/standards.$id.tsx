@@ -361,7 +361,7 @@ function StandardsDetailPage() {
             search={{ docId: id }}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-500 transition-colors whitespace-nowrap"
           >
-            View Mapping →
+            {t('controls.viewMapping')}
           </Link>
         )}
       </div>

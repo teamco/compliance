@@ -58,7 +58,8 @@ function ControlsPage() {
   const coverageCount = useMemo(() => {
     if (!doc) return 0;
     return doc.controls.filter((c) =>
-      selectedFrameworks.some((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
+      selectedFrameworks.length > 0 &&
+      selectedFrameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
     ).length;
   }, [doc, selectedFrameworks]);
 

@@ -81,6 +81,6 @@ describe('ControlsTable', () => {
 
   it('renders empty state when no controls match gaps filter', () => {
     render(<ControlsTable controls={[mapped]} frameworks={[fw1]} showGapsOnly={true} />);
-    expect(screen.getByText(/no gaps/i)).toBeTruthy();
+    expect(screen.getByText('controls.noGaps')).toBeTruthy();
   });
 });

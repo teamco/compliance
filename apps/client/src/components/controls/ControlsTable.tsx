@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Framework, StandardControl, StandardControlPriority } from '../../queries/notes';
 
 const PRIORITY_CLASS: Record<StandardControlPriority, string> = {
@@ -14,16 +15,23 @@ interface ControlsTableProps {
 }
 
 export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTableProps) {
-  const visible = showGapsOnly
+  const { t } = useTranslation();
+  const visible = showGapsOnly && frameworks.length > 0
     ? controls.filter(
         (c) => !frameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
       )
     : controls;
 
   if (visible.length === 0) {
+    const message =
+      frameworks.length === 0
+        ? t('controls.selectFramework')
+        : showGapsOnly
+          ? t('controls.noGaps')
+          : t('controls.noControls');
     return (
       <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-        {showGapsOnly ? 'No gaps — all controls are fully mapped.' : 'No controls to display.'}
+        {message}
       </div>
     );
   }
@@ -33,18 +41,10 @@ export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTa
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-surface">
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              Code
-            </th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              Title
-            </th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              Priority
-            </th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              Category
-            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colCode')}</th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colTitle')}</th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colPriority')}</th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colCategory')}</th>
             {frameworks.map((fw) => (
               <th
                 key={fw.id}
