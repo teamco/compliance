@@ -317,7 +317,7 @@ function StandardsDetailPage() {
 
   if (isPending) {
     return (
-      <div className="p-6 space-y-4 max-w-[1000px]">
+      <div className="p-6 space-y-4">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="h-24 bg-surface border border-border rounded-xl animate-pulse" />
         ))}
@@ -334,7 +334,7 @@ function StandardsDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-[1000px]">
+    <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
         <Link
           to="/standards"
@@ -353,7 +353,18 @@ function StandardsDetailPage() {
         </p>
       </div>
 
-      <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
+      <div className="flex items-center justify-between gap-3">
+        <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
+        {doc.status === 'completed' && (
+          <Link
+            to="/controls"
+            search={{ docId: id }}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-500 transition-colors whitespace-nowrap"
+          >
+            View Mapping →
+          </Link>
+        )}
+      </div>
 
       <VersionHistory docId={id} />
 

@@ -65,7 +65,7 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.frameworks', to: '/frameworks', icon: BookOpen },
       { labelKey: 'nav.org', to: '/org', icon: Building2 },
       { labelKey: 'nav.standards', to: '/standards', icon: ScrollText },
-      { labelKey: 'nav.controls', to: '/controls', icon: Shield, soon: true },
+      { labelKey: 'nav.controls', to: '/controls', icon: Shield },
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
     ],
   },
@@ -101,7 +101,7 @@ export function LayoutSider() {
         </div>
         {!collapsed && (
           <span className="font-semibold text-sm text-foreground tracking-tight">
-            Compliance<span className="text-green-500">IQ</span>
+            Compliance<span className="text-green-500 ml-0.5">IQ</span>
           </span>
         )}
       </div>
