@@ -37,8 +37,8 @@ const TOKEN_BRIDGE: CSSProperties & Record<`--${string}`, string> = {
 
 export function Pricing() {
   const apiKey = import.meta.env.VITE_PUBLIC_TENANT_KEY as string | undefined;
-  const apiBase = import.meta.env.VITE_API_BASE_URL as string | undefined;
-  const apiBaseUrl = apiBase ? `${apiBase}/public/subscriptions` : undefined;
+  const apiBase = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'https://api.isubscribe.me/api/v1';
+  const apiBaseUrl = `${apiBase}/public/subscriptions`;
 
   return (
     <section className="py-24" id="pricing">
