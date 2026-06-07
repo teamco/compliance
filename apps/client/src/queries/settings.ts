@@ -51,6 +51,8 @@ export function useUserPrefs() {
   return useQuery<UserPrefsPayload>({
     queryKey: ['settings', 'prefs'],
     queryFn: () => api<UserPrefsPayload>('/settings/me'),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }
 
