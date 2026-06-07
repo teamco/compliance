@@ -11,6 +11,8 @@ import type {
   ControlPatch,
   Framework,
   FrameworkControl,
+  GapAnalysis,
+  GapAnalysisResult,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -29,7 +31,8 @@ import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } fro
 export class FakeNotesStrategy implements NotesStrategy {
   private frameworks = new Map<string, Framework>();
   private controls = new Map<string, FrameworkControl>();
-  private orgs = new Map<string, Organization>(); // key = userId
+  private orgs = new Map<string, Organization>(); // key = orgId
+  private gapAnalyses: GapAnalysis[] = [];
   private docs = new Map<string, StandardsDocument>(); // key = id
   private snapshots: StandardsSnapshot[] = [];
   private userPrefs = new Map<string, UserPrefsPayload>();
@@ -60,22 +63,33 @@ export class FakeNotesStrategy implements NotesStrategy {
     return [...this.controls.values()].filter((c) => c.frameworkId === frameworkId);
   }
 
-  async upsertOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
-    const existing = this.orgs.get(userId);
+  async listOrganizations(userId: string): Promise<Organization[]> {
+    return [...this.orgs.values()].filter((o) => o.userId === userId);
+  }
+
+  async createOrganization(userId: string, data: OrganizationInput): Promise<Organization> {
     const now = new Date().toISOString();
     const org: Organization = {
-      id: existing?.id ?? globalThis.crypto.randomUUID(),
+      id: globalThis.crypto.randomUUID(),
       userId,
       ...data,
-      createdAt: existing?.createdAt ?? now,
+      createdAt: now,
       updatedAt: now,
     };
-    this.orgs.set(userId, org);
+    this.orgs.set(org.id, org);
     return org;
   }
 
-  async getOrganization(userId: string): Promise<Organization | null> {
-    return this.orgs.get(userId) ?? null;
+  async getOrganizationById(orgId: string): Promise<Organization | null> {
+    return this.orgs.get(orgId) ?? null;
+  }
+
+  async updateOrganization(orgId: string, data: OrganizationInput): Promise<Organization> {
+    const existing = this.orgs.get(orgId);
+    if (!existing) throw new Error(`org_not_found: ${orgId}`);
+    const updated: Organization = { ...existing, ...data, updatedAt: new Date().toISOString() };
+    this.orgs.set(orgId, updated);
+    return updated;
   }
 
   async createStandardsDocument(
@@ -107,8 +121,8 @@ export class FakeNotesStrategy implements NotesStrategy {
     return this.docs.get(id) ?? null;
   }
 
-  async listStandardsDocuments(userId: string): Promise<StandardsDocument[]> {
-    return [...this.docs.values()].filter((d) => d.userId === userId);
+  async listStandardsDocuments(orgId: string): Promise<StandardsDocument[]> {
+    return [...this.docs.values()].filter((d) => d.orgId === orgId);
   }
 
   async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
@@ -154,6 +168,33 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async getSnapshot(snapshotId: string): Promise<StandardsSnapshot | null> {
     return this.snapshots.find((s) => s.id === snapshotId) ?? null;
+  }
+
+  async saveGapAnalysis(
+    orgId: string,
+    userId: string,
+    docId: string | null,
+    result: GapAnalysisResult,
+  ): Promise<GapAnalysis> {
+    const analysis: GapAnalysis = {
+      id: globalThis.crypto.randomUUID(),
+      orgId,
+      userId,
+      docId,
+      result,
+      riskScore: result.riskScore,
+      createdAt: new Date().toISOString(),
+    };
+    this.gapAnalyses.push(analysis);
+    return analysis;
+  }
+
+  async listGapAnalyses(orgId: string): Promise<GapAnalysis[]> {
+    return this.gapAnalyses.filter((g) => g.orgId === orgId);
+  }
+
+  async getGapAnalysis(id: string): Promise<GapAnalysis | null> {
+    return this.gapAnalyses.find((g) => g.id === id) ?? null;
   }
 
   async getUserPrefs(userId: string): Promise<UserPrefsPayload> {

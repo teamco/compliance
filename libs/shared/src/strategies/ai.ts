@@ -41,16 +41,19 @@ export interface ControlFinding {
   evidence?: string;
 }
 
+export type GapSeverity = 'critical' | 'high' | 'medium' | 'low';
+export type RecommendationEffort = 'low' | 'medium' | 'high';
+
 export interface GapItem {
   controlId: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
+  severity: GapSeverity;
   description: string;
 }
 
 export interface Recommendation {
   priority: number;
   action: string;
-  effort: 'low' | 'medium' | 'high';
+  effort: RecommendationEffort;
 }
 
 export interface GapAnalysisResult {
