@@ -23,7 +23,7 @@
 /* ── iSubscribe widget overrides ─────────────────────────────────────── */
 .isw-no-price [class*='module_price'],
 .isw-no-price [class*='module_duration'] {
-  visibility: hidden;
+  display: none;
 }
 
 
