@@ -1,6 +1,6 @@
-import type { Framework, StandardControl } from '../../queries/notes';
+import type { Framework, StandardControl, StandardControlPriority } from '../../queries/notes';
 
-const PRIORITY_CLASS: Record<string, string> = {
+const PRIORITY_CLASS: Record<StandardControlPriority, string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
   high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
   medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',

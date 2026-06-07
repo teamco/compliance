@@ -36,7 +36,7 @@ describe('ControlsTable', () => {
     expect(container.querySelector('[data-unmapped]')).toBeTruthy();
   });
 
-  it('hides fully-covered rows when showGapsOnly=true', () => {
+  it('shows gap rows when showGapsOnly=true and control is not fully covered', () => {
     render(<ControlsTable controls={[mapped, unmapped]} frameworks={[fw1, fw2]} showGapsOnly={true} />);
     expect(screen.getByText('AC-01')).toBeTruthy();
     expect(screen.getByText('AC-02')).toBeTruthy();
