@@ -32,17 +32,23 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const { PgBoss } = await import('pg-boss');
-    this.boss = new PgBoss({ connectionString, max: 5 });
-    await this.boss.start();
+    try {
+      const { PgBoss } = await import('pg-boss');
+      this.boss = new PgBoss({ connectionString, max: 5 });
+      await this.boss.start();
 
-    await this.boss.work(
-      QUEUE_NAME,
-      { newJobCheckIntervalSeconds: 5 },
-      (job: { id: string; data: StandardsJobData }) => this.process(job),
-    );
+      await this.boss.work(
+        QUEUE_NAME,
+        { newJobCheckIntervalSeconds: 5 },
+        (job: { id: string; data: StandardsJobData }) => this.process(job),
+      );
 
-    this.logger.log('Standards queue worker started');
+      this.logger.log('Standards queue worker started');
+    } catch (err) {
+      this.logger.error(
+        `Standards queue failed to start (queue disabled): ${(err as Error).message}`,
+      );
+    }
   }
 
   async onModuleDestroy() {
