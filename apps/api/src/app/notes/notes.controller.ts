@@ -230,6 +230,14 @@ export class NotesController {
     return this.notes.listGapAnalyses(orgId);
   }
 
+  @Get('gap/:id')
+  @ApiOperation({ summary: 'Get a single gap analysis by id' })
+  async getGap(@Param('id') id: string) {
+    const gap = await this.notes.getGapAnalysis(id);
+    if (!gap) throw new NotFoundException();
+    return gap;
+  }
+
   private uid(req: Request & { user?: VerifiedToken }): string {
     if (!req.user?.uid) throw new UnauthorizedException('missing_user');
     return req.user.uid;

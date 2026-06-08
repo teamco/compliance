@@ -14,6 +14,9 @@ export function createIcoreApi(opts: { baseUrl: string; onUnauthorized?: () => v
       useAuthStore.getState().logout();
       opts.onUnauthorized?.();
     },
+    refreshRequestField: 'refreshToken',
+    accessTokenField: 'accessToken',
+    refreshTokenField: 'refreshToken',
   });
 }
 
