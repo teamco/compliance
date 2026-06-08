@@ -36,16 +36,11 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Connecting to pg-boss...');
       const { PgBoss } = await import('pg-boss');
 
-      // Parse URL manually so pg-boss gets individual params.
-      // Avoids Windows DNS misrouting the dotted Supabase username as a hostname,
-      // and lets us inject ssl + noSupervisor for pooler connections.
-      const url = new URL(connectionString);
+      // Pass connectionString directly — pg's own parser handles dotted Supabase
+      // pooler usernames and special-char passwords more reliably than new URL().
+      // ssl is required by Supabase (direct host and pooler both).
       this.boss = new PgBoss({
-        host: url.hostname,
-        port: url.port ? parseInt(url.port, 10) : 5432,
-        database: url.pathname.slice(1),
-        user: decodeURIComponent(url.username),
-        password: decodeURIComponent(url.password),
+        connectionString,
         ssl: { rejectUnauthorized: false },
         max: 5,
       });
