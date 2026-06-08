@@ -82,6 +82,14 @@ export class NotesController {
     return { ok: true };
   }
 
+  @MessagePattern('notes.standards.fail')
+  async failStandardsDocument(
+    @Payload() payload: { id: string; reason?: string },
+  ): Promise<{ ok: boolean }> {
+    await this.strategy.failStandardsDocument(payload.id, payload.reason);
+    return { ok: true };
+  }
+
   @MessagePattern('notes.standards.get')
   getStandardsDocument(@Payload() payload: { id: string }): Promise<StandardsDocument | null> {
     return this.strategy.getStandardsDocument(payload.id);
