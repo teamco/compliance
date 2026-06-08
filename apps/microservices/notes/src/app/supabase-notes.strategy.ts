@@ -19,6 +19,8 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
   StandardControl,
   StandardsDocument,
@@ -616,6 +618,127 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       events: row.events as Webhook['events'],
       secret: row.secret,
       active: row.active,
+      createdAt: row.created_at,
+    };
+  }
+
+  // ─── Report templates ──────────────────────────────────────────────────────
+
+  async listReportTemplates(): Promise<ReportTemplate[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select()
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapReportTemplate(r));
+  }
+
+  async createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .insert({
+        name: input.name,
+        scope: input.scope,
+        brand_name: input.brandName,
+        accent_color: input.accentColor,
+        include_summary: input.includeSummary,
+        include_details: input.includeDetails,
+        include_recommendations: input.includeRecommendations,
+        footer_note: input.footerNote,
+        favorite_org_ids: input.favoriteOrgIds,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapReportTemplate(data);
+  }
+
+  async updateReportTemplate(
+    id: string,
+    patch: Partial<ReportTemplateInput>,
+  ): Promise<ReportTemplate> {
+    const update: Record<string, unknown> = {};
+    if (patch.name !== undefined) update['name'] = patch.name;
+    if (patch.scope !== undefined) update['scope'] = patch.scope;
+    if (patch.brandName !== undefined) update['brand_name'] = patch.brandName;
+    if (patch.accentColor !== undefined) update['accent_color'] = patch.accentColor;
+    if (patch.includeSummary !== undefined) update['include_summary'] = patch.includeSummary;
+    if (patch.includeDetails !== undefined) update['include_details'] = patch.includeDetails;
+    if (patch.includeRecommendations !== undefined)
+      update['include_recommendations'] = patch.includeRecommendations;
+    if (patch.footerNote !== undefined) update['footer_note'] = patch.footerNote;
+    if (patch.favoriteOrgIds !== undefined) update['favorite_org_ids'] = patch.favoriteOrgIds;
+
+    const { data, error } = await this.db
+      .from('report_templates')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapReportTemplate(data);
+  }
+
+  async deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db.from('report_templates').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    const next = current.includes(orgId) ? current : [...current, orgId];
+    return this.updateReportTemplate(id, { favoriteOrgIds: next });
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: current.filter((o) => o !== orgId),
+    });
+  }
+
+  private async getTemplateFavorites(id: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select('favorite_org_ids')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+    return ((data as { favorite_org_ids: string[] | null })?.favorite_org_ids ?? []) as string[];
+  }
+
+  private mapReportTemplate(r: unknown): ReportTemplate {
+    const row = r as {
+      id: string;
+      name: string;
+      scope: string;
+      brand_name: string;
+      accent_color: string;
+      include_summary: boolean;
+      include_details: boolean;
+      include_recommendations: boolean;
+      footer_note: string;
+      favorite_org_ids: string[] | null;
+      created_by: string | null;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      name: row.name,
+      scope: row.scope as ReportTemplate['scope'],
+      brandName: row.brand_name,
+      accentColor: row.accent_color,
+      includeSummary: row.include_summary,
+      includeDetails: row.include_details,
+      includeRecommendations: row.include_recommendations,
+      footerNote: row.footer_note,
+      favoriteOrgIds: row.favorite_org_ids ?? [],
+      createdBy: row.created_by,
       createdAt: row.created_at,
     };
   }

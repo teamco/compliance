@@ -188,14 +188,15 @@ export function runNotesContract(name: string, factory: () => NotesStrategy): vo
       expect(doc?.controls[0]?.code).toBe('CTRL-001');
     });
 
-    it('listStandardsDocuments returns only docs for given user', async () => {
+    it('listStandardsDocuments returns only docs for given org', async () => {
       const { id: id1 } = await strategy.createStandardsDocument('user-a', 'org-1', []);
-      const { id: id2 } = await strategy.createStandardsDocument('user-b', 'org-1', []);
-      const docsA = await strategy.listStandardsDocuments('user-a');
-      const docsB = await strategy.listStandardsDocuments('user-b');
-      expect(docsA.map((d) => d.id)).toContain(id1);
-      expect(docsA.map((d) => d.id)).not.toContain(id2);
-      expect(docsB.map((d) => d.id)).toContain(id2);
+      const { id: id2 } = await strategy.createStandardsDocument('user-b', 'org-2', []);
+      const docs1 = await strategy.listStandardsDocuments('org-1');
+      const docs2 = await strategy.listStandardsDocuments('org-2');
+      expect(docs1.map((d) => d.id)).toContain(id1);
+      expect(docs1.map((d) => d.id)).not.toContain(id2);
+      expect(docs2.map((d) => d.id)).toContain(id2);
+      expect(docs2.map((d) => d.id)).not.toContain(id1);
     });
 
     // ── updateControl ────────────────────────────────────────────────────────

@@ -17,6 +17,8 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
   StandardControl,
   StandardsDocument,
@@ -42,6 +44,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   private apiKeys = new Map<string, ApiKey[]>();
   private webhooks = new Map<string, Webhook[]>();
   private retentionPrefs = new Map<string, RetentionPrefsPayload>();
+  private reportTemplates: ReportTemplate[] = [];
 
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
@@ -406,6 +409,54 @@ export class FakeNotesStrategy implements NotesStrategy {
     const updated = { ...current, ...patch };
     this.retentionPrefs.set(userId, updated);
     return updated;
+  }
+
+  async listReportTemplates(): Promise<ReportTemplate[]> {
+    return this.reportTemplates;
+  }
+
+  async createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    const tpl: ReportTemplate = {
+      id: `tpl-${this.reportTemplates.length + 1}`,
+      ...input,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+    };
+    this.reportTemplates.push(tpl);
+    return tpl;
+  }
+
+  async updateReportTemplate(
+    id: string,
+    patch: Partial<ReportTemplateInput>,
+  ): Promise<ReportTemplate> {
+    const existing = this.reportTemplates.find((t) => t.id === id);
+    if (!existing) throw new Error(`ReportTemplate ${id} not found`);
+    const updated: ReportTemplate = { ...existing, ...patch };
+    this.reportTemplates = this.reportTemplates.map((t) => (t.id === id ? updated : t));
+    return updated;
+  }
+
+  async deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    this.reportTemplates = this.reportTemplates.filter((t) => t.id !== id);
+    return { ok: true };
+  }
+
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const tpl = this.reportTemplates.find((t) => t.id === id);
+    if (!tpl) throw new Error(`ReportTemplate ${id} not found`);
+    if (!tpl.favoriteOrgIds.includes(orgId)) {
+      return this.updateReportTemplate(id, { favoriteOrgIds: [...tpl.favoriteOrgIds, orgId] });
+    }
+    return tpl;
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const tpl = this.reportTemplates.find((t) => t.id === id);
+    if (!tpl) throw new Error(`ReportTemplate ${id} not found`);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: tpl.favoriteOrgIds.filter((o) => o !== orgId),
+    });
   }
 
   logAiUsage(_entry: AiUsageLogEntry): void {
