@@ -114,6 +114,14 @@ export function useUpdateOrganization(orgId: string) {
   });
 }
 
+export function useDeleteOrganization() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (orgId) => api<void>(`/notes/orgs/${orgId}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'orgs'] }),
+  });
+}
+
 export function useStandardsDocuments(orgId: string) {
   return useQuery<StandardsDocument[]>({
     queryKey: ['notes', 'standards', orgId],

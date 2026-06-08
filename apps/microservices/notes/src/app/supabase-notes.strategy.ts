@@ -182,6 +182,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.mapOrg(ok(row, error));
   }
 
+  async deleteOrganization(orgId: string): Promise<void> {
+    const { error } = await this.db.from('org_profiles').delete().eq('id', orgId);
+    if (error) throw new Error(error.message);
+  }
+
   async createStandardsDocument(
     userId: string,
     orgId: string,
