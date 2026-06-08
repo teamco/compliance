@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
   AlertTriangle,
+  Brain,
   Building2,
   CheckCircle2,
   ChevronDown,
@@ -203,228 +204,231 @@ function GapAnalysisPage() {
     : false;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="relative p-6 space-y-6">
+      {/* Thinking overlay */}
+      {analyzeGap.isPending && (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-xl bg-background/80 backdrop-blur-sm">
+          <div className="flex items-center justify-center w-14 h-14 rounded-full bg-surface border border-border">
+            <Brain size={24} className="text-green-500 animate-pulse" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-semibold text-foreground">{t('gapAnalysis.analyzing')}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t('gapAnalysis.analyzingHint')}</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-xl font-semibold text-foreground">{t('gapAnalysis.title')}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">{t('gapAnalysis.subtitle')}</p>
       </div>
 
-      {/* Document selector */}
+      {/* Document selector + Analyze button */}
       <div className="bg-surface border border-border rounded-xl p-4">
         {docsLoading ? (
           <div className="h-8 w-64 bg-muted rounded animate-pulse" />
         ) : completedDocs.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('gapAnalysis.generateFirst')}</p>
         ) : (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <label className="text-xs font-medium text-muted-foreground shrink-0">
               {t('gapAnalysis.selectDocument')}
             </label>
             <select
               value={selectedDocId}
               onChange={(e) => handleDocChange(e.target.value)}
-              className="flex-1 max-w-xs h-8 rounded-md border border-border bg-transparent px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
+              className="flex-1 min-w-0 max-w-xs h-8 rounded-md border border-border bg-surface px-2 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary cursor-pointer"
             >
-              <option value="">—</option>
+              <option value="" className="bg-surface text-foreground">
+                —
+              </option>
               {completedDocs.map((d) => (
-                <option key={d.id} value={d.id}>
+                <option key={d.id} value={d.id} className="bg-surface text-foreground">
                   {t('standards.controls', { count: d.controls.length })} ·{' '}
                   {new Date(d.createdAt).toLocaleDateString()}
                 </option>
               ))}
             </select>
+            <Button
+              onClick={() => void handleAnalyze()}
+              disabled={analyzeGap.isPending || !allAssessed || !selectedDoc}
+              className="ms-auto gap-2 shrink-0"
+              size="sm"
+            >
+              <Zap size={13} />
+              {t('gapAnalysis.analyze')}
+            </Button>
           </div>
+        )}
+        {selectedDoc && !allAssessed && (
+          <p className="text-[10px] text-muted-foreground mt-2">
+            {t('gapAnalysis.selectStatus')} —{' '}
+            {selectedDoc.controls.filter((c) => !findings[c.code]?.status).length} remaining
+          </p>
         )}
       </div>
 
+      {/* Controls assessment */}
       {selectedDoc && (
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6 items-start">
-          {/* Controls assessment */}
-          <div className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {t('gapAnalysis.controlsTitle')}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t('gapAnalysis.controlsSubtitle')}
-              </p>
-            </div>
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {t('gapAnalysis.controlsTitle')}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t('gapAnalysis.controlsSubtitle')}
+            </p>
+          </div>
 
-            {selectedDoc.controls.map((ctrl) => {
-              const finding = findings[ctrl.code];
-              const status = finding?.status;
-              const statusCfg = status ? STATUS_CONFIG[status] : null;
-              const StatusIcon = statusCfg?.icon;
+          <div className="grid grid-cols-1 wide:grid-cols-2 gap-3">
+          {selectedDoc.controls.map((ctrl) => {
+            const finding = findings[ctrl.code];
+            const status = finding?.status;
+            const statusCfg = status ? STATUS_CONFIG[status] : null;
+            const StatusIcon = statusCfg?.icon;
 
-              return (
-                <div
-                  key={ctrl.code}
-                  className="bg-surface border border-border rounded-xl p-4 space-y-3 transition-colors hover:border-muted-foreground/30"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono text-muted-foreground">
-                          {ctrl.code}
-                        </span>
-                        {statusCfg && StatusIcon && (
-                          <StatusIcon size={12} className={statusCfg.color} />
-                        )}
-                      </div>
-                      <p className="text-sm font-medium text-foreground leading-snug mt-0.5">
-                        {ctrl.title}
-                      </p>
+            return (
+              <div
+                key={ctrl.code}
+                className="bg-surface border border-border rounded-xl p-4 space-y-3 transition-colors hover:border-muted-foreground/30"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-muted-foreground">
+                        {ctrl.code}
+                      </span>
+                      {statusCfg && StatusIcon && (
+                        <StatusIcon size={12} className={statusCfg.color} />
+                      )}
                     </div>
-
-                    {/* Status pills */}
-                    <div className="flex gap-1 shrink-0 flex-wrap justify-end">
-                      {(['compliant', 'partial', 'non-compliant'] as FindingStatus[]).map((s) => {
-                        const cfg = STATUS_CONFIG[s];
-                        const Icon = cfg.icon;
-                        const active = status === s;
-                        return (
-                          <button
-                            key={s}
-                            type="button"
-                            onClick={() => setStatus(ctrl.code, s)}
-                            className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border cursor-pointer transition-all ${
-                              active
-                                ? `${cfg.bg} ${cfg.color}`
-                                : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground/50'
-                            }`}
-                          >
-                            <Icon size={10} />
-                            {t(`gapAnalysis.status.${s}`)}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <p className="text-sm font-medium text-foreground leading-snug mt-0.5">
+                      {ctrl.title}
+                    </p>
                   </div>
 
-                  {/* Evidence toggle */}
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => toggleExpanded(ctrl.code)}
-                      className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer"
-                    >
-                      {finding?.expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
-                      {t('gapAnalysis.evidence')}
-                    </button>
-                    {finding?.expanded && (
-                      <Textarea
-                        rows={2}
-                        value={finding.evidence}
-                        onChange={(e) => setEvidence(ctrl.code, e.target.value)}
-                        placeholder={t('gapAnalysis.evidencePlaceholder')}
-                        className="mt-2 text-xs resize-none"
-                      />
-                    )}
+                  {/* Status pills */}
+                  <div className="flex gap-1 shrink-0 flex-wrap justify-end">
+                    {(['compliant', 'partial', 'non-compliant'] as FindingStatus[]).map((s) => {
+                      const cfg = STATUS_CONFIG[s];
+                      const Icon = cfg.icon;
+                      const active = status === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setStatus(ctrl.code, s)}
+                          className={`flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border cursor-pointer transition-all ${
+                            active
+                              ? `${cfg.bg} ${cfg.color}`
+                              : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground/50'
+                          }`}
+                        >
+                          <Icon size={10} />
+                          {t(`gapAnalysis.status.${s}`)}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })}
 
-            <Button
-              onClick={() => void handleAnalyze()}
-              disabled={analyzeGap.isPending || !allAssessed}
-              className="w-full gap-2"
-            >
-              <Zap size={14} />
-              {analyzeGap.isPending ? t('gapAnalysis.analyzing') : t('gapAnalysis.analyze')}
-            </Button>
-            {!allAssessed && (
-              <p className="text-[10px] text-muted-foreground text-center">
-                {t('gapAnalysis.selectStatus')} —{' '}
-                {selectedDoc.controls.filter((c) => !findings[c.code]?.status).length} remaining
+                {/* Evidence toggle */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(ctrl.code)}
+                    className="flex items-center gap-1 text-[10px] text-muted-foreground/60 hover:text-muted-foreground transition-colors cursor-pointer"
+                  >
+                    {finding?.expanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+                    {t('gapAnalysis.evidence')}
+                  </button>
+                  {finding?.expanded && (
+                    <Textarea
+                      rows={2}
+                      value={finding.evidence}
+                      onChange={(e) => setEvidence(ctrl.code, e.target.value)}
+                      placeholder={t('gapAnalysis.evidencePlaceholder')}
+                      className="mt-2 text-xs resize-none"
+                    />
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          </div>
+        </div>
+      )}
+
+      {/* Results: 2-col on xl */}
+      {result && (
+        <div className="grid grid-cols-1 wide:grid-cols-2 2xl:grid-cols-3 gap-4">
+          {/* Risk score */}
+          <div className="bg-surface border border-border rounded-xl p-5 flex items-center gap-5">
+            <RiskGauge score={result.riskScore} />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('gapAnalysis.riskScore')}
               </p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{result.summary}</p>
+            </div>
+          </div>
+
+          {/* Critical gaps */}
+          <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('gapAnalysis.criticalGaps')}
+            </p>
+            {result.criticalGaps.length === 0 ? (
+              <div className="flex items-center gap-2 text-green-500">
+                <ShieldCheck size={14} />
+                <p className="text-xs">{t('gapAnalysis.noGaps')}</p>
+              </div>
+            ) : (
+              result.criticalGaps.map((gap, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <AlertTriangle
+                    size={12}
+                    className={`mt-0.5 shrink-0 ${SEVERITY_COLOR[gap.severity].split(' ')[1]}`}
+                  />
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[9px] font-mono text-muted-foreground">
+                        {gap.controlId}
+                      </span>
+                      <span
+                        className={`text-[9px] font-semibold uppercase px-1.5 py-0 rounded border ${SEVERITY_COLOR[gap.severity]}`}
+                      >
+                        {t(`gapAnalysis.severity.${gap.severity}`)}
+                      </span>
+                    </div>
+                    <p className="text-xs text-foreground/80 leading-relaxed">{gap.description}</p>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
-          {/* Results panel */}
-          <div className="space-y-4 xl:sticky xl:top-6">
-            {analyzeGap.isPending && (
-              <div className="bg-surface border border-border rounded-xl p-5 space-y-4">
-                {[80, 60, 100, 72, 88].map((w, i) => (
-                  <div key={i} className={`h-3 w-[${w}%] bg-muted rounded animate-pulse`} />
-                ))}
-              </div>
-            )}
-
-            {result && (
-              <>
-                {/* Risk score */}
-                <div className="bg-surface border border-border rounded-xl p-5 flex items-center gap-5">
-                  <RiskGauge score={result.riskScore} />
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {t('gapAnalysis.riskScore')}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed max-w-[200px]">
-                      {result.summary}
-                    </p>
+          {/* Recommendations — span full width */}
+          <div className="bg-surface border border-border rounded-xl p-5 space-y-3 wide:col-span-2 2xl:col-span-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t('gapAnalysis.recommendations')}
+            </p>
+            <div className="grid grid-cols-1 wide:grid-cols-2 gap-3">
+              {result.recommendations.map((rec, i) => (
+                <div key={i} className="flex items-start gap-2.5">
+                  <span className="flex items-center justify-center w-4 h-4 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-500 shrink-0 mt-0.5">
+                    {rec.priority}
+                  </span>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-xs text-foreground/80 leading-relaxed">{rec.action}</p>
+                    <span className={`text-[9px] font-medium ${EFFORT_COLOR[rec.effort]}`}>
+                      {t(`gapAnalysis.effort.${rec.effort}`)}
+                    </span>
                   </div>
                 </div>
-
-                {/* Critical gaps */}
-                <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t('gapAnalysis.criticalGaps')}
-                  </p>
-                  {result.criticalGaps.length === 0 ? (
-                    <div className="flex items-center gap-2 text-green-500">
-                      <ShieldCheck size={14} />
-                      <p className="text-xs">{t('gapAnalysis.noGaps')}</p>
-                    </div>
-                  ) : (
-                    result.criticalGaps.map((gap, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <AlertTriangle
-                          size={12}
-                          className={`mt-0.5 shrink-0 ${SEVERITY_COLOR[gap.severity].split(' ')[1]}`}
-                        />
-                        <div className="min-w-0 space-y-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[9px] font-mono text-muted-foreground">
-                              {gap.controlId}
-                            </span>
-                            <span
-                              className={`text-[9px] font-semibold uppercase px-1.5 py-0 rounded border ${SEVERITY_COLOR[gap.severity]}`}
-                            >
-                              {t(`gapAnalysis.severity.${gap.severity}`)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-foreground/80 leading-relaxed">
-                            {gap.description}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Recommendations */}
-                <div className="bg-surface border border-border rounded-xl p-5 space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {t('gapAnalysis.recommendations')}
-                  </p>
-                  {result.recommendations.map((rec, i) => (
-                    <div key={i} className="flex items-start gap-2.5">
-                      <span className="flex items-center justify-center w-4 h-4 rounded-full bg-green-500/10 border border-green-500/20 text-[9px] font-bold text-green-500 shrink-0 mt-0.5">
-                        {rec.priority}
-                      </span>
-                      <div className="min-w-0 space-y-0.5">
-                        <p className="text-xs text-foreground/80 leading-relaxed">{rec.action}</p>
-                        <span className={`text-[9px] font-medium ${EFFORT_COLOR[rec.effort]}`}>
-                          {t(`gapAnalysis.effort.${rec.effort}`)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+              ))}
+            </div>
           </div>
         </div>
       )}

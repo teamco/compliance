@@ -193,6 +193,7 @@ export const en = {
     controlsSubtitle: 'Set status for each control based on your current implementation',
     analyze: 'Analyze Gaps',
     analyzing: 'Analyzing…',
+    analyzingHint: 'AI is reviewing your controls and findings',
     results: 'Analysis Results',
     riskScore: 'Risk Score',
     summary: 'Executive Summary',
@@ -206,6 +207,12 @@ export const en = {
     evidencePlaceholder: 'Describe evidence or notes…',
     selectStatus: 'Select status',
     saved: 'Analysis saved',
+  },
+  subscription: {
+    popular: 'Most popular',
+    price: {
+      custom: 'Contact us',
+    },
   },
   aiAssistant: {
     title: 'AI Assistant',

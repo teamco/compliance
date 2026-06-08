@@ -15,6 +15,13 @@ export interface AnthropicAiStrategyOptions {
   apiKey: string;
 }
 
+function stripJsonFences(raw: string): string {
+  return raw
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/, '')
+    .trim();
+}
+
 export class AnthropicAiStrategy implements AiStrategy {
   private readonly client: Anthropic;
 
@@ -78,7 +85,7 @@ export class AnthropicAiStrategy implements AiStrategy {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('');
 
-    return JSON.parse(raw) as StandardsResult[];
+    return JSON.parse(stripJsonFences(raw)) as StandardsResult[];
   }
 
   async analyzeGap(
@@ -114,6 +121,6 @@ export class AnthropicAiStrategy implements AiStrategy {
       .map((b) => (b as { type: 'text'; text: string }).text)
       .join('');
 
-    return JSON.parse(raw) as GapAnalysisResult;
+    return JSON.parse(stripJsonFences(raw)) as GapAnalysisResult;
   }
 }

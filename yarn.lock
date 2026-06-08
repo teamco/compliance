@@ -1969,11 +1969,15 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@icore/notes-client@workspace:libs/notes-client"
   dependencies:
+    "@icore/shared": "npm:0.0.1"
+    "@nestjs/common": "npm:^11.1.24"
+    "@nestjs/microservices": "npm:^11.1.24"
+    rxjs: "npm:^7.8.2"
     tslib: "npm:^2.8.1"
   languageName: unknown
   linkType: soft
 
-"@icore/shared@npm:*, @icore/shared@workspace:libs/shared":
+"@icore/shared@npm:*, @icore/shared@npm:0.0.1, @icore/shared@workspace:libs/shared":
   version: 0.0.0-use.local
   resolution: "@icore/shared@workspace:libs/shared"
   dependencies:
@@ -2041,6 +2045,16 @@ __metadata:
   version: 0.3.0
   resolution: "@idevconn/api-client@npm:0.3.0"
   checksum: 10c0/d1819f6cd42649b321a1ccbc03fde941f672f5a6b951f59f8eba3f401af6c139be1d02e436dede900a249d89f1c89f9fac9b7a2d403e1c35916b0ba9ce511b03
+  languageName: node
+  linkType: hard
+
+"@idevconn/isubscribe-widget-react@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "@idevconn/isubscribe-widget-react@npm:2.5.1"
+  peerDependencies:
+    react: ">=18.x"
+    react-dom: ">=18.x"
+  checksum: 10c0/3781cce905940c5942a394fc421b3f6d60b628badb624c06dfa62be53848795478b20ad7374ac4c587400082d6be5768f335aad53b470c1f52c2ee9a89cf67d1
   languageName: node
   linkType: hard
 
@@ -8107,6 +8121,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "api@workspace:apps/api"
   dependencies:
+    "@casl/ability": "npm:^7.0.0"
     "@icore/ai-client": "npm:*"
     "@icore/auth-client": "npm:*"
     "@icore/notes-client": "npm:0.0.1"
@@ -9414,6 +9429,7 @@ __metadata:
     "@eslint/js": "npm:^9.39.4"
     "@icore/vite-plugins": "workspace:*"
     "@idevconn/api-client": "npm:^0.3.0"
+    "@idevconn/isubscribe-widget-react": "npm:^2.5.1"
     "@idevconn/use-draft": "npm:^0.2.0"
     "@nestjs/common": "npm:^11.1.24"
     "@nestjs/config": "npm:^4.0.4"
