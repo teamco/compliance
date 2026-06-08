@@ -33,23 +33,30 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
+      this.logger.log('Connecting to pg-boss...');
       const { PgBoss } = await import('pg-boss');
       this.boss = new PgBoss({ connectionString, max: 5 });
+
+      this.boss.on('error', (err: Error) => this.logger.error(`pg-boss error: ${err.message}`));
+
       await this.boss.start();
+      this.logger.log('pg-boss started, creating queue...');
 
       await this.boss.createQueue(QUEUE_NAME);
+      this.logger.log(`Queue "${QUEUE_NAME}" ready`);
 
       await this.boss.work(
         QUEUE_NAME,
         { newJobCheckIntervalSeconds: 5 },
         async (jobs: Array<{ id: string; data: StandardsJobData }>) => {
+          this.logger.log(`Received ${jobs.length} job(s)`);
           for (const job of jobs) {
             await this.process(job);
           }
         },
       );
 
-      this.logger.log('Standards queue worker started');
+      this.logger.log('Standards queue worker started — waiting for jobs');
     } catch (err) {
       this.logger.error(
         `Standards queue failed to start (queue disabled): ${(err as Error).message}`,
@@ -62,8 +69,12 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
   }
 
   async enqueue(docId: string, orgProfile: OrgProfile, frameworkIds: string[]): Promise<void> {
-    if (!this.boss) return;
-    await this.boss.send(QUEUE_NAME, { docId, orgProfile, frameworkIds });
+    if (!this.boss) {
+      this.logger.warn(`Queue not available — job for doc ${docId} dropped`);
+      return;
+    }
+    const jobId = await this.boss.send(QUEUE_NAME, { docId, orgProfile, frameworkIds });
+    this.logger.log(`Enqueued job ${jobId} for doc ${docId}`);
   }
 
   private async process(job: { id: string; data: StandardsJobData }): Promise<void> {
