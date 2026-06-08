@@ -646,6 +646,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         include_details: input.includeDetails,
         include_recommendations: input.includeRecommendations,
         footer_note: input.footerNote,
+        favorite_org_ids: input.favoriteOrgIds,
         created_by: userId,
       })
       .select()
@@ -669,6 +670,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.includeRecommendations !== undefined)
       update['include_recommendations'] = patch.includeRecommendations;
     if (patch.footerNote !== undefined) update['footer_note'] = patch.footerNote;
+    if (patch.favoriteOrgIds !== undefined) update['favorite_org_ids'] = patch.favoriteOrgIds;
 
     const { data, error } = await this.db
       .from('report_templates')
@@ -687,6 +689,29 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return { ok: true };
   }
 
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    const next = current.includes(orgId) ? current : [...current, orgId];
+    return this.updateReportTemplate(id, { favoriteOrgIds: next });
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: current.filter((o) => o !== orgId),
+    });
+  }
+
+  private async getTemplateFavorites(id: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select('favorite_org_ids')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+    return ((data as { favorite_org_ids: string[] | null })?.favorite_org_ids ?? []) as string[];
+  }
+
   private mapReportTemplate(r: unknown): ReportTemplate {
     const row = r as {
       id: string;
@@ -698,6 +723,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       include_details: boolean;
       include_recommendations: boolean;
       footer_note: string;
+      favorite_org_ids: string[] | null;
       created_by: string | null;
       created_at: string;
     };
@@ -711,6 +737,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       includeDetails: row.include_details,
       includeRecommendations: row.include_recommendations,
       footerNote: row.footer_note,
+      favoriteOrgIds: row.favorite_org_ids ?? [],
       createdBy: row.created_by,
       createdAt: row.created_at,
     };

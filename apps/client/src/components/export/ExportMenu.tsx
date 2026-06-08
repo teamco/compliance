@@ -1,23 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, ChevronDown, FileText, FileSpreadsheet, FileJson, Loader2 } from 'lucide-react';
-import { useReportTemplates, type ReportTemplate } from '@/queries/report-templates';
+import {
+  Download,
+  ChevronDown,
+  FileText,
+  FileSpreadsheet,
+  FileJson,
+  Loader2,
+  Star,
+} from 'lucide-react';
+import {
+  useReportTemplates,
+  useSetTemplateFavorite,
+  type ReportTemplate,
+} from '@/queries/report-templates';
 
 type Scope = 'gap' | 'standards';
 
 export function ExportMenu({
   scope,
+  orgId,
   onPdf,
   onCsv,
   onJson,
 }: {
   scope: Scope;
+  orgId?: string;
   onPdf: (template: ReportTemplate) => void | Promise<void>;
   onCsv: () => void;
   onJson: () => void;
 }) {
   const { t } = useTranslation();
   const { data: templates } = useReportTemplates();
+  const setFavorite = useSetTemplateFavorite();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -31,9 +46,12 @@ export function ExportMenu({
     return () => document.removeEventListener('mousedown', onClick);
   }, [open]);
 
-  const pdfTemplates = (templates ?? []).filter(
-    (tpl) => tpl.scope === scope || tpl.scope === 'all',
-  );
+  const isFavorite = (tpl: ReportTemplate) => !!orgId && tpl.favoriteOrgIds.includes(orgId);
+
+  const pdfTemplates = (templates ?? [])
+    .filter((tpl) => tpl.scope === scope || tpl.scope === 'all')
+    // Favorites for this org bubble to the top so they're picked without scanning.
+    .sort((a, b) => Number(isFavorite(b)) - Number(isFavorite(a)));
 
   async function handlePdf(tpl: ReportTemplate) {
     setBusy(true);
@@ -65,21 +83,43 @@ export function ExportMenu({
           {pdfTemplates.length === 0 ? (
             <p className="px-2 py-1 text-xs text-muted-foreground">{t('export.noTemplates')}</p>
           ) : (
-            pdfTemplates.map((tpl) => (
-              <button
-                key={tpl.id}
-                type="button"
-                disabled={busy}
-                onClick={() => handlePdf(tpl)}
-                className="w-full text-left px-2 py-1.5 rounded text-xs text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: tpl.accentColor || '#16a34a' }}
-                />
-                <span className="truncate">{tpl.name}</span>
-              </button>
-            ))
+            pdfTemplates.map((tpl) => {
+              const fav = isFavorite(tpl);
+              return (
+                <div key={tpl.id} className="flex items-center gap-0.5">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => handlePdf(tpl)}
+                    className="flex-1 min-w-0 text-left px-2 py-1.5 rounded text-xs text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: tpl.accentColor || '#16a34a' }}
+                    />
+                    <span className="truncate">{tpl.name}</span>
+                  </button>
+                  {orgId && (
+                    <button
+                      type="button"
+                      title={fav ? t('export.unfavorite') : t('export.favorite')}
+                      disabled={setFavorite.isPending}
+                      onClick={() => setFavorite.mutate({ id: tpl.id, orgId, favorite: !fav })}
+                      className="shrink-0 rounded p-1 hover:bg-muted transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      <Star
+                        size={12}
+                        className={
+                          fav
+                            ? 'fill-amber-400 text-amber-400'
+                            : 'text-muted-foreground/50 hover:text-amber-400'
+                        }
+                      />
+                    </button>
+                  )}
+                </div>
+              );
+            })
           )}
 
           <div className="h-px bg-border my-1" />

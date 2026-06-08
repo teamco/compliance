@@ -368,6 +368,7 @@ function StandardsDetailPage() {
         </Link>
         <ExportMenu
           scope="standards"
+          orgId={doc.orgId}
           onPdf={(tpl) => exportStandardsPdf(doc, fwList, tpl, orgName)}
           onCsv={() => exportStandardsCsv(doc, fwList)}
           onJson={() => exportStandardsJson(doc)}

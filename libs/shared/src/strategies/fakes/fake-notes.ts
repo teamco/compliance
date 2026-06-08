@@ -442,6 +442,23 @@ export class FakeNotesStrategy implements NotesStrategy {
     return { ok: true };
   }
 
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const tpl = this.reportTemplates.find((t) => t.id === id);
+    if (!tpl) throw new Error(`ReportTemplate ${id} not found`);
+    if (!tpl.favoriteOrgIds.includes(orgId)) {
+      return this.updateReportTemplate(id, { favoriteOrgIds: [...tpl.favoriteOrgIds, orgId] });
+    }
+    return tpl;
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const tpl = this.reportTemplates.find((t) => t.id === id);
+    if (!tpl) throw new Error(`ReportTemplate ${id} not found`);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: tpl.favoriteOrgIds.filter((o) => o !== orgId),
+    });
+  }
+
   logAiUsage(_entry: AiUsageLogEntry): void {
     // fire-and-forget stub — no-op in tests
   }

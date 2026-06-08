@@ -162,6 +162,18 @@ export class NotesController {
     return this.strategy.deleteReportTemplate(payload.id);
   }
 
+  @MessagePattern('notes.templates.favorite.add')
+  addTemplateFavorite(@Payload() payload: { id: string; orgId: string }): Promise<ReportTemplate> {
+    return this.strategy.addTemplateFavorite(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.templates.favorite.remove')
+  removeTemplateFavorite(
+    @Payload() payload: { id: string; orgId: string },
+  ): Promise<ReportTemplate> {
+    return this.strategy.removeTemplateFavorite(payload.id, payload.orgId);
+  }
+
   @MessagePattern('notes.gap.save')
   saveGapAnalysis(
     @Payload()
