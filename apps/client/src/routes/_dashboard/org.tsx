@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Building2, Edit2, Plus, Save } from 'lucide-react';
+import { Building2, Edit2, Plus, Save, Trash2 } from 'lucide-react';
 import { useNotify } from '@icore/template-shared';
 import {
   useOrganizations,
   useCreateOrganization,
   useUpdateOrganization,
+  useDeleteOrganization,
   type Organization,
   type OrganizationInput,
   type OrgSize,
@@ -15,6 +16,16 @@ import { useActiveOrgStore } from '@/stores/active-org';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const INDUSTRIES = [
   'technology',
@@ -317,9 +328,11 @@ export function OrgPage() {
   const notify = useNotify();
   const { data: orgs, isPending } = useOrganizations();
   const create = useCreateOrganization();
+  const deleteOrg = useDeleteOrganization();
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const editingOrg = (orgs ?? []).find((org) => org.id === editingId);
 
   function closeModal() {
@@ -335,6 +348,18 @@ export function OrgPage() {
       notify.success(t('org.created'));
     } catch {
       notify.error(t('error.unknown'));
+    }
+  }
+
+  async function handleDelete(orgId: string) {
+    try {
+      await deleteOrg.mutateAsync(orgId);
+      if (activeOrgId === orgId) setActiveOrgId(null);
+      notify.success(t('org.deleted'));
+    } catch {
+      notify.error(t('error.unknown'));
+    } finally {
+      setConfirmDeleteId(null);
     }
   }
 
@@ -391,21 +416,22 @@ export function OrgPage() {
       {/* Org list */}
       <div className="space-y-2">
         {(orgs ?? []).map((org) => (
-          <div key={org.id}>
-            <div
-              className={[
-                'flex items-center justify-between p-3 rounded-xl border transition-colors',
-                org.id === activeOrgId
-                  ? 'border-green-500/30 bg-green-500/5'
-                  : 'border-border bg-surface',
-              ].join(' ')}
-            >
-              <div>
-                <p className="text-sm font-medium text-foreground">{org.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {t(`org.industries.${org.industry}`)} · {t(`org.sizes.${org.size}`)}
-                </p>
-              </div>
+          <div
+            key={org.id}
+            className={[
+              'flex items-center justify-between p-3 rounded-xl border transition-colors',
+              org.id === activeOrgId
+                ? 'border-green-500/30 bg-green-500/5'
+                : 'border-border bg-surface',
+            ].join(' ')}
+          >
+            <div>
+              <p className="text-sm font-medium text-foreground">{org.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {t(`org.industries.${org.industry}`)} · {t(`org.sizes.${org.size}`)}
+              </p>
+            </div>
+            <div className="flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => {
@@ -417,13 +443,55 @@ export function OrgPage() {
                 <Edit2 size={12} />
                 {t('common.edit')}
               </button>
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(org.id)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-destructive/10"
+              >
+                <Trash2 size={12} />
+                {t('common.delete')}
+              </button>
             </div>
-
           </div>
         ))}
 
-        {(orgs ?? []).length === 0 && <p className="text-sm text-muted-foreground">{t('org.noOrgs')}</p>}
+        {(orgs ?? []).length === 0 && (
+          <p className="text-sm text-muted-foreground">{t('org.noOrgs')}</p>
+        )}
       </div>
+
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('org.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('org.deleteDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel asChild>
+              <Button
+                variant="outline"
+                disabled={deleteOrg.isPending}
+                onClick={() => setConfirmDeleteId(null)}
+              >
+                {t('common.cancel')}
+              </Button>
+            </AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Button
+                variant="destructive"
+                disabled={deleteOrg.isPending}
+                onClick={() => confirmDeleteId && void handleDelete(confirmDeleteId)}
+              >
+                <Trash2 size={13} className="mr-1.5" />
+                {t('common.delete')}
+              </Button>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

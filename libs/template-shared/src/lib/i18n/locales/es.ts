@@ -14,6 +14,7 @@ export const es = {
     create: 'Crear',
     saving: 'Guardando…',
     edit: 'Editar',
+    delete: 'Eliminar',
   },
   auth: {
     signIn: 'Iniciar sesión',
@@ -137,6 +138,9 @@ export const es = {
     editTitle: 'Editar organización',
     created: 'Organización creada',
     updated: 'Organización actualizada',
+    deleted: 'Organización eliminada',
+    deleteTitle: '¿Eliminar organización?',
+    deleteDescription: 'Esta acción no se puede deshacer. Todos los datos de la organización se eliminarán permanentemente.',
     switchOrg: 'Seleccionar organización',
     noOrgs: 'No hay organizaciones',
     noActiveOrg: 'Selecciona una organización para continuar',

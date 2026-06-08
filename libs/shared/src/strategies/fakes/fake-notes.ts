@@ -92,6 +92,11 @@ export class FakeNotesStrategy implements NotesStrategy {
     return updated;
   }
 
+  async deleteOrganization(orgId: string): Promise<void> {
+    if (!this.orgs.has(orgId)) throw new Error(`org_not_found: ${orgId}`);
+    this.orgs.delete(orgId);
+  }
+
   async createStandardsDocument(
     userId: string,
     orgId: string,

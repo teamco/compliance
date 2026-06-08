@@ -14,6 +14,7 @@ export const en = {
     create: 'Create',
     saving: 'Saving…',
     edit: 'Edit',
+    delete: 'Delete',
   },
   auth: {
     signIn: 'Sign in',
@@ -137,6 +138,9 @@ export const en = {
     editTitle: 'Edit Organization',
     created: 'Organization created',
     updated: 'Organization updated',
+    deleted: 'Organization deleted',
+    deleteTitle: 'Delete organization?',
+    deleteDescription: 'This action cannot be undone. All data associated with this organization will be permanently deleted.',
     switchOrg: 'Select Organization',
     noOrgs: 'No organizations yet',
     noActiveOrg: 'Select an organization to continue',
