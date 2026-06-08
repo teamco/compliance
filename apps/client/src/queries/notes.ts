@@ -128,7 +128,7 @@ export function useStandardsDocuments(orgId: string) {
     queryFn: () => api<StandardsDocument[]>(`/notes/standards?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
     refetchInterval: (query) =>
-      query.state.data?.some((d) => d.status === 'pending') ? 5000 : false,
+      query.state.data?.some((d) => d.status === 'pending') ? 10000 : false,
   });
 }
 
