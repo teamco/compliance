@@ -37,7 +37,7 @@ export function EditOrgForm({ org, onSaved }: EditOrgFormProps) {
       initial={initial}
       onSave={(data) => void handleSave(data)}
       isPending={update.isPending}
-      submitLabel={t('org.save')}
+      submitLabel={t('org.updateOrganization')}
     />
   );
 }

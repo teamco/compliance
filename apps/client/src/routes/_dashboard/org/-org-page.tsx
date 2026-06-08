@@ -10,6 +10,7 @@ import {
 } from '@/queries/notes';
 import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { EMPTY_FORM } from './-constants';
 import { OrgForm } from './-org-form';
@@ -27,7 +28,11 @@ export function OrgPage() {
   const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const orgList = orgs ?? [];
+  const filteredOrgs = orgList.filter((org) =>
+    org.name.toLowerCase().includes(search.trim().toLowerCase()),
+  );
   const editingOrg = orgList.find((org) => org.id === editingId);
 
   function closeModal() {
@@ -60,7 +65,7 @@ export function OrgPage() {
 
   if (isPending) {
     return (
-      <div className="p-6 space-y-4 max-w-2xl">
+      <div className="w-full space-y-4 p-6">
         {Array.from({ length: 3 }).map((_, i) => (
           <div key={i} className="h-16 bg-surface border border-border rounded-lg animate-pulse" />
         ))}
@@ -69,7 +74,7 @@ export function OrgPage() {
   }
 
   return (
-    <div className="p-6 max-w-2xl space-y-6">
+    <div className="w-full space-y-6 p-6">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/20">
           <Building2 size={18} className="text-green-500" />
@@ -80,25 +85,43 @@ export function OrgPage() {
         </div>
       </div>
 
-      <Button variant="outline" onClick={() => setModalMode('create')} className="gap-2">
-        <Plus size={14} />
-        {t('org.createNew')}
-      </Button>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label={t('org.search')}
+          placeholder={t('org.searchPlaceholder')}
+          className="w-full sm:max-w-sm"
+        />
+        <Button
+          variant="outline"
+          onClick={() => setModalMode('create')}
+          className="gap-2 sm:ms-auto"
+        >
+          <Plus size={14} />
+          {t('org.createNew')}
+        </Button>
+      </div>
 
       <Sheet open={modalMode !== null} onOpenChange={(open) => !open && closeModal()}>
-        <SheetContent className="w-full max-w-[440px] overflow-y-auto">
+        <SheetContent
+          className="w-full max-w-110"
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
           <SheetHeader>
             <SheetTitle>
               {modalMode === 'edit' ? t('org.editTitle') : t('org.createTitle')}
             </SheetTitle>
           </SheetHeader>
-          <div className="p-4">
+          <div className="min-h-0 flex-1">
             {modalMode === 'create' && (
               <OrgForm
                 initial={EMPTY_FORM}
                 onSave={(data) => void handleCreate(data)}
                 isPending={create.isPending}
-                submitLabel={t('org.save')}
+                submitLabel={t('org.createOrganization')}
               />
             )}
             {modalMode === 'edit' && editingOrg && (
@@ -109,7 +132,7 @@ export function OrgPage() {
       </Sheet>
 
       <OrgList
-        orgs={orgList}
+        orgs={filteredOrgs}
         activeOrgId={activeOrgId}
         onEdit={(orgId) => {
           setEditingId(orgId);
