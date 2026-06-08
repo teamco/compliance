@@ -97,6 +97,7 @@ export type {
   RecommendationEffort,
   GapItem,
   Recommendation,
+  GapFinding,
   GapAnalysisResult,
 } from './ai';
 import type { GapAnalysisResult } from './ai';
@@ -262,6 +263,14 @@ export interface NotesStrategy {
     userId: string,
     patch: Partial<RetentionPrefsPayload>,
   ): Promise<RetentionPrefsPayload>;
+
+  // Report templates
+  listReportTemplates(): Promise<ReportTemplate[]>;
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate>;
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate>;
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }>;
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
@@ -390,6 +399,39 @@ export interface Webhook {
 export interface WebhookInput {
   url: string;
   events: WebhookEvent[];
+}
+
+// ─── Report templates ──────────────────────────────────────────────────────
+
+export type ReportTemplateScope = 'gap' | 'standards' | 'all';
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  // Orgs that favorited (assigned) this global template — surfaced first in the
+  // export menu for the matching org.
+  favoriteOrgIds: string[];
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ReportTemplateInput {
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  favoriteOrgIds: string[];
 }
 
 export interface RetentionPrefsPayload {

@@ -56,11 +56,22 @@ export interface Recommendation {
   effort: RecommendationEffort;
 }
 
+// A control finding enriched with its title, persisted alongside the AI result
+// so the saved report can show a per-control compliance breakdown.
+export interface GapFinding {
+  controlId: string;
+  title: string;
+  status: 'compliant' | 'partial' | 'non-compliant';
+  evidence?: string;
+}
+
 export interface GapAnalysisResult {
   summary: string;
   criticalGaps: GapItem[];
   recommendations: Recommendation[];
   riskScore: number;
+  // Optional — attached client-side at save time; not produced by the model.
+  findings?: GapFinding[];
 }
 
 export interface AiStrategy {

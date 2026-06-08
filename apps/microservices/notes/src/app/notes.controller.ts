@@ -9,6 +9,8 @@ import type {
   NotesStrategy,
   Organization,
   OrganizationInput,
+  ReportTemplate,
+  ReportTemplateInput,
   StandardControl,
   StandardsDocument,
   StandardsSnapshot,
@@ -134,6 +136,42 @@ export class NotesController {
   @MessagePattern('notes.standards.snapshots.get')
   getSnapshot(@Payload() payload: { snapshotId: string }): Promise<StandardsSnapshot | null> {
     return this.strategy.getSnapshot(payload.snapshotId);
+  }
+
+  @MessagePattern('notes.templates.list')
+  listReportTemplates(): Promise<ReportTemplate[]> {
+    return this.strategy.listReportTemplates();
+  }
+
+  @MessagePattern('notes.templates.create')
+  createReportTemplate(
+    @Payload() payload: { userId: string; input: ReportTemplateInput },
+  ): Promise<ReportTemplate> {
+    return this.strategy.createReportTemplate(payload.userId, payload.input);
+  }
+
+  @MessagePattern('notes.templates.update')
+  updateReportTemplate(
+    @Payload() payload: { id: string; patch: Partial<ReportTemplateInput> },
+  ): Promise<ReportTemplate> {
+    return this.strategy.updateReportTemplate(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.templates.delete')
+  deleteReportTemplate(@Payload() payload: { id: string }): Promise<{ ok: boolean }> {
+    return this.strategy.deleteReportTemplate(payload.id);
+  }
+
+  @MessagePattern('notes.templates.favorite.add')
+  addTemplateFavorite(@Payload() payload: { id: string; orgId: string }): Promise<ReportTemplate> {
+    return this.strategy.addTemplateFavorite(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.templates.favorite.remove')
+  removeTemplateFavorite(
+    @Payload() payload: { id: string; orgId: string },
+  ): Promise<ReportTemplate> {
+    return this.strategy.removeTemplateFavorite(payload.id, payload.orgId);
   }
 
   @MessagePattern('notes.gap.save')
