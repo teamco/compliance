@@ -189,6 +189,7 @@ export interface NotesStrategy {
     frameworkIds: string[],
   ): Promise<{ id: string }>;
   saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void>;
+  failStandardsDocument(id: string, reason?: string): Promise<void>;
   getStandardsDocument(id: string): Promise<StandardsDocument | null>;
   listStandardsDocuments(orgId: string): Promise<StandardsDocument[]>;
 
