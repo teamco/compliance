@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -54,8 +55,14 @@ export function TagInput({ value, onChange, label, placeholder }: TagInputProps)
           placeholder={placeholder}
           className="flex-1"
         />
-        <Button type="button" variant="outline" onClick={add} disabled={!input.trim()}>
-          +
+        <Button
+          type="button"
+          variant="outline"
+          onClick={add}
+          disabled={!input.trim()}
+          aria-label={`Add ${label}`}
+        >
+          <Plus size={14} aria-hidden="true" />
         </Button>
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
@@ -64,15 +71,16 @@ export function TagInput({ value, onChange, label, placeholder }: TagInputProps)
           {value.map((tag) => (
             <span
               key={tag}
-              className="flex items-center gap-1 text-xs bg-muted border border-border text-foreground px-2 py-0.5 rounded-full"
+              className="inline-flex min-h-6 items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs leading-none text-foreground"
             >
               {tag}
               <button
                 type="button"
                 onClick={() => onChange(value.filter((t) => t !== tag))}
-                className="text-muted-foreground hover:text-foreground leading-none cursor-pointer"
+                aria-label={`Remove ${tag}`}
+                className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:bg-muted-foreground/15 hover:text-foreground transition-colors cursor-pointer"
               >
-                ×
+                <X size={10} aria-hidden="true" />
               </button>
             </span>
           ))}

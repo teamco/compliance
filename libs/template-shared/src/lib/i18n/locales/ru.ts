@@ -80,6 +80,8 @@ export const ru = {
     displayNamePlaceholder: 'Укажите имя',
     lastLogin: 'Последний вход',
     save: 'Сохранить',
+    createOrganization: 'Создать организацию',
+    updateOrganization: 'Обновить организацию',
     saving: 'Сохранение…',
     saved: 'Сохранено',
     dangerZone: {
@@ -134,6 +136,8 @@ export const ru = {
       enterprise: 'Крупная (500+)',
     },
     createNew: 'Создать организацию',
+    search: 'Поиск организаций',
+    searchPlaceholder: 'Поиск по названию организации',
     createTitle: 'Новая организация',
     editTitle: 'Редактировать организацию',
     created: 'Организация создана',

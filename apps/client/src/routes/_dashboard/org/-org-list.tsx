@@ -13,24 +13,24 @@ export function OrgList({ orgs, activeOrgId, onEdit, onDelete }: OrgListProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="space-y-2">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 2xl:grid-cols-3">
       {orgs.map((org) => (
         <div
           key={org.id}
           className={[
-            'flex items-center justify-between p-3 rounded-xl border transition-colors',
+            'flex h-full flex-col rounded-xl border p-3 transition-colors',
             org.id === activeOrgId
               ? 'border-green-500/30 bg-green-500/5'
               : 'border-border bg-surface',
           ].join(' ')}
         >
-          <div>
-            <p className="text-sm font-medium text-foreground">{org.name}</p>
-            <p className="text-xs text-muted-foreground">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-foreground">{org.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
               {t(`org.industries.${org.industry}`)} · {t(`org.sizes.${org.size}`)}
             </p>
           </div>
-          <div className="flex items-center gap-1">
+          <footer className="mt-auto flex w-full flex-wrap items-center justify-end gap-1 pt-3">
             <button
               type="button"
               onClick={() => onEdit(org.id)}
@@ -47,11 +47,15 @@ export function OrgList({ orgs, activeOrgId, onEdit, onDelete }: OrgListProps) {
               <Trash2 size={12} />
               {t('common.delete')}
             </button>
-          </div>
+          </footer>
         </div>
       ))}
 
-      {orgs.length === 0 && <p className="text-sm text-muted-foreground">{t('org.noOrgs')}</p>}
+      {orgs.length === 0 && (
+        <p className="text-sm text-muted-foreground sm:col-span-2 2xl:col-span-3">
+          {t('org.noOrgs')}
+        </p>
+      )}
     </div>
   );
 }
