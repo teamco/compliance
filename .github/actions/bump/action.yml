@@ -1,0 +1,121 @@
+name: "Bump Version & Push"
+description: "Detects the highest semver bump from conventional commits since the last tag, increments the root package.json version, commits, tags, and pushes."
+
+inputs:
+  token:
+    description: "GitHub PAT (or GITHUB_TOKEN) used to push the bump commit and the tag."
+    required: true
+
+outputs:
+  tag:
+    description: "Created version tag, e.g. v0.2.0"
+    value: ${{ steps.version-bump.outputs.tag }}
+  bump_type:
+    description: "Detected semver bump type: major | minor | patch"
+    value: ${{ steps.version-bump.outputs.bump_type }}
+  release_body:
+    description: "Markdown body suitable for the GitHub Release"
+    value: ${{ steps.version-bump.outputs.release_body }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup git identity
+      shell: bash
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+    - name: Collect commit messages since last tag
+      id: commits
+      shell: bash
+      run: |
+        git fetch --tags
+        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+        if [ -z "$LAST_TAG" ]; then
+          COMMITS=$(git log --pretty=format:"* %s" -n 20)
+          RAW_COMMITS=$(git log --format="%s%n%b%n---COMMIT-END---" -n 20)
+        else
+          COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"* %s")
+          RAW_COMMITS=$(git log ${LAST_TAG}..HEAD --format="%s%n%b%n---COMMIT-END---")
+        fi
+        if [ -z "$COMMITS" ] || [ "$COMMITS" = " " ]; then
+          COMMITS="* maintenance: minor updates"
+          RAW_COMMITS=$'maintenance: minor updates\n---COMMIT-END---'
+        fi
+        {
+          echo "list<<EOF"
+          echo "$COMMITS"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+        {
+          echo "raw<<EOF"
+          echo "$RAW_COMMITS"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+
+    - name: Bump version & create tag
+      id: version-bump
+      shell: bash
+      env:
+        COMMIT_LIST: ${{ steps.commits.outputs.list }}
+        RAW_COMMIT_LOG: ${{ steps.commits.outputs.raw }}
+        ACTOR: ${{ github.actor }}
+      run: |
+        # 1. Annotate every non-merge commit with the actor handle for the changelog.
+        PROCESSED_COMMITS=""
+        while IFS= read -r line; do
+          if [[ "$line" == "* Merge"* ]]; then
+            PROCESSED_COMMITS+="$line"$'\n'
+          else
+            PROCESSED_COMMITS+="$line, by @${ACTOR}"$'\n'
+          fi
+        done <<< "$COMMIT_LIST"
+
+        # 2. Detect the highest semver bump required by the commit range.
+        #    feat(...)!: or BREAKING CHANGE: -> major
+        #    feat(...):                      -> minor
+        #    anything else                   -> patch
+        BUMP_TYPE="patch"
+        if printf "%s\n" "$RAW_COMMIT_LOG" | grep -Eq '(^[^[:space:]]+(\([^)]+\))?!:)|(BREAKING CHANGE:)'; then
+          BUMP_TYPE="major"
+        elif printf "%s\n" "$RAW_COMMIT_LOG" | grep -Eq '^feat(\([^)]+\))?:'; then
+          BUMP_TYPE="minor"
+        fi
+        echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+
+        # 3. Bump root package.json only. --no-git-tag-version stops npm from
+        #    auto-creating a commit + tag (we do it ourselves with a richer
+        #    changelog message). --no-workspaces-update keeps the workspace
+        #    package versions (apps/* libs/*) untouched. This repo uses Yarn for
+        #    installs, but npm is available on the runner and only rewrites the
+        #    root package.json version field — yarn.lock is not affected.
+        npm version "$BUMP_TYPE" --no-git-tag-version --no-workspaces-update
+
+        NEW_V=$(node -p "require('./package.json').version")
+        TAG="v$NEW_V"
+        echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+        git add package.json
+
+        # 4. Build the commit / release-body message.
+        printf "ci: %s version bump to %s [skip ci]\n\nChanges:\n\n%s\n" \
+          "$BUMP_TYPE" "$TAG" "$PROCESSED_COMMITS" > .commit_msg
+        {
+          echo "release_body<<EOF"
+          printf "## Changes\n\n%s\n" "$PROCESSED_COMMITS"
+          echo "EOF"
+        } >> $GITHUB_OUTPUT
+
+        # 5. Commit and tag.
+        git commit -F .commit_msg
+        git tag -af "$TAG" -F .commit_msg
+
+    - name: Push commit + tag
+      shell: bash
+      run: |
+        TAG=${{ steps.version-bump.outputs.tag }}
+        git remote set-url origin https://x-access-token:${{ inputs.token }}@github.com/${{ github.repository }}.git
+        git pull --rebase --autostash origin "${{ github.ref_name }}"
+        git push origin "${{ github.ref_name }}"
+        git push -f origin "$TAG"
