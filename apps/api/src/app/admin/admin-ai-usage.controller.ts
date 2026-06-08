@@ -7,6 +7,25 @@ export type AiUsageRange = '24h' | '7d' | '30d' | '90d';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+// Prices per million tokens (USD) — updated 2026-06
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  chat: { input: 3, output: 15 }, // claude-sonnet-4-6
+  'gap.analyze': { input: 3, output: 15 }, // claude-sonnet-4-6
+  'standards.generate': { input: 5, output: 25 }, // claude-opus-4-8
+};
+
+function computeCostUsd(byOperation: AiUsageSummaryRpc['by_operation']): number {
+  return byOperation.reduce((total, row) => {
+    const pricing = MODEL_PRICING[row.operation];
+    if (!pricing) return total;
+    return (
+      total +
+      (row.input_tokens / 1_000_000) * pricing.input +
+      (row.output_tokens / 1_000_000) * pricing.output
+    );
+  }, 0);
+}
+
 function rangeToSince(range: AiUsageRange): string {
   const now = Date.now();
   const ms = { '24h': 864e5, '7d': 6048e5, '30d': 2592e6, '90d': 7776e6 }[range];
@@ -22,7 +41,7 @@ function mapSummary(rpc: AiUsageSummaryRpc) {
   return {
     total_calls: rpc.total_calls,
     total_tokens: rpc.total_input_tokens + rpc.total_output_tokens,
-    total_cost_usd: 0,
+    total_cost_usd: computeCostUsd(rpc.by_operation),
     by_provider: rpc.by_provider.map((r) => ({
       label: r.provider,
       calls: r.calls,
