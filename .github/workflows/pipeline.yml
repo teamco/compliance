@@ -71,8 +71,7 @@ jobs:
         run: yarn ${{ matrix.task }}
 
   # ---------------------------------------------------------
-  # 2. BUILD — compile each buildable app (client has no build target;
-  #    it only goes through lint/test/format in the check stage)
+  # 2. BUILD — compile each buildable app
   # ---------------------------------------------------------
   build:
     name: "Build ${{ matrix.project }}"
@@ -85,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [api, auth, upload, notes, ai]
+        project: [api, auth, upload, notes, ai, client]
     steps:
       - name: Check if affected
         id: gate
