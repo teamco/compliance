@@ -4,18 +4,18 @@ import { useAuditLog } from '../../queries/admin';
 
 const ACTION_OPTIONS = [
   '',
-  'workflow.submitted',
-  'workflow.approved',
-  'workflow.rejected',
-  'workflow.published',
+  'workflow.submit',
+  'workflow.approve',
+  'workflow.reject',
+  'workflow.publish',
   'ai.standards.generated',
 ];
 
 const ACTION_LABEL_KEYS: Record<string, string> = {
-  'workflow.submitted': 'settings.auditLog.actions.workflowSubmitted',
-  'workflow.approved': 'settings.auditLog.actions.workflowApproved',
-  'workflow.rejected': 'settings.auditLog.actions.workflowRejected',
-  'workflow.published': 'settings.auditLog.actions.workflowPublished',
+  'workflow.submit': 'settings.auditLog.actions.workflowSubmitted',
+  'workflow.approve': 'settings.auditLog.actions.workflowApproved',
+  'workflow.reject': 'settings.auditLog.actions.workflowRejected',
+  'workflow.publish': 'settings.auditLog.actions.workflowPublished',
   'ai.standards.generated': 'settings.auditLog.actions.aiStandardsGenerated',
 };
 

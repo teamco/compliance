@@ -96,15 +96,23 @@ Auditors can instantly trace: `Requirement → Standard → Procedure → Eviden
 
 ## Module 7: Gap Analysis Engine
 
-Continuously identifies:
+Continuously identifies gaps between current implementation and compliance requirements.
 
-- **Missing Standards** — e.g., SOC requires Vendor Risk Management but org lacks that standard
-- **Coverage Score:**
-  ```
-  SOC 2 Coverage:  86%
-  ISO Coverage:    72%
-  GDPR Coverage:   91%
-  ```
+**UI — two tabs:**
+
+- **New Analysis** — select a completed standards document, set status (compliant / partial / non-compliant) and optional evidence for each control, then run AI gap analysis
+- **History** — grid of past runs (container-query responsive, 1→2→3 cols). Each card shows an SVG risk-score gauge and run timestamp. Date-range filter pills: All / Today / 7d / 30d / 90d / 90+
+
+**Detail page (`/gap-analysis/:id`):** risk score gauge, executive summary, critical gaps list, recommendations, full findings breakdown.
+
+After analysis completes the app navigates directly to the detail page.
+
+**Coverage Score example:**
+```
+SOC 2 Coverage:  86%
+ISO Coverage:    72%
+GDPR Coverage:   91%
+```
 
 ---
 
@@ -127,7 +135,18 @@ Built into every page.
 
 **Roles:** Contributor → Reviewer → Approver → Auditor (read-only) → Compliance Manager (full)
 
-**Workflow:** `Draft → Review → Legal Review → Approval → Publish`
+**Workflow:** `Draft → In Review → Approved → Published`
+
+**Transitions (stored in audit log):**
+
+| Transition | From | To | Who |
+|---|---|---|---|
+| `submit` | draft | in_review | any user |
+| `approve` | in_review | approved | admin |
+| `reject` | in_review | draft | admin |
+| `publish` | approved | published | admin |
+
+The standards detail page (`/standards/:id`) shows a stepper with per-step descriptions and a Submit / Approve / Publish button aligned to the right.
 
 ---
 
