@@ -47,7 +47,8 @@ const FEATURED_OVERRIDE: CSSProperties & Record<string, string> = {
   '--isw-button-bg-hover': '#16a34a',
   '--isw-button-border-hover': '#16a34a',
   borderColor: 'rgba(34,197,94,0.4)',
-  background: 'radial-gradient(circle at top, rgba(34,197,94,0.08), transparent 60%), var(--color-background)',
+  background:
+    'radial-gradient(circle at top, rgba(34,197,94,0.08), transparent 60%), var(--color-background)',
   boxShadow: '0 0 0 1px rgba(34,197,94,0.25), 0 8px 32px rgba(34,197,94,0.08)',
 };
 

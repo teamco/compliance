@@ -11,52 +11,57 @@ function makeFakeClient() {
           usage: { input_tokens: 10, output_tokens: 20 },
         }),
       }),
-      create: vi.fn().mockImplementation(
-        async (_params: { system?: string; messages: Array<{ role: string; content: string }> }) => {
-          // Distinguish generateStandards vs analyzeGap by system prompt keyword.
-          const isGapAnalysis = (_params.system ?? '').includes('gap analysis');
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify(
-                  isGapAnalysis
-                    ? {
-                        summary: 'No gaps found.',
-                        criticalGaps: [],
-                        recommendations: [],
-                        riskScore: 0,
-                      }
-                    : [
-                        {
-                          frameworkId: 'NIST-CSF',
-                          controls: [
-                            {
-                              id: 'NIST-CSF-001',
-                              title: 'Identify Assets',
-                              description: 'Identify and manage assets.',
-                              implementationGuidance: 'Create an asset inventory.',
-                            },
-                          ],
-                        },
-                        {
-                          frameworkId: 'ISO-27001',
-                          controls: [
-                            {
-                              id: 'ISO-27001-001',
-                              title: 'Information Security Policies',
-                              description: 'Define security policies.',
-                              implementationGuidance: 'Write and publish policies.',
-                            },
-                          ],
-                        },
-                      ],
-                ),
-              },
-            ],
-          };
-        },
-      ),
+      create: vi
+        .fn()
+        .mockImplementation(
+          async (_params: {
+            system?: string;
+            messages: Array<{ role: string; content: string }>;
+          }) => {
+            // Distinguish generateStandards vs analyzeGap by system prompt keyword.
+            const isGapAnalysis = (_params.system ?? '').includes('gap analysis');
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: JSON.stringify(
+                    isGapAnalysis
+                      ? {
+                          summary: 'No gaps found.',
+                          criticalGaps: [],
+                          recommendations: [],
+                          riskScore: 0,
+                        }
+                      : [
+                          {
+                            frameworkId: 'NIST-CSF',
+                            controls: [
+                              {
+                                id: 'NIST-CSF-001',
+                                title: 'Identify Assets',
+                                description: 'Identify and manage assets.',
+                                implementationGuidance: 'Create an asset inventory.',
+                              },
+                            ],
+                          },
+                          {
+                            frameworkId: 'ISO-27001',
+                            controls: [
+                              {
+                                id: 'ISO-27001-001',
+                                title: 'Information Security Policies',
+                                description: 'Define security policies.',
+                                implementationGuidance: 'Write and publish policies.',
+                              },
+                            ],
+                          },
+                        ],
+                  ),
+                },
+              ],
+            };
+          },
+        ),
     },
   };
 }
