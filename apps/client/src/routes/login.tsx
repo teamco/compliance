@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
 import { type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
@@ -70,12 +70,12 @@ function LoginPage() {
     <div className="min-h-screen flex bg-[#020617]">
       {/* Left — branding panel */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 bg-[#0f172a] border-r border-[#1e293b]">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-green-500" />
-          <span className="font-semibold text-white tracking-tight text-sm">
-            Compliance<span className="text-green-500">IQ</span>
+          <span className="font-semibold text-white tracking-tight text-base">
+            Compliance <span className="text-green-500">IQ</span>
           </span>
-        </div>
+        </Link>
 
         <div className="space-y-6">
           <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-green-500/10 border border-green-500/20">
@@ -115,12 +115,12 @@ function LoginPage() {
       <div className="flex flex-1 flex-col">
         {/* Top bar */}
         <div className="flex items-center justify-between px-8 py-4 lg:justify-end">
-          <div className="flex items-center gap-2 lg:hidden">
+          <Link to="/" className="flex items-center gap-2 lg:hidden">
             <span className="h-2 w-2 rounded-full bg-green-500" />
-            <span className="font-semibold text-white text-sm">
-              Compliance<span className="text-green-500">IQ</span>
+            <span className="font-semibold text-white text-base">
+              Compliance <span className="text-green-500">IQ</span>
             </span>
-          </div>
+          </Link>
           <div className="flex items-center gap-1">
             {SUPPORTED_LOCALES.map(({ code, label }) => (
               <button

@@ -90,21 +90,21 @@ export function LayoutSider() {
 
   return (
     <aside
-      className={`relative flex flex-col border-r border-border bg-surface transition-all duration-200 shrink-0 ${
+      className={`relative flex flex-col border-r border-border bg-surface transition-all duration-200 shrink-0 h-screen sticky top-0 overflow-hidden ${
         collapsed ? 'w-14' : 'w-60'
       }`}
     >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 h-14 border-b border-border shrink-0">
+      <Link to="/" className="flex items-center gap-2.5 px-4 h-14 border-b border-border shrink-0">
         <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 shrink-0">
           <ShieldCheck className="w-4 h-4 text-green-500" />
         </div>
         {!collapsed && (
-          <span className="font-semibold text-sm text-foreground tracking-tight">
-            Compliance<span className="text-green-500 ml-0.5">IQ</span>
+          <span className="font-semibold text-base text-foreground tracking-tight">
+            Compliance <span className="text-green-500">IQ</span>
           </span>
         )}
-      </div>
+      </Link>
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-2 space-y-4">

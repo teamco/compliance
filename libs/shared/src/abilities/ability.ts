@@ -22,6 +22,9 @@ export function defineAbilitiesFor(user: AbilityUser | null): AppAbility {
     can('read', 'Organization', { userId: user.id } as never);
     can('create', 'Organization');
     can(['update', 'delete'], 'Organization', { userId: user.id } as never);
+    can('read', 'StandardsDocument', { userId: user.id } as never);
+    can('create', 'StandardsDocument');
+    can(['update', 'delete'], 'StandardsDocument', { userId: user.id } as never);
   }
   return build();
 }

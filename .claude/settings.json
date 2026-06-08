@@ -2,12 +2,7 @@
   "mcpServers": {
     "nx": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@nx/mcp@latest",
-        "--directory",
-        "."
-      ],
+      "args": ["-y", "@nx/mcp@latest", "--directory", "."],
       "type": "stdio"
     },
     "supabase": {
@@ -31,5 +26,16 @@
       "Bash(git diff *)",
       "Bash(git log *)"
     ]
+  },
+  "extraKnownMarketplaces": {
+    "nx-claude-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "nrwl/nx-ai-agents-config"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true
   }
 }

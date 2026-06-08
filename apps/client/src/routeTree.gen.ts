@@ -23,6 +23,7 @@ import { Route as DashboardDashboardRouteImport } from './routes/_dashboard/dash
 import { Route as DashboardControlsRouteImport } from './routes/_dashboard/controls'
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
 import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
+import { Route as DashboardGapAnalysisIdRouteImport } from './routes/_dashboard/gap-analysis.$id'
 import { Route as DashboardAdminAiUsageRouteImport } from './routes/_dashboard/admin.ai-usage'
 
 const LoginRoute = LoginRouteImport.update({
@@ -94,6 +95,11 @@ const DashboardStandardsIdRoute = DashboardStandardsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => DashboardStandardsRoute,
 } as any)
+const DashboardGapAnalysisIdRoute = DashboardGapAnalysisIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DashboardGapAnalysisRoute,
+} as any)
 const DashboardAdminAiUsageRoute = DashboardAdminAiUsageRouteImport.update({
   id: '/admin/ai-usage',
   path: '/admin/ai-usage',
@@ -106,13 +112,14 @@ export interface FileRoutesByFullPath {
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
   '/frameworks': typeof DashboardFrameworksRoute
-  '/gap-analysis': typeof DashboardGapAnalysisRoute
+  '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
   '/org': typeof DashboardOrgRoute
   '/profile': typeof DashboardProfileRoute
   '/settings': typeof DashboardSettingsRoute
   '/standards': typeof DashboardStandardsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
 }
@@ -122,13 +129,14 @@ export interface FileRoutesByTo {
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
   '/frameworks': typeof DashboardFrameworksRoute
-  '/gap-analysis': typeof DashboardGapAnalysisRoute
+  '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
   '/org': typeof DashboardOrgRoute
   '/profile': typeof DashboardProfileRoute
   '/settings': typeof DashboardSettingsRoute
   '/standards': typeof DashboardStandardsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
 }
@@ -140,13 +148,14 @@ export interface FileRoutesById {
   '/_dashboard/controls': typeof DashboardControlsRoute
   '/_dashboard/dashboard': typeof DashboardDashboardRoute
   '/_dashboard/frameworks': typeof DashboardFrameworksRoute
-  '/_dashboard/gap-analysis': typeof DashboardGapAnalysisRoute
+  '/_dashboard/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
   '/_dashboard/org': typeof DashboardOrgRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/standards': typeof DashboardStandardsRouteWithChildren
   '/auth/callback': typeof AuthCallbackRoute
   '/_dashboard/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/_dashboard/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/_dashboard/standards/$id': typeof DashboardStandardsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
 }
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/standards'
     | '/auth/callback'
     | '/admin/ai-usage'
+    | '/gap-analysis/$id'
     | '/standards/$id'
     | '/auth/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -181,6 +191,7 @@ export interface FileRouteTypes {
     | '/standards'
     | '/auth/callback'
     | '/admin/ai-usage'
+    | '/gap-analysis/$id'
     | '/standards/$id'
     | '/auth/oauth/callback'
   id:
@@ -198,6 +209,7 @@ export interface FileRouteTypes {
     | '/_dashboard/standards'
     | '/auth/callback'
     | '/_dashboard/admin/ai-usage'
+    | '/_dashboard/gap-analysis/$id'
     | '/_dashboard/standards/$id'
     | '/auth/oauth/callback'
   fileRoutesById: FileRoutesById
@@ -310,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStandardsIdRouteImport
       parentRoute: typeof DashboardStandardsRoute
     }
+    '/_dashboard/gap-analysis/$id': {
+      id: '/_dashboard/gap-analysis/$id'
+      path: '/$id'
+      fullPath: '/gap-analysis/$id'
+      preLoaderRoute: typeof DashboardGapAnalysisIdRouteImport
+      parentRoute: typeof DashboardGapAnalysisRoute
+    }
     '/_dashboard/admin/ai-usage': {
       id: '/_dashboard/admin/ai-usage'
       path: '/admin/ai-usage'
@@ -319,6 +338,17 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface DashboardGapAnalysisRouteChildren {
+  DashboardGapAnalysisIdRoute: typeof DashboardGapAnalysisIdRoute
+}
+
+const DashboardGapAnalysisRouteChildren: DashboardGapAnalysisRouteChildren = {
+  DashboardGapAnalysisIdRoute: DashboardGapAnalysisIdRoute,
+}
+
+const DashboardGapAnalysisRouteWithChildren =
+  DashboardGapAnalysisRoute._addFileChildren(DashboardGapAnalysisRouteChildren)
 
 interface DashboardStandardsRouteChildren {
   DashboardStandardsIdRoute: typeof DashboardStandardsIdRoute
@@ -335,7 +365,7 @@ interface DashboardRouteChildren {
   DashboardControlsRoute: typeof DashboardControlsRoute
   DashboardDashboardRoute: typeof DashboardDashboardRoute
   DashboardFrameworksRoute: typeof DashboardFrameworksRoute
-  DashboardGapAnalysisRoute: typeof DashboardGapAnalysisRoute
+  DashboardGapAnalysisRoute: typeof DashboardGapAnalysisRouteWithChildren
   DashboardOrgRoute: typeof DashboardOrgRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
@@ -347,7 +377,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardControlsRoute: DashboardControlsRoute,
   DashboardDashboardRoute: DashboardDashboardRoute,
   DashboardFrameworksRoute: DashboardFrameworksRoute,
-  DashboardGapAnalysisRoute: DashboardGapAnalysisRoute,
+  DashboardGapAnalysisRoute: DashboardGapAnalysisRouteWithChildren,
   DashboardOrgRoute: DashboardOrgRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,

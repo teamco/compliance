@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { createFileRoute, Link, Outlet, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -9,12 +9,17 @@ import {
   Clock,
   XCircle,
   ChevronRight,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
-import { useNotify } from '@icore/template-shared';
+import { subject } from '@casl/ability';
+import { useNotify, useAppAbility } from '@icore/template-shared';
 import {
   useFrameworks,
   useStandardsDocuments,
   useGenerateStandards,
+  useDeleteStandards,
+  useRetryStandards,
   type StandardsDocument,
   type StandardsStatus,
   type WorkflowStatus,
@@ -52,49 +57,94 @@ function WorkflowBadge({ status }: { status: WorkflowStatus }) {
   );
 }
 
+const STUCK_MS = 5 * 60 * 1000;
+
 function DocumentCard({
   doc,
   frameworks,
+  onDelete,
+  onRetry,
 }: {
   doc: StandardsDocument;
   frameworks: { id: string; name: string }[];
+  onDelete: (id: string) => void;
+  onRetry: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const ability = useAppAbility();
   const Icon = STATUS_ICON[doc.status];
   const colorClass = STATUS_COLOR[doc.status];
   const fwNames = doc.frameworkIds
     .map((id) => frameworks.find((f) => f.id === id)?.name ?? id)
     .join(', ');
 
+  const isStuck =
+    doc.status === 'pending' && Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
+  const eligible = doc.status === 'failed' || isStuck;
+  const canRetry =
+    eligible &&
+    ability.can('update', subject('StandardsDocument', { id: doc.id, userId: doc.userId }));
+  const canDelete =
+    eligible &&
+    ability.can('delete', subject('StandardsDocument', { id: doc.id, userId: doc.userId }));
+
   return (
-    <div className="group bg-surface border border-border rounded-xl p-5 flex items-start justify-between gap-4 hover:border-muted-foreground/40 transition-colors">
-      <div className="flex items-start gap-4 min-w-0">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-green-500/10 border border-green-500/20 shrink-0">
-          <ScrollText size={16} className="text-green-500" />
+    <div className="group bg-surface border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-muted-foreground/40 transition-colors">
+      <div className="flex items-start gap-3 min-w-0">
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 shrink-0">
+          <ScrollText size={14} className="text-green-500" />
         </div>
-        <div className="min-w-0 space-y-1">
-          <p className="text-sm font-medium text-foreground truncate">{fwNames}</p>
-          <p className="text-xs text-muted-foreground">
-            {t('standards.controls', { count: doc.controls.length })} · {t('standards.generatedOn')}{' '}
-            {new Date(doc.createdAt).toLocaleDateString()}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-3 shrink-0">
-        <div className={`flex items-center gap-1.5 text-xs font-medium ${colorClass}`}>
-          <Icon size={13} />
-          <span>{t(`standards.status.${doc.status}`)}</span>
-        </div>
-        <WorkflowBadge status={doc.workflowStatus ?? 'draft'} />
+        <p className="text-sm font-medium text-foreground truncate flex-1">{fwNames}</p>
         {doc.status === 'completed' && (
           <Link
             to="/standards/$id"
             params={{ id: doc.id }}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer shrink-0"
           >
             {t('standards.viewControls')}
             <ChevronRight size={12} />
           </Link>
+        )}
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground">
+          {t('standards.controls', { count: doc.controls.length })}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          {t('standards.generatedOn')} {new Date(doc.createdAt).toLocaleDateString()}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2 mt-auto">
+        <div className={`flex items-center gap-1 text-xs font-medium ${colorClass}`}>
+          <Icon size={12} />
+          <span>{isStuck ? t('standards.status.stuck') : t(`standards.status.${doc.status}`)}</span>
+        </div>
+        <WorkflowBadge status={doc.workflowStatus ?? 'draft'} />
+        {(canRetry || canDelete) && (
+          <div className="flex items-center gap-1 ml-auto">
+            {canRetry && (
+              <button
+                type="button"
+                onClick={() => onRetry(doc.id)}
+                title={t('standards.retry')}
+                className="p-1 rounded text-muted-foreground hover:text-amber-400 transition-colors cursor-pointer"
+              >
+                <RotateCcw size={13} />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(doc.id)}
+                title={t('standards.delete')}
+                className="p-1 rounded text-muted-foreground hover:text-red-400 transition-colors cursor-pointer"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -104,12 +154,18 @@ function DocumentCard({
 function StandardsPage() {
   const { t } = useTranslation();
   const notify = useNotify();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { activeOrgId } = useActiveOrgStore();
   const { data: frameworks } = useFrameworks();
   const { data: docs, isPending } = useStandardsDocuments(activeOrgId ?? '');
   const generate = useGenerateStandards();
-
+  const deleteStandards = useDeleteStandards(activeOrgId ?? '');
+  const retryStandards = useRetryStandards(activeOrgId ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  if (pathname.startsWith('/standards/')) {
+    return <Outlet />;
+  }
 
   if (!activeOrgId) {
     return (
@@ -127,6 +183,24 @@ function StandardsPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteStandards.mutateAsync(id);
+      notify.success(t('standards.deleted'));
+    } catch {
+      notify.error(t('error.unknown'));
+    }
+  }
+
+  async function handleRetry(id: string) {
+    try {
+      await retryStandards.mutateAsync(id);
+      notify.success(t('standards.retried'));
+    } catch {
+      notify.error(t('error.unknown'));
+    }
   }
 
   async function handleGenerate() {
@@ -188,14 +262,16 @@ function StandardsPage() {
       </div>
 
       {/* Documents list */}
-      <div className="space-y-3">
+      <div className="@container">
         {isPending ? (
-          Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-20 bg-surface border border-border rounded-xl animate-pulse"
-            />
-          ))
+          <div className="grid grid-cols-1 @[480px]:grid-cols-2 @[750px]:grid-cols-3 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-28 bg-surface border border-border rounded-xl animate-pulse"
+              />
+            ))}
+          </div>
         ) : (docs ?? []).length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <ScrollText size={36} className="text-muted-foreground/30 mb-3" />
@@ -203,9 +279,17 @@ function StandardsPage() {
             <p className="text-xs text-muted-foreground/60 mt-1">{t('standards.generateHint')}</p>
           </div>
         ) : (
-          (docs ?? []).map((doc) => (
-            <DocumentCard key={doc.id} doc={doc} frameworks={frameworks ?? []} />
-          ))
+          <div className="grid grid-cols-1 @[480px]:grid-cols-2 @[750px]:grid-cols-3 gap-3">
+            {(docs ?? []).map((doc) => (
+              <DocumentCard
+                key={doc.id}
+                doc={doc}
+                frameworks={frameworks ?? []}
+                onDelete={handleDelete}
+                onRetry={handleRetry}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
