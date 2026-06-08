@@ -40,7 +40,6 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
       // Avoids Windows DNS misrouting the dotted Supabase username as a hostname,
       // and lets us inject ssl + noSupervisor for pooler connections.
       const url = new URL(connectionString);
-      const isPooler = url.hostname.includes('pooler.supabase.com');
       this.boss = new PgBoss({
         host: url.hostname,
         port: url.port ? parseInt(url.port, 10) : 5432,
@@ -48,8 +47,6 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
         user: decodeURIComponent(url.username),
         password: decodeURIComponent(url.password),
         ssl: { rejectUnauthorized: false },
-        // Pooler connections don't support LISTEN/NOTIFY — use polling only.
-        noSupervisor: isPooler,
         max: 5,
       });
 
