@@ -16,6 +16,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { subject } from '@casl/ability';
 import { NotesClientService } from '@icore/notes-client';
@@ -102,6 +103,7 @@ export class NotesController {
   }
 
   @Get('standards')
+  @SkipThrottle()
   @ApiOperation({ summary: 'List generated standards documents for an org' })
   async listStandards(
     @Req() req: Request & { user?: VerifiedToken },
