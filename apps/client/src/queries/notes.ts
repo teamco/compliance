@@ -127,6 +127,8 @@ export function useStandardsDocuments(orgId: string) {
     queryKey: ['notes', 'standards', orgId],
     queryFn: () => api<StandardsDocument[]>(`/notes/standards?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
+    refetchInterval: (query) =>
+      query.state.data?.some((d) => d.status === 'pending') ? 5000 : false,
   });
 }
 
@@ -188,9 +190,9 @@ export function useSnapshot(snapshotId: string) {
 
 export function useGenerateStandards() {
   const qc = useQueryClient();
-  return useMutation<StandardsDocument, Error, { orgId: string; frameworkIds: string[] }>({
+  return useMutation<{ docId: string }, Error, { orgId: string; frameworkIds: string[] }>({
     mutationFn: (body) =>
-      api<StandardsDocument>('/notes/standards/generate', {
+      api<{ docId: string }>('/notes/standards/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

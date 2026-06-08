@@ -216,6 +216,14 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (error) throw new Error(error.message);
   }
 
+  async failStandardsDocument(id: string, _reason?: string): Promise<void> {
+    const { error } = await this.db
+      .from('generated_standards')
+      .update({ status: 'failed' })
+      .eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
   async getStandardsDocument(id: string): Promise<StandardsDocument | null> {
     const { data, error } = await this.db
       .from('generated_standards')

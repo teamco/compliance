@@ -122,6 +122,12 @@ export class FakeNotesStrategy implements NotesStrategy {
     this.docs.set(id, { ...existing, controls, status: 'completed' });
   }
 
+  async failStandardsDocument(id: string, _reason?: string): Promise<void> {
+    const existing = this.docs.get(id);
+    if (!existing) throw new Error(`doc_not_found: ${id}`);
+    this.docs.set(id, { ...existing, status: 'failed' });
+  }
+
   async getStandardsDocument(id: string): Promise<StandardsDocument | null> {
     return this.docs.get(id) ?? null;
   }
