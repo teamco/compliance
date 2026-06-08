@@ -140,6 +140,12 @@ export const he = {
     switchOrg: 'בחר ארגון',
     noOrgs: 'אין ארגונים עדיין',
     noActiveOrg: 'בחר ארגון להמשך',
+    validation: {
+      nameRequired: 'שם הארגון הוא שדה חובה',
+      nameMin: 'שם הארגון חייב להיות לפחות 2 תווים',
+      emptyTag: 'יש להזין ערך לפני ההוספה',
+      duplicateTag: 'הערך הזה כבר נוסף',
+    },
   },
   standards: {
     title: 'תקנים שנוצרו',

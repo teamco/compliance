@@ -14,6 +14,7 @@ import {
 import { useActiveOrgStore } from '@/stores/active-org';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
 const INDUSTRIES = [
   'technology',
@@ -40,26 +41,48 @@ const EMPTY_FORM: OrganizationInput = {
 function TagInput({
   value,
   onChange,
+  label,
   placeholder,
 }: {
   value: string[];
   onChange: (v: string[]) => void;
+  label: string;
   placeholder?: string;
 }) {
+  const { t } = useTranslation();
   const [input, setInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  function add() {
+  function add(): boolean {
     const trimmed = input.trim();
-    if (trimmed && !value.includes(trimmed)) onChange([...value, trimmed]);
+    if (!trimmed) {
+      setError(t('org.validation.emptyTag'));
+      return false;
+    }
+    if (value.some((tag) => tag.toLowerCase() === trimmed.toLowerCase())) {
+      setError(t('org.validation.duplicateTag'));
+      return false;
+    }
+    onChange([...value, trimmed]);
     setInput('');
+    setError(null);
+    return true;
   }
 
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
         <Input
+          aria-label={label}
+          aria-invalid={!!error}
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e) => {
+            setInput(e.target.value);
+            setError(null);
+          }}
+          onBlur={() => {
+            if (input.trim()) add();
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();
@@ -73,6 +96,7 @@ function TagInput({
           +
         </Button>
       </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
       {value.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {value.map((tag) => (
@@ -109,36 +133,70 @@ function OrgForm({
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState<OrganizationInput>(initial);
+  const [errors, setErrors] = useState<{ name?: string }>({});
 
   useEffect(() => {
     setForm(initial);
+    setErrors({});
   }, [initial]);
+
+  function validate(data: OrganizationInput) {
+    const nextErrors: { name?: string } = {};
+    if (!data.name.trim()) {
+      nextErrors.name = t('org.validation.nameRequired');
+    } else if (data.name.trim().length < 2) {
+      nextErrors.name = t('org.validation.nameMin');
+    }
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  }
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        onSave(form);
+        const data = { ...form, name: form.name.trim() };
+        if (!validate(data)) return;
+        onSave(data);
       }}
       className="space-y-5"
+      noValidate
     >
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <label
+          htmlFor="org-name"
+          className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+        >
           {t('org.name')}
         </label>
         <Input
+          id="org-name"
           value={form.name}
-          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+          onChange={(e) => {
+            setForm((f) => ({ ...f, name: e.target.value }));
+            setErrors((current) => ({ ...current, name: undefined }));
+          }}
           placeholder={t('org.namePlaceholder')}
+          aria-invalid={!!errors.name}
+          aria-describedby={errors.name ? 'org-name-error' : undefined}
           required
         />
+        {errors.name && (
+          <p id="org-name-error" className="text-xs text-destructive">
+            {errors.name}
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        <label
+          htmlFor="org-industry"
+          className="text-xs font-medium text-muted-foreground uppercase tracking-wider"
+        >
           {t('org.industry')}
         </label>
         <select
+          id="org-industry"
           value={form.industry}
           onChange={(e) => setForm((f) => ({ ...f, industry: e.target.value }))}
           className="flex h-10 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -181,6 +239,7 @@ function OrgForm({
         <TagInput
           value={form.regions}
           onChange={(regions) => setForm((f) => ({ ...f, regions }))}
+          label={t('org.regions')}
           placeholder={t('org.regionsPlaceholder')}
         />
       </div>
@@ -192,6 +251,7 @@ function OrgForm({
         <TagInput
           value={form.techStack}
           onChange={(techStack) => setForm((f) => ({ ...f, techStack }))}
+          label={t('org.techStack')}
           placeholder={t('org.techStackPlaceholder')}
         />
       </div>
@@ -203,6 +263,7 @@ function OrgForm({
         <TagInput
           value={form.regulations}
           onChange={(regulations) => setForm((f) => ({ ...f, regulations }))}
+          label={t('org.regulations')}
           placeholder={t('org.regulationsPlaceholder')}
         />
       </div>
@@ -217,7 +278,7 @@ function OrgForm({
   );
 }
 
-function EditOrgForm({ org }: { org: Organization }) {
+function EditOrgForm({ org, onSaved }: { org: Organization; onSaved: () => void }) {
   const { t } = useTranslation();
   const notify = useNotify();
   const update = useUpdateOrganization(org.id);
@@ -234,6 +295,7 @@ function EditOrgForm({ org }: { org: Organization }) {
   async function handleSave(data: OrganizationInput) {
     try {
       await update.mutateAsync(data);
+      onSaved();
       notify.success(t('org.updated'));
     } catch {
       notify.error(t('error.unknown'));
@@ -250,20 +312,26 @@ function EditOrgForm({ org }: { org: Organization }) {
   );
 }
 
-function OrgPage() {
+export function OrgPage() {
   const { t } = useTranslation();
   const notify = useNotify();
   const { data: orgs, isPending } = useOrganizations();
   const create = useCreateOrganization();
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [showCreate, setShowCreate] = useState(false);
+  const editingOrg = (orgs ?? []).find((org) => org.id === editingId);
+
+  function closeModal() {
+    setModalMode(null);
+    setEditingId(null);
+  }
 
   async function handleCreate(data: OrganizationInput) {
     try {
       const org = await create.mutateAsync(data);
       setActiveOrgId(org.id);
-      setShowCreate(false);
+      closeModal();
       notify.success(t('org.created'));
     } catch {
       notify.error(t('error.unknown'));
@@ -292,6 +360,34 @@ function OrgPage() {
         </div>
       </div>
 
+      <Button variant="outline" onClick={() => setModalMode('create')} className="gap-2">
+        <Plus size={14} />
+        {t('org.createNew')}
+      </Button>
+
+      <Sheet open={modalMode !== null} onOpenChange={(open) => !open && closeModal()}>
+        <SheetContent className="w-full max-w-[440px] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>
+              {modalMode === 'edit' ? t('org.editTitle') : t('org.createTitle')}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="p-4">
+            {modalMode === 'create' && (
+              <OrgForm
+                initial={EMPTY_FORM}
+                onSave={(d) => void handleCreate(d)}
+                isPending={create.isPending}
+                submitLabel={t('org.save')}
+              />
+            )}
+            {modalMode === 'edit' && editingOrg && (
+              <EditOrgForm org={editingOrg} onSaved={closeModal} />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* Org list */}
       <div className="space-y-2">
         {(orgs ?? []).map((org) => (
@@ -312,7 +408,10 @@ function OrgPage() {
               </div>
               <button
                 type="button"
-                onClick={() => setEditingId(editingId === org.id ? null : org.id)}
+                onClick={() => {
+                  setEditingId(org.id);
+                  setModalMode('edit');
+                }}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer px-2 py-1 rounded-md hover:bg-muted"
               >
                 <Edit2 size={12} />
@@ -320,38 +419,11 @@ function OrgPage() {
               </button>
             </div>
 
-            {editingId === org.id && (
-              <div className="mt-1 bg-surface border border-border rounded-xl p-4">
-                <EditOrgForm org={org} />
-              </div>
-            )}
           </div>
         ))}
 
-        {(orgs ?? []).length === 0 && !showCreate && (
-          <p className="text-sm text-muted-foreground">{t('org.noOrgs')}</p>
-        )}
+        {(orgs ?? []).length === 0 && <p className="text-sm text-muted-foreground">{t('org.noOrgs')}</p>}
       </div>
-
-      {/* Create form */}
-      {showCreate && (
-        <div className="bg-surface border border-border rounded-xl p-5">
-          <p className="text-sm font-medium text-foreground mb-4">{t('org.createTitle')}</p>
-          <OrgForm
-            initial={EMPTY_FORM}
-            onSave={(d) => void handleCreate(d)}
-            isPending={create.isPending}
-            submitLabel={t('org.save')}
-          />
-        </div>
-      )}
-
-      {!showCreate && (
-        <Button variant="outline" onClick={() => setShowCreate(true)} className="gap-2">
-          <Plus size={14} />
-          {t('org.createNew')}
-        </Button>
-      )}
     </div>
   );
 }

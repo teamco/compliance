@@ -140,6 +140,12 @@ export const en = {
     switchOrg: 'Select Organization',
     noOrgs: 'No organizations yet',
     noActiveOrg: 'Select an organization to continue',
+    validation: {
+      nameRequired: 'Organization name is required',
+      nameMin: 'Organization name must be at least 2 characters',
+      emptyTag: 'Enter a value before adding it',
+      duplicateTag: 'This value is already added',
+    },
   },
   standards: {
     title: 'Generated Standards',

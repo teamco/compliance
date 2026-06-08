@@ -140,6 +140,12 @@ export const es = {
     switchOrg: 'Seleccionar organización',
     noOrgs: 'No hay organizaciones',
     noActiveOrg: 'Selecciona una organización para continuar',
+    validation: {
+      nameRequired: 'El nombre de la organización es obligatorio',
+      nameMin: 'El nombre de la organización debe tener al menos 2 caracteres',
+      emptyTag: 'Ingresa un valor antes de agregarlo',
+      duplicateTag: 'Este valor ya fue agregado',
+    },
   },
   standards: {
     title: 'Estándares generados',
