@@ -8161,6 +8161,7 @@ __metadata:
     "@types/multer": "npm:^2.1.0"
     cookie-parser: "npm:^1.4.7"
     express: "npm:^5.2.1"
+    pg-boss: "npm:^12.18.2"
     vitest: "npm:^4.1.8"
   languageName: unknown
   linkType: soft

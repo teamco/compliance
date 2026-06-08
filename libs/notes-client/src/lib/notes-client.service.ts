@@ -89,6 +89,18 @@ export class NotesClientService {
     ).then(() => undefined);
   }
 
+  deleteStandardsDocument(id: string): Promise<void> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('notes.standards.delete', { id }),
+    ).then(() => undefined);
+  }
+
+  resetStandardsDocument(id: string): Promise<void> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('notes.standards.reset', { id }),
+    ).then(() => undefined);
+  }
+
   getStandardsDocument(id: string): Promise<StandardsDocument | null> {
     return firstValueFrom(
       this.client.send<StandardsDocument | null>('notes.standards.get', { id }),

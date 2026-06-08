@@ -190,6 +190,8 @@ export interface NotesStrategy {
   ): Promise<{ id: string }>;
   saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void>;
   failStandardsDocument(id: string, reason?: string): Promise<void>;
+  deleteStandardsDocument(id: string): Promise<void>;
+  resetStandardsDocument(id: string): Promise<void>;
   getStandardsDocument(id: string): Promise<StandardsDocument | null>;
   listStandardsDocuments(orgId: string): Promise<StandardsDocument[]>;
 
