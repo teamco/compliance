@@ -276,6 +276,18 @@ export class NotesClientService {
     return firstValueFrom(this.client.send<{ ok: boolean }>('notes.templates.delete', { id }));
   }
 
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.favorite.add', { id, orgId }),
+    );
+  }
+
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.favorite.remove', { id, orgId }),
+    );
+  }
+
   saveGapAnalysis(
     orgId: string,
     userId: string,

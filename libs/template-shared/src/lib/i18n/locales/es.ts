@@ -22,6 +22,8 @@ export const es = {
     noTemplates: 'Sin plantillas',
     csv: 'Descargar CSV',
     json: 'Descargar JSON',
+    favorite: 'Favorita para esta organización',
+    unfavorite: 'Quitar de favoritas',
   },
   auth: {
     signIn: 'Iniciar sesión',
@@ -382,6 +384,7 @@ export const es = {
       includeSummary: 'Resumen',
       includeDetails: 'Detalles',
       includeRecommendations: 'Recomendaciones',
+      favoriteOrgs: 'Favorita para organizaciones',
       empty: 'Aún no hay plantillas.',
     },
     retention: {

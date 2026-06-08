@@ -97,6 +97,7 @@ export type {
   RecommendationEffort,
   GapItem,
   Recommendation,
+  GapFinding,
   GapAnalysisResult,
 } from './ai';
 import type { GapAnalysisResult } from './ai';
@@ -268,6 +269,8 @@ export interface NotesStrategy {
   createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate>;
   updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate>;
   deleteReportTemplate(id: string): Promise<{ ok: boolean }>;
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
@@ -412,6 +415,9 @@ export interface ReportTemplate {
   includeDetails: boolean;
   includeRecommendations: boolean;
   footerNote: string;
+  // Orgs that favorited (assigned) this global template — surfaced first in the
+  // export menu for the matching org.
+  favoriteOrgIds: string[];
   createdBy: string | null;
   createdAt: string;
 }
@@ -425,6 +431,7 @@ export interface ReportTemplateInput {
   includeDetails: boolean;
   includeRecommendations: boolean;
   footerNote: string;
+  favoriteOrgIds: string[];
 }
 
 export interface RetentionPrefsPayload {

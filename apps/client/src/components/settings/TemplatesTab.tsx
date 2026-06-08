@@ -9,6 +9,7 @@ import {
   type ReportTemplate,
   type ReportTemplateInput,
 } from '@/queries/report-templates';
+import { useOrganizations } from '@/queries/notes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -23,11 +24,13 @@ const EMPTY: ReportTemplateInput = {
   includeDetails: true,
   includeRecommendations: true,
   footerNote: 'Confidential',
+  favoriteOrgIds: [],
 };
 
 export function TemplatesTab() {
   const { t } = useTranslation();
   const { data: templates, isPending } = useReportTemplates();
+  const { data: orgs } = useOrganizations();
   const { mutate: create, isPending: creating } = useCreateReportTemplate();
   const { mutate: update, isPending: updating } = useUpdateReportTemplate();
   const { mutate: remove } = useDeleteReportTemplate();
@@ -51,7 +54,21 @@ export function TemplatesTab() {
       includeDetails: tpl.includeDetails,
       includeRecommendations: tpl.includeRecommendations,
       footerNote: tpl.footerNote,
+      favoriteOrgIds: tpl.favoriteOrgIds,
     });
+  }
+
+  function toggleFavoriteOrg(orgId: string) {
+    setForm((f) =>
+      f
+        ? {
+            ...f,
+            favoriteOrgIds: f.favoriteOrgIds.includes(orgId)
+              ? f.favoriteOrgIds.filter((o) => o !== orgId)
+              : [...f.favoriteOrgIds, orgId],
+          }
+        : f,
+    );
   }
 
   function close() {
@@ -157,6 +174,34 @@ export function TemplatesTab() {
               className="text-xs"
             />
           </div>
+
+          {(orgs?.length ?? 0) > 0 && (
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-foreground">
+                {t('settings.templates.favoriteOrgs')}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {orgs?.map((org) => {
+                  const on = form.favoriteOrgIds.includes(org.id);
+                  return (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => toggleFavoriteOrg(org.id)}
+                      className={[
+                        'rounded-lg border px-2.5 py-1 text-xs transition-colors cursor-pointer',
+                        on
+                          ? 'border-green-500/20 bg-green-500/10 text-green-500'
+                          : 'border-border bg-surface text-muted-foreground hover:text-foreground',
+                      ].join(' ')}
+                    >
+                      {org.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-wrap gap-4">
             {(['includeSummary', 'includeDetails', 'includeRecommendations'] as const).map(

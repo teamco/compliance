@@ -22,6 +22,8 @@ export const en = {
     noTemplates: 'No templates',
     csv: 'Download CSV',
     json: 'Download JSON',
+    favorite: 'Favorite for this organization',
+    unfavorite: 'Remove favorite',
   },
   auth: {
     signIn: 'Sign in',
@@ -402,6 +404,7 @@ export const en = {
       includeSummary: 'Summary',
       includeDetails: 'Details',
       includeRecommendations: 'Recommendations',
+      favoriteOrgs: 'Favorite for organizations',
       empty: 'No templates yet.',
     },
     retention: {

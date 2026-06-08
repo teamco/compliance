@@ -46,3 +46,20 @@ export function useDeleteReportTemplate() {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+export function useSetTemplateFavorite() {
+  const qc = useQueryClient();
+  return useMutation<ReportTemplate, Error, { id: string; orgId: string; favorite: boolean }>({
+    mutationFn: ({ id, orgId, favorite }) =>
+      favorite
+        ? api<ReportTemplate>(`/notes/report-templates/${id}/favorites`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orgId }),
+          })
+        : api<ReportTemplate>(`/notes/report-templates/${id}/favorites/${orgId}`, {
+            method: 'DELETE',
+          }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}

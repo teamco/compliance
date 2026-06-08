@@ -119,6 +119,7 @@ function GapAnalysisDetailPage() {
         </div>
         <ExportMenu
           scope="gap"
+          orgId={gap.orgId}
           onPdf={(tpl) => exportGapPdf(gap, tpl, orgName)}
           onCsv={() => exportGapCsv(gap)}
           onJson={() => exportGapJson(gap)}
