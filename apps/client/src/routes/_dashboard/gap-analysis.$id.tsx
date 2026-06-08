@@ -101,7 +101,7 @@ function GapAnalysisDetailPage() {
         <div>
           <Link
             to="/gap-analysis"
-            search={{ tab: 'history' }}
+            hash="history"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-2"
           >
             <ArrowLeft size={13} />

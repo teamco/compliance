@@ -53,11 +53,14 @@ function GapAnalysisPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { activeOrgId } = useActiveOrgStore();
   const { data: docs, isPending: docsLoading } = useStandardsDocuments(activeOrgId ?? '');
-  const { data: history } = useGapAnalyses(activeOrgId ?? '');
+  const { data: pastRuns } = useGapAnalyses(activeOrgId ?? '');
   const analyzeGap = useAnalyzeGap();
   const saveGap = useSaveGapAnalysis();
 
-  const { tab: activeTab } = Route.useSearch();
+  const [activeTab, setActiveTab] = useState<'new' | 'history'>(() => {
+    const hash = window.location.hash.slice(1);
+    return hash === 'history' ? 'history' : 'new';
+  });
   const [selectedDocId, setSelectedDocId] = useState<string>('');
   const [findings, setFindings] = useState<
     Record<string, { status: FindingStatus; evidence: string; expanded: boolean }>
@@ -158,7 +161,7 @@ function GapAnalysisPage() {
 
   const tabs = [
     { id: 'new' as const, label: t('gapAnalysis.tabNew') },
-    { id: 'history' as const, label: t('gapAnalysis.tabHistory'), count: history?.length },
+    { id: 'history' as const, label: t('gapAnalysis.tabHistory'), count: pastRuns?.length },
   ];
 
   return (
@@ -188,7 +191,10 @@ function GapAnalysisPage() {
           <button
             key={tab.id}
             type="button"
-            onClick={() => void navigate({ to: '/gap-analysis', search: { tab: tab.id } })}
+            onClick={() => {
+              setActiveTab(tab.id);
+              history.replaceState(null, '', `/gap-analysis#${tab.id}`);
+            }}
             className={[
               '-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5',
               activeTab === tab.id
@@ -386,7 +392,7 @@ function GapAnalysisPage() {
           {(() => {
             const now = Date.now();
             const boundary90 = now - 90 * 86_400_000;
-            const filtered = (history ?? []).filter((e) => {
+            const filtered = (pastRuns ?? []).filter((e) => {
               const t = new Date(e.createdAt).getTime();
               if (dateRange === 'all') return true;
               if (dateRange === '90+') return t < boundary90;
@@ -483,7 +489,4 @@ function GapAnalysisPage() {
 
 export const Route = createFileRoute('/_dashboard/gap-analysis')({
   component: GapAnalysisPage,
-  validateSearch: (search: Record<string, unknown>) => ({
-    tab: (search['tab'] as 'new' | 'history') ?? 'new',
-  }),
 });
