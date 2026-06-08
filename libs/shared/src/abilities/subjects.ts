@@ -19,6 +19,7 @@ export enum Subject {
   GapAnalysis = 'GapAnalysis',
   Organization = 'Organization',
   StandardsDocument = 'StandardsDocument',
+  ReportTemplate = 'ReportTemplate',
 }
 
 export type AbilityAction = `${Action}`;

@@ -18,6 +18,8 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
   StandardControl,
   StandardsDocument,
@@ -90,15 +92,15 @@ export class NotesClientService {
   }
 
   deleteStandardsDocument(id: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.delete', { id }),
-    ).then(() => undefined);
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.standards.delete', { id })).then(
+      () => undefined,
+    );
   }
 
   resetStandardsDocument(id: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.reset', { id }),
-    ).then(() => undefined);
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.standards.reset', { id })).then(
+      () => undefined,
+    );
   }
 
   getStandardsDocument(id: string): Promise<StandardsDocument | null> {
@@ -250,6 +252,28 @@ export class NotesClientService {
     return firstValueFrom(
       this.client.send<RetentionPrefsPayload>('admin.retention.update', { userId, patch }),
     );
+  }
+
+  // ─── Report templates ────────────────────────────────────────────────────
+
+  listReportTemplates(): Promise<ReportTemplate[]> {
+    return firstValueFrom(this.client.send<ReportTemplate[]>('notes.templates.list', {}));
+  }
+
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.create', { userId, input }),
+    );
+  }
+
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.update', { id, patch }),
+    );
+  }
+
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.templates.delete', { id }));
   }
 
   saveGapAnalysis(
