@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { Logger } from '@nestjs/common';
 import type {
   AiStrategy,
   ChatContext,
@@ -24,6 +25,7 @@ function stripJsonFences(raw: string): string {
 
 export class AnthropicAiStrategy implements AiStrategy {
   private readonly client: Anthropic;
+  private readonly logger = new Logger(AnthropicAiStrategy.name);
 
   constructor(opts: AnthropicAiStrategyOptions) {
     this.client = new Anthropic({ apiKey: opts.apiKey });
@@ -36,20 +38,37 @@ export class AnthropicAiStrategy implements AiStrategy {
     if (context.pageContext) systemParts.push(`Current page context: ${context.pageContext}`);
     if (context.frameworkId) systemParts.push(`Active framework: ${context.frameworkId}`);
 
-    const stream = this.client.messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: systemParts.join('\n'),
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    });
+    const started = Date.now();
+    const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+    this.logger.log(`chat start — ${messages.length} msg(s), ${totalChars} chars in`);
 
-    const text = await stream.finalText();
-    const final = await stream.finalMessage();
-    return {
-      text,
-      inputTokens: final.usage.input_tokens,
-      outputTokens: final.usage.output_tokens,
-    };
+    try {
+      const stream = this.client.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: systemParts.join('\n'),
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      });
+
+      const text = await stream.finalText();
+      const final = await stream.finalMessage();
+      const ms = Date.now() - started;
+      this.logger.log(
+        `chat done in ${ms}ms — in:${final.usage.input_tokens} out:${final.usage.output_tokens} text:${text.length} chars`,
+      );
+      return {
+        text,
+        inputTokens: final.usage.input_tokens,
+        outputTokens: final.usage.output_tokens,
+      };
+    } catch (err) {
+      const ms = Date.now() - started;
+      const e = err as { name?: string; status?: number; message?: string };
+      this.logger.error(
+        `chat FAILED after ${ms}ms — ${e.name ?? 'Error'}${e.status ? ` (${e.status})` : ''}: ${e.message ?? String(err)}`,
+      );
+      throw err;
+    }
   }
 
   async generateStandards(
