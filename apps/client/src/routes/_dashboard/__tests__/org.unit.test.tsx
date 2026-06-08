@@ -4,6 +4,7 @@ import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { OrgPage } from '../org';
 import type { Organization } from '@/queries/notes';
+import React from 'react';
 
 // ── mocks ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +21,7 @@ const ORG_1: Organization = {
   techStack: ['React'],
   regulations: ['SOC2'],
   createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
 };
 
 const ORG_2: Organization = {
@@ -32,6 +34,7 @@ const ORG_2: Organization = {
   techStack: [],
   regulations: [],
   createdAt: '2026-01-02T00:00:00Z',
+  updatedAt: '2026-01-02T00:00:00Z',
 };
 
 let mockOrgs: Organization[] = [];
@@ -113,7 +116,7 @@ describe('OrgPage', () => {
   it('edit button opens sheet with edit title', () => {
     render(wrap(<OrgPage />));
     const editBtns = screen.getAllByRole('button', { name: /edit/i });
-    fireEvent.click(editBtns[0]);
+    fireEvent.click(editBtns[0] as Element);
     expect(screen.getByTestId('sheet')).toBeTruthy();
     expect(screen.getByText('Edit Organization')).toBeTruthy();
   });
@@ -139,6 +142,7 @@ describe('OrgForm validation', () => {
 
   it('shows error when name is empty on submit', () => {
     openCreateSheet();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     fireEvent.submit(getNameInput().closest('form')!);
     expect(screen.getByText('Organization name is required')).toBeTruthy();
   });
@@ -147,6 +151,7 @@ describe('OrgForm validation', () => {
     openCreateSheet();
     const nameInput = getNameInput();
     fireEvent.change(nameInput, { target: { value: 'A' } });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     fireEvent.submit(nameInput.closest('form')!);
     expect(screen.getByText('Organization name must be at least 2 characters')).toBeTruthy();
   });
@@ -156,6 +161,7 @@ describe('OrgForm validation', () => {
     openCreateSheet();
     const nameInput = getNameInput();
     fireEvent.change(nameInput, { target: { value: '  MyOrg  ' } });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     fireEvent.submit(nameInput.closest('form')!);
     await waitFor(() => {
       expect(createMutateAsync).toHaveBeenCalledWith(
@@ -210,6 +216,7 @@ describe('TagInput', () => {
     openCreateSheet();
     const input = getRegionsInput();
     fireEvent.change(input, { target: { value: 'US' } });
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const addBtn = input.parentElement!.querySelector('button')!;
     fireEvent.click(addBtn);
     expect(screen.getByText('US')).toBeTruthy();
