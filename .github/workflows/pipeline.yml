@@ -1,0 +1,199 @@
+name: "Pipeline"
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------
+  # 0. DETECT AFFECTED — which Nx projects changed
+  # ---------------------------------------------------------
+  detect-affected:
+    name: "Detect Affected Projects"
+    runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.affected.outputs.projects }}
+      has-affected: ${{ steps.affected.outputs.has-affected }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup
+      - name: Set SHAs
+        uses: nrwl/nx-set-shas@v4
+      - name: Get affected projects
+        id: affected
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PROJECTS=$(yarn nx show projects --json 2>/dev/null || echo '[]')
+          else
+            PROJECTS=$(yarn nx show projects --affected --json 2>/dev/null || echo '[]')
+          fi
+
+          {
+            echo "projects<<EOF"
+            echo "$PROJECTS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$PROJECTS" = "[]" ]; then
+            echo "has-affected=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-affected=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ---------------------------------------------------------
+  # 1. CHECK — lint, test, format:check (all projects, incl. client)
+  # ---------------------------------------------------------
+  check:
+    name: "Check ${{ matrix.task }}"
+    needs: [detect-affected]
+    if: needs.detect-affected.outputs.has-affected == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [lint, test, "format:check"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Run ${{ matrix.task }}
+        run: yarn ${{ matrix.task }}
+
+  # ---------------------------------------------------------
+  # 2. BUILD — compile each buildable app (client has no build target;
+  #    it only goes through lint/test/format in the check stage)
+  # ---------------------------------------------------------
+  build:
+    name: "Build ${{ matrix.project }}"
+    needs: [check, detect-affected]
+    if: |
+      always() && !cancelled() &&
+      needs.check.result != 'failure' &&
+      needs.detect-affected.outputs.has-affected == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [api, auth, upload, notes, ai]
+    steps:
+      - name: Check if affected
+        id: gate
+        continue-on-error: true
+        run: |
+          echo '${{ needs.detect-affected.outputs.projects }}' | jq -e --arg p "${{ matrix.project }}" 'index($p) != null'
+      - uses: actions/checkout@v4
+        if: steps.gate.outcome == 'success'
+      - uses: ./.github/actions/setup
+        if: steps.gate.outcome == 'success'
+      - name: Build ${{ matrix.project }}
+        if: steps.gate.outcome == 'success'
+        run: yarn nx build ${{ matrix.project }}
+
+  # ---------------------------------------------------------
+  # 2b. REQUIRED CI CHECKS — single aggregate signal for branch
+  #     protection. check/build are gated on detect-affected, so they
+  #     skip on no-op changes and leave required checks "waiting" forever.
+  #     This job always runs and is green when nothing failed (skips OK).
+  #     Make THIS the only required check in branch rulesets.
+  # ---------------------------------------------------------
+  required-checks:
+    name: "Required CI checks"
+    needs: [check, build]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify no upstream failures
+        run: |
+          fail=false
+          for r in "${{ needs.check.result }}" "${{ needs.build.result }}"; do
+            if [ "$r" = "failure" ]; then
+              echo "::error::Upstream job failed: $r"
+              fail=true
+            fi
+          done
+          if [ "$fail" = "true" ]; then exit 1; fi
+          echo "All upstream CI jobs passed or skipped (no affected projects)."
+
+  # ---------------------------------------------------------
+  # 3. DB MIGRATE — apply Supabase migrations on push to main.
+  #    No-op when local migrations already match remote.
+  # ---------------------------------------------------------
+  db-migrate:
+    name: "Supabase db push"
+    needs: [build]
+    if: |
+      always() && !cancelled() &&
+      needs.build.result != 'failure' &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Link to Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+      - name: Push migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push
+
+  # ---------------------------------------------------------
+  # 4. RELEASE — bump root package.json version, commit, tag,
+  #    publish GH Release, then sync the bump back to dev.
+  #    Push to main only, after build passes.
+  # ---------------------------------------------------------
+  release:
+    name: "Release"
+    needs: [build]
+    if: |
+      always() && !cancelled() &&
+      github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.build.result != 'failure'
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release_management.outputs.tag }}
+      bump_type: ${{ steps.release_management.outputs.bump_type }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+      - uses: ./.github/actions/setup
+      - name: Bump version + tag
+        id: release_management
+        uses: ./.github/actions/bump
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_management.outputs.tag }}
+          name: ${{ steps.release_management.outputs.tag }}
+          body: ${{ steps.release_management.outputs.release_body }}
+          generate_release_notes: false
+          token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+      - name: Trigger sync-main-to-dev
+        # The bump commit carries `[skip ci]`, which GitHub honors by skipping
+        # ALL workflows on that SHA — including the push-triggered sync. Dispatch
+        # it explicitly so dev stays current without manual chore PRs.
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+        run: gh workflow run sync-main-to-dev.yml --ref main
