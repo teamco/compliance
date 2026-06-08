@@ -5,7 +5,14 @@ import { Bot, Send, Trash2, Sparkles, X } from 'lucide-react';
 import { useAuthStore } from '@icore/template-shared';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useChatHistory, useSaveChatMessage, useClearChatHistory } from '../../queries/settings';
@@ -72,8 +79,11 @@ export function AiAssistant() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const MAX_TURNS = 20;
+  const MAX_MSG_CHARS = 4000;
+
   async function send() {
-    const text = input.trim();
+    const text = input.trim().slice(0, MAX_MSG_CHARS);
     if (!text || streaming) return;
     setInput('');
 
@@ -95,7 +105,9 @@ export function AiAssistant() {
     let assistantContent = '';
 
     try {
-      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      const history = [...messages, userMsg]
+        .slice(-MAX_TURNS)
+        .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MSG_CHARS) }));
       const res = await fetch(`${API_BASE}/ai/chat`, {
         method: 'POST',
         headers: {
@@ -274,24 +286,61 @@ export function AiAssistant() {
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                              p: ({ children }) => <p className="text-xs leading-relaxed">{children}</p>,
-                              h1: ({ children }) => <h1 className="text-sm font-semibold mt-2 mb-1">{children}</h1>,
-                              h2: ({ children }) => <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>,
-                              h3: ({ children }) => <h3 className="text-xs font-semibold mt-1.5 mb-0.5">{children}</h3>,
-                              ul: ({ children }) => <ul className="text-xs list-disc pl-4 space-y-0.5">{children}</ul>,
-                              ol: ({ children }) => <ol className="text-xs list-decimal pl-4 space-y-0.5">{children}</ol>,
+                              p: ({ children }) => (
+                                <p className="text-xs leading-relaxed">{children}</p>
+                              ),
+                              h1: ({ children }) => (
+                                <h1 className="text-sm font-semibold mt-2 mb-1">{children}</h1>
+                              ),
+                              h2: ({ children }) => (
+                                <h2 className="text-sm font-semibold mt-2 mb-1">{children}</h2>
+                              ),
+                              h3: ({ children }) => (
+                                <h3 className="text-xs font-semibold mt-1.5 mb-0.5">{children}</h3>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="text-xs list-disc pl-4 space-y-0.5">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="text-xs list-decimal pl-4 space-y-0.5">
+                                  {children}
+                                </ol>
+                              ),
                               li: ({ children }) => <li className="leading-relaxed">{children}</li>,
                               code: ({ children, className }) =>
                                 className ? (
-                                  <code className="block bg-background/60 border border-border rounded px-2 py-1.5 text-[10px] font-mono overflow-x-auto whitespace-pre">{children}</code>
+                                  <code className="block bg-background/60 border border-border rounded px-2 py-1.5 text-[10px] font-mono overflow-x-auto whitespace-pre">
+                                    {children}
+                                  </code>
                                 ) : (
-                                  <code className="bg-background/60 border border-border rounded px-1 py-0.5 text-[10px] font-mono">{children}</code>
+                                  <code className="bg-background/60 border border-border rounded px-1 py-0.5 text-[10px] font-mono">
+                                    {children}
+                                  </code>
                                 ),
-                              pre: ({ children }) => <pre className="bg-background/60 border border-border rounded px-2 py-1.5 text-[10px] font-mono overflow-x-auto whitespace-pre">{children}</pre>,
-                              strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                              pre: ({ children }) => (
+                                <pre className="bg-background/60 border border-border rounded px-2 py-1.5 text-[10px] font-mono overflow-x-auto whitespace-pre">
+                                  {children}
+                                </pre>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-semibold">{children}</strong>
+                              ),
                               em: ({ children }) => <em className="italic">{children}</em>,
-                              blockquote: ({ children }) => <blockquote className="border-l-2 border-green-500/50 pl-2 italic text-muted-foreground">{children}</blockquote>,
-                              a: ({ href, children }) => <a href={href} target="_blank" rel="noopener noreferrer" className="text-green-500 underline underline-offset-2 hover:text-green-400">{children}</a>,
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-2 border-green-500/50 pl-2 italic text-muted-foreground">
+                                  {children}
+                                </blockquote>
+                              ),
+                              a: ({ href, children }) => (
+                                <a
+                                  href={href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-500 underline underline-offset-2 hover:text-green-400"
+                                >
+                                  {children}
+                                </a>
+                              ),
                               hr: () => <hr className="border-border my-1" />,
                             }}
                           >

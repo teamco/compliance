@@ -168,10 +168,15 @@ export const es = {
     controls: '{{count}} controles',
     viewControls: 'Ver controles',
     generatedOn: 'Generado',
+    retry: 'Reintentar',
+    delete: 'Eliminar',
+    deleted: 'Documento eliminado',
+    retried: 'Documento re-encolado',
     status: {
       pending: 'Pendiente',
       completed: 'Completado',
       failed: 'Fallido',
+      stuck: 'Bloqueado',
     },
     priority: {
       critical: 'Crítico',

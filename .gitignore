@@ -68,3 +68,5 @@ gha-creds-*.json
 /.idea/
 /.superpowers/
 /.tanstack/
+
+.claude/settings.local.json

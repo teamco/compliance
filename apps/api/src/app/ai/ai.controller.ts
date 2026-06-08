@@ -62,7 +62,12 @@ export class AiController {
     res.flushHeaders();
 
     try {
-      const result = await this.aiClient.chat(body.messages, body.context ?? {});
+      const MAX_TURNS = 20;
+      const MAX_MSG_CHARS = 4000;
+      const trimmed = body.messages
+        .slice(-MAX_TURNS)
+        .map((m) => ({ ...m, content: m.content.slice(0, MAX_MSG_CHARS) }));
+      const result = await this.aiClient.chat(trimmed, body.context ?? {});
       const words = result.text.split(' ');
       for (const word of words) {
         res.write(`data: ${JSON.stringify({ token: word + ' ' })}\n\n`);

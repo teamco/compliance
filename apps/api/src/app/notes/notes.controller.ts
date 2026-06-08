@@ -16,6 +16,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { subject } from '@casl/ability';
 import { NotesClientService } from '@icore/notes-client';
@@ -25,12 +26,12 @@ import type {
   GapAnalysisResult,
   Organization,
   OrganizationInput,
-  StandardControl,
+  OrgProfile,
   VerifiedToken,
   WorkflowTransition,
 } from '@icore/shared';
-import type { OrgProfile, StandardsResult } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
+import { StandardsQueueService } from './standards-queue.service';
 
 @ApiTags('notes')
 @ApiBearerAuth()
@@ -40,6 +41,7 @@ export class NotesController {
     private readonly notes: NotesClientService,
     private readonly ai: AiClientService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly queue: StandardsQueueService,
   ) {}
 
   @Get('frameworks')
@@ -101,6 +103,7 @@ export class NotesController {
   }
 
   @Get('standards')
+  @SkipThrottle()
   @ApiOperation({ summary: 'List generated standards documents for an org' })
   async listStandards(
     @Req() req: Request & { user?: VerifiedToken },
@@ -160,7 +163,7 @@ export class NotesController {
   }
 
   @Post('standards/generate')
-  @ApiOperation({ summary: 'AI-generate standards from org profile + frameworks (long-poll)' })
+  @ApiOperation({ summary: 'Enqueue AI standards generation; poll GET /standards/:id for result' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -191,26 +194,60 @@ export class NotesController {
 
     const { id } = await this.notes.createStandardsDocument(uid, body.orgId, body.frameworkIds);
 
-    const aiResults: StandardsResult[] = await this.ai.generateStandards(
-      aiOrgProfile,
-      body.frameworkIds,
-    );
+    await this.queue.enqueue(id, aiOrgProfile, body.frameworkIds);
 
-    const controls: StandardControl[] = aiResults.flatMap((r) =>
-      r.controls.map((c) => ({
-        code: c.id,
-        title: c.title,
-        description: c.description,
-        implementation: c.implementationGuidance,
-        evidence: [],
-        frameworkMappings: [{ frameworkId: r.frameworkId, controlCode: c.id }],
-        priority: 'high' as const,
-        category: 'general',
-      })),
-    );
+    return { docId: id };
+  }
 
-    await this.notes.saveStandardsDocument(id, controls);
-    return this.notes.getStandardsDocument(id);
+  @Delete('standards/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a standards document' })
+  async deleteStandards(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    if (doc.status === 'pending') {
+      await this.notes.failStandardsDocument(id, 'cancelled');
+    }
+    await this.notes.deleteStandardsDocument(id);
+  }
+
+  @Post('standards/:id/retry')
+  @ApiOperation({ summary: 'Retry a failed or stuck pending standards document' })
+  async retryStandards(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+
+    const STUCK_MS = 5 * 60 * 1000;
+    const isPendingTooLong =
+      doc.status === 'pending' &&
+      Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
+
+    if (doc.status !== 'failed' && !isPendingTooLong) {
+      throw new BadRequestException('doc_not_retryable');
+    }
+
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+
+    await this.notes.resetStandardsDocument(id);
+
+    const aiOrgProfile: OrgProfile = {
+      id: org.id,
+      name: org.name,
+      industry: org.industry,
+      size: org.size,
+      regions: org.regions,
+    };
+
+    await this.queue.enqueue(id, aiOrgProfile, doc.frameworkIds);
+
+    return { docId: id };
   }
 
   @Post('gap')
@@ -228,6 +265,14 @@ export class NotesController {
   async listGap(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId?: string) {
     if (!orgId) throw new BadRequestException('orgId required');
     return this.notes.listGapAnalyses(orgId);
+  }
+
+  @Get('gap/:id')
+  @ApiOperation({ summary: 'Get a single gap analysis by id' })
+  async getGap(@Param('id') id: string) {
+    const gap = await this.notes.getGapAnalysis(id);
+    if (!gap) throw new NotFoundException();
+    return gap;
   }
 
   private uid(req: Request & { user?: VerifiedToken }): string {

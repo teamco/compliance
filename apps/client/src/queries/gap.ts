@@ -55,6 +55,14 @@ export function useGapAnalyses(orgId: string) {
   });
 }
 
+export function useGapAnalysis(id: string) {
+  return useQuery<GapAnalysis>({
+    queryKey: ['notes', 'gap', 'detail', id],
+    queryFn: () => api<GapAnalysis>(`/notes/gap/${encodeURIComponent(id)}`),
+    enabled: !!id,
+  });
+}
+
 export function useSaveGapAnalysis() {
   const qc = useQueryClient();
   return useMutation<

@@ -67,10 +67,21 @@ GET /api/settings/audit-log            → paginated events (admin)
 
 ### #audit-log — Admin only
 
-- Filter bar: user select, event type select, date range picker
-- Table: who / action / resource name / timestamp
-- "Export CSV" button — downloads filtered results
-- Data source: `audit_events` table (written by notes MS on: standard create/update/delete, workflow transitions, control edits, gap analysis runs)
+- Filter bar: event type select (action filter), pagination
+- Table: timestamp / action / resource type + id (truncated)
+- Data source: `audit_logs` table (written by notes MS)
+
+**Implemented action values** (what is actually stored and filtered):
+
+| DB value | Display label |
+|---|---|
+| `workflow.submit` | Workflow Submitted |
+| `workflow.approve` | Workflow Approved |
+| `workflow.reject` | Workflow Rejected |
+| `workflow.publish` | Workflow Published |
+| `ai.standards.generated` | AI Standards Generated |
+
+Note: action values use the transition name (present tense verb, e.g. `submit`), not past tense.
 
 ### #export — Admin only
 
@@ -169,7 +180,7 @@ CREATE TABLE api_keys (
 CREATE TABLE audit_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid REFERENCES profiles(id) ON DELETE SET NULL,
-  action text NOT NULL,      -- e.g. 'standard.created', 'workflow.approved'
+  action text NOT NULL,      -- e.g. 'ai.standards.generated', 'workflow.submit', 'workflow.approve', 'workflow.reject', 'workflow.publish'
   resource_type text,        -- e.g. 'standard', 'control'
   resource_id uuid,
   meta jsonb DEFAULT '{}',
