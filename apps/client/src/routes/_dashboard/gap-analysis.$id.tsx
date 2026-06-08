@@ -10,6 +10,9 @@ import {
 } from 'lucide-react';
 import { useGapAnalysis } from '@/queries/gap';
 import type { GapSeverity, RecommendationEffort } from '@/queries/gap';
+import { useOrganizations } from '@/queries/notes';
+import { ExportMenu } from '@/components/export/ExportMenu';
+import { exportGapPdf, exportGapCsv, exportGapJson } from '@/lib/export';
 
 const SEVERITY_COLOR: Record<GapSeverity, string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
@@ -67,6 +70,7 @@ function GapAnalysisDetailPage() {
   const { t } = useTranslation();
   const { id } = Route.useParams();
   const { data: gap, isPending, isError } = useGapAnalysis(id);
+  const { data: orgs } = useOrganizations();
 
   if (isPending) {
     return (
@@ -93,6 +97,7 @@ function GapAnalysisDetailPage() {
   }
 
   const result = gap.result;
+  const orgName = orgs?.find((o) => o.id === gap.orgId)?.name ?? '';
 
   return (
     <div className="p-6 space-y-6">
@@ -112,6 +117,12 @@ function GapAnalysisDetailPage() {
             {t('gapAnalysis.runOn')} {new Date(gap.createdAt).toLocaleString()}
           </p>
         </div>
+        <ExportMenu
+          scope="gap"
+          onPdf={(tpl) => exportGapPdf(gap, tpl, orgName)}
+          onCsv={() => exportGapCsv(gap)}
+          onJson={() => exportGapJson(gap)}
+        />
       </div>
 
       {/* Results grid */}

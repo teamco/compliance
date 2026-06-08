@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useIsAdmin } from '@icore/template-shared';
 import {
+  useFrameworks,
+  useOrganizations,
   useSnapshot,
   useSnapshots,
   useStandardsDocument,
@@ -29,6 +31,8 @@ import {
 } from '@/queries/notes';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { ExportMenu } from '@/components/export/ExportMenu';
+import { exportStandardsPdf, exportStandardsCsv, exportStandardsJson } from '@/lib/export';
 
 const WORKFLOW_STEPS: WorkflowStatus[] = ['draft', 'in_review', 'approved', 'published'];
 
@@ -303,6 +307,8 @@ function StandardsDetailPage() {
   const { t } = useTranslation();
   const { id } = Route.useParams();
   const { data: doc, isPending } = useStandardsDocument(id);
+  const { data: frameworks } = useFrameworks();
+  const { data: orgs } = useOrganizations();
   const updateControl = useUpdateControl(id);
   const isAdmin = useIsAdmin();
 
@@ -347,9 +353,12 @@ function StandardsDetailPage() {
     );
   }
 
+  const orgName = orgs?.find((o) => o.id === doc.orgId)?.name ?? '';
+  const fwList = (frameworks ?? []).map((f) => ({ id: f.id, name: f.name }));
+
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
         <Link
           to="/standards"
           className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -357,6 +366,12 @@ function StandardsDetailPage() {
           <ArrowLeft size={13} />
           {t('standards.title')}
         </Link>
+        <ExportMenu
+          scope="standards"
+          onPdf={(tpl) => exportStandardsPdf(doc, fwList, tpl, orgName)}
+          onCsv={() => exportStandardsCsv(doc, fwList)}
+          onJson={() => exportStandardsJson(doc)}
+        />
       </div>
 
       <div>
