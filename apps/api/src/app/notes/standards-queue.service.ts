@@ -35,7 +35,23 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
     try {
       this.logger.log('Connecting to pg-boss...');
       const { PgBoss } = await import('pg-boss');
-      this.boss = new PgBoss({ connectionString, max: 5 });
+
+      // Parse URL manually so pg-boss gets individual params.
+      // Avoids Windows DNS misrouting the dotted Supabase username as a hostname,
+      // and lets us inject ssl + noSupervisor for pooler connections.
+      const url = new URL(connectionString);
+      const isPooler = url.hostname.includes('pooler.supabase.com');
+      this.boss = new PgBoss({
+        host: url.hostname,
+        port: url.port ? parseInt(url.port, 10) : 5432,
+        database: url.pathname.slice(1),
+        user: decodeURIComponent(url.username),
+        password: decodeURIComponent(url.password),
+        ssl: { rejectUnauthorized: false },
+        // Pooler connections don't support LISTEN/NOTIFY — use polling only.
+        noSupervisor: isPooler,
+        max: 5,
+      });
 
       this.boss.on('error', (err: Error) => this.logger.error(`pg-boss error: ${err.message}`));
 
