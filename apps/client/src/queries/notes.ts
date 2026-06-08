@@ -200,3 +200,20 @@ export function useGenerateStandards() {
     onSuccess: (_, vars) => qc.invalidateQueries({ queryKey: ['notes', 'standards', vars.orgId] }),
   });
 }
+
+export function useDeleteStandards(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (id) => api<void>(`/notes/standards/${id}`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'standards', orgId] }),
+  });
+}
+
+export function useRetryStandards(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<{ docId: string }, Error, string>({
+    mutationFn: (id) =>
+      api<{ docId: string }>(`/notes/standards/${id}/retry`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'standards', orgId] }),
+  });
+}

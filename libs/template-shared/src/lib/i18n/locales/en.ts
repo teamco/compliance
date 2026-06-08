@@ -168,10 +168,15 @@ export const en = {
     controls: '{{count}} controls',
     viewControls: 'View Controls',
     generatedOn: 'Generated',
+    retry: 'Retry',
+    delete: 'Delete',
+    deleted: 'Document deleted',
+    retried: 'Document re-queued',
     status: {
       pending: 'Pending',
       completed: 'Completed',
       failed: 'Failed',
+      stuck: 'Stuck',
     },
     priority: {
       critical: 'Critical',

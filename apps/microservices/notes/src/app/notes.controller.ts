@@ -90,6 +90,18 @@ export class NotesController {
     return { ok: true };
   }
 
+  @MessagePattern('notes.standards.delete')
+  async deleteStandardsDocument(@Payload() payload: { id: string }): Promise<{ ok: boolean }> {
+    await this.strategy.deleteStandardsDocument(payload.id);
+    return { ok: true };
+  }
+
+  @MessagePattern('notes.standards.reset')
+  async resetStandardsDocument(@Payload() payload: { id: string }): Promise<{ ok: boolean }> {
+    await this.strategy.resetStandardsDocument(payload.id);
+    return { ok: true };
+  }
+
   @MessagePattern('notes.standards.get')
   getStandardsDocument(@Payload() payload: { id: string }): Promise<StandardsDocument | null> {
     return this.strategy.getStandardsDocument(payload.id);

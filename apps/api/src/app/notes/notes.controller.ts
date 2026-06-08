@@ -26,10 +26,10 @@ import type {
   GapAnalysisResult,
   Organization,
   OrganizationInput,
+  OrgProfile,
   VerifiedToken,
   WorkflowTransition,
 } from '@icore/shared';
-import type { OrgProfile } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
 import { StandardsQueueService } from './standards-queue.service';
 
@@ -195,6 +195,57 @@ export class NotesController {
     const { id } = await this.notes.createStandardsDocument(uid, body.orgId, body.frameworkIds);
 
     await this.queue.enqueue(id, aiOrgProfile, body.frameworkIds);
+
+    return { docId: id };
+  }
+
+  @Delete('standards/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete a standards document' })
+  async deleteStandards(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    if (doc.status === 'pending') {
+      await this.notes.failStandardsDocument(id, 'cancelled');
+    }
+    await this.notes.deleteStandardsDocument(id);
+  }
+
+  @Post('standards/:id/retry')
+  @ApiOperation({ summary: 'Retry a failed or stuck pending standards document' })
+  async retryStandards(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+
+    const STUCK_MS = 5 * 60 * 1000;
+    const isPendingTooLong =
+      doc.status === 'pending' &&
+      Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
+
+    if (doc.status !== 'failed' && !isPendingTooLong) {
+      throw new BadRequestException('doc_not_retryable');
+    }
+
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+
+    await this.notes.resetStandardsDocument(id);
+
+    const aiOrgProfile: OrgProfile = {
+      id: org.id,
+      name: org.name,
+      industry: org.industry,
+      size: org.size,
+      regions: org.regions,
+    };
+
+    await this.queue.enqueue(id, aiOrgProfile, doc.frameworkIds);
 
     return { docId: id };
   }

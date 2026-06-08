@@ -9,12 +9,17 @@ import {
   Clock,
   XCircle,
   ChevronRight,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
-import { useNotify } from '@icore/template-shared';
+import { subject } from '@casl/ability';
+import { useNotify, useAppAbility } from '@icore/template-shared';
 import {
   useFrameworks,
   useStandardsDocuments,
   useGenerateStandards,
+  useDeleteStandards,
+  useRetryStandards,
   type StandardsDocument,
   type StandardsStatus,
   type WorkflowStatus,
@@ -52,19 +57,36 @@ function WorkflowBadge({ status }: { status: WorkflowStatus }) {
   );
 }
 
+const STUCK_MS = 5 * 60 * 1000;
+
 function DocumentCard({
   doc,
   frameworks,
+  onDelete,
+  onRetry,
 }: {
   doc: StandardsDocument;
   frameworks: { id: string; name: string }[];
+  onDelete: (id: string) => void;
+  onRetry: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const ability = useAppAbility();
   const Icon = STATUS_ICON[doc.status];
   const colorClass = STATUS_COLOR[doc.status];
   const fwNames = doc.frameworkIds
     .map((id) => frameworks.find((f) => f.id === id)?.name ?? id)
     .join(', ');
+
+  const isStuck =
+    doc.status === 'pending' && Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
+  const eligible = doc.status === 'failed' || isStuck;
+  const canRetry =
+    eligible &&
+    ability.can('update', subject('StandardsDocument', { id: doc.id, userId: doc.userId }));
+  const canDelete =
+    eligible &&
+    ability.can('delete', subject('StandardsDocument', { id: doc.id, userId: doc.userId }));
 
   return (
     <div className="group bg-surface border border-border rounded-xl p-4 flex flex-col gap-3 hover:border-muted-foreground/40 transition-colors">
@@ -97,9 +119,33 @@ function DocumentCard({
       <div className="flex items-center gap-2 mt-auto">
         <div className={`flex items-center gap-1 text-xs font-medium ${colorClass}`}>
           <Icon size={12} />
-          <span>{t(`standards.status.${doc.status}`)}</span>
+          <span>{isStuck ? t('standards.status.stuck') : t(`standards.status.${doc.status}`)}</span>
         </div>
         <WorkflowBadge status={doc.workflowStatus ?? 'draft'} />
+        {(canRetry || canDelete) && (
+          <div className="flex items-center gap-1 ml-auto">
+            {canRetry && (
+              <button
+                type="button"
+                onClick={() => onRetry(doc.id)}
+                title={t('standards.retry')}
+                className="p-1 rounded text-muted-foreground hover:text-amber-400 transition-colors cursor-pointer"
+              >
+                <RotateCcw size={13} />
+              </button>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDelete(doc.id)}
+                title={t('standards.delete')}
+                className="p-1 rounded text-muted-foreground hover:text-red-400 transition-colors cursor-pointer"
+              >
+                <Trash2 size={13} />
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -113,6 +159,8 @@ function StandardsPage() {
   const { data: frameworks } = useFrameworks();
   const { data: docs, isPending } = useStandardsDocuments(activeOrgId ?? '');
   const generate = useGenerateStandards();
+  const deleteStandards = useDeleteStandards(activeOrgId ?? '');
+  const retryStandards = useRetryStandards(activeOrgId ?? '');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   if (pathname.startsWith('/standards/')) {
@@ -135,6 +183,24 @@ function StandardsPage() {
       else next.add(id);
       return next;
     });
+  }
+
+  async function handleDelete(id: string) {
+    try {
+      await deleteStandards.mutateAsync(id);
+      notify.success(t('standards.deleted'));
+    } catch {
+      notify.error(t('error.unknown'));
+    }
+  }
+
+  async function handleRetry(id: string) {
+    try {
+      await retryStandards.mutateAsync(id);
+      notify.success(t('standards.retried'));
+    } catch {
+      notify.error(t('error.unknown'));
+    }
   }
 
   async function handleGenerate() {
@@ -215,7 +281,13 @@ function StandardsPage() {
         ) : (
           <div className="grid grid-cols-1 @[480px]:grid-cols-2 @[750px]:grid-cols-3 gap-3">
             {(docs ?? []).map((doc) => (
-              <DocumentCard key={doc.id} doc={doc} frameworks={frameworks ?? []} />
+              <DocumentCard
+                key={doc.id}
+                doc={doc}
+                frameworks={frameworks ?? []}
+                onDelete={handleDelete}
+                onRetry={handleRetry}
+              />
             ))}
           </div>
         )}
