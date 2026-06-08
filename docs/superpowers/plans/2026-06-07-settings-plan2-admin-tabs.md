@@ -15,42 +15,43 @@
 
 ## File Map
 
-| File | Action | What it does |
-|------|--------|-------------|
-| `supabase/migrations/20260607000003_admin_settings.sql` | Create | `audit_logs`, `api_keys`, `webhooks` tables + `retention_prefs` column on `profiles` |
-| `libs/shared/src/strategies/notes.ts` | Modify | Add 10 method signatures + 5 type interfaces |
-| `libs/shared/src/strategies/fakes/fake-notes.ts` | Modify | In-memory implementations of all new methods |
-| `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts` | Create | Contract tests for new fake methods |
-| `apps/microservices/notes/src/app/supabase-notes.strategy.ts` | Modify | Supabase implementations |
-| `apps/microservices/notes/src/app/admin.controller.ts` | Create | TCP message pattern handlers for all admin operations |
-| `apps/microservices/notes/src/app/app.module.ts` | Modify | Register `AdminController` |
-| `apps/microservices/notes/src/app/__tests__/admin.controller.unit.test.ts` | Create | Unit tests for admin controller |
-| `libs/notes-client/src/lib/notes-client.service.ts` | Modify | Add 10 proxy methods |
-| `apps/api/src/app/admin/audit-log.controller.ts` | Create | `GET /admin/audit-log` |
-| `apps/api/src/app/admin/api-keys.controller.ts` | Create | `GET/POST/DELETE /admin/api-keys` |
-| `apps/api/src/app/admin/webhooks.controller.ts` | Create | `GET/POST/PATCH/DELETE /admin/webhooks` |
-| `apps/api/src/app/admin/export.controller.ts` | Create | `GET /admin/export` |
-| `apps/api/src/app/admin/retention.controller.ts` | Create | `GET/PATCH /admin/retention` |
-| `apps/api/src/app/admin/admin.module.ts` | Modify | Wire new controllers + `NotesClientModule` |
-| `apps/api/src/app/notes/notes.controller.ts` | Modify | Emit audit event after `transitionWorkflow` |
-| `apps/client/src/queries/admin.ts` | Create | All TanStack Query hooks for admin tabs |
-| `apps/client/src/components/settings/AuditLogTab.tsx` | Create | Paginated log table with filters |
-| `apps/client/src/components/settings/ApiKeysTab.tsx` | Create | List + create dialog + revoke |
-| `apps/client/src/components/settings/WebhooksTab.tsx` | Create | List + create/edit dialog + toggle |
-| `apps/client/src/components/settings/ExportTab.tsx` | Create | Type picker + download button |
-| `apps/client/src/components/settings/RetentionTab.tsx` | Create | Three number inputs + save |
-| `apps/client/src/components/settings/AiUsageTab.tsx` | Create | Read-only AI usage summary — calls existing `/admin/ai-usage/summary` endpoint |
-| `apps/client/src/routes/_dashboard/settings.tsx` | Modify | Replace `t('common.soon')` with actual tab components |
-| `libs/template-shared/src/lib/i18n/locales/en.ts` | Modify | Add all admin i18n keys |
-| `libs/template-shared/src/lib/i18n/locales/ru.ts` | Modify | Russian translations |
-| `libs/template-shared/src/lib/i18n/locales/he.ts` | Modify | Hebrew translations |
-| `libs/template-shared/src/lib/i18n/locales/es.ts` | Modify | Spanish translations |
+| File                                                                       | Action | What it does                                                                         |
+| -------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `supabase/migrations/20260607000003_admin_settings.sql`                    | Create | `audit_logs`, `api_keys`, `webhooks` tables + `retention_prefs` column on `profiles` |
+| `libs/shared/src/strategies/notes.ts`                                      | Modify | Add 10 method signatures + 5 type interfaces                                         |
+| `libs/shared/src/strategies/fakes/fake-notes.ts`                           | Modify | In-memory implementations of all new methods                                         |
+| `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts`       | Create | Contract tests for new fake methods                                                  |
+| `apps/microservices/notes/src/app/supabase-notes.strategy.ts`              | Modify | Supabase implementations                                                             |
+| `apps/microservices/notes/src/app/admin.controller.ts`                     | Create | TCP message pattern handlers for all admin operations                                |
+| `apps/microservices/notes/src/app/app.module.ts`                           | Modify | Register `AdminController`                                                           |
+| `apps/microservices/notes/src/app/__tests__/admin.controller.unit.test.ts` | Create | Unit tests for admin controller                                                      |
+| `libs/notes-client/src/lib/notes-client.service.ts`                        | Modify | Add 10 proxy methods                                                                 |
+| `apps/api/src/app/admin/audit-log.controller.ts`                           | Create | `GET /admin/audit-log`                                                               |
+| `apps/api/src/app/admin/api-keys.controller.ts`                            | Create | `GET/POST/DELETE /admin/api-keys`                                                    |
+| `apps/api/src/app/admin/webhooks.controller.ts`                            | Create | `GET/POST/PATCH/DELETE /admin/webhooks`                                              |
+| `apps/api/src/app/admin/export.controller.ts`                              | Create | `GET /admin/export`                                                                  |
+| `apps/api/src/app/admin/retention.controller.ts`                           | Create | `GET/PATCH /admin/retention`                                                         |
+| `apps/api/src/app/admin/admin.module.ts`                                   | Modify | Wire new controllers + `NotesClientModule`                                           |
+| `apps/api/src/app/notes/notes.controller.ts`                               | Modify | Emit audit event after `transitionWorkflow`                                          |
+| `apps/client/src/queries/admin.ts`                                         | Create | All TanStack Query hooks for admin tabs                                              |
+| `apps/client/src/components/settings/AuditLogTab.tsx`                      | Create | Paginated log table with filters                                                     |
+| `apps/client/src/components/settings/ApiKeysTab.tsx`                       | Create | List + create dialog + revoke                                                        |
+| `apps/client/src/components/settings/WebhooksTab.tsx`                      | Create | List + create/edit dialog + toggle                                                   |
+| `apps/client/src/components/settings/ExportTab.tsx`                        | Create | Type picker + download button                                                        |
+| `apps/client/src/components/settings/RetentionTab.tsx`                     | Create | Three number inputs + save                                                           |
+| `apps/client/src/components/settings/AiUsageTab.tsx`                       | Create | Read-only AI usage summary — calls existing `/admin/ai-usage/summary` endpoint       |
+| `apps/client/src/routes/_dashboard/settings.tsx`                           | Modify | Replace `t('common.soon')` with actual tab components                                |
+| `libs/template-shared/src/lib/i18n/locales/en.ts`                          | Modify | Add all admin i18n keys                                                              |
+| `libs/template-shared/src/lib/i18n/locales/ru.ts`                          | Modify | Russian translations                                                                 |
+| `libs/template-shared/src/lib/i18n/locales/he.ts`                          | Modify | Hebrew translations                                                                  |
+| `libs/template-shared/src/lib/i18n/locales/es.ts`                          | Modify | Spanish translations                                                                 |
 
 ---
 
 ## Task 1: DB Migration
 
 **Files:**
+
 - Create: `supabase/migrations/20260607000003_admin_settings.sql`
 
 - [x] **Step 1: Create migration file**
@@ -132,6 +133,7 @@ git commit -m "feat(db): audit_logs, api_keys, webhooks tables + retention_prefs
 ## Task 2: Shared Types + NotesStrategy Interface + FakeNotesStrategy
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/notes.ts`
 - Modify: `libs/shared/src/strategies/fakes/fake-notes.ts`
 - Create: `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts`
@@ -154,11 +156,11 @@ export interface AuditLog {
 }
 
 export interface AuditLogFilters {
-  page?: number;   // 1-based, default 1
-  limit?: number;  // default 50
+  page?: number; // 1-based, default 1
+  limit?: number; // default 50
   action?: string;
-  from?: string;   // ISO date string
-  to?: string;     // ISO date string
+  from?: string; // ISO date string
+  to?: string; // ISO date string
 }
 
 export interface AuditLogPage {
@@ -270,7 +272,9 @@ describe('FakeNotesStrategy — admin', () => {
   let fake: FakeNotesStrategy;
   const uid = 'user-1';
 
-  beforeEach(() => { fake = new FakeNotesStrategy(); });
+  beforeEach(() => {
+    fake = new FakeNotesStrategy();
+  });
 
   it('logAuditEvent + listAuditLogs round-trip', async () => {
     await fake.logAuditEvent(uid, 'workflow.approved', 'standards_document', 'doc-1');
@@ -303,7 +307,10 @@ describe('FakeNotesStrategy — admin', () => {
   });
 
   it('createWebhook + listWebhooks + deleteWebhook', async () => {
-    const wh = await fake.createWebhook(uid, { url: 'https://example.com/hook', events: ['workflow.approved'] });
+    const wh = await fake.createWebhook(uid, {
+      url: 'https://example.com/hook',
+      events: ['workflow.approved'],
+    });
     expect(wh.secret).toBeTruthy();
     expect(wh.active).toBe(true);
     let list = await fake.listWebhooks(uid);
@@ -314,7 +321,10 @@ describe('FakeNotesStrategy — admin', () => {
   });
 
   it('updateWebhook patches active', async () => {
-    const wh = await fake.createWebhook(uid, { url: 'https://x.com', events: ['workflow.submitted'] });
+    const wh = await fake.createWebhook(uid, {
+      url: 'https://x.com',
+      events: ['workflow.submitted'],
+    });
     await fake.updateWebhook(wh.id, uid, { active: false });
     const list = await fake.listWebhooks(uid);
     expect(list[0].active).toBe(false);
@@ -531,6 +541,7 @@ git commit -m "feat(shared): admin types + NotesStrategy interface + FakeNotesSt
 ## Task 3: SupabaseNotesStrategy — Admin Methods
 
 **Files:**
+
 - Modify: `apps/microservices/notes/src/app/supabase-notes.strategy.ts`
 
 - [x] **Step 1: Add import for crypto at top of file**
@@ -811,6 +822,7 @@ git commit -m "feat(notes-ms): admin strategy methods — audit log, api keys, w
 ## Task 4: Notes MS Admin Controller
 
 **Files:**
+
 - Create: `apps/microservices/notes/src/app/admin.controller.ts`
 - Modify: `apps/microservices/notes/src/app/app.module.ts`
 - Create: `apps/microservices/notes/src/app/__tests__/admin.controller.unit.test.ts`
@@ -835,7 +847,13 @@ describe('AdminController', () => {
   });
 
   it('logAuditEvent delegates to strategy', async () => {
-    await ctrl.logAuditEvent({ userId: uid, action: 'test', resourceType: undefined, resourceId: undefined, metadata: {} });
+    await ctrl.logAuditEvent({
+      userId: uid,
+      action: 'test',
+      resourceType: undefined,
+      resourceId: undefined,
+      metadata: {},
+    });
     const page = await ctrl.listAuditLogs({ userId: uid });
     expect(page.items).toHaveLength(1);
   });
@@ -846,7 +864,10 @@ describe('AdminController', () => {
   });
 
   it('createWebhook + deleteWebhook', async () => {
-    const wh = await ctrl.createWebhook({ userId: uid, input: { url: 'https://x.com', events: ['workflow.approved'] } });
+    const wh = await ctrl.createWebhook({
+      userId: uid,
+      input: { url: 'https://x.com', events: ['workflow.approved'] },
+    });
     await ctrl.deleteWebhook({ id: wh.id, userId: uid });
     const list = await ctrl.listWebhooks({ userId: uid });
     expect(list).toHaveLength(0);
@@ -929,16 +950,12 @@ export class AdminController {
   }
 
   @MessagePattern('admin.apikeys.revoke')
-  revokeApiKey(
-    @Payload() payload: { id: string; userId: string },
-  ): Promise<{ ok: boolean }> {
+  revokeApiKey(@Payload() payload: { id: string; userId: string }): Promise<{ ok: boolean }> {
     return this.strategy.revokeApiKey(payload.id, payload.userId);
   }
 
   @MessagePattern('admin.webhooks.create')
-  createWebhook(
-    @Payload() payload: { userId: string; input: WebhookInput },
-  ): Promise<Webhook> {
+  createWebhook(@Payload() payload: { userId: string; input: WebhookInput }): Promise<Webhook> {
     return this.strategy.createWebhook(payload.userId, payload.input);
   }
 
@@ -950,22 +967,22 @@ export class AdminController {
   @MessagePattern('admin.webhooks.update')
   updateWebhook(
     @Payload()
-    payload: { id: string; userId: string; patch: Partial<WebhookInput> & { active?: boolean } },
+    payload: {
+      id: string;
+      userId: string;
+      patch: Partial<WebhookInput> & { active?: boolean };
+    },
   ): Promise<Webhook> {
     return this.strategy.updateWebhook(payload.id, payload.userId, payload.patch);
   }
 
   @MessagePattern('admin.webhooks.delete')
-  deleteWebhook(
-    @Payload() payload: { id: string; userId: string },
-  ): Promise<{ ok: boolean }> {
+  deleteWebhook(@Payload() payload: { id: string; userId: string }): Promise<{ ok: boolean }> {
     return this.strategy.deleteWebhook(payload.id, payload.userId);
   }
 
   @MessagePattern('admin.retention.get')
-  getRetentionPrefs(
-    @Payload() payload: { userId: string },
-  ): Promise<RetentionPrefsPayload> {
+  getRetentionPrefs(@Payload() payload: { userId: string }): Promise<RetentionPrefsPayload> {
     return this.strategy.getRetentionPrefs(payload.userId);
   }
 
@@ -1020,6 +1037,7 @@ git commit -m "feat(notes-ms): AdminController — TCP handlers for audit, api-k
 ## Task 5: Notes Client Service — Admin Methods
 
 **Files:**
+
 - Modify: `libs/notes-client/src/lib/notes-client.service.ts`
 
 - [x] **Step 1: Add imports**
@@ -1154,6 +1172,7 @@ git commit -m "feat(notes-client): admin proxy methods — audit, api-keys, webh
 ## Task 6: Gateway Admin Controllers
 
 **Files:**
+
 - Modify: `apps/api/src/app/admin/admin.module.ts`
 - Create: `apps/api/src/app/admin/audit-log.controller.ts`
 - Create: `apps/api/src/app/admin/api-keys.controller.ts`
@@ -1170,7 +1189,9 @@ import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { AuditLogFilters, AuditLogPage, VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -1191,11 +1212,11 @@ export class AuditLogController {
     const uid = req.user?.uid;
     if (!uid) throw new UnauthorizedException();
     const filters: AuditLogFilters = {
-      page:   page   ? Number(page)  : 1,
-      limit:  limit  ? Number(limit) : 50,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 50,
       action: action || undefined,
-      from:   from   || undefined,
-      to:     to     || undefined,
+      from: from || undefined,
+      to: to || undefined,
     };
     return this.notes.listAuditLogs(uid, filters);
   }
@@ -1205,13 +1226,24 @@ export class AuditLogController {
 - [x] **Step 2: Create `api-keys.controller.ts`**
 
 ```typescript
-import { Body, Controller, Delete, Get, Param, Post, Req, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { ApiKey, ApiKeyWithSecret, VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -1251,13 +1283,25 @@ export class ApiKeysController {
 - [x] **Step 3: Create `webhooks.controller.ts`**
 
 ```typescript
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UnauthorizedException } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { VerifiedToken, Webhook, WebhookInput } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -1312,7 +1356,9 @@ import type { Request, Response } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 type ExportType = 'standards' | 'organization' | 'audit-log';
 
@@ -1360,7 +1406,9 @@ import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { RetentionPrefsPayload, VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -1437,6 +1485,7 @@ git commit -m "feat(api): admin controllers — audit-log, api-keys, webhooks, e
 ## Task 7: Client Queries
 
 **Files:**
+
 - Create: `apps/client/src/queries/admin.ts`
 
 - [x] **Step 1: Create `admin.ts`**
@@ -1487,12 +1536,12 @@ export type WebhookEvent =
   | 'ai.gap.done';
 
 export const WEBHOOK_EVENT_LABELS: Record<WebhookEvent, string> = {
-  'workflow.submitted':    'Workflow Submitted',
-  'workflow.approved':     'Workflow Approved',
-  'workflow.rejected':     'Workflow Rejected',
-  'workflow.published':    'Workflow Published',
+  'workflow.submitted': 'Workflow Submitted',
+  'workflow.approved': 'Workflow Approved',
+  'workflow.rejected': 'Workflow Rejected',
+  'workflow.published': 'Workflow Published',
   'ai.standards.generated': 'Standards Generated',
-  'ai.gap.done':           'Gap Analysis Done',
+  'ai.gap.done': 'Gap Analysis Done',
 };
 
 export interface Webhook {
@@ -1542,8 +1591,7 @@ export function useCreateApiKey() {
 export function useRevokeApiKey() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api<{ ok: boolean }>(`/admin/api-keys/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => api<{ ok: boolean }>(`/admin/api-keys/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'api-keys'] }),
   });
 }
@@ -1569,8 +1617,13 @@ export function useCreateWebhook() {
 export function useUpdateWebhook() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, patch }: { id: string; patch: Partial<{ url: string; events: WebhookEvent[]; active: boolean }> }) =>
-      api<Webhook>(`/admin/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+    mutationFn: ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<{ url: string; events: WebhookEvent[]; active: boolean }>;
+    }) => api<Webhook>(`/admin/webhooks/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'webhooks'] }),
   });
 }
@@ -1578,8 +1631,7 @@ export function useUpdateWebhook() {
 export function useDeleteWebhook() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) =>
-      api<{ ok: boolean }>(`/admin/webhooks/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => api<{ ok: boolean }>(`/admin/webhooks/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin', 'webhooks'] }),
   });
 }
@@ -1597,7 +1649,10 @@ export function useUpdateRetentionPrefs() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (patch: Partial<RetentionPrefsPayload>) =>
-      api<RetentionPrefsPayload>('/admin/retention', { method: 'PATCH', body: JSON.stringify(patch) }),
+      api<RetentionPrefsPayload>('/admin/retention', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
     onSuccess: (data) => qc.setQueryData(['admin', 'retention'], data),
   });
 }
@@ -1623,6 +1678,7 @@ git commit -m "feat(client): admin TanStack Query hooks — audit, api-keys, web
 ## Task 8: AuditLogTab Component
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/AuditLogTab.tsx`
 
 - [x] **Step 1: Create `AuditLogTab.tsx`**
@@ -1661,12 +1717,17 @@ export function AuditLogTab() {
         <h2 className="text-sm font-semibold text-foreground">{t('settings.auditLog.title')}</h2>
         <select
           value={action}
-          onChange={(e) => { setAction(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            setAction(e.target.value);
+            setPage(1);
+          }}
           className="ml-auto rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-green-500"
         >
           <option value="">{t('settings.auditLog.allActions')}</option>
           {ACTION_OPTIONS.filter(Boolean).map((a) => (
-            <option key={a} value={a}>{a}</option>
+            <option key={a} value={a}>
+              {a}
+            </option>
           ))}
         </select>
       </div>
@@ -1678,19 +1739,34 @@ export function AuditLogTab() {
           <table className="w-full text-xs">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">{t('settings.auditLog.time')}</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">{t('settings.auditLog.action')}</th>
-                <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">{t('settings.auditLog.resource')}</th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">
+                  {t('settings.auditLog.time')}
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">
+                  {t('settings.auditLog.action')}
+                </th>
+                <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">
+                  {t('settings.auditLog.resource')}
+                </th>
               </tr>
             </thead>
             <tbody>
               {data?.items.map((log) => (
-                <tr key={log.id} className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{formatDate(log.createdAt)}</td>
+                <tr
+                  key={log.id}
+                  className="border-b border-border last:border-0 hover:bg-muted/20 transition-colors"
+                >
+                  <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
+                    {formatDate(log.createdAt)}
+                  </td>
                   <td className="px-3 py-2 font-mono text-foreground">{log.action}</td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {log.resourceType && <span>{log.resourceType}</span>}
-                    {log.resourceId && <span className="ml-1 text-muted-foreground/60 font-mono">{log.resourceId.slice(0, 8)}…</span>}
+                    {log.resourceId && (
+                      <span className="ml-1 text-muted-foreground/60 font-mono">
+                        {log.resourceId.slice(0, 8)}…
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -1711,7 +1787,9 @@ export function AuditLogTab() {
             >
               ‹
             </button>
-            <span className="px-2 py-1">{page} / {totalPages}</span>
+            <span className="px-2 py-1">
+              {page} / {totalPages}
+            </span>
             <button
               type="button"
               disabled={page >= totalPages}
@@ -1740,6 +1818,7 @@ git commit -m "feat(client): AuditLogTab — paginated log with action filter"
 ## Task 9: ApiKeysTab Component
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/ApiKeysTab.tsx`
 
 - [x] **Step 1: Create `ApiKeysTab.tsx`**
@@ -1790,13 +1869,17 @@ export function ApiKeysTab() {
     <div className="max-w-2xl space-y-6">
       {newKey && (
         <div className="rounded-md border border-green-500/30 bg-green-500/5 px-4 py-3">
-          <p className="mb-1 text-xs font-semibold text-green-500">{t('settings.apiKeys.copyWarning')}</p>
+          <p className="mb-1 text-xs font-semibold text-green-500">
+            {t('settings.apiKeys.copyWarning')}
+          </p>
           <code className="block break-all rounded bg-background px-2 py-1.5 text-xs font-mono text-foreground border border-border">
             {newKey.fullKey}
           </code>
           <button
             type="button"
-            onClick={() => { void navigator.clipboard.writeText(newKey.fullKey); }}
+            onClick={() => {
+              void navigator.clipboard.writeText(newKey.fullKey);
+            }}
             className="mt-2 text-xs text-green-500 hover:text-green-400 cursor-pointer"
           >
             {t('common.copy')}
@@ -1822,7 +1905,9 @@ export function ApiKeysTab() {
       {showForm && (
         <div className="rounded-md border border-border p-4 space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-foreground">{t('settings.apiKeys.name')}</label>
+            <label className="mb-1 block text-xs font-medium text-foreground">
+              {t('settings.apiKeys.name')}
+            </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -1831,7 +1916,9 @@ export function ApiKeysTab() {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-foreground">{t('settings.apiKeys.expiresAt')}</label>
+            <label className="mb-1 block text-xs font-medium text-foreground">
+              {t('settings.apiKeys.expiresAt')}
+            </label>
             <Input
               type="date"
               value={expiresAt}
@@ -1868,8 +1955,14 @@ export function ApiKeysTab() {
                 <p className="text-xs text-muted-foreground font-mono">{key.keyPrefix}••••••••</p>
               </div>
               <div className="text-right text-xs text-muted-foreground shrink-0">
-                <p>{t('settings.apiKeys.created')} {formatDate(key.createdAt)}</p>
-                {key.expiresAt && <p>{t('settings.apiKeys.expires')} {formatDate(key.expiresAt)}</p>}
+                <p>
+                  {t('settings.apiKeys.created')} {formatDate(key.createdAt)}
+                </p>
+                {key.expiresAt && (
+                  <p>
+                    {t('settings.apiKeys.expires')} {formatDate(key.expiresAt)}
+                  </p>
+                )}
                 {key.revokedAt && <p className="text-red-400">{t('settings.apiKeys.revoked')}</p>}
               </div>
               {!key.revokedAt && (
@@ -1903,6 +1996,7 @@ git commit -m "feat(client): ApiKeysTab — create/list/revoke with one-time key
 ## Task 10: WebhooksTab Component
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/WebhooksTab.tsx`
 
 - [x] **Step 1: Create `WebhooksTab.tsx`**
@@ -1936,9 +2030,7 @@ export function WebhooksTab() {
   const [selectedEvents, setSelectedEvents] = useState<WebhookEvent[]>([]);
 
   function toggleEvent(ev: WebhookEvent) {
-    setSelectedEvents((prev) =>
-      prev.includes(ev) ? prev.filter((e) => e !== ev) : [...prev, ev],
-    );
+    setSelectedEvents((prev) => (prev.includes(ev) ? prev.filter((e) => e !== ev) : [...prev, ev]));
   }
 
   function handleCreate() {
@@ -1970,7 +2062,9 @@ export function WebhooksTab() {
       {showForm && (
         <div className="rounded-md border border-border p-4 space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-foreground">{t('settings.webhooks.url')}</label>
+            <label className="mb-1 block text-xs font-medium text-foreground">
+              {t('settings.webhooks.url')}
+            </label>
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -1979,10 +2073,15 @@ export function WebhooksTab() {
             />
           </div>
           <div>
-            <p className="mb-2 text-xs font-medium text-foreground">{t('settings.webhooks.events')}</p>
+            <p className="mb-2 text-xs font-medium text-foreground">
+              {t('settings.webhooks.events')}
+            </p>
             <div className="grid grid-cols-2 gap-1.5">
               {ALL_EVENTS.map((ev) => (
-                <label key={ev} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
+                <label
+                  key={ev}
+                  className="flex items-center gap-2 text-xs text-foreground cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={selectedEvents.includes(ev)}
@@ -2081,6 +2180,7 @@ git commit -m "feat(client): WebhooksTab — create/list/toggle/delete with even
 ## Task 11: ExportTab + RetentionTab Components
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/ExportTab.tsx`
 - Create: `apps/client/src/components/settings/RetentionTab.tsx`
 
@@ -2098,9 +2198,21 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
 type ExportType = 'standards' | 'organization' | 'audit-log';
 
 const EXPORT_OPTIONS: { value: ExportType; labelKey: string; descKey: string }[] = [
-  { value: 'standards',     labelKey: 'settings.export.standards',    descKey: 'settings.export.standardsDesc' },
-  { value: 'organization',  labelKey: 'settings.export.organization', descKey: 'settings.export.organizationDesc' },
-  { value: 'audit-log',     labelKey: 'settings.export.auditLog',     descKey: 'settings.export.auditLogDesc' },
+  {
+    value: 'standards',
+    labelKey: 'settings.export.standards',
+    descKey: 'settings.export.standardsDesc',
+  },
+  {
+    value: 'organization',
+    labelKey: 'settings.export.organization',
+    descKey: 'settings.export.organizationDesc',
+  },
+  {
+    value: 'audit-log',
+    labelKey: 'settings.export.auditLog',
+    descKey: 'settings.export.auditLogDesc',
+  },
 ];
 
 export function ExportTab() {
@@ -2141,7 +2253,9 @@ export function ExportTab() {
             key={value}
             className={[
               'flex cursor-pointer items-start gap-3 rounded-md border px-4 py-3 transition-colors',
-              selected === value ? 'border-green-500/50 bg-green-500/5' : 'border-border hover:border-border/80',
+              selected === value
+                ? 'border-green-500/50 bg-green-500/5'
+                : 'border-border hover:border-border/80',
             ].join(' ')}
           >
             <input
@@ -2206,21 +2320,38 @@ export function RetentionTab() {
   if (isPending) return <div className="text-sm text-muted-foreground">{t('common.loading')}</div>;
 
   const fields: { key: keyof RetentionPrefsPayload; labelKey: string; descKey: string }[] = [
-    { key: 'auditLogDays',      labelKey: 'settings.retention.auditLog',      descKey: 'settings.retention.auditLogDesc' },
-    { key: 'chatHistoryDays',   labelKey: 'settings.retention.chatHistory',   descKey: 'settings.retention.chatHistoryDesc' },
-    { key: 'notificationDays',  labelKey: 'settings.retention.notifications', descKey: 'settings.retention.notificationsDesc' },
+    {
+      key: 'auditLogDays',
+      labelKey: 'settings.retention.auditLog',
+      descKey: 'settings.retention.auditLogDesc',
+    },
+    {
+      key: 'chatHistoryDays',
+      labelKey: 'settings.retention.chatHistory',
+      descKey: 'settings.retention.chatHistoryDesc',
+    },
+    {
+      key: 'notificationDays',
+      labelKey: 'settings.retention.notifications',
+      descKey: 'settings.retention.notificationsDesc',
+    },
   ];
 
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h2 className="mb-1 text-sm font-semibold text-foreground">{t('settings.retention.title')}</h2>
+        <h2 className="mb-1 text-sm font-semibold text-foreground">
+          {t('settings.retention.title')}
+        </h2>
         <p className="text-xs text-muted-foreground">{t('settings.retention.subtitle')}</p>
       </div>
 
       <div className="space-y-4">
         {fields.map(({ key, labelKey, descKey }) => (
-          <div key={key} className="flex items-center justify-between rounded-md border border-border px-4 py-3">
+          <div
+            key={key}
+            className="flex items-center justify-between rounded-md border border-border px-4 py-3"
+          >
             <div>
               <p className="text-sm font-medium text-foreground">{t(labelKey)}</p>
               <p className="text-xs text-muted-foreground">{t(descKey)}</p>
@@ -2268,6 +2399,7 @@ git commit -m "feat(client): ExportTab + RetentionTab components"
 ## Task 12: AiUsageTab Component
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/AiUsageTab.tsx`
 
 Gateway endpoint `GET /admin/ai-usage/summary` already exists (`AdminAiUsageController`). No new backend. Tab is read-only — just fetches and displays the summary.
@@ -2309,7 +2441,7 @@ import type { AiUsageRange } from '../../queries/admin';
 
 const RANGES: { value: AiUsageRange; label: string }[] = [
   { value: '24h', label: '24h' },
-  { value: '7d',  label: '7d' },
+  { value: '7d', label: '7d' },
   { value: '30d', label: '30d' },
   { value: '90d', label: '90d' },
 ];
@@ -2356,29 +2488,47 @@ export function AiUsageTab() {
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3">
-            <StatCard label={t('settings.aiUsage.calls')}  value={data?.total_calls ?? 0} />
-            <StatCard label={t('settings.aiUsage.tokens')} value={(data?.total_tokens ?? 0).toLocaleString()} />
-            <StatCard label={t('settings.aiUsage.cost')}   value={`$${(data?.total_cost_usd ?? 0).toFixed(4)}`} />
+            <StatCard label={t('settings.aiUsage.calls')} value={data?.total_calls ?? 0} />
+            <StatCard
+              label={t('settings.aiUsage.tokens')}
+              value={(data?.total_tokens ?? 0).toLocaleString()}
+            />
+            <StatCard
+              label={t('settings.aiUsage.cost')}
+              value={`$${(data?.total_cost_usd ?? 0).toFixed(4)}`}
+            />
           </div>
 
           {(data?.by_operation?.length ?? 0) > 0 && (
             <div>
-              <p className="mb-2 text-xs font-medium text-foreground">{t('settings.aiUsage.byOperation')}</p>
+              <p className="mb-2 text-xs font-medium text-foreground">
+                {t('settings.aiUsage.byOperation')}
+              </p>
               <div className="overflow-hidden rounded-md border border-border">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">{t('settings.aiUsage.operation')}</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground uppercase tracking-wider">{t('settings.aiUsage.calls')}</th>
-                      <th className="px-3 py-2 text-right font-medium text-muted-foreground uppercase tracking-wider">{t('settings.aiUsage.tokens')}</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">
+                        {t('settings.aiUsage.operation')}
+                      </th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground uppercase tracking-wider">
+                        {t('settings.aiUsage.calls')}
+                      </th>
+                      <th className="px-3 py-2 text-right font-medium text-muted-foreground uppercase tracking-wider">
+                        {t('settings.aiUsage.tokens')}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {data?.by_operation.map((row) => (
                       <tr key={row.operation} className="border-b border-border last:border-0">
                         <td className="px-3 py-2 font-mono text-foreground">{row.operation}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.calls}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.tokens.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {row.calls}
+                        </td>
+                        <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                          {row.tokens.toLocaleString()}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2418,6 +2568,7 @@ git commit -m "feat(client): AiUsageTab — read-only AI usage summary with rang
 ## Task 13: Wire Settings Route + i18n Keys
 
 **Files:**
+
 - Modify: `apps/client/src/routes/_dashboard/settings.tsx`
 - Modify: `libs/template-shared/src/lib/i18n/locales/en.ts`
 - Modify: `libs/template-shared/src/lib/i18n/locales/ru.ts`
@@ -2457,16 +2608,16 @@ function SettingsPage() {
   }
 
   const tabs = [
-    { id: 'appearance',   label: t('settings.tabs.appearance') },
+    { id: 'appearance', label: t('settings.tabs.appearance') },
     { id: 'notification', label: t('settings.tabs.notification') },
     ...(isAdmin
       ? [
           { id: 'audit-log', label: t('settings.tabs.auditLog') },
-          { id: 'api-keys',  label: t('settings.tabs.apiKeys') },
-          { id: 'webhooks',  label: t('settings.tabs.webhooks') },
-          { id: 'export',    label: t('settings.tabs.export') },
+          { id: 'api-keys', label: t('settings.tabs.apiKeys') },
+          { id: 'webhooks', label: t('settings.tabs.webhooks') },
+          { id: 'export', label: t('settings.tabs.export') },
           { id: 'retention', label: t('settings.tabs.retention') },
-          { id: 'ai-usage',  label: t('settings.tabs.aiUsage') },
+          { id: 'ai-usage', label: t('settings.tabs.aiUsage') },
         ]
       : []),
   ];
@@ -2493,14 +2644,14 @@ function SettingsPage() {
         ))}
       </div>
 
-      {activeTab === 'appearance'   && <AppearanceTab />}
+      {activeTab === 'appearance' && <AppearanceTab />}
       {activeTab === 'notification' && <NotificationTab />}
-      {activeTab === 'audit-log'    && <AuditLogTab />}
-      {activeTab === 'api-keys'     && <ApiKeysTab />}
-      {activeTab === 'webhooks'     && <WebhooksTab />}
-      {activeTab === 'export'       && <ExportTab />}
-      {activeTab === 'retention'    && <RetentionTab />}
-      {activeTab === 'ai-usage'     && <AiUsageTab />}
+      {activeTab === 'audit-log' && <AuditLogTab />}
+      {activeTab === 'api-keys' && <ApiKeysTab />}
+      {activeTab === 'webhooks' && <WebhooksTab />}
+      {activeTab === 'export' && <ExportTab />}
+      {activeTab === 'retention' && <RetentionTab />}
+      {activeTab === 'ai-usage' && <AiUsageTab />}
     </div>
   );
 }
@@ -2786,6 +2937,7 @@ git commit -m "feat(client): wire admin settings tabs + i18n keys for all 4 loca
 ## Task 14: Audit Event Emission at Workflow Transitions
 
 **Files:**
+
 - Modify: `apps/api/src/app/notes/notes.controller.ts`
 
 - [x] **Step 1: Make `transitionWorkflow` async and emit audit event**
@@ -2836,6 +2988,7 @@ git commit -m "feat(api): emit audit event on workflow transitions"
 ## Self-Review
 
 **Spec coverage:**
+
 - ✅ Audit Log: migration, strategy, controller, gateway, client component, i18n
 - ✅ API Keys: migration, strategy (with crypto hash), controller, gateway, client component, i18n
 - ✅ Webhooks: migration, strategy, controller, gateway, client component, i18n
@@ -2847,6 +3000,7 @@ git commit -m "feat(api): emit audit event on workflow transitions"
 **Placeholder scan:** No TBD/TODO present.
 
 **Type consistency:**
+
 - `WebhookEvent` type used consistently across `notes.ts`, `fake-notes.ts`, `supabase-notes.strategy.ts`, `notes-client.service.ts`, `webhooks.controller.ts`, `admin.ts (client)`, `WebhooksTab.tsx`
 - `ApiKeyWithSecret extends ApiKey` — consistent in all layers
 - `AuditLogPage` shape `{ items, total, page, limit }` — consistent in all layers

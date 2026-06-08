@@ -45,7 +45,9 @@ describe('NotificationTab', () => {
 
   it('renders events matrix with at least one event label', () => {
     render(wrap(<NotificationTab />));
-    expect(screen.getAllByText(/submitted|approved|rejected|published/i).length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/submitted|approved|rejected|published/i).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('shows enable push button when push not enabled', () => {

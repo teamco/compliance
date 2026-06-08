@@ -212,8 +212,7 @@ export function useDeleteStandards(orgId: string) {
 export function useRetryStandards(orgId: string) {
   const qc = useQueryClient();
   return useMutation<{ docId: string }, Error, string>({
-    mutationFn: (id) =>
-      api<{ docId: string }>(`/notes/standards/${id}/retry`, { method: 'POST' }),
+    mutationFn: (id) => api<{ docId: string }>(`/notes/standards/${id}/retry`, { method: 'POST' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notes', 'standards', orgId] }),
   });
 }

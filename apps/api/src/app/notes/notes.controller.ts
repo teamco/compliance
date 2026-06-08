@@ -202,10 +202,7 @@ export class NotesController {
   @Delete('standards/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a standards document' })
-  async deleteStandards(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
+  async deleteStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
     if (doc.status === 'pending') {
@@ -216,17 +213,13 @@ export class NotesController {
 
   @Post('standards/:id/retry')
   @ApiOperation({ summary: 'Retry a failed or stuck pending standards document' })
-  async retryStandards(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
+  async retryStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
 
     const STUCK_MS = 5 * 60 * 1000;
     const isPendingTooLong =
-      doc.status === 'pending' &&
-      Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
+      doc.status === 'pending' && Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
 
     if (doc.status !== 'failed' && !isPendingTooLong) {
       throw new BadRequestException('doc_not_retryable');
