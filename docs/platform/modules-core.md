@@ -1,4 +1,4 @@
-# Core GRC Modules (1–12)
+# Core GRC Modules (1–13)
 
 ## Module 1: Framework Library
 
