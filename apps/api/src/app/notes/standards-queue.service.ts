@@ -37,6 +37,8 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
       this.boss = new PgBoss({ connectionString, max: 5 });
       await this.boss.start();
 
+      await this.boss.createQueue(QUEUE_NAME);
+
       await this.boss.work(
         QUEUE_NAME,
         { newJobCheckIntervalSeconds: 5 },
