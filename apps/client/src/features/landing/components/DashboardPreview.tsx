@@ -10,7 +10,9 @@ export function DashboardPreview() {
       <CardContent className="p-4 md:p-6">
         <div className="mb-5 flex items-center justify-between border-b border-border pb-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.3em] text-green-400">Command Center</p>
+            <p className="text-xs font-medium uppercase tracking-[0.3em] text-green-400">
+              Command Center
+            </p>
             <h3 className="mt-1 text-lg font-semibold text-foreground">Security Posture</h3>
           </div>
           <div className="flex items-center gap-2 rounded-full border border-green-500/20 bg-green-500/10 px-3 py-1 text-xs text-green-400">
@@ -41,7 +43,10 @@ export function DashboardPreview() {
                     <span className="text-muted-foreground">{row.coverage}%</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div className="h-full rounded-full bg-green-500" style={{ width: `${row.coverage}%` }} />
+                    <div
+                      className="h-full rounded-full bg-green-500"
+                      style={{ width: `${row.coverage}%` }}
+                    />
                   </div>
                 </div>
               ))}
@@ -51,7 +56,12 @@ export function DashboardPreview() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               {heroMetrics.map((metric) => (
-                <MetricCard key={metric.label} label={metric.label} value={metric.value} tone={metric.tone as 'green' | 'amber' | 'blue' | 'purple'} />
+                <MetricCard
+                  key={metric.label}
+                  label={metric.label}
+                  value={metric.value}
+                  tone={metric.tone as 'green' | 'amber' | 'blue' | 'purple'}
+                />
               ))}
             </div>
 
@@ -67,11 +77,26 @@ export function DashboardPreview() {
               </div>
               <div className="space-y-2">
                 {[
-                  { icon: AlertTriangle, text: 'MFA exception process missing evidence owner', tone: 'text-amber-400' },
-                  { icon: FileText, text: 'Vendor risk policy generated for review', tone: 'text-blue-400' },
-                  { icon: CheckCircle2, text: 'Access control mapped to ISO A.5.15', tone: 'text-green-400' },
+                  {
+                    icon: AlertTriangle,
+                    text: 'MFA exception process missing evidence owner',
+                    tone: 'text-amber-400',
+                  },
+                  {
+                    icon: FileText,
+                    text: 'Vendor risk policy generated for review',
+                    tone: 'text-blue-400',
+                  },
+                  {
+                    icon: CheckCircle2,
+                    text: 'Access control mapped to ISO A.5.15',
+                    tone: 'text-green-400',
+                  },
                 ].map((item) => (
-                  <div key={item.text} className="flex items-center gap-3 rounded-lg border border-border bg-surface/70 px-3 py-2 text-xs text-muted-foreground">
+                  <div
+                    key={item.text}
+                    className="flex items-center gap-3 rounded-lg border border-border bg-surface/70 px-3 py-2 text-xs text-muted-foreground"
+                  >
                     <item.icon className={item.tone} size={14} />
                     <span>{item.text}</span>
                   </div>

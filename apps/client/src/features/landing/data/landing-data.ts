@@ -54,24 +54,68 @@ export const platformModules = [
 ];
 
 export const productWorkflow = [
-  { title: 'Select frameworks', description: 'ISO 27001, SOC 2, NIST CSF, PCI DSS or custom requirements.' },
-  { title: 'Generate standards', description: 'AI creates controls, policies and workflow-ready governance documents.' },
-  { title: 'Analyze gaps', description: 'Teams add current-state evidence and receive prioritized findings.' },
-  { title: 'Track remediation', description: 'Security leaders monitor coverage, risk reduction and audit readiness.' },
+  {
+    title: 'Select frameworks',
+    description: 'ISO 27001, SOC 2, NIST CSF, PCI DSS or custom requirements.',
+  },
+  {
+    title: 'Generate standards',
+    description: 'AI creates controls, policies and workflow-ready governance documents.',
+  },
+  {
+    title: 'Analyze gaps',
+    description: 'Teams add current-state evidence and receive prioritized findings.',
+  },
+  {
+    title: 'Track remediation',
+    description: 'Security leaders monitor coverage, risk reduction and audit readiness.',
+  },
 ];
 
 export const architectureBlocks = [
-  { icon: Workflow, title: 'NestJS gateway', description: 'Typed API gateway with Swagger and microservice orchestration.' },
-  { icon: Database, title: 'Supabase data layer', description: 'Auth, database and secure storage strategy behind the platform.' },
-  { icon: Brain, title: 'Anthropic AI engine', description: 'Dedicated AI service for chat, standards generation and gap analysis.' },
-  { icon: Cloud, title: 'Swappable transport', description: 'TCP today, ready for NATS, RabbitMQ or Kafka as scale increases.' },
+  {
+    icon: Workflow,
+    title: 'NestJS gateway',
+    description: 'Typed API gateway with Swagger and microservice orchestration.',
+  },
+  {
+    icon: Database,
+    title: 'Supabase data layer',
+    description: 'Auth, database and secure storage strategy behind the platform.',
+  },
+  {
+    icon: Brain,
+    title: 'Anthropic AI engine',
+    description: 'Dedicated AI service for chat, standards generation and gap analysis.',
+  },
+  {
+    icon: Cloud,
+    title: 'Swappable transport',
+    description: 'TCP today, ready for NATS, RabbitMQ or Kafka as scale increases.',
+  },
 ];
 
 export const securitySignals = [
-  { icon: Lock, title: 'Role-based governance', description: 'Designed for security teams, auditors, admins and executive stakeholders.' },
-  { icon: Shield, title: 'Evidence-aware workflows', description: 'Centralize control evidence and connect it to frameworks and gaps.' },
-  { icon: AlertTriangle, title: 'Risk prioritization', description: 'Separate critical findings from cosmetic issues with severity and effort.' },
-  { icon: CheckCircle2, title: 'Audit readiness', description: 'Convert generated controls and analysis results into repeatable audit workflows.' },
+  {
+    icon: Lock,
+    title: 'Role-based governance',
+    description: 'Designed for security teams, auditors, admins and executive stakeholders.',
+  },
+  {
+    icon: Shield,
+    title: 'Evidence-aware workflows',
+    description: 'Centralize control evidence and connect it to frameworks and gaps.',
+  },
+  {
+    icon: AlertTriangle,
+    title: 'Risk prioritization',
+    description: 'Separate critical findings from cosmetic issues with severity and effort.',
+  },
+  {
+    icon: CheckCircle2,
+    title: 'Audit readiness',
+    description: 'Convert generated controls and analysis results into repeatable audit workflows.',
+  },
 ];
 
 export const frameworkRows = [

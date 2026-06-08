@@ -7,9 +7,7 @@ export class ChatHistoryController {
   constructor(@Inject('NotesStrategy') private readonly strategy: NotesStrategy) {}
 
   @MessagePattern('chat.history.get')
-  getChatHistory(
-    @Payload() payload: { userId: string; limit?: number },
-  ): Promise<AiChatMessage[]> {
+  getChatHistory(@Payload() payload: { userId: string; limit?: number }): Promise<AiChatMessage[]> {
     return this.strategy.getChatHistory(payload.userId, payload.limit);
   }
 

@@ -16,11 +16,13 @@ interface ControlsTableProps {
 
 export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTableProps) {
   const { t } = useTranslation();
-  const visible = showGapsOnly && frameworks.length > 0
-    ? controls.filter(
-        (c) => !frameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
-      )
-    : controls;
+  const visible =
+    showGapsOnly && frameworks.length > 0
+      ? controls.filter(
+          (c) =>
+            !frameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
+        )
+      : controls;
 
   if (visible.length === 0) {
     const message =
@@ -41,10 +43,18 @@ export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTa
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-surface">
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colCode')}</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colTitle')}</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colPriority')}</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">{t('controls.colCategory')}</th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              {t('controls.colCode')}
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              {t('controls.colTitle')}
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              {t('controls.colPriority')}
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              {t('controls.colCategory')}
+            </th>
             {frameworks.map((fw) => (
               <th
                 key={fw.id}
