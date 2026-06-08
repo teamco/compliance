@@ -2,11 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
-import { OrgPage } from '../org';
+import { OrgPage } from '../org/-org-page';
 import type { Organization } from '@/queries/notes';
 import React from 'react';
 
 // ── mocks ────────────────────────────────────────────────────────────────────
+
+vi.hoisted(() => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+    configurable: true,
+  });
+});
 
 const createMutateAsync = vi.fn();
 const updateMutateAsync = vi.fn();
@@ -64,7 +76,23 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
 vi.mock('@/components/ui/sheet', () => ({
   Sheet: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
     open ? <div data-testid="sheet">{children}</div> : null,
-  SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  SheetContent: ({
+    children,
+    onPointerDownOutside,
+    onInteractOutside,
+  }: {
+    children: React.ReactNode;
+    onPointerDownOutside?: (event: { preventDefault: () => void }) => void;
+    onInteractOutside?: (event: { preventDefault: () => void }) => void;
+  }) => (
+    <div
+      data-testid="sheet-content"
+      data-blocks-pointer-outside={String(!!onPointerDownOutside)}
+      data-blocks-interact-outside={String(!!onInteractOutside)}
+    >
+      {children}
+    </div>
+  ),
   SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SheetTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
 }));
@@ -109,6 +137,15 @@ describe('OrgPage', () => {
     expect(screen.getByText('Beta Ltd')).toBeTruthy();
   });
 
+  it('filters orgs by name from the search input', () => {
+    render(wrap(<OrgPage />));
+    fireEvent.change(screen.getByRole('searchbox', { name: /search organizations/i }), {
+      target: { value: 'beta' },
+    });
+    expect(screen.queryByText('Acme Corp')).toBeNull();
+    expect(screen.getByText('Beta Ltd')).toBeTruthy();
+  });
+
   it('shows empty state when no orgs', () => {
     mockOrgs = [];
     render(wrap(<OrgPage />));
@@ -124,7 +161,17 @@ describe('OrgPage', () => {
     render(wrap(<OrgPage />));
     fireEvent.click(screen.getByRole('button', { name: /create new organization/i }));
     expect(screen.getByTestId('sheet')).toBeTruthy();
+    expect(screen.getByTestId('sheet-content').getAttribute('data-blocks-pointer-outside')).toBe(
+      'true',
+    );
+    expect(screen.getByTestId('sheet-content').getAttribute('data-blocks-interact-outside')).toBe(
+      'true',
+    );
     expect(screen.getByText('New Organization')).toBeTruthy();
+    const submitButton = screen.getByRole('button', { name: /create organization/i });
+    expect(submitButton.className).toContain('w-full');
+    expect(submitButton.closest('footer')?.className).toContain('border-t');
+    expect(submitButton.closest('form')?.className).toContain('h-full');
   });
 
   it('edit button opens sheet with edit title', () => {
@@ -133,6 +180,8 @@ describe('OrgPage', () => {
     fireEvent.click(editBtns[0] as Element);
     expect(screen.getByTestId('sheet')).toBeTruthy();
     expect(screen.getByText('Edit Organization')).toBeTruthy();
+    const submitButton = screen.getByRole('button', { name: /update organization/i });
+    expect(submitButton.className).toContain('w-full');
   });
 });
 
@@ -178,9 +227,7 @@ describe('OrgForm validation', () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     fireEvent.submit(nameInput.closest('form')!);
     await waitFor(() => {
-      expect(createMutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'MyOrg' }),
-      );
+      expect(createMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ name: 'MyOrg' }));
     });
   });
 
@@ -226,13 +273,11 @@ describe('TagInput', () => {
     expect(screen.getByText('APAC')).toBeTruthy();
   });
 
-  it('adds tag on + button click', () => {
+  it('adds tag on add icon button click', () => {
     openCreateSheet();
     const input = getRegionsInput();
     fireEvent.change(input, { target: { value: 'US' } });
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const addBtn = input.parentElement!.querySelector('button')!;
-    fireEvent.click(addBtn);
+    fireEvent.click(screen.getByRole('button', { name: /add operating regions/i }));
     expect(screen.getByText('US')).toBeTruthy();
   });
 
@@ -254,13 +299,13 @@ describe('TagInput', () => {
     expect(screen.getByText('Enter a value before adding it')).toBeTruthy();
   });
 
-  it('removes tag via × button', () => {
+  it('removes tag via icon button', () => {
     openCreateSheet();
     const input = getRegionsInput();
     fireEvent.change(input, { target: { value: 'EU' } });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(screen.getByText('EU')).toBeTruthy();
-    fireEvent.click(screen.getByText('×'));
+    fireEvent.click(screen.getByRole('button', { name: /remove eu/i }));
     expect(screen.queryByText('EU')).toBeNull();
   });
 });
@@ -275,19 +320,23 @@ describe('OrgPage delete', () => {
     vi.clearAllMocks();
   });
 
+  function firstDeleteButton() {
+    const button = screen.getAllByRole('button', { name: /delete/i })[0];
+    if (!button) throw new Error('Expected a delete button to be rendered');
+    return button;
+  }
+
   it('delete button opens confirm dialog', () => {
     render(wrap(<OrgPage />));
     expect(screen.queryByTestId('alert-dialog')).toBeNull();
-    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteBtns[0]);
+    fireEvent.click(firstDeleteButton());
     expect(screen.getByTestId('alert-dialog')).toBeTruthy();
     expect(screen.getByText('Delete organization?')).toBeTruthy();
   });
 
   it('cancel closes confirm dialog without calling mutateAsync', () => {
     render(wrap(<OrgPage />));
-    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteBtns[0]);
+    fireEvent.click(firstDeleteButton());
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(screen.queryByTestId('alert-dialog')).toBeNull();
     expect(deleteMutateAsync).not.toHaveBeenCalled();
@@ -296,11 +345,11 @@ describe('OrgPage delete', () => {
   it('confirm calls mutateAsync with correct orgId', async () => {
     deleteMutateAsync.mockResolvedValue(undefined);
     render(wrap(<OrgPage />));
-    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteBtns[0]);
-    const confirmBtn = screen.getAllByRole('button', { name: /delete/i }).find(
-      (btn) => btn.closest('[data-testid="alert-dialog"]'),
-    )!;
+    fireEvent.click(firstDeleteButton());
+    const confirmBtn = screen
+      .getAllByRole('button', { name: /delete/i })
+      .find((btn) => btn.closest('[data-testid="alert-dialog"]'));
+    if (!confirmBtn) throw new Error('Expected a delete confirmation button to be rendered');
     fireEvent.click(confirmBtn);
     await waitFor(() => {
       expect(deleteMutateAsync).toHaveBeenCalledWith(ORG_1.id);
