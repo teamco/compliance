@@ -63,6 +63,10 @@ export class NotesClientService {
     return firstValueFrom(this.client.send<Organization>('notes.org.update', { orgId, data }));
   }
 
+  deleteOrganization(orgId: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.org.delete', { orgId }));
+  }
+
   createStandardsDocument(
     userId: string,
     orgId: string,

@@ -10,6 +10,7 @@ import React from 'react';
 
 const createMutateAsync = vi.fn();
 const updateMutateAsync = vi.fn();
+const deleteMutateAsync = vi.fn();
 
 const ORG_1: Organization = {
   id: 'org-1',
@@ -45,6 +46,7 @@ vi.mock('@/queries/notes', () => ({
   useOrganizations: () => ({ data: mockOrgs, isPending: mockIsPending }),
   useCreateOrganization: () => ({ mutateAsync: createMutateAsync, isPending: false }),
   useUpdateOrganization: () => ({ mutateAsync: updateMutateAsync, isPending: false }),
+  useDeleteOrganization: () => ({ mutateAsync: deleteMutateAsync, isPending: false }),
 }));
 
 vi.mock('@/stores/active-org', () => ({
@@ -65,6 +67,18 @@ vi.mock('@/components/ui/sheet', () => ({
   SheetContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SheetHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SheetTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+}));
+
+vi.mock('@/components/ui/alert-dialog', () => ({
+  AlertDialog: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
+    open ? <div data-testid="alert-dialog">{children}</div> : null,
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  AlertDialogCancel: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  AlertDialogAction: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -248,5 +262,48 @@ describe('TagInput', () => {
     expect(screen.getByText('EU')).toBeTruthy();
     fireEvent.click(screen.getByText('×'));
     expect(screen.queryByText('EU')).toBeNull();
+  });
+});
+
+// ── Delete org ────────────────────────────────────────────────────────────────
+
+describe('OrgPage delete', () => {
+  beforeEach(() => {
+    mockOrgs = [ORG_1, ORG_2];
+    mockIsPending = false;
+    mockActiveOrgId = 'org-1';
+    vi.clearAllMocks();
+  });
+
+  it('delete button opens confirm dialog', () => {
+    render(wrap(<OrgPage />));
+    expect(screen.queryByTestId('alert-dialog')).toBeNull();
+    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
+    fireEvent.click(deleteBtns[0]);
+    expect(screen.getByTestId('alert-dialog')).toBeTruthy();
+    expect(screen.getByText('Delete organization?')).toBeTruthy();
+  });
+
+  it('cancel closes confirm dialog without calling mutateAsync', () => {
+    render(wrap(<OrgPage />));
+    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
+    fireEvent.click(deleteBtns[0]);
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByTestId('alert-dialog')).toBeNull();
+    expect(deleteMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('confirm calls mutateAsync with correct orgId', async () => {
+    deleteMutateAsync.mockResolvedValue(undefined);
+    render(wrap(<OrgPage />));
+    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
+    fireEvent.click(deleteBtns[0]);
+    const confirmBtn = screen.getAllByRole('button', { name: /delete/i }).find(
+      (btn) => btn.closest('[data-testid="alert-dialog"]'),
+    )!;
+    fireEvent.click(confirmBtn);
+    await waitFor(() => {
+      expect(deleteMutateAsync).toHaveBeenCalledWith(ORG_1.id);
+    });
   });
 });

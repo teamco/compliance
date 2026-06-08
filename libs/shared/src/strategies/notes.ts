@@ -181,6 +181,7 @@ export interface NotesStrategy {
   createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
   getOrganizationById(orgId: string): Promise<Organization | null>;
   updateOrganization(orgId: string, data: OrganizationInput): Promise<Organization>;
+  deleteOrganization(orgId: string): Promise<void>;
 
   createStandardsDocument(
     userId: string,

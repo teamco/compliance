@@ -14,6 +14,7 @@ export const he = {
     create: 'צור',
     saving: 'שומר…',
     edit: 'עריכה',
+    delete: 'מחיקה',
   },
   auth: {
     signIn: 'כניסה',
@@ -137,6 +138,9 @@ export const he = {
     editTitle: 'ערוך ארגון',
     created: 'הארגון נוצר',
     updated: 'הארגון עודכן',
+    deleted: 'הארגון נמחק',
+    deleteTitle: 'למחוק את הארגון?',
+    deleteDescription: 'פעולה זו אינה הפיכה. כל הנתונים של הארגון יימחקו לצמיתות.',
     switchOrg: 'בחר ארגון',
     noOrgs: 'אין ארגונים עדיין',
     noActiveOrg: 'בחר ארגון להמשך',
