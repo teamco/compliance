@@ -83,6 +83,12 @@ export class NotesClientService {
     ).then(() => undefined);
   }
 
+  failStandardsDocument(id: string, reason?: string): Promise<void> {
+    return firstValueFrom(
+      this.client.send<{ ok: boolean }>('notes.standards.fail', { id, reason }),
+    ).then(() => undefined);
+  }
+
   getStandardsDocument(id: string): Promise<StandardsDocument | null> {
     return firstValueFrom(
       this.client.send<StandardsDocument | null>('notes.standards.get', { id }),

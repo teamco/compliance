@@ -25,12 +25,12 @@ import type {
   GapAnalysisResult,
   Organization,
   OrganizationInput,
-  StandardControl,
   VerifiedToken,
   WorkflowTransition,
 } from '@icore/shared';
-import type { OrgProfile, StandardsResult } from '@icore/shared';
+import type { OrgProfile } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
+import { StandardsQueueService } from './standards-queue.service';
 
 @ApiTags('notes')
 @ApiBearerAuth()
@@ -40,6 +40,7 @@ export class NotesController {
     private readonly notes: NotesClientService,
     private readonly ai: AiClientService,
     private readonly abilityFactory: AbilityFactory,
+    private readonly queue: StandardsQueueService,
   ) {}
 
   @Get('frameworks')
@@ -160,7 +161,7 @@ export class NotesController {
   }
 
   @Post('standards/generate')
-  @ApiOperation({ summary: 'AI-generate standards from org profile + frameworks (long-poll)' })
+  @ApiOperation({ summary: 'Enqueue AI standards generation; poll GET /standards/:id for result' })
   @ApiBody({
     schema: {
       type: 'object',
@@ -191,26 +192,9 @@ export class NotesController {
 
     const { id } = await this.notes.createStandardsDocument(uid, body.orgId, body.frameworkIds);
 
-    const aiResults: StandardsResult[] = await this.ai.generateStandards(
-      aiOrgProfile,
-      body.frameworkIds,
-    );
+    await this.queue.enqueue(id, aiOrgProfile, body.frameworkIds);
 
-    const controls: StandardControl[] = aiResults.flatMap((r) =>
-      r.controls.map((c) => ({
-        code: c.id,
-        title: c.title,
-        description: c.description,
-        implementation: c.implementationGuidance,
-        evidence: [],
-        frameworkMappings: [{ frameworkId: r.frameworkId, controlCode: c.id }],
-        priority: 'high' as const,
-        category: 'general',
-      })),
-    );
-
-    await this.notes.saveStandardsDocument(id, controls);
-    return this.notes.getStandardsDocument(id);
+    return { docId: id };
   }
 
   @Post('gap')
