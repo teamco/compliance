@@ -262,6 +262,12 @@ export interface NotesStrategy {
     userId: string,
     patch: Partial<RetentionPrefsPayload>,
   ): Promise<RetentionPrefsPayload>;
+
+  // Report templates
+  listReportTemplates(): Promise<ReportTemplate[]>;
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate>;
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate>;
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
@@ -390,6 +396,35 @@ export interface Webhook {
 export interface WebhookInput {
   url: string;
   events: WebhookEvent[];
+}
+
+// ─── Report templates ──────────────────────────────────────────────────────
+
+export type ReportTemplateScope = 'gap' | 'standards' | 'all';
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ReportTemplateInput {
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
 }
 
 export interface RetentionPrefsPayload {
