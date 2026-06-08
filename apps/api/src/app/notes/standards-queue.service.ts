@@ -42,7 +42,11 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
       await this.boss.work(
         QUEUE_NAME,
         { newJobCheckIntervalSeconds: 5 },
-        (job: { id: string; data: StandardsJobData }) => this.process(job),
+        async (jobs: Array<{ id: string; data: StandardsJobData }>) => {
+          for (const job of jobs) {
+            await this.process(job);
+          }
+        },
       );
 
       this.logger.log('Standards queue worker started');
