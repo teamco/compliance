@@ -58,6 +58,11 @@ export class NotesController {
     return this.strategy.updateOrganization(payload.orgId, payload.data);
   }
 
+  @MessagePattern('notes.org.delete')
+  deleteOrganization(@Payload() payload: { orgId: string }): Promise<void> {
+    return this.strategy.deleteOrganization(payload.orgId);
+  }
+
   @MessagePattern('notes.standards.create')
   createStandardsDocument(
     @Payload() payload: { userId: string; orgId: string; frameworkIds: string[] },

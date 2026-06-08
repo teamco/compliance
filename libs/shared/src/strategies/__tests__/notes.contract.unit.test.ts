@@ -27,41 +27,131 @@ export function runNotesContract(name: string, factory: () => NotesStrategy): vo
 
     // ── Organization ────────────────────────────────────────────────────────
 
-    it('getOrganization returns null for unknown user', async () => {
-      const result = await strategy.getOrganization('unknown-user');
-      expect(result).toBeNull();
+    it('listOrganizations returns empty array for unknown user', async () => {
+      const result = await strategy.listOrganizations('unknown-user');
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(0);
     });
 
-    it('upsertOrganization creates and retrieves org', async () => {
-      const data = {
+    it('createOrganization returns org with correct userId and name', async () => {
+      const org = await strategy.createOrganization('user-1', {
         name: 'Acme',
         industry: 'technology',
-        size: 'startup' as const,
+        size: 'startup',
         regions: ['us'],
         techStack: ['react'],
         regulations: ['gdpr'],
-      };
-      const org = await strategy.upsertOrganization('user-1', data);
+      });
       expect(org.name).toBe('Acme');
       expect(org.userId).toBe('user-1');
-
-      const fetched = await strategy.getOrganization('user-1');
-      expect(fetched?.name).toBe('Acme');
+      expect(typeof org.id).toBe('string');
     });
 
-    it('upsertOrganization updates existing org', async () => {
-      const base = {
-        name: 'Old',
+    it('listOrganizations returns only orgs for that user', async () => {
+      const org1 = await strategy.createOrganization('user-a', {
+        name: 'Alpha',
         industry: 'technology',
-        size: 'startup' as const,
+        size: 'startup',
         regions: [],
         techStack: [],
         regulations: [],
-      };
-      await strategy.upsertOrganization('user-2', base);
-      await strategy.upsertOrganization('user-2', { ...base, name: 'New' });
-      const fetched = await strategy.getOrganization('user-2');
-      expect(fetched?.name).toBe('New');
+      });
+      await strategy.createOrganization('user-b', {
+        name: 'Beta',
+        industry: 'finance',
+        size: 'smb',
+        regions: [],
+        techStack: [],
+        regulations: [],
+      });
+      const orgs = await strategy.listOrganizations('user-a');
+      expect(orgs.map((o) => o.id)).toContain(org1.id);
+      expect(orgs.every((o) => o.userId === 'user-a')).toBe(true);
+    });
+
+    it('getOrganizationById returns null for unknown id', async () => {
+      const result = await strategy.getOrganizationById('nonexistent');
+      expect(result).toBeNull();
+    });
+
+    it('getOrganizationById returns created org', async () => {
+      const org = await strategy.createOrganization('user-1', {
+        name: 'Acme',
+        industry: 'technology',
+        size: 'startup',
+        regions: [],
+        techStack: [],
+        regulations: [],
+      });
+      const fetched = await strategy.getOrganizationById(org.id);
+      expect(fetched?.id).toBe(org.id);
+      expect(fetched?.name).toBe('Acme');
+    });
+
+    it('updateOrganization patches fields and returns updated org', async () => {
+      const org = await strategy.createOrganization('user-1', {
+        name: 'Old Name',
+        industry: 'technology',
+        size: 'startup',
+        regions: [],
+        techStack: [],
+        regulations: [],
+      });
+      const updated = await strategy.updateOrganization(org.id, {
+        name: 'New Name',
+        industry: 'finance',
+        size: 'enterprise',
+        regions: ['eu'],
+        techStack: ['go'],
+        regulations: ['gdpr'],
+      });
+      expect(updated.name).toBe('New Name');
+      expect(updated.size).toBe('enterprise');
+    });
+
+    it('updateOrganization throws for unknown org id', async () => {
+      await expect(
+        strategy.updateOrganization('nonexistent', {
+          name: 'X',
+          industry: 'technology',
+          size: 'startup',
+          regions: [],
+          techStack: [],
+          regulations: [],
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('deleteOrganization removes org from list', async () => {
+      const org = await strategy.createOrganization('user-1', {
+        name: 'ToDelete',
+        industry: 'technology',
+        size: 'startup',
+        regions: [],
+        techStack: [],
+        regulations: [],
+      });
+      await strategy.deleteOrganization(org.id);
+      const fetched = await strategy.getOrganizationById(org.id);
+      expect(fetched).toBeNull();
+    });
+
+    it('deleteOrganization removes org from listOrganizations', async () => {
+      const org = await strategy.createOrganization('user-1', {
+        name: 'ToDelete',
+        industry: 'technology',
+        size: 'startup',
+        regions: [],
+        techStack: [],
+        regulations: [],
+      });
+      await strategy.deleteOrganization(org.id);
+      const orgs = await strategy.listOrganizations('user-1');
+      expect(orgs.map((o) => o.id)).not.toContain(org.id);
+    });
+
+    it('deleteOrganization throws for unknown org id', async () => {
+      await expect(strategy.deleteOrganization('nonexistent')).rejects.toThrow();
     });
 
     // ── Standards documents ──────────────────────────────────────────────────

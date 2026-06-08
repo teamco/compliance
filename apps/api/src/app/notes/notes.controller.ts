@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Patch,
@@ -86,6 +88,16 @@ export class NotesController {
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
     return this.notes.updateOrganization(id, body);
+  }
+
+  @Delete('orgs/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete organization (owner or admin only)' })
+  async deleteOrg(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const org = await this.notes.getOrganizationById(id);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
+    await this.notes.deleteOrganization(id);
   }
 
   @Get('standards')
