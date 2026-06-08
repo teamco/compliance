@@ -2,11 +2,23 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
-import { OrgPage } from '../org';
+import { OrgPage } from '../org/-org-page';
 import type { Organization } from '@/queries/notes';
 import React from 'react';
 
 // ── mocks ────────────────────────────────────────────────────────────────────
+
+vi.hoisted(() => {
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+      removeItem: vi.fn(),
+      clear: vi.fn(),
+    },
+    configurable: true,
+  });
+});
 
 const createMutateAsync = vi.fn();
 const updateMutateAsync = vi.fn();
@@ -178,9 +190,7 @@ describe('OrgForm validation', () => {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     fireEvent.submit(nameInput.closest('form')!);
     await waitFor(() => {
-      expect(createMutateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({ name: 'MyOrg' }),
-      );
+      expect(createMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ name: 'MyOrg' }));
     });
   });
 
@@ -275,19 +285,23 @@ describe('OrgPage delete', () => {
     vi.clearAllMocks();
   });
 
+  function firstDeleteButton() {
+    const button = screen.getAllByRole('button', { name: /delete/i })[0];
+    if (!button) throw new Error('Expected a delete button to be rendered');
+    return button;
+  }
+
   it('delete button opens confirm dialog', () => {
     render(wrap(<OrgPage />));
     expect(screen.queryByTestId('alert-dialog')).toBeNull();
-    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteBtns[0]);
+    fireEvent.click(firstDeleteButton());
     expect(screen.getByTestId('alert-dialog')).toBeTruthy();
     expect(screen.getByText('Delete organization?')).toBeTruthy();
   });
 
   it('cancel closes confirm dialog without calling mutateAsync', () => {
     render(wrap(<OrgPage />));
-    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteBtns[0]);
+    fireEvent.click(firstDeleteButton());
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
     expect(screen.queryByTestId('alert-dialog')).toBeNull();
     expect(deleteMutateAsync).not.toHaveBeenCalled();
@@ -296,11 +310,11 @@ describe('OrgPage delete', () => {
   it('confirm calls mutateAsync with correct orgId', async () => {
     deleteMutateAsync.mockResolvedValue(undefined);
     render(wrap(<OrgPage />));
-    const deleteBtns = screen.getAllByRole('button', { name: /delete/i });
-    fireEvent.click(deleteBtns[0]);
-    const confirmBtn = screen.getAllByRole('button', { name: /delete/i }).find(
-      (btn) => btn.closest('[data-testid="alert-dialog"]'),
-    )!;
+    fireEvent.click(firstDeleteButton());
+    const confirmBtn = screen
+      .getAllByRole('button', { name: /delete/i })
+      .find((btn) => btn.closest('[data-testid="alert-dialog"]'));
+    if (!confirmBtn) throw new Error('Expected a delete confirmation button to be rendered');
     fireEvent.click(confirmBtn);
     await waitFor(() => {
       expect(deleteMutateAsync).toHaveBeenCalledWith(ORG_1.id);
