@@ -193,6 +193,7 @@ export const ru = {
     controlsSubtitle: 'Укажите статус каждого контроля',
     analyze: 'Анализировать пробелы',
     analyzing: 'Анализ…',
+    analyzingHint: 'AI проверяет ваши контроли и результаты',
     results: 'Результаты анализа',
     riskScore: 'Оценка риска',
     summary: 'Резюме',
@@ -210,6 +211,12 @@ export const ru = {
     evidencePlaceholder: 'Опишите доказательства…',
     selectStatus: 'Выберите статус',
     saved: 'Анализ сохранён',
+  },
+  subscription: {
+    popular: 'Популярное',
+    price: {
+      custom: 'Связаться с нами',
+    },
   },
   aiAssistant: {
     title: 'AI Ассистент',

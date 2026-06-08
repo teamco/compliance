@@ -193,6 +193,7 @@ export const es = {
     controlsSubtitle: 'Establece el estado de cada control',
     analyze: 'Analizar brechas',
     analyzing: 'Analizando…',
+    analyzingHint: 'La IA está revisando tus controles y hallazgos',
     results: 'Resultados del análisis',
     riskScore: 'Puntuación de riesgo',
     summary: 'Resumen ejecutivo',
@@ -206,6 +207,12 @@ export const es = {
     evidencePlaceholder: 'Describe la evidencia o notas…',
     selectStatus: 'Seleccionar estado',
     saved: 'Análisis guardado',
+  },
+  subscription: {
+    popular: 'Más popular',
+    price: {
+      custom: 'Contáctanos',
+    },
   },
   aiAssistant: {
     title: 'Asistente AI',

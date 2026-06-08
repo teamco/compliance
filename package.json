@@ -100,6 +100,7 @@
     "@casl/ability": "^7.0.0",
     "@casl/react": "^7.0.0",
     "@idevconn/api-client": "^0.3.0",
+    "@idevconn/isubscribe-widget-react": "^2.5.1",
     "@idevconn/use-draft": "^0.2.0",
     "@nestjs/common": "^11.1.24",
     "@nestjs/config": "^4.0.4",

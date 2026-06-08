@@ -193,6 +193,7 @@ export const he = {
     controlsSubtitle: 'הגדר סטטוס לכל בקרה',
     analyze: 'נתח פערים',
     analyzing: 'מנתח…',
+    analyzingHint: 'ה-AI בודק את הבקרות והממצאים שלך',
     results: 'תוצאות הניתוח',
     riskScore: 'ציון סיכון',
     summary: 'סיכום',
@@ -206,6 +207,12 @@ export const he = {
     evidencePlaceholder: 'תאר ראיות או הערות…',
     selectStatus: 'בחר סטטוס',
     saved: 'הניתוח נשמר',
+  },
+  subscription: {
+    popular: 'הפופולרי ביותר',
+    price: {
+      custom: 'צרו קשר',
+    },
   },
   aiAssistant: {
     title: 'עוזר AI',

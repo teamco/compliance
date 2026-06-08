@@ -26,7 +26,7 @@ export function OrgSwitcher() {
   // Auto-select first org when none is active
   useEffect(() => {
     if (!activeOrgId && orgs && orgs.length > 0) {
-      setActiveOrgId(orgs[0].id);
+      setActiveOrgId(orgs[0]!.id);
     }
   }, [orgs, activeOrgId, setActiveOrgId]);
 
