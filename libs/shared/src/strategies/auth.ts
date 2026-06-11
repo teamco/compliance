@@ -1,3 +1,20 @@
+/** Error code carried over RPC + HTTP when an access token is expired (vs malformed). */
+export const AUTH_TOKEN_EXPIRED = 'TOKEN_EXPIRED';
+
+/**
+ * Expired access token — a normal lifecycle event, not a server fault.
+ * Strategies throw this so transports can map it to a clean 401 without
+ * ERROR-level stack logging.
+ */
+export class TokenExpiredError extends Error {
+  readonly code = AUTH_TOKEN_EXPIRED;
+
+  constructor(message = 'token_expired') {
+    super(message);
+    this.name = 'TokenExpiredError';
+  }
+}
+
 export interface AuthSession {
   accessToken: string;
   refreshToken: string;
