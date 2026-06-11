@@ -1,4 +1,5 @@
 export * from './lib/api/create-api.js';
+export * from './lib/api/fetch-with-refresh.js';
 export * from './lib/stores/auth.store.js';
 export * from './lib/stores/loading.store.js';
 export * from './lib/abilities/ability-provider.js';
