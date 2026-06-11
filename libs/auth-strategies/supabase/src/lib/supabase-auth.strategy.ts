@@ -1,12 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type {
-  AuthSession,
-  AuthStrategy,
-  MagicLinkRequest,
-  OAuthProvider,
-  OAuthStartResult,
-  VerifiedToken,
+import {
+  TokenExpiredError,
+  type AuthSession,
+  type AuthStrategy,
+  type MagicLinkRequest,
+  type OAuthProvider,
+  type OAuthStartResult,
+  type VerifiedToken,
 } from '@icore/shared';
 
 export interface SupabaseAuthStrategyOptions {
@@ -47,7 +48,10 @@ export class SupabaseAuthStrategy implements AuthStrategy {
   async verifyToken(token: string): Promise<VerifiedToken> {
     const { data, error } = await this.client.auth.getUser(token);
     if (error || !data.user) {
-      throw new Error(error?.message ?? 'invalid_token');
+      const message = error?.message ?? 'invalid_token';
+      // GoTrue reports expiry inside the message ("token has invalid claims: token is expired")
+      if (/expired/i.test(message)) throw new TokenExpiredError(message);
+      throw new Error(message);
     }
     const u = data.user as {
       app_metadata?: { role?: string };
