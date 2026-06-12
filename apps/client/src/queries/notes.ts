@@ -1,8 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Organization, OrganizationInput, OrgSize } from '@icore/shared';
+import type {
+  Organization,
+  OrganizationInput,
+  OrgSize,
+  DocumentStandard,
+  StandardPatch,
+} from '@icore/shared';
 
-export type { Organization, OrganizationInput, OrgSize };
+export type { Organization, OrganizationInput, OrgSize, DocumentStandard, StandardPatch };
 
 export interface Framework {
   id: string;
@@ -23,24 +29,6 @@ export interface FrameworkControl {
   category: string;
 }
 
-export type StandardControlPriority = 'critical' | 'high' | 'medium' | 'low';
-
-export interface ControlPatch {
-  priority?: StandardControlPriority;
-  implementation?: string;
-}
-
-export interface StandardControl {
-  code: string;
-  title: string;
-  description: string;
-  implementation: string;
-  evidence: string[];
-  frameworkMappings: { frameworkId: string; controlCode: string }[];
-  priority: StandardControlPriority;
-  category: string;
-}
-
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
 export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
 export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
@@ -50,7 +38,7 @@ export interface StandardsDocument {
   userId: string;
   orgId: string;
   frameworkIds: string[];
-  controls: StandardControl[];
+  standards: DocumentStandard[];
   status: StandardsStatus;
   workflowStatus: WorkflowStatus;
   createdAt: string;
@@ -61,7 +49,7 @@ export interface StandardsSnapshot {
   documentId: string;
   version: number;
   workflowStatus: WorkflowStatus;
-  controls: StandardControl[];
+  standards: DocumentStandard[];
   createdAt: string;
   createdBy?: string;
 }
@@ -159,11 +147,11 @@ export function useTransitionWorkflow(docId: string) {
   });
 }
 
-export function useUpdateControl(docId: string) {
+export function useUpdateStandard(docId: string) {
   const qc = useQueryClient();
-  return useMutation<StandardControl, Error, { code: string; patch: ControlPatch }>({
+  return useMutation<DocumentStandard, Error, { code: string; patch: StandardPatch }>({
     mutationFn: ({ code, patch }) =>
-      api<StandardControl>(`/notes/standards/${docId}/controls/${code}`, {
+      api<DocumentStandard>(`/notes/standards/${docId}/standards/${code}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
