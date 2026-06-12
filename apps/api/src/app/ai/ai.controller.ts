@@ -8,7 +8,7 @@ import type {
   ChatMessage,
   ControlFinding,
   GapAnalysisResult,
-  GeneratedControl,
+  GeneratedStandard,
   OrgProfile,
   StandardsResult,
   VerifiedToken,
@@ -144,10 +144,10 @@ export class AiController {
     },
   })
   async analyzeGap(
-    @Body() body: { controls: GeneratedControl[]; findings: ControlFinding[] },
+    @Body() body: { standards: GeneratedStandard[]; findings: ControlFinding[] },
     @Req() req: Request & { user?: VerifiedToken },
   ): Promise<GapAnalysisResult> {
-    const result = await this.aiClient.analyzeGap(body.controls, body.findings);
+    const result = await this.aiClient.analyzeGap(body.standards, body.findings);
     const uid = req.user?.uid;
     if (uid) {
       this.notes.logAiUsage({
