@@ -10,7 +10,7 @@ import type {
   ApiKeyWithSecret,
   AuditLogFilters,
   AuditLogPage,
-  ControlPatch,
+  DocumentStandard,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -21,7 +21,7 @@ import type {
   ReportTemplate,
   ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
@@ -79,9 +79,9 @@ export class NotesClientService {
     );
   }
 
-  saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.save', { id, controls }),
+      this.client.send<{ ok: boolean }>('notes.standards.save', { id, standards }),
     ).then(() => undefined);
   }
 
@@ -119,9 +119,9 @@ export class NotesClientService {
     );
   }
 
-  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard> {
     return firstValueFrom(
-      this.client.send<StandardControl>('notes.standards.update-control', { docId, code, patch }),
+      this.client.send<DocumentStandard>('notes.standards.update-standard', { docId, code, patch }),
     );
   }
 

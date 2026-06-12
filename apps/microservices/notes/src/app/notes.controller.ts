@@ -1,7 +1,7 @@
 import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
-  ControlPatch,
+  DocumentStandard,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -11,7 +11,7 @@ import type {
   OrganizationInput,
   ReportTemplate,
   ReportTemplateInput,
-  StandardControl,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   WorkflowTransition,
@@ -78,9 +78,9 @@ export class NotesController {
 
   @MessagePattern('notes.standards.save')
   async saveStandardsDocument(
-    @Payload() payload: { id: string; controls: StandardControl[] },
+    @Payload() payload: { id: string; standards: DocumentStandard[] },
   ): Promise<{ ok: boolean }> {
-    await this.strategy.saveStandardsDocument(payload.id, payload.controls);
+    await this.strategy.saveStandardsDocument(payload.id, payload.standards);
     return { ok: true };
   }
 
@@ -121,11 +121,11 @@ export class NotesController {
     return this.strategy.transitionWorkflow(payload.id, payload.transition);
   }
 
-  @MessagePattern('notes.standards.update-control')
-  updateControl(
-    @Payload() payload: { docId: string; code: string; patch: ControlPatch },
-  ): Promise<StandardControl> {
-    return this.strategy.updateControl(payload.docId, payload.code, payload.patch);
+  @MessagePattern('notes.standards.update-standard')
+  updateStandard(
+    @Payload() payload: { docId: string; code: string; patch: StandardPatch },
+  ): Promise<DocumentStandard> {
+    return this.strategy.updateStandard(payload.docId, payload.code, payload.patch);
   }
 
   @MessagePattern('notes.standards.snapshots.list')
