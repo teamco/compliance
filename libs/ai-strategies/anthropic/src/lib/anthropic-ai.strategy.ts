@@ -7,7 +7,7 @@ import type {
   ChatResult,
   ControlFinding,
   GapAnalysisResult,
-  GeneratedControl,
+  GeneratedStandard,
   OrgProfile,
   StandardsResult,
 } from '@icore/shared';
@@ -76,9 +76,21 @@ export class AnthropicAiStrategy implements AiStrategy {
     frameworkIds: string[],
   ): Promise<StandardsResult[]> {
     const system = [
-      'You are a compliance standards expert. Generate security controls for the given frameworks.',
+      'You are a compliance standards expert. Generate formal security standards for the given frameworks.',
+      'Standards define WHAT must be done (the mandatory requirement), not HOW to implement it.',
+      'Example of correct Standards language: "All user accounts must be protected by multi-factor authentication."',
+      'Example of wrong Controls language (do not use): "Configure Okta MFA policy with TOTP as primary factor."',
       'Return ONLY a valid JSON array matching this TypeScript type:',
-      'Array<{ frameworkId: string; controls: Array<{ id: string; title: string; description: string; implementationGuidance: string }> }>',
+      'Array<{',
+      '  frameworkId: string;',
+      '  standards: Array<{',
+      '    id: string;',
+      '    title: string;',
+      '    objective: string;',
+      '    scope: string;',
+      '    requirements: string[]',
+      '  }>',
+      '}>',
       'No markdown, no explanation — raw JSON only.',
     ].join('\n');
 
@@ -89,7 +101,8 @@ export class AnthropicAiStrategy implements AiStrategy {
       `  Size: ${orgProfile.size}`,
       `  Regions: ${orgProfile.regions.join(', ')}`,
       ``,
-      `Generate tailored security controls for these frameworks: ${frameworkIds.join(', ')}`,
+      `Generate tailored formal security standards for these frameworks: ${frameworkIds.join(', ')}`,
+      `Each standard should have 3-8 specific requirements as mandatory statements.`,
     ].join('\n');
 
     const response = await this.client.messages.create({
@@ -108,7 +121,7 @@ export class AnthropicAiStrategy implements AiStrategy {
   }
 
   async analyzeGap(
-    controls: GeneratedControl[],
+    standards: GeneratedStandard[],
     findings: ControlFinding[],
   ): Promise<GapAnalysisResult> {
     const system = [
@@ -119,8 +132,8 @@ export class AnthropicAiStrategy implements AiStrategy {
     ].join('\n');
 
     const userPrompt = [
-      `Controls (${controls.length} total):`,
-      JSON.stringify(controls.slice(0, 50)),
+      `Standards (${standards.length} total):`,
+      JSON.stringify(standards.slice(0, 50)),
       ``,
       `Findings (${findings.length} total):`,
       JSON.stringify(findings),
