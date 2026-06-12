@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { notify } from '@/lib/notify';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -15,7 +14,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
-import { useIsAdmin } from '@icore/template-shared';
+import { useIsAdmin, useNotify } from '@icore/template-shared';
 import {
   useFrameworks,
   useOrganizations,
@@ -290,6 +289,7 @@ function StandardsDetailPage() {
   const { data: orgs } = useOrganizations();
   const updateStandard = useUpdateStandard(id);
   const isAdmin = useIsAdmin();
+  const notify = useNotify();
 
   const [editing, setEditing] = useState<EditState | null>(null);
 
