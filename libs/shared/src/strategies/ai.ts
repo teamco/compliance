@@ -23,16 +23,17 @@ export interface OrgProfile {
   regions: string[];
 }
 
-export interface GeneratedControl {
+export interface GeneratedStandard {
   id: string;
   title: string;
-  description: string;
-  implementationGuidance: string;
+  objective: string;
+  scope: string;
+  requirements: string[];
 }
 
 export interface StandardsResult {
   frameworkId: string;
-  controls: GeneratedControl[];
+  standards: GeneratedStandard[];
 }
 
 export interface ControlFinding {
@@ -56,8 +57,8 @@ export interface Recommendation {
   effort: RecommendationEffort;
 }
 
-// A control finding enriched with its title, persisted alongside the AI result
-// so the saved report can show a per-control compliance breakdown.
+// A standard finding enriched with its title, persisted alongside the AI result
+// so the saved report can show a per-standard compliance breakdown.
 export interface GapFinding {
   controlId: string;
   title: string;
@@ -77,5 +78,8 @@ export interface GapAnalysisResult {
 export interface AiStrategy {
   chat(messages: ChatMessage[], context: ChatContext): Promise<ChatResult>;
   generateStandards(orgProfile: OrgProfile, frameworkIds: string[]): Promise<StandardsResult[]>;
-  analyzeGap(controls: GeneratedControl[], findings: ControlFinding[]): Promise<GapAnalysisResult>;
+  analyzeGap(
+    standards: GeneratedStandard[],
+    findings: ControlFinding[],
+  ): Promise<GapAnalysisResult>;
 }

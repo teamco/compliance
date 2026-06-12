@@ -246,7 +246,7 @@ function StandardsDoc({
             <Text style={styles.sectionTitle}>Frameworks</Text>
             <Text style={styles.summary}>{fwList}</Text>
             <Text style={[styles.summary, { marginTop: 4 }]}>
-              {doc.controls.length} control(s) · status: {doc.status} · workflow:{' '}
+              {doc.standards.length} standard(s) · status: {doc.status} · workflow:{' '}
               {doc.workflowStatus}
             </Text>
           </View>
@@ -254,19 +254,21 @@ function StandardsDoc({
 
         {template.includeDetails && (
           <View>
-            <Text style={styles.sectionTitle}>Controls</Text>
+            <Text style={styles.sectionTitle}>Standards</Text>
             <View style={styles.tHead}>
               <Text style={[styles.th, { width: '13%' }]}>Code</Text>
-              <Text style={[styles.th, { width: '30%' }]}>Title</Text>
-              <Text style={[styles.th, { width: '13%' }]}>Priority</Text>
-              <Text style={[styles.th, { width: '44%' }]}>Implementation</Text>
+              <Text style={[styles.th, { width: '22%' }]}>Title</Text>
+              <Text style={[styles.th, { width: '20%' }]}>Objective</Text>
+              <Text style={[styles.th, { width: '15%' }]}>Scope</Text>
+              <Text style={[styles.th, { width: '30%' }]}>Requirements</Text>
             </View>
-            {doc.controls.map((c, i) => (
+            {doc.standards.map((std, i) => (
               <View style={styles.tRow} key={i} wrap={false}>
-                <Text style={[styles.td, { width: '13%' }]}>{c.code}</Text>
-                <Text style={[styles.td, { width: '30%' }]}>{c.title}</Text>
-                <Text style={[styles.td, { width: '13%' }]}>{c.priority}</Text>
-                <Text style={[styles.td, { width: '44%' }]}>{c.implementation}</Text>
+                <Text style={[styles.td, { width: '13%' }]}>{std.code}</Text>
+                <Text style={[styles.td, { width: '22%' }]}>{std.title}</Text>
+                <Text style={[styles.td, { width: '20%' }]}>{std.objective}</Text>
+                <Text style={[styles.td, { width: '15%' }]}>{std.scope}</Text>
+                <Text style={[styles.td, { width: '30%' }]}>{std.requirements.join('; ')}</Text>
               </View>
             ))}
           </View>

@@ -10,7 +10,7 @@ import type {
   AuditLogPage,
   ApiKey,
   ApiKeyWithSecret,
-  ControlPatch,
+  DocumentStandard,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -22,7 +22,7 @@ import type {
   ReportTemplate,
   ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
@@ -200,7 +200,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         user_id: userId,
         org_profile_id: orgId,
         framework_ids: frameworkIds,
-        controls: [],
+        standards: [],
         status: 'pending',
         workflow_status: 'draft',
       })
@@ -210,10 +210,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return { id: r.id };
   }
 
-  async saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  async saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     const { error } = await this.db
       .from('generated_standards')
-      .update({ controls, status: 'completed' })
+      .update({ standards, status: 'completed' })
       .eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -234,7 +234,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async resetStandardsDocument(id: string): Promise<void> {
     const { error } = await this.db
       .from('generated_standards')
-      .update({ status: 'pending', controls: [] })
+      .update({ status: 'pending', standards: [] })
       .eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -281,7 +281,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         document_id: id,
         version,
         workflow_status: to,
-        controls: doc.controls,
+        standards: doc.standards,
       });
       if (snapErr) throw new Error(snapErr.message);
     }
@@ -307,17 +307,21 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.mapSnapshot(data) : null;
   }
 
-  async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  async updateStandard(
+    docId: string,
+    code: string,
+    patch: StandardPatch,
+  ): Promise<DocumentStandard> {
     const doc = await this.getStandardsDocument(docId);
     if (!doc) throw new Error('doc_not_found');
-    const idx = doc.controls.findIndex((c) => c.code === code);
-    if (idx === -1) throw new Error('control_not_found');
-    const updated = { ...doc.controls[idx], ...patch } as StandardControl;
-    const controls = [...doc.controls];
-    controls[idx] = updated;
+    const idx = doc.standards.findIndex((c) => c.code === code);
+    if (idx === -1) throw new Error('standard_not_found');
+    const updated = { ...doc.standards[idx], ...patch } as DocumentStandard;
+    const standards = [...doc.standards];
+    standards[idx] = updated;
     const { error } = await this.db
       .from('generated_standards')
-      .update({ controls })
+      .update({ standards })
       .eq('id', docId);
     if (error) throw new Error(error.message);
     return updated;
@@ -853,7 +857,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       document_id: string;
       version: number;
       workflow_status: string;
-      controls: StandardControl[];
+      standards: DocumentStandard[];
       created_at: string;
       created_by?: string;
     };
@@ -862,7 +866,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       documentId: row.document_id,
       version: row.version,
       workflowStatus: row.workflow_status as StandardsSnapshot['workflowStatus'],
-      controls: row.controls ?? [],
+      standards: row.standards ?? [],
       createdAt: row.created_at,
       createdBy: row.created_by,
     };
@@ -944,7 +948,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       user_id: string;
       org_profile_id: string;
       framework_ids: string[];
-      controls: StandardControl[];
+      standards: DocumentStandard[];
       status: string;
       workflow_status: string | null;
       created_at: string;
@@ -954,7 +958,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       userId: row.user_id,
       orgId: row.org_profile_id,
       frameworkIds: row.framework_ids,
-      controls: row.controls ?? [],
+      standards: row.standards ?? [],
       status: row.status as StandardsDocument['status'],
       workflowStatus: (row.workflow_status ?? 'draft') as StandardsDocument['workflowStatus'],
       createdAt: row.created_at,

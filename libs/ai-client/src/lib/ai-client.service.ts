@@ -7,7 +7,7 @@ import type {
   ChatResult,
   ControlFinding,
   GapAnalysisResult,
-  GeneratedControl,
+  GeneratedStandard,
   OrgProfile,
   StandardsResult,
 } from '@icore/shared';
@@ -40,10 +40,13 @@ export class AiClientService {
     );
   }
 
-  analyzeGap(controls: GeneratedControl[], findings: ControlFinding[]): Promise<GapAnalysisResult> {
+  analyzeGap(
+    standards: GeneratedStandard[],
+    findings: ControlFinding[],
+  ): Promise<GapAnalysisResult> {
     return firstValueFrom(
       this.client
-        .send<GapAnalysisResult>('ai.gap.analyze', { controls, findings })
+        .send<GapAnalysisResult>('ai.gap.analyze', { standards, findings })
         .pipe(timeout({ each: BATCH_TIMEOUT_MS })),
     );
   }
