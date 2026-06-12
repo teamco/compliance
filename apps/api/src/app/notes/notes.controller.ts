@@ -146,7 +146,11 @@ export class NotesController {
   @Patch('standards/:id/standards/:code')
   @ApiOperation({ summary: 'Update a single generated standard (objective, scope)' })
   @ApiBody({ schema: { type: 'object' } })
-  updateStandard(@Param('id') id: string, @Param('code') code: string, @Body() patch: StandardPatch) {
+  updateStandard(
+    @Param('id') id: string,
+    @Param('code') code: string,
+    @Body() patch: StandardPatch,
+  ) {
     return this.notes.updateStandard(id, code, patch);
   }
 

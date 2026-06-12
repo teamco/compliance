@@ -8,7 +8,7 @@
 
 ## Problem
 
-`generateStandards` produces items typed as `GeneratedControl[]` and stored as `controls` throughout the stack. In GRC, Standards and Controls are distinct entities. Standards define *what must be done*; Controls define *how to implement it*. The current naming conflates them, which misleads users and blocks item 8 (Controls ↔ Standards mapping).
+`generateStandards` produces items typed as `GeneratedControl[]` and stored as `controls` throughout the stack. In GRC, Standards and Controls are distinct entities. Standards define _what must be done_; Controls define _how to implement it_. The current naming conflates them, which misleads users and blocks item 8 (Controls ↔ Standards mapping).
 
 ---
 
@@ -29,6 +29,7 @@ export interface GeneratedStandard {
 ```
 
 `StandardsResult` changes:
+
 ```ts
 // before
 { frameworkId: string; controls: GeneratedControl[] }
@@ -80,6 +81,7 @@ Both columns are `jsonb` — rename only, no data type change, no backfill neede
 ### `generateStandards`
 
 New system prompt:
+
 ```
 You are a compliance standards expert. Generate formal security standards for the given frameworks.
 Return ONLY a valid JSON array matching this TypeScript type:
@@ -97,6 +99,7 @@ No markdown, no explanation — raw JSON only.
 ```
 
 New user prompt instructs Claude to produce Standards-level language (what must be done), not Controls-level (how to implement). Example distinction:
+
 - Standard (correct): "All user accounts must use multi-factor authentication"
 - Control (wrong): "Configure Okta MFA with TOTP as primary factor"
 
@@ -147,28 +150,31 @@ await this.notes.saveStandardsDocument(docId, standards);
 ## Client
 
 ### `apps/client/src/queries/notes.ts`
+
 - `StandardsDocument.controls` → `standards: DocumentStandard[]`
 - Query reads updated accordingly
 
 ### `apps/client/src/routes/_dashboard/standards.tsx`
+
 - Document card: show `doc.standards.length` + label "standards"
 - UI subtitle: "AI-generated compliance standards tailored to your organization"
 
 ### `apps/client/src/routes/_dashboard/standards.$id.tsx`
+
 - "Control Assessment" → "Standards Assessment"
 - Pass `doc.standards` to gap analysis
 
 ### `libs/template-shared/src/lib/i18n/locales/en.ts` (+ he/ru/es)
 
-| Old key | New key | New value |
-|---------|---------|-----------|
-| `standards.subtitle` | same | "AI-generated compliance standards tailored to your organization" |
-| `standards.controls` | `standards.count` | `'{{count}} standards'` |
-| `standards.controlsTitle` | `standards.assessmentTitle` | `'Standards Assessment'` |
-| `standards.controlsSubtitle` | `standards.assessmentSubtitle` | updated text |
-| `standards.generateFirst` | same | updated text |
-| `gap.controlsMapped` | `gap.standardsMapped` | `'standards mapped'` |
-| `gap.generateFirst` | same | updated text |
+| Old key                      | New key                        | New value                                                         |
+| ---------------------------- | ------------------------------ | ----------------------------------------------------------------- |
+| `standards.subtitle`         | same                           | "AI-generated compliance standards tailored to your organization" |
+| `standards.controls`         | `standards.count`              | `'{{count}} standards'`                                           |
+| `standards.controlsTitle`    | `standards.assessmentTitle`    | `'Standards Assessment'`                                          |
+| `standards.controlsSubtitle` | `standards.assessmentSubtitle` | updated text                                                      |
+| `standards.generateFirst`    | same                           | updated text                                                      |
+| `gap.controlsMapped`         | `gap.standardsMapped`          | `'standards mapped'`                                              |
+| `gap.generateFirst`          | same                           | updated text                                                      |
 
 ---
 
@@ -176,14 +182,14 @@ await this.notes.saveStandardsDocument(docId, standards);
 
 No new test files. Updates only:
 
-| File | Change |
-|------|--------|
-| `libs/shared/src/strategies/__tests__/ai.contract.unit.test.ts` | `controls[]` → `standards[]`, field renames |
-| `libs/ai-strategies/anthropic/src/lib/__tests__/anthropic-ai.contract.unit.test.ts` | same |
-| `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts` | `StandardControl` → `DocumentStandard` |
-| `libs/shared/src/strategies/__tests__/notes.contract.unit.test.ts` | same |
-| `libs/shared/src/strategies/fakes/fake-ai.ts` | return `standards[]` with new fields |
-| `libs/shared/src/strategies/fakes/fake-notes.ts` | internal `controls` map → `standards` |
+| File                                                                                | Change                                      |
+| ----------------------------------------------------------------------------------- | ------------------------------------------- |
+| `libs/shared/src/strategies/__tests__/ai.contract.unit.test.ts`                     | `controls[]` → `standards[]`, field renames |
+| `libs/ai-strategies/anthropic/src/lib/__tests__/anthropic-ai.contract.unit.test.ts` | same                                        |
+| `libs/shared/src/strategies/__tests__/fake-notes-admin.unit.test.ts`                | `StandardControl` → `DocumentStandard`      |
+| `libs/shared/src/strategies/__tests__/notes.contract.unit.test.ts`                  | same                                        |
+| `libs/shared/src/strategies/fakes/fake-ai.ts`                                       | return `standards[]` with new fields        |
+| `libs/shared/src/strategies/fakes/fake-notes.ts`                                    | internal `controls` map → `standards`       |
 
 ---
 

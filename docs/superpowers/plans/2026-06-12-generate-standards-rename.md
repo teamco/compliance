@@ -12,35 +12,36 @@
 
 ## File Map
 
-| File | Change |
-|------|--------|
-| `supabase/migrations/20260612000001_rename_controls_to_standards.sql` | CREATE — rename JSONB columns |
-| `libs/shared/src/strategies/ai.ts` | MODIFY — rename types |
-| `libs/shared/src/strategies/notes.ts` | MODIFY — rename types + interfaces |
-| `libs/shared/src/strategies/fakes/fake-ai.ts` | MODIFY — use new types |
-| `libs/shared/src/strategies/fakes/fake-notes.ts` | MODIFY — use new types |
-| `libs/shared/src/strategies/__tests__/ai.contract.unit.test.ts` | MODIFY — use new field names |
-| `libs/shared/src/strategies/__tests__/notes.contract.unit.test.ts` | MODIFY — use new types + field names |
-| `libs/ai-strategies/anthropic/src/lib/anthropic-ai.strategy.ts` | MODIFY — new prompt + return type |
-| `libs/ai-strategies/anthropic/src/lib/__tests__/anthropic-ai.contract.unit.test.ts` | MODIFY — mock new shape |
-| `libs/ai-client/src/lib/ai-client.service.ts` | MODIFY — rename param |
-| `apps/api/src/app/notes/standards-queue.service.ts` | MODIFY — update mapping |
-| `apps/api/src/app/notes/notes.controller.ts` | MODIFY — rename method + endpoint |
-| `apps/microservices/notes/src/app/supabase-notes.strategy.ts` | MODIFY — rename DB column refs |
-| `apps/client/src/queries/notes.ts` | MODIFY — rename types + mutation |
-| `apps/client/src/routes/_dashboard/standards.tsx` | MODIFY — update UI labels |
-| `apps/client/src/routes/_dashboard/standards.$id.tsx` | MODIFY — update card rendering |
-| `apps/client/src/lib/export/pdf.tsx` | MODIFY — update field refs |
-| `libs/template-shared/src/lib/i18n/locales/en.ts` | MODIFY — rename keys |
-| `libs/template-shared/src/lib/i18n/locales/he.ts` | MODIFY — rename keys |
-| `libs/template-shared/src/lib/i18n/locales/ru.ts` | MODIFY — rename keys |
-| `libs/template-shared/src/lib/i18n/locales/es.ts` | MODIFY — rename keys |
+| File                                                                                | Change                               |
+| ----------------------------------------------------------------------------------- | ------------------------------------ |
+| `supabase/migrations/20260612000001_rename_controls_to_standards.sql`               | CREATE — rename JSONB columns        |
+| `libs/shared/src/strategies/ai.ts`                                                  | MODIFY — rename types                |
+| `libs/shared/src/strategies/notes.ts`                                               | MODIFY — rename types + interfaces   |
+| `libs/shared/src/strategies/fakes/fake-ai.ts`                                       | MODIFY — use new types               |
+| `libs/shared/src/strategies/fakes/fake-notes.ts`                                    | MODIFY — use new types               |
+| `libs/shared/src/strategies/__tests__/ai.contract.unit.test.ts`                     | MODIFY — use new field names         |
+| `libs/shared/src/strategies/__tests__/notes.contract.unit.test.ts`                  | MODIFY — use new types + field names |
+| `libs/ai-strategies/anthropic/src/lib/anthropic-ai.strategy.ts`                     | MODIFY — new prompt + return type    |
+| `libs/ai-strategies/anthropic/src/lib/__tests__/anthropic-ai.contract.unit.test.ts` | MODIFY — mock new shape              |
+| `libs/ai-client/src/lib/ai-client.service.ts`                                       | MODIFY — rename param                |
+| `apps/api/src/app/notes/standards-queue.service.ts`                                 | MODIFY — update mapping              |
+| `apps/api/src/app/notes/notes.controller.ts`                                        | MODIFY — rename method + endpoint    |
+| `apps/microservices/notes/src/app/supabase-notes.strategy.ts`                       | MODIFY — rename DB column refs       |
+| `apps/client/src/queries/notes.ts`                                                  | MODIFY — rename types + mutation     |
+| `apps/client/src/routes/_dashboard/standards.tsx`                                   | MODIFY — update UI labels            |
+| `apps/client/src/routes/_dashboard/standards.$id.tsx`                               | MODIFY — update card rendering       |
+| `apps/client/src/lib/export/pdf.tsx`                                                | MODIFY — update field refs           |
+| `libs/template-shared/src/lib/i18n/locales/en.ts`                                   | MODIFY — rename keys                 |
+| `libs/template-shared/src/lib/i18n/locales/he.ts`                                   | MODIFY — rename keys                 |
+| `libs/template-shared/src/lib/i18n/locales/ru.ts`                                   | MODIFY — rename keys                 |
+| `libs/template-shared/src/lib/i18n/locales/es.ts`                                   | MODIFY — rename keys                 |
 
 ---
 
 ## Task 1: DB Migration
 
 **Files:**
+
 - Create: `supabase/migrations/20260612000001_rename_controls_to_standards.sql`
 
 - [ ] **Step 1: Create migration file**
@@ -63,6 +64,7 @@ git commit -m "feat(db): rename controls → standards column in generated_stand
 ## Task 2: Shared AI Types
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/ai.ts`
 
 - [ ] **Step 1: Replace `GeneratedControl` with `GeneratedStandard`, update `StandardsResult`, update `analyzeGap` signature**
@@ -150,7 +152,10 @@ export interface GapAnalysisResult {
 export interface AiStrategy {
   chat(messages: ChatMessage[], context: ChatContext): Promise<ChatResult>;
   generateStandards(orgProfile: OrgProfile, frameworkIds: string[]): Promise<StandardsResult[]>;
-  analyzeGap(standards: GeneratedStandard[], findings: ControlFinding[]): Promise<GapAnalysisResult>;
+  analyzeGap(
+    standards: GeneratedStandard[],
+    findings: ControlFinding[],
+  ): Promise<GapAnalysisResult>;
 }
 ```
 
@@ -166,6 +171,7 @@ git commit -m "feat(shared): replace GeneratedControl with GeneratedStandard typ
 ## Task 3: Shared Notes Types
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/notes.ts`
 
 - [ ] **Step 1: Replace `StandardControl` + `StandardControlPriority` with `DocumentStandard`, update `StandardsDocument`, `StandardsSnapshot`, `ControlPatch` → `StandardPatch`, method signatures**
@@ -175,6 +181,7 @@ Make these targeted changes:
 **Remove** line 4: `export type StandardControlPriority = 'critical' | 'high' | 'medium' | 'low';`
 
 **Replace** `StandardControl` interface (lines 42–52):
+
 ```typescript
 // An AI-generated compliance standard stored as part of a StandardsDocument.
 export interface DocumentStandard {
@@ -188,11 +195,13 @@ export interface DocumentStandard {
 ```
 
 **In `StandardsDocument`**, replace `controls: StandardControl[]` with:
+
 ```typescript
   standards: DocumentStandard[];
 ```
 
 **Replace `ControlPatch`** with:
+
 ```typescript
 export interface StandardPatch {
   objective?: string;
@@ -201,16 +210,19 @@ export interface StandardPatch {
 ```
 
 **In `StandardsSnapshot`**, replace `controls: StandardControl[]` with:
+
 ```typescript
   standards: DocumentStandard[];
 ```
 
 **In `NotesStrategy`**, update method signatures:
+
 ```typescript
   saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void>;
   // ...
   updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard>;
 ```
+
 (rename `updateControl` → `updateStandard`, `ControlPatch` → `StandardPatch`)
 
 - [ ] **Step 2: Update exports at bottom of file** — replace `ControlPatch` with `StandardPatch`, replace `StandardControl` / `StandardControlPriority` with `DocumentStandard` in any re-export lines.
@@ -227,11 +239,13 @@ git commit -m "feat(shared): replace StandardControl with DocumentStandard type"
 ## Task 4: AI Contract Test
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/__tests__/ai.contract.unit.test.ts`
 
 - [ ] **Step 1: Update `generateStandards` assertion to check `standards` array**
 
 Replace the `generateStandards` test body:
+
 ```typescript
 it('generateStandards returns one result per frameworkId', async () => {
   const results = await strategy.generateStandards(
@@ -259,6 +273,7 @@ git commit -m "test(shared): update AI contract test for GeneratedStandard shape
 ## Task 5: Fake AI Strategy
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/fakes/fake-ai.ts`
 
 - [ ] **Step 1: Replace `GeneratedControl` import with `GeneratedStandard`, update `generateStandards` return, update `analyzeGap` param**
@@ -336,6 +351,7 @@ git commit -m "feat(shared): update FakeAiStrategy for GeneratedStandard shape"
 ## Task 6: Notes Contract Tests
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/__tests__/notes.contract.unit.test.ts`
 
 - [ ] **Step 1: Update `saveStandardsDocument` test — use `DocumentStandard` shape**
@@ -413,9 +429,7 @@ it('updateStandard throws for unknown document', async () => {
 it('updateStandard throws for unknown standard code', async () => {
   const { id } = await strategy.createStandardsDocument('user-1', 'org-1', []);
   await strategy.saveStandardsDocument(id, []);
-  await expect(
-    strategy.updateStandard(id, 'NO-SUCH-CODE', { objective: 'x' }),
-  ).rejects.toThrow();
+  await expect(strategy.updateStandard(id, 'NO-SUCH-CODE', { objective: 'x' })).rejects.toThrow();
 });
 ```
 
@@ -431,17 +445,21 @@ git commit -m "test(shared): update notes contract tests for DocumentStandard sh
 ## Task 7: Fake Notes Strategy
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/fakes/fake-notes.ts`
 
 - [ ] **Step 1: Update imports — replace `ControlPatch`, `StandardControl` with `DocumentStandard`, `StandardPatch`**
 
 At top of file, in the import list replace:
+
 ```typescript
   ControlPatch,
   // ...
   StandardControl,
 ```
+
 with:
+
 ```typescript
   DocumentStandard,
   StandardPatch,
@@ -455,7 +473,7 @@ this.docs.set(id, {
   userId,
   orgId,
   frameworkIds,
-  standards: [],      // was: controls: []
+  standards: [], // was: controls: []
   status: 'pending',
   workflowStatus: 'draft',
   createdAt: new Date().toISOString(),
@@ -502,7 +520,7 @@ this.snapshots.push({
   documentId: id,
   version,
   workflowStatus: to,
-  standards: [...doc.standards],   // was: controls: [...doc.controls]
+  standards: [...doc.standards], // was: controls: [...doc.controls]
   createdAt: new Date().toISOString(),
 });
 ```
@@ -527,12 +545,14 @@ git commit -m "feat(shared): update FakeNotesStrategy for DocumentStandard shape
 ## Task 8: Anthropic AI Strategy
 
 **Files:**
+
 - Modify: `libs/ai-strategies/anthropic/src/lib/anthropic-ai.strategy.ts`
 - Modify: `libs/ai-strategies/anthropic/src/lib/__tests__/anthropic-ai.contract.unit.test.ts`
 
 - [ ] **Step 1: Update imports — replace `GeneratedControl` with `GeneratedStandard`**
 
 In `anthropic-ai.strategy.ts` top imports:
+
 ```typescript
 import type {
   AiStrategy,
@@ -698,6 +718,7 @@ git commit -m "feat(ai): update generateStandards prompt and types for Generated
 ## Task 9: AI Client Service
 
 **Files:**
+
 - Modify: `libs/ai-client/src/lib/ai-client.service.ts`
 
 - [ ] **Step 1: Replace `GeneratedControl` import with `GeneratedStandard`, update `analyzeGap` param**
@@ -716,6 +737,7 @@ import type {
 ```
 
 Update method signature:
+
 ```typescript
 analyzeGap(standards: GeneratedStandard[], findings: ControlFinding[]): Promise<GapAnalysisResult> {
   return firstValueFrom(
@@ -738,21 +760,21 @@ git commit -m "feat(ai-client): rename controls → standards in analyzeGap"
 ## Task 10: Standards Queue Service
 
 **Files:**
+
 - Modify: `apps/api/src/app/notes/standards-queue.service.ts`
 
 - [ ] **Step 1: Update imports and mapping from `GeneratedStandard` → `DocumentStandard`**
 
 Update top imports:
+
 ```typescript
 import type { DocumentStandard, OrgProfile, StandardsResult } from '@icore/shared';
 ```
 
 Update the `process` method mapping:
+
 ```typescript
-const aiResults: StandardsResult[] = await this.ai.generateStandards(
-  orgProfile,
-  frameworkIds,
-);
+const aiResults: StandardsResult[] = await this.ai.generateStandards(orgProfile, frameworkIds);
 
 const standards: DocumentStandard[] = aiResults.flatMap((r) =>
   r.standards.map((s) => ({
@@ -780,6 +802,7 @@ git commit -m "feat(api): update standards-queue mapping for DocumentStandard sh
 ## Task 11: Notes Controller
 
 **Files:**
+
 - Modify: `apps/api/src/app/notes/notes.controller.ts`
 
 - [ ] **Step 1: Update import, rename endpoint and method**
@@ -787,6 +810,7 @@ git commit -m "feat(api): update standards-queue mapping for DocumentStandard sh
 In imports, replace `ControlPatch` with `StandardPatch`.
 
 Replace the `updateControl` endpoint:
+
 ```typescript
 @Patch('standards/:id/standards/:code')
 @ApiOperation({ summary: 'Update a single generated standard (objective, scope)' })
@@ -808,6 +832,7 @@ git commit -m "feat(api): rename updateControl → updateStandard endpoint"
 ## Task 12: Supabase Notes Strategy
 
 **Files:**
+
 - Modify: `apps/microservices/notes/src/app/supabase-notes.strategy.ts`
 
 - [ ] **Step 1: Update imports — replace `StandardControl`, `ControlPatch` with `DocumentStandard`, `StandardPatch`**
@@ -850,7 +875,7 @@ const { error: snapErr } = await this.db.from('standards_snapshots').insert({
   document_id: id,
   version,
   workflow_status: to,
-  standards: doc.standards,    // was: controls: doc.controls
+  standards: doc.standards, // was: controls: doc.controls
 });
 ```
 
@@ -877,6 +902,7 @@ async updateStandard(docId: string, code: string, patch: StandardPatch): Promise
 - [ ] **Step 7: Update `mapDoc` and `mapSnapshot` helper methods**
 
 Find the private `mapDoc` helper — it likely maps DB row fields to the TypeScript type. Replace `controls` field mapping:
+
 ```typescript
 // in mapDoc:
 standards: (row.standards ?? []) as DocumentStandard[],
@@ -897,6 +923,7 @@ git commit -m "feat(notes-ms): rename controls → standards in Supabase DB stra
 ## Task 13: Client Queries
 
 **Files:**
+
 - Modify: `apps/client/src/queries/notes.ts`
 
 - [ ] **Step 1: Replace `StandardControl`, `ControlPatch`, `StandardControlPriority` with `DocumentStandard`, `StandardPatch`**
@@ -973,6 +1000,7 @@ git commit -m "feat(client): update queries for DocumentStandard shape"
 ## Task 14: Client `standards.tsx`
 
 **Files:**
+
 - Modify: `apps/client/src/routes/_dashboard/standards.tsx`
 
 - [ ] **Step 1: Update document card to show `standards.length` instead of `controls.length`**
@@ -1005,6 +1033,7 @@ git commit -m "feat(client): update standards list view for DocumentStandard sha
 ## Task 15: Client `standards.$id.tsx`
 
 **Files:**
+
 - Modify: `apps/client/src/routes/_dashboard/standards.$id.tsx`
 
 This file has the most UI changes — priority editing is removed, implementation editing becomes objective editing.
@@ -1012,6 +1041,7 @@ This file has the most UI changes — priority editing is removed, implementatio
 - [ ] **Step 1: Update imports from queries**
 
 Replace:
+
 ```typescript
 import {
   // ...
@@ -1022,7 +1052,9 @@ import {
   // ...
 } from '@/queries/notes';
 ```
+
 with:
+
 ```typescript
 import {
   // ...
@@ -1038,6 +1070,7 @@ Remove `StandardControlPriority` and `ControlPatch` from imports. Remove `Shield
 - [ ] **Step 2: Remove `PRIORITY_COLOR`, `PRIORITIES` constants and `EditState` priority field**
 
 Replace:
+
 ```typescript
 const PRIORITY_COLOR: Record<StandardControlPriority, string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
@@ -1054,7 +1087,9 @@ interface EditState {
   value: string;
 }
 ```
+
 with:
+
 ```typescript
 interface EditState {
   code: string;
@@ -1070,14 +1105,13 @@ const updateStandard = useUpdateStandard(id);
 ```
 
 Update `saveEdit`:
+
 ```typescript
 function saveEdit(overridePatch?: StandardPatch) {
   if (!editing) return;
   const patch: StandardPatch =
     overridePatch ??
-    (editing.field === 'objective'
-      ? { objective: editing.value }
-      : { scope: editing.value });
+    (editing.field === 'objective' ? { objective: editing.value } : { scope: editing.value });
   updateStandard.mutate(
     { code: editing.code, patch },
     { onSuccess: () => setEditing(null), onError: () => setEditing(null) },
@@ -1103,105 +1137,115 @@ The entire standard card render block (`doc.controls.map((ctrl) => ...)`) needs 
 - Replace the "Implementation" section with "Objective" (click-to-edit) and add a static "Requirements" list:
 
 ```tsx
-{doc.standards.map((std) => {
-  const isEditingObjective = editing?.code === std.code && editing.field === 'objective';
-  const isSaving = updateStandard.isPending && updateStandard.variables?.code === std.code;
+{
+  doc.standards.map((std) => {
+    const isEditingObjective = editing?.code === std.code && editing.field === 'objective';
+    const isSaving = updateStandard.isPending && updateStandard.variables?.code === std.code;
 
-  return (
-    <div
-      key={std.code}
-      className="bg-surface border border-border rounded-xl p-5 space-y-3 hover:border-muted-foreground/30 transition-colors"
-    >
-      {/* Header */}
-      <div className="flex items-start gap-3 min-w-0">
-        <div className="flex items-center justify-center w-7 h-7 rounded-md bg-green-500/10 border border-green-500/20 shrink-0">
-          <ShieldCheck size={13} className="text-green-500" />
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs font-mono text-muted-foreground">{std.code}</p>
-          <p className="text-sm font-medium text-foreground leading-snug">{std.title}</p>
-          {std.scope && (
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-              {t('standards.scope')}: {std.scope}
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* Objective — click-to-edit */}
-      <div className="pl-10 space-y-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-          {t('standards.objective')}
-        </p>
-        {isEditingObjective ? (
-          <div className="space-y-2">
-            <Textarea
-              autoFocus
-              rows={3}
-              value={editing.value}
-              onChange={(e) =>
-                setEditing((prev) => (prev ? { ...prev, value: e.target.value } : null))
-              }
-              className="text-xs resize-none"
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') cancelEdit();
-                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit();
-              }}
-            />
-            <div className="flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {t('common.cancel')}
-              </button>
-              <Button size="sm" onClick={() => saveEdit()} disabled={isSaving} className="h-6 text-xs px-2 gap-1">
-                <Check size={11} />
-                {t('common.save')}
-              </Button>
-            </div>
+    return (
+      <div
+        key={std.code}
+        className="bg-surface border border-border rounded-xl p-5 space-y-3 hover:border-muted-foreground/30 transition-colors"
+      >
+        {/* Header */}
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex items-center justify-center w-7 h-7 rounded-md bg-green-500/10 border border-green-500/20 shrink-0">
+            <ShieldCheck size={13} className="text-green-500" />
           </div>
-        ) : (
-          <button
-            type="button"
-            disabled={isSaving}
-            onClick={() => startEdit(std.code, 'objective', std.objective ?? '')}
-            className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text"
-          >
-            {std.objective ? (
-              <span className="flex items-start gap-1.5">
-                <span className="flex-1">{std.objective}</span>
-                <Pencil size={11} className="opacity-0 group-hover:opacity-40 transition-opacity mt-0.5 shrink-0" />
-              </span>
-            ) : (
-              <span className="text-muted-foreground/40 italic">
-                {t('standards.addObjective')}
-              </span>
+          <div className="min-w-0">
+            <p className="text-xs font-mono text-muted-foreground">{std.code}</p>
+            <p className="text-sm font-medium text-foreground leading-snug">{std.title}</p>
+            {std.scope && (
+              <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                {t('standards.scope')}: {std.scope}
+              </p>
             )}
-          </button>
-        )}
-      </div>
+          </div>
+        </div>
 
-      {/* Requirements list */}
-      {std.requirements.length > 0 && (
+        {/* Objective — click-to-edit */}
         <div className="pl-10 space-y-1">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-            {t('standards.requirements')}
+            {t('standards.objective')}
           </p>
-          <ul className="space-y-1">
-            {std.requirements.map((req, i) => (
-              <li key={i} className="text-xs text-foreground/80 leading-relaxed flex gap-2">
-                <span className="text-muted-foreground/40 shrink-0">{i + 1}.</span>
-                <span>{req}</span>
-              </li>
-            ))}
-          </ul>
+          {isEditingObjective ? (
+            <div className="space-y-2">
+              <Textarea
+                autoFocus
+                rows={3}
+                value={editing.value}
+                onChange={(e) =>
+                  setEditing((prev) => (prev ? { ...prev, value: e.target.value } : null))
+                }
+                className="text-xs resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') cancelEdit();
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit();
+                }}
+              />
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {t('common.cancel')}
+                </button>
+                <Button
+                  size="sm"
+                  onClick={() => saveEdit()}
+                  disabled={isSaving}
+                  className="h-6 text-xs px-2 gap-1"
+                >
+                  <Check size={11} />
+                  {t('common.save')}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              disabled={isSaving}
+              onClick={() => startEdit(std.code, 'objective', std.objective ?? '')}
+              className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text"
+            >
+              {std.objective ? (
+                <span className="flex items-start gap-1.5">
+                  <span className="flex-1">{std.objective}</span>
+                  <Pencil
+                    size={11}
+                    className="opacity-0 group-hover:opacity-40 transition-opacity mt-0.5 shrink-0"
+                  />
+                </span>
+              ) : (
+                <span className="text-muted-foreground/40 italic">
+                  {t('standards.addObjective')}
+                </span>
+              )}
+            </button>
+          )}
         </div>
-      )}
-    </div>
-  );
-})}
+
+        {/* Requirements list */}
+        {std.requirements.length > 0 && (
+          <div className="pl-10 space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              {t('standards.requirements')}
+            </p>
+            <ul className="space-y-1">
+              {std.requirements.map((req, i) => (
+                <li key={i} className="text-xs text-foreground/80 leading-relaxed flex gap-2">
+                  <span className="text-muted-foreground/40 shrink-0">{i + 1}.</span>
+                  <span>{req}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  });
+}
 ```
 
 - [ ] **Step 6: Update `SnapshotRow` — replace `snap.controls` with `snap.standards`, remove priority badge**
@@ -1209,20 +1253,24 @@ The entire standard card render block (`doc.controls.map((ctrl) => ...)`) needs 
 ```tsx
 const standards = full?.standards ?? snap.standards;
 // ...
-{standards.map((std) => (
-  <div key={std.code} className="px-4 py-3 flex items-start gap-3">
-    <span className="text-xs font-mono text-muted-foreground shrink-0 w-20 truncate">
-      {std.code}
-    </span>
-    <span className="text-xs text-foreground flex-1">{std.title}</span>
-    <span className="text-xs text-muted-foreground/60 shrink-0">
-      {std.requirements.length} {t('standards.requirementsCount', { count: std.requirements.length })}
-    </span>
-  </div>
-))}
+{
+  standards.map((std) => (
+    <div key={std.code} className="px-4 py-3 flex items-start gap-3">
+      <span className="text-xs font-mono text-muted-foreground shrink-0 w-20 truncate">
+        {std.code}
+      </span>
+      <span className="text-xs text-foreground flex-1">{std.title}</span>
+      <span className="text-xs text-muted-foreground/60 shrink-0">
+        {std.requirements.length}{' '}
+        {t('standards.requirementsCount', { count: std.requirements.length })}
+      </span>
+    </div>
+  ));
+}
 ```
 
 Also update the count line in `SnapshotRow`:
+
 ```tsx
 <span className="text-xs text-muted-foreground/60">
   {t('standards.count', { count: snap.standards.length })}
@@ -1241,17 +1289,20 @@ git commit -m "feat(client): update standards detail view for DocumentStandard s
 ## Task 16: PDF Export
 
 **Files:**
+
 - Modify: `apps/client/src/lib/export/pdf.tsx`
 
 - [ ] **Step 1: Update `doc.controls` refs and table columns**
 
 Replace the summary count line:
+
 ```tsx
 {doc.standards.length} standard(s) · status: {doc.status} · workflow:{' '}
 {doc.workflowStatus}
 ```
 
 Replace the table header section:
+
 ```tsx
 <Text style={styles.sectionTitle}>Standards</Text>
 <View style={styles.tHead}>
@@ -1280,6 +1331,7 @@ git commit -m "feat(client): update PDF export for DocumentStandard shape"
 ## Task 17: i18n Updates
 
 **Files:**
+
 - Modify: `libs/template-shared/src/lib/i18n/locales/en.ts`
 - Modify: `libs/template-shared/src/lib/i18n/locales/he.ts`
 - Modify: `libs/template-shared/src/lib/i18n/locales/ru.ts`

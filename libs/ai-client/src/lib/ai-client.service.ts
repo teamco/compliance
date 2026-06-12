@@ -40,7 +40,10 @@ export class AiClientService {
     );
   }
 
-  analyzeGap(standards: GeneratedStandard[], findings: ControlFinding[]): Promise<GapAnalysisResult> {
+  analyzeGap(
+    standards: GeneratedStandard[],
+    findings: ControlFinding[],
+  ): Promise<GapAnalysisResult> {
     return firstValueFrom(
       this.client
         .send<GapAnalysisResult>('ai.gap.analyze', { standards, findings })

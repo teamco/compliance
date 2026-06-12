@@ -78,5 +78,8 @@ export interface GapAnalysisResult {
 export interface AiStrategy {
   chat(messages: ChatMessage[], context: ChatContext): Promise<ChatResult>;
   generateStandards(orgProfile: OrgProfile, frameworkIds: string[]): Promise<StandardsResult[]>;
-  analyzeGap(standards: GeneratedStandard[], findings: ControlFinding[]): Promise<GapAnalysisResult>;
+  analyzeGap(
+    standards: GeneratedStandard[],
+    findings: ControlFinding[],
+  ): Promise<GapAnalysisResult>;
 }

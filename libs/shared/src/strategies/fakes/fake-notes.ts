@@ -150,7 +150,11 @@ export class FakeNotesStrategy implements NotesStrategy {
     return [...this.docs.values()].filter((d) => d.orgId === orgId);
   }
 
-  async updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard> {
+  async updateStandard(
+    docId: string,
+    code: string,
+    patch: StandardPatch,
+  ): Promise<DocumentStandard> {
     const doc = this.docs.get(docId);
     if (!doc) throw new Error(`doc_not_found: ${docId}`);
     const idx = doc.standards.findIndex((s) => s.code === code);

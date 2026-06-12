@@ -307,7 +307,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.mapSnapshot(data) : null;
   }
 
-  async updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard> {
+  async updateStandard(
+    docId: string,
+    code: string,
+    patch: StandardPatch,
+  ): Promise<DocumentStandard> {
     const doc = await this.getStandardsDocument(docId);
     if (!doc) throw new Error('doc_not_found');
     const idx = doc.standards.findIndex((c) => c.code === code);
