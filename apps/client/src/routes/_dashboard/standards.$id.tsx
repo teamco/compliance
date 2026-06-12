@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { notify } from '@/lib/notify';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import {
@@ -308,7 +309,7 @@ function StandardsDetailPage() {
         : { scope: editing.value };
     updateStandard.mutate(
       { code: editing.code, patch },
-      { onSuccess: () => setEditing(null), onError: () => setEditing(null) },
+      { onSuccess: () => setEditing(null), onError: () => notify.error(t('common.saveFailed')) },
     );
   }
 
