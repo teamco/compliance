@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
-import { useIsAdmin } from '@icore/template-shared';
+import { useIsAdmin, useNotify } from '@icore/template-shared';
 import {
   useFrameworks,
   useOrganizations,
@@ -22,9 +22,8 @@ import {
   useSnapshots,
   useStandardsDocument,
   useTransitionWorkflow,
-  useUpdateControl,
-  type ControlPatch,
-  type StandardControlPriority,
+  useUpdateStandard,
+  type StandardPatch,
   type StandardsSnapshot,
   type WorkflowStatus,
   type WorkflowTransition,
@@ -178,7 +177,7 @@ function SnapshotRow({ snap }: { snap: StandardsSnapshot }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const { data: full } = useSnapshot(open ? snap.id : '');
-  const controls = full?.controls ?? snap.controls;
+  const standards = full?.standards ?? snap.standards;
 
   return (
     <div className="border border-border rounded-lg overflow-hidden">
@@ -204,7 +203,7 @@ function SnapshotRow({ snap }: { snap: StandardsSnapshot }) {
             })}
           </span>
           <span className="text-xs text-muted-foreground/60">
-            {t('standards.controls', { count: snap.controls.length })}
+            {t('standards.count', { count: snap.standards.length })}
           </span>
         </div>
         {open ? (
@@ -215,24 +214,12 @@ function SnapshotRow({ snap }: { snap: StandardsSnapshot }) {
       </button>
       {open && (
         <div className="border-t border-border divide-y divide-border">
-          {controls.map((ctrl) => (
-            <div key={ctrl.code} className="px-4 py-3 flex items-start gap-3">
+          {standards.map((std) => (
+            <div key={std.code} className="px-4 py-3 flex items-start gap-3">
               <span className="text-xs font-mono text-muted-foreground shrink-0 w-20 truncate">
-                {ctrl.code}
+                {std.code}
               </span>
-              <span className="text-xs text-foreground flex-1">{ctrl.title}</span>
-              <span
-                className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${
-                  {
-                    critical: 'bg-red-500/10 text-red-400 border-red-500/20',
-                    high: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-                    medium: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-                    low: 'bg-muted text-muted-foreground border-border',
-                  }[ctrl.priority]
-                }`}
-              >
-                {t(`standards.priority.${ctrl.priority}`)}
-              </span>
+              <span className="text-xs text-foreground flex-1">{std.title}</span>
             </div>
           ))}
         </div>
@@ -288,18 +275,9 @@ function VersionHistory({ docId }: { docId: string }) {
   );
 }
 
-const PRIORITY_COLOR: Record<StandardControlPriority, string> = {
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
-  high: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  medium: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  low: 'bg-muted text-muted-foreground border-border',
-};
-
-const PRIORITIES: StandardControlPriority[] = ['critical', 'high', 'medium', 'low'];
-
 interface EditState {
   code: string;
-  field: 'priority' | 'impl';
+  field: 'objective' | 'scope';
   value: string;
 }
 
@@ -309,8 +287,9 @@ function StandardsDetailPage() {
   const { data: doc, isPending } = useStandardsDocument(id);
   const { data: frameworks } = useFrameworks();
   const { data: orgs } = useOrganizations();
-  const updateControl = useUpdateControl(id);
+  const updateStandard = useUpdateStandard(id);
   const isAdmin = useIsAdmin();
+  const notify = useNotify();
 
   const [editing, setEditing] = useState<EditState | null>(null);
 
@@ -322,16 +301,13 @@ function StandardsDetailPage() {
     setEditing(null);
   }
 
-  function saveEdit(overridePatch?: ControlPatch) {
+  function saveEdit() {
     if (!editing) return;
-    const patch: ControlPatch =
-      overridePatch ??
-      (editing.field === 'priority'
-        ? { priority: editing.value as StandardControlPriority }
-        : { implementation: editing.value });
-    updateControl.mutate(
+    const patch: StandardPatch =
+      editing.field === 'objective' ? { objective: editing.value } : { scope: editing.value };
+    updateStandard.mutate(
       { code: editing.code, patch },
-      { onSuccess: () => setEditing(null), onError: () => setEditing(null) },
+      { onSuccess: () => setEditing(null), onError: () => notify.error(t('common.saveFailed')) },
     );
   }
 
@@ -376,10 +352,10 @@ function StandardsDetailPage() {
       </div>
 
       <div>
-        <h1 className="text-xl font-semibold text-foreground">{t('standards.viewControls')}</h1>
+        <h1 className="text-xl font-semibold text-foreground">{t('standards.assessmentTitle')}</h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {t('standards.controls', { count: doc.controls.length })} · {t('standards.generatedOn')}{' '}
-          {new Date(doc.createdAt).toLocaleDateString()}
+          {t('standards.assessmentSubtitle', { count: doc.standards.length })} ·{' '}
+          {t('standards.generatedOn')} {new Date(doc.createdAt).toLocaleDateString()}
         </p>
       </div>
 
@@ -404,95 +380,38 @@ function StandardsDetailPage() {
 
       <div className="@container">
         <div className="grid grid-cols-1 @[650px]:grid-cols-2 gap-3">
-          {doc.controls.map((ctrl) => {
-            const isEditingPriority = editing?.code === ctrl.code && editing.field === 'priority';
-            const isEditingImpl = editing?.code === ctrl.code && editing.field === 'impl';
-            const isSaving = updateControl.isPending && updateControl.variables?.code === ctrl.code;
+          {doc.standards.map((std) => {
+            const isEditingObjective = editing?.code === std.code && editing.field === 'objective';
+            const isEditingScope = editing?.code === std.code && editing.field === 'scope';
+            const isSaving =
+              updateStandard.isPending && updateStandard.variables?.code === std.code;
 
             return (
               <div
-                key={ctrl.code}
+                key={std.code}
                 className="bg-surface border border-border rounded-xl p-5 space-y-3 hover:border-muted-foreground/30 transition-colors"
               >
                 {/* Header row */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="flex items-center justify-center w-7 h-7 rounded-md bg-green-500/10 border border-green-500/20 shrink-0">
-                      <ShieldCheck size={13} className="text-green-500" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-mono text-muted-foreground">{ctrl.code}</p>
-                      <p className="text-sm font-medium text-foreground leading-snug">
-                        {ctrl.title}
-                      </p>
-                    </div>
+                <div className="flex items-start gap-3">
+                  <div className="flex items-center justify-center w-7 h-7 rounded-md bg-green-500/10 border border-green-500/20 shrink-0">
+                    <ShieldCheck size={13} className="text-green-500" />
                   </div>
-
-                  {/* Priority — inline pills when editing */}
-                  {isEditingPriority ? (
-                    <div className="flex items-center gap-1 shrink-0">
-                      {PRIORITIES.map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          disabled={isSaving}
-                          onClick={() => {
-                            setEditing((prev) => (prev ? { ...prev, value: p } : null));
-                            updateControl.mutate(
-                              { code: ctrl.code, patch: { priority: p } },
-                              {
-                                onSuccess: () => setEditing(null),
-                                onError: () => setEditing(null),
-                              },
-                            );
-                          }}
-                          className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border cursor-pointer transition-opacity hover:opacity-80 ${PRIORITY_COLOR[p]} ${p === ctrl.priority ? 'ring-1 ring-offset-1 ring-offset-surface ring-current' : ''}`}
-                        >
-                          {t(`standards.priority.${p}`)}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        className="ml-1 text-muted-foreground hover:text-foreground"
-                      >
-                        <X size={13} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={isSaving}
-                      onClick={() => startEdit(ctrl.code, 'priority', ctrl.priority)}
-                      className={`group flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 cursor-pointer transition-all hover:opacity-80 ${PRIORITY_COLOR[ctrl.priority]}`}
-                      title={t('standards.editPriority')}
-                    >
-                      {t(`standards.priority.${ctrl.priority}`)}
-                      <Pencil
-                        size={9}
-                        className="opacity-0 group-hover:opacity-60 transition-opacity"
-                      />
-                    </button>
-                  )}
+                  <div className="min-w-0">
+                    <p className="text-xs font-mono text-muted-foreground">{std.code}</p>
+                    <p className="text-sm font-medium text-foreground leading-snug">{std.title}</p>
+                  </div>
                 </div>
 
-                {ctrl.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed pl-9">
-                    {ctrl.description}
-                  </p>
-                )}
-
-                {/* Implementation — click-to-edit textarea */}
+                {/* Objective — click-to-edit */}
                 <div className="pl-9 space-y-1">
                   <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
-                    {t('standards.implementation')}
+                    {t('standards.objective')}
                   </p>
-
-                  {isEditingImpl ? (
+                  {isEditingObjective ? (
                     <div className="space-y-2">
                       <Textarea
                         autoFocus
-                        rows={4}
+                        rows={3}
                         value={editing.value}
                         onChange={(e) =>
                           setEditing((prev) => (prev ? { ...prev, value: e.target.value } : null))
@@ -509,11 +428,11 @@ function StandardsDetailPage() {
                           onClick={cancelEdit}
                           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {t('common.cancel')}
+                          <X size={13} />
                         </button>
                         <Button
                           size="sm"
-                          onClick={() => saveEdit()}
+                          onClick={saveEdit}
                           disabled={isSaving}
                           className="h-6 text-xs px-2 gap-1"
                         >
@@ -526,25 +445,93 @@ function StandardsDetailPage() {
                     <button
                       type="button"
                       disabled={isSaving}
-                      onClick={() => startEdit(ctrl.code, 'impl', ctrl.implementation ?? '')}
+                      onClick={() => startEdit(std.code, 'objective', std.objective)}
                       className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text"
                     >
-                      {ctrl.implementation ? (
-                        <span className="flex items-start gap-1.5">
-                          <span className="flex-1">{ctrl.implementation}</span>
-                          <Pencil
-                            size={11}
-                            className="opacity-0 group-hover:opacity-40 transition-opacity mt-0.5 shrink-0"
-                          />
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground/40 italic">
-                          {t('standards.addImplementation')}
-                        </span>
-                      )}
+                      <span className="flex items-start gap-1.5">
+                        <span className="flex-1">{std.objective}</span>
+                        <Pencil
+                          size={11}
+                          className="opacity-0 group-hover:opacity-40 transition-opacity mt-0.5 shrink-0"
+                        />
+                      </span>
                     </button>
                   )}
                 </div>
+
+                {/* Scope — click-to-edit */}
+                <div className="pl-9 space-y-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {t('standards.scope')}
+                  </p>
+                  {isEditingScope ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        autoFocus
+                        rows={3}
+                        value={editing.value}
+                        onChange={(e) =>
+                          setEditing((prev) => (prev ? { ...prev, value: e.target.value } : null))
+                        }
+                        className="text-xs resize-none"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Escape') cancelEdit();
+                          if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) saveEdit();
+                        }}
+                      />
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={cancelEdit}
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <X size={13} />
+                        </button>
+                        <Button
+                          size="sm"
+                          onClick={saveEdit}
+                          disabled={isSaving}
+                          className="h-6 text-xs px-2 gap-1"
+                        >
+                          <Check size={11} />
+                          {t('common.save')}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => startEdit(std.code, 'scope', std.scope)}
+                      className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text"
+                    >
+                      <span className="flex items-start gap-1.5">
+                        <span className="flex-1">{std.scope}</span>
+                        <Pencil
+                          size={11}
+                          className="opacity-0 group-hover:opacity-40 transition-opacity mt-0.5 shrink-0"
+                        />
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Requirements */}
+                {std.requirements.length > 0 && (
+                  <div className="pl-9 space-y-1">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                      {t('standards.requirements')}
+                    </p>
+                    <ul className="space-y-1">
+                      {std.requirements.map((req, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-xs text-foreground/80">
+                          <span className="text-muted-foreground/40 shrink-0 mt-0.5">•</span>
+                          <span>{req}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             );
           })}

@@ -7,7 +7,7 @@ import type {
   ChatResult,
   ControlFinding,
   GapAnalysisResult,
-  GeneratedControl,
+  GeneratedStandard,
   OrgProfile,
   StandardsResult,
 } from '@icore/shared';
@@ -30,8 +30,8 @@ export class AiController {
 
   @MessagePattern('ai.gap.analyze')
   analyzeGap(
-    @Payload() payload: { controls: GeneratedControl[]; findings: ControlFinding[] },
+    @Payload() payload: { standards: GeneratedStandard[]; findings: ControlFinding[] },
   ): Promise<GapAnalysisResult> {
-    return this.strategy.analyzeGap(payload.controls, payload.findings);
+    return this.strategy.analyzeGap(payload.standards, payload.findings);
   }
 }
