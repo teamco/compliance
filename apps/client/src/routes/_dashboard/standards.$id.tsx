@@ -304,9 +304,7 @@ function StandardsDetailPage() {
   function saveEdit() {
     if (!editing) return;
     const patch: StandardPatch =
-      editing.field === 'objective'
-        ? { objective: editing.value }
-        : { scope: editing.value };
+      editing.field === 'objective' ? { objective: editing.value } : { scope: editing.value };
     updateStandard.mutate(
       { code: editing.code, patch },
       { onSuccess: () => setEditing(null), onError: () => notify.error(t('common.saveFailed')) },
@@ -383,8 +381,7 @@ function StandardsDetailPage() {
       <div className="@container">
         <div className="grid grid-cols-1 @[650px]:grid-cols-2 gap-3">
           {doc.standards.map((std) => {
-            const isEditingObjective =
-              editing?.code === std.code && editing.field === 'objective';
+            const isEditingObjective = editing?.code === std.code && editing.field === 'objective';
             const isEditingScope = editing?.code === std.code && editing.field === 'scope';
             const isSaving =
               updateStandard.isPending && updateStandard.variables?.code === std.code;
