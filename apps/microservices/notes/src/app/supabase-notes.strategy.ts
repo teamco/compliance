@@ -311,7 +311,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const doc = await this.getStandardsDocument(docId);
     if (!doc) throw new Error('doc_not_found');
     const idx = doc.standards.findIndex((c) => c.code === code);
-    if (idx === -1) throw new Error('control_not_found');
+    if (idx === -1) throw new Error('standard_not_found');
     const updated = { ...doc.standards[idx], ...patch } as DocumentStandard;
     const standards = [...doc.standards];
     standards[idx] = updated;
