@@ -167,25 +167,23 @@ export function runNotesContract(name: string, factory: () => NotesStrategy): vo
       expect(result).toBeNull();
     });
 
-    it('saveStandardsDocument persists controls and sets status completed', async () => {
+    it('saveStandardsDocument persists standards and sets status completed', async () => {
       const { id } = await strategy.createStandardsDocument('user-1', 'org-1', ['fw-1']);
-      const controls = [
+      const standards = [
         {
-          code: 'CTRL-001',
-          title: 'Access Control',
-          description: 'Manage access',
-          implementation: 'Use RBAC',
-          evidence: [],
+          code: 'STD-001',
+          title: 'Access Control Standard',
+          objective: 'Ensure controlled access to systems',
+          scope: 'All systems and applications',
+          requirements: ['Users must authenticate before accessing systems'],
           frameworkMappings: [],
-          priority: 'high' as const,
-          category: 'general',
         },
       ];
-      await strategy.saveStandardsDocument(id, controls);
+      await strategy.saveStandardsDocument(id, standards);
       const doc = await strategy.getStandardsDocument(id);
       expect(doc?.status).toBe('completed');
-      expect(doc?.controls).toHaveLength(1);
-      expect(doc?.controls[0]?.code).toBe('CTRL-001');
+      expect(doc?.standards).toHaveLength(1);
+      expect(doc?.standards[0]?.code).toBe('STD-001');
     });
 
     it('listStandardsDocuments returns only docs for given org', async () => {
@@ -199,59 +197,53 @@ export function runNotesContract(name: string, factory: () => NotesStrategy): vo
       expect(docs2.map((d) => d.id)).not.toContain(id1);
     });
 
-    // ── updateControl ────────────────────────────────────────────────────────
+    // ── updateStandard ──────────────────────────────────────────────────────────
 
-    it('updateControl patches priority on an existing control', async () => {
+    it('updateStandard patches objective on an existing standard', async () => {
       const { id } = await strategy.createStandardsDocument('user-1', 'org-1', []);
       await strategy.saveStandardsDocument(id, [
         {
-          code: 'CTRL-001',
-          title: 'Access Control',
-          description: 'Manage access',
-          implementation: 'Use RBAC',
-          evidence: [],
+          code: 'STD-001',
+          title: 'Access Control Standard',
+          objective: 'original objective',
+          scope: 'all systems',
+          requirements: [],
           frameworkMappings: [],
-          priority: 'high' as const,
-          category: 'general',
         },
       ]);
-      const updated = await strategy.updateControl(id, 'CTRL-001', { priority: 'critical' });
-      expect(updated.priority).toBe('critical');
+      const updated = await strategy.updateStandard(id, 'STD-001', { objective: 'updated objective' });
+      expect(updated.objective).toBe('updated objective');
       const doc = await strategy.getStandardsDocument(id);
-      expect(doc?.controls[0]?.priority).toBe('critical');
+      expect(doc?.standards[0]?.objective).toBe('updated objective');
     });
 
-    it('updateControl patches implementation text', async () => {
+    it('updateStandard patches scope text', async () => {
       const { id } = await strategy.createStandardsDocument('user-1', 'org-1', []);
       await strategy.saveStandardsDocument(id, [
         {
-          code: 'CTRL-002',
-          title: 'Encryption',
-          description: 'Encrypt at rest',
-          implementation: 'old text',
-          evidence: [],
+          code: 'STD-002',
+          title: 'Encryption Standard',
+          objective: 'Protect data at rest',
+          scope: 'old scope',
+          requirements: [],
           frameworkMappings: [],
-          priority: 'medium' as const,
-          category: 'security',
         },
       ]);
-      const updated = await strategy.updateControl(id, 'CTRL-002', {
-        implementation: 'new text',
-      });
-      expect(updated.implementation).toBe('new text');
+      const updated = await strategy.updateStandard(id, 'STD-002', { scope: 'new scope' });
+      expect(updated.scope).toBe('new scope');
     });
 
-    it('updateControl throws for unknown document', async () => {
+    it('updateStandard throws for unknown document', async () => {
       await expect(
-        strategy.updateControl('nonexistent-doc', 'CTRL-001', { priority: 'low' }),
+        strategy.updateStandard('nonexistent-doc', 'STD-001', { objective: 'x' }),
       ).rejects.toThrow();
     });
 
-    it('updateControl throws for unknown control code', async () => {
+    it('updateStandard throws for unknown standard code', async () => {
       const { id } = await strategy.createStandardsDocument('user-1', 'org-1', []);
       await strategy.saveStandardsDocument(id, []);
       await expect(
-        strategy.updateControl(id, 'NO-SUCH-CODE', { priority: 'low' }),
+        strategy.updateStandard(id, 'NO-SUCH-CODE', { objective: 'x' }),
       ).rejects.toThrow();
     });
   });
