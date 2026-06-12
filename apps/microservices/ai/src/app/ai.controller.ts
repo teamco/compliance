@@ -10,6 +10,8 @@ import type {
   GeneratedStandard,
   OrgProfile,
   StandardsResult,
+  VendorPostureInput,
+  VendorPostureResult,
 } from '@icore/shared';
 
 @Controller()
@@ -33,5 +35,10 @@ export class AiController {
     @Payload() payload: { standards: GeneratedStandard[]; findings: ControlFinding[] },
   ): Promise<GapAnalysisResult> {
     return this.strategy.analyzeGap(payload.standards, payload.findings);
+  }
+
+  @MessagePattern('vendor.posture.analyze')
+  analyzeVendorPosture(@Payload() payload: VendorPostureInput): Promise<VendorPostureResult> {
+    return this.strategy.analyzeVendorPosture(payload);
   }
 }

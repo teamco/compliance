@@ -10,6 +10,8 @@ import type {
   GeneratedStandard,
   OrgProfile,
   StandardsResult,
+  VendorPostureInput,
+  VendorPostureResult,
 } from '@icore/shared';
 import { AI_CLIENT } from './ai-client.tokens';
 
@@ -47,6 +49,14 @@ export class AiClientService {
     return firstValueFrom(
       this.client
         .send<GapAnalysisResult>('ai.gap.analyze', { standards, findings })
+        .pipe(timeout({ each: BATCH_TIMEOUT_MS })),
+    );
+  }
+
+  analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
+    return firstValueFrom(
+      this.client
+        .send<VendorPostureResult>('vendor.posture.analyze', input)
         .pipe(timeout({ each: BATCH_TIMEOUT_MS })),
     );
   }
