@@ -211,7 +211,9 @@ export function runNotesContract(name: string, factory: () => NotesStrategy): vo
           frameworkMappings: [],
         },
       ]);
-      const updated = await strategy.updateStandard(id, 'STD-001', { objective: 'updated objective' });
+      const updated = await strategy.updateStandard(id, 'STD-001', {
+        objective: 'updated objective',
+      });
       expect(updated.objective).toBe('updated objective');
       const doc = await strategy.getStandardsDocument(id);
       expect(doc?.standards[0]?.objective).toBe('updated objective');
