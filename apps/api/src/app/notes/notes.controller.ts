@@ -22,7 +22,7 @@ import { subject } from '@casl/ability';
 import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
 import type {
-  ControlPatch,
+  StandardPatch,
   GapAnalysisResult,
   Organization,
   OrganizationInput,
@@ -143,11 +143,11 @@ export class NotesController {
     return result;
   }
 
-  @Patch('standards/:id/controls/:code')
-  @ApiOperation({ summary: 'Update a single generated control (priority, implementation)' })
+  @Patch('standards/:id/standards/:code')
+  @ApiOperation({ summary: 'Update a single generated standard (objective, scope)' })
   @ApiBody({ schema: { type: 'object' } })
-  updateControl(@Param('id') id: string, @Param('code') code: string, @Body() patch: ControlPatch) {
-    return this.notes.updateControl(id, code, patch);
+  updateStandard(@Param('id') id: string, @Param('code') code: string, @Body() patch: StandardPatch) {
+    return this.notes.updateStandard(id, code, patch);
   }
 
   @Get('standards/:id/snapshots')
