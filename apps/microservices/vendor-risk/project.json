@@ -6,14 +6,15 @@
   "targets": {
     "build": {
       "executor": "nx:run-commands",
+      "outputs": ["{workspaceRoot}/dist/apps/microservices/vendor-risk"],
       "options": {
         "command": "webpack-cli build",
-        "args": ["--node-env=production"],
+        "args": ["--config-node-env=production"],
         "cwd": "apps/microservices/vendor-risk"
       },
       "configurations": {
         "development": {
-          "args": ["--node-env=development"]
+          "args": ["--config-node-env=development"]
         }
       }
     },

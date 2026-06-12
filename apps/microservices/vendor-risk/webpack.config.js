@@ -4,22 +4,14 @@ const { join } = require('path');
 module.exports = {
   output: {
     path: join(__dirname, '../../../dist/apps/microservices/vendor-risk'),
-    clean: true,
-    ...(process.env.NODE_ENV !== 'production' && {
-      devtoolModuleFilenameTemplate: '[absolute-resource-path]',
-    }),
   },
   plugins: [
     new NxAppWebpackPlugin({
       target: 'node',
+      tsConfig: 'apps/microservices/vendor-risk/tsconfig.app.json',
       compiler: 'tsc',
-      main: './src/main.ts',
-      tsConfig: './tsconfig.app.json',
-      assets: ['./src/assets'],
-      optimization: false,
+      main: 'apps/microservices/vendor-risk/src/main.ts',
       outputHashing: 'none',
-      generatePackageJson: true,
-      sourceMap: true,
     }),
   ],
 };
