@@ -2029,10 +2029,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@icore/vendor-risk-client@workspace:libs/vendor-risk-client":
+"@icore/vendor-risk-client@npm:*, @icore/vendor-risk-client@workspace:libs/vendor-risk-client":
   version: 0.0.0-use.local
   resolution: "@icore/vendor-risk-client@workspace:libs/vendor-risk-client"
   dependencies:
+    "@icore/shared": "npm:*"
+    "@nestjs/common": "npm:^11.1.24"
+    "@nestjs/microservices": "npm:^11.1.24"
+    rxjs: "npm:^7.8.2"
     tslib: "npm:^2.3.0"
   languageName: unknown
   linkType: soft
@@ -8371,6 +8375,7 @@ __metadata:
     "@icore/notes-client": "npm:0.0.1"
     "@icore/shared": "npm:*"
     "@icore/upload-client": "npm:*"
+    "@icore/vendor-risk-client": "npm:*"
     "@nestjs/common": "npm:^11.1.24"
     "@nestjs/config": "npm:^4.0.4"
     "@nestjs/core": "npm:^11.1.24"
