@@ -35,23 +35,31 @@ function makeFakeClient() {
                       : [
                           {
                             frameworkId: 'NIST-CSF',
-                            controls: [
+                            standards: [
                               {
-                                id: 'NIST-CSF-001',
-                                title: 'Identify Assets',
-                                description: 'Identify and manage assets.',
-                                implementationGuidance: 'Create an asset inventory.',
+                                id: 'NIST-CSF-STD-001',
+                                title: 'Asset Management Standard',
+                                objective: 'Ensure all assets are identified and managed.',
+                                scope: 'All IT assets and systems.',
+                                requirements: [
+                                  'All assets must be inventoried within 30 days of acquisition.',
+                                  'Asset ownership must be assigned and documented.',
+                                ],
                               },
                             ],
                           },
                           {
                             frameworkId: 'ISO-27001',
-                            controls: [
+                            standards: [
                               {
-                                id: 'ISO-27001-001',
-                                title: 'Information Security Policies',
-                                description: 'Define security policies.',
-                                implementationGuidance: 'Write and publish policies.',
+                                id: 'ISO-27001-STD-001',
+                                title: 'Information Security Policy Standard',
+                                objective: 'Define and maintain information security policies.',
+                                scope: 'All employees and contractors.',
+                                requirements: [
+                                  'An information security policy must be approved by management.',
+                                  'Policies must be reviewed at least annually.',
+                                ],
                               },
                             ],
                           },
