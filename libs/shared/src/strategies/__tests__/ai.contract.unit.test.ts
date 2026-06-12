@@ -25,7 +25,7 @@ export function runAiContract(name: string, factory: () => AiStrategy): void {
       expect(results[0]?.frameworkId).toBe('NIST-CSF');
       expect(results[1]?.frameworkId).toBe('ISO-27001');
       for (const r of results) {
-        expect(Array.isArray(r.controls)).toBe(true);
+        expect(Array.isArray(r.standards)).toBe(true);
       }
     });
 
