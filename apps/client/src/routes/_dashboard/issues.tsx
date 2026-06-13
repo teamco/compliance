@@ -4,16 +4,24 @@ import { useTranslation } from 'react-i18next';
 import { Plus, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter,
-  DialogHeader, DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
-  useIssues, useCreateIssue, useUpdateIssue, useDeleteIssue,
-  type Issue, type IssueInput,
+  useIssues,
+  useCreateIssue,
+  useUpdateIssue,
+  useDeleteIssue,
+  type Issue,
+  type IssueInput,
 } from '@/queries/issues';
 
 export const Route = createFileRoute('/_dashboard/issues')({
@@ -22,17 +30,17 @@ export const Route = createFileRoute('/_dashboard/issues')({
 
 const SEVERITY_COLORS: Record<Issue['severity'], string> = {
   critical: 'bg-red-500/10 text-red-400 border-red-500/20',
-  high:     'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  medium:   'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  low:      'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  info:     'bg-muted text-muted-foreground border-border',
+  high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
+  medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  info: 'bg-muted text-muted-foreground border-border',
 };
 
 const STATUS_COLORS: Record<Issue['status'], string> = {
-  open:        'bg-red-500/10 text-red-400 border-red-500/20',
+  open: 'bg-red-500/10 text-red-400 border-red-500/20',
   in_progress: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  resolved:    'bg-green-500/10 text-green-400 border-green-500/20',
-  wont_fix:    'bg-muted text-muted-foreground border-border',
+  resolved: 'bg-green-500/10 text-green-400 border-green-500/20',
+  wont_fix: 'bg-muted text-muted-foreground border-border',
 };
 
 const SEVERITY_OPTIONS: Array<Issue['severity']> = ['critical', 'high', 'medium', 'low', 'info'];
@@ -50,14 +58,19 @@ function IssuesPage() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<IssueInput>({
-    title: '', description: '', severity: 'medium',
+    title: '',
+    description: '',
+    severity: 'medium',
   });
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.title || !form.description) return;
     createMut.mutate(form, {
-      onSuccess: () => { setOpen(false); setForm({ title: '', description: '', severity: 'medium' }); },
+      onSuccess: () => {
+        setOpen(false);
+        setForm({ title: '', description: '', severity: 'medium' });
+      },
     });
   }
 
@@ -74,7 +87,10 @@ function IssuesPage() {
       {isPending ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-16 bg-surface border border-border rounded-lg animate-pulse" />
+            <div
+              key={i}
+              className="h-16 bg-surface border border-border rounded-lg animate-pulse"
+            />
           ))}
         </div>
       ) : issues.length === 0 ? (
@@ -91,11 +107,17 @@ function IssuesPage() {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-medium text-sm text-foreground truncate">{issue.title}</span>
-                  <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${SEVERITY_COLORS[issue.severity]}`}>
+                  <span className="font-medium text-sm text-foreground truncate">
+                    {issue.title}
+                  </span>
+                  <span
+                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${SEVERITY_COLORS[issue.severity]}`}
+                  >
                     {t(`issues.severity.${issue.severity}`)}
                   </span>
-                  <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[issue.status]}`}>
+                  <span
+                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[issue.status]}`}
+                  >
                     {t(`issues.status.${issue.status}`)}
                   </span>
                 </div>
@@ -104,11 +126,18 @@ function IssuesPage() {
               <div className="flex gap-1.5 shrink-0">
                 <select
                   value={issue.status}
-                  onChange={(e) => updateMut.mutate({ id: issue.id, patch: { status: e.target.value as Issue['status'] } })}
+                  onChange={(e) =>
+                    updateMut.mutate({
+                      id: issue.id,
+                      patch: { status: e.target.value as Issue['status'] },
+                    })
+                  }
                   className="text-xs h-7 rounded border border-border bg-surface px-1 text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40"
                 >
                   {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{t(`issues.status.${s}`)}</option>
+                    <option key={s} value={s}>
+                      {t(`issues.status.${s}`)}
+                    </option>
                   ))}
                 </select>
                 <button
@@ -144,11 +173,15 @@ function IssuesPage() {
               <Label>{t('issues.severity')}</Label>
               <select
                 value={form.severity}
-                onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value as Issue['severity'] }))}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, severity: e.target.value as Issue['severity'] }))
+                }
                 className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
               >
                 {SEVERITY_OPTIONS.map((s) => (
-                  <option key={s} value={s}>{t(`issues.severity.${s}`)}</option>
+                  <option key={s} value={s}>
+                    {t(`issues.severity.${s}`)}
+                  </option>
                 ))}
               </select>
             </div>

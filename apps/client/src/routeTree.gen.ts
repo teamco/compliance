@@ -18,8 +18,10 @@ import { Route as DashboardStandardsRouteImport } from './routes/_dashboard/stan
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardOrgRouteImport } from './routes/_dashboard/org'
+import { Route as DashboardIssuesRouteImport } from './routes/_dashboard/issues'
 import { Route as DashboardGapAnalysisRouteImport } from './routes/_dashboard/gap-analysis'
 import { Route as DashboardFrameworksRouteImport } from './routes/_dashboard/frameworks'
+import { Route as DashboardExceptionsRouteImport } from './routes/_dashboard/exceptions'
 import { Route as DashboardDashboardRouteImport } from './routes/_dashboard/dashboard'
 import { Route as DashboardControlsRouteImport } from './routes/_dashboard/controls'
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
@@ -72,6 +74,11 @@ const DashboardOrgRoute = DashboardOrgRouteImport.update({
   path: '/org',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardIssuesRoute = DashboardIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardGapAnalysisRoute = DashboardGapAnalysisRouteImport.update({
   id: '/gap-analysis',
   path: '/gap-analysis',
@@ -80,6 +87,11 @@ const DashboardGapAnalysisRoute = DashboardGapAnalysisRouteImport.update({
 const DashboardFrameworksRoute = DashboardFrameworksRouteImport.update({
   id: '/frameworks',
   path: '/frameworks',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardExceptionsRoute = DashboardExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardDashboardRoute = DashboardDashboardRouteImport.update({
@@ -123,8 +135,10 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
+  '/exceptions': typeof DashboardExceptionsRoute
   '/frameworks': typeof DashboardFrameworksRoute
   '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
+  '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
   '/profile': typeof DashboardProfileRoute
   '/settings': typeof DashboardSettingsRoute
@@ -142,8 +156,10 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
+  '/exceptions': typeof DashboardExceptionsRoute
   '/frameworks': typeof DashboardFrameworksRoute
   '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
+  '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
   '/profile': typeof DashboardProfileRoute
   '/settings': typeof DashboardSettingsRoute
@@ -163,8 +179,10 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_dashboard/controls': typeof DashboardControlsRoute
   '/_dashboard/dashboard': typeof DashboardDashboardRoute
+  '/_dashboard/exceptions': typeof DashboardExceptionsRoute
   '/_dashboard/frameworks': typeof DashboardFrameworksRoute
   '/_dashboard/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
+  '/_dashboard/issues': typeof DashboardIssuesRoute
   '/_dashboard/org': typeof DashboardOrgRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
@@ -184,8 +202,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/controls'
     | '/dashboard'
+    | '/exceptions'
     | '/frameworks'
     | '/gap-analysis'
+    | '/issues'
     | '/org'
     | '/profile'
     | '/settings'
@@ -203,8 +223,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/controls'
     | '/dashboard'
+    | '/exceptions'
     | '/frameworks'
     | '/gap-analysis'
+    | '/issues'
     | '/org'
     | '/profile'
     | '/settings'
@@ -223,8 +245,10 @@ export interface FileRouteTypes {
     | '/login'
     | '/_dashboard/controls'
     | '/_dashboard/dashboard'
+    | '/_dashboard/exceptions'
     | '/_dashboard/frameworks'
     | '/_dashboard/gap-analysis'
+    | '/_dashboard/issues'
     | '/_dashboard/org'
     | '/_dashboard/profile'
     | '/_dashboard/settings'
@@ -311,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardOrgRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/issues': {
+      id: '/_dashboard/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof DashboardIssuesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/gap-analysis': {
       id: '/_dashboard/gap-analysis'
       path: '/gap-analysis'
@@ -323,6 +354,13 @@ declare module '@tanstack/react-router' {
       path: '/frameworks'
       fullPath: '/frameworks'
       preLoaderRoute: typeof DashboardFrameworksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/exceptions': {
+      id: '/_dashboard/exceptions'
+      path: '/exceptions'
+      fullPath: '/exceptions'
+      preLoaderRoute: typeof DashboardExceptionsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/dashboard': {
@@ -402,8 +440,10 @@ const DashboardStandardsRouteWithChildren =
 interface DashboardRouteChildren {
   DashboardControlsRoute: typeof DashboardControlsRoute
   DashboardDashboardRoute: typeof DashboardDashboardRoute
+  DashboardExceptionsRoute: typeof DashboardExceptionsRoute
   DashboardFrameworksRoute: typeof DashboardFrameworksRoute
   DashboardGapAnalysisRoute: typeof DashboardGapAnalysisRouteWithChildren
+  DashboardIssuesRoute: typeof DashboardIssuesRoute
   DashboardOrgRoute: typeof DashboardOrgRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
@@ -416,8 +456,10 @@ interface DashboardRouteChildren {
 const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardControlsRoute: DashboardControlsRoute,
   DashboardDashboardRoute: DashboardDashboardRoute,
+  DashboardExceptionsRoute: DashboardExceptionsRoute,
   DashboardFrameworksRoute: DashboardFrameworksRoute,
   DashboardGapAnalysisRoute: DashboardGapAnalysisRouteWithChildren,
+  DashboardIssuesRoute: DashboardIssuesRoute,
   DashboardOrgRoute: DashboardOrgRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
