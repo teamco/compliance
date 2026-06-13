@@ -262,6 +262,66 @@ export interface RiskPatch {
   assetId?: string | null;
 }
 
+// ─── Risk Assessments ──────────────────────────────────────────────────────
+
+export type AssessmentType = 'cvra' | 'ctra';
+export type AssessmentStatus = 'draft' | 'in_review' | 'completed';
+
+export interface RiskAssessment {
+  id: string;
+  orgId: string;
+  userId: string;
+  type: AssessmentType;
+  title: string;
+  scope: string;
+  status: AssessmentStatus;
+  riskScore: number;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskAssessmentInput {
+  type: AssessmentType;
+  title: string;
+  scope: string;
+}
+
+export interface RiskAssessmentPatch {
+  title?: string;
+  scope?: string;
+  status?: AssessmentStatus;
+}
+
+export interface RiskAssessmentItem {
+  id: string;
+  assessmentId: string;
+  subject: string;
+  description: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  itemScore: number;
+  mitigations: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskAssessmentItemInput {
+  subject: string;
+  description: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  mitigations?: string;
+}
+
+export interface RiskAssessmentItemPatch {
+  subject?: string;
+  description?: string;
+  likelihood?: RiskLikelihood;
+  impact?: RiskImpact;
+  mitigations?: string;
+}
+
 export interface AiUsageLogEntry {
   user_id: string;
   provider: string;
@@ -451,6 +511,26 @@ export interface NotesStrategy {
   getRisk(id: string): Promise<Risk | null>;
   updateRisk(id: string, patch: RiskPatch): Promise<Risk>;
   deleteRisk(id: string): Promise<void>;
+
+  // Risk Assessments
+  listAssessments(orgId: string): Promise<RiskAssessment[]>;
+  createAssessment(
+    orgId: string,
+    userId: string,
+    data: RiskAssessmentInput,
+  ): Promise<RiskAssessment>;
+  getAssessment(id: string): Promise<RiskAssessment | null>;
+  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment>;
+  deleteAssessment(id: string): Promise<void>;
+
+  // Assessment items
+  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]>;
+  addAssessmentItem(
+    assessmentId: string,
+    data: RiskAssessmentItemInput,
+  ): Promise<RiskAssessmentItem>;
+  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem>;
+  deleteAssessmentItem(id: string): Promise<void>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────

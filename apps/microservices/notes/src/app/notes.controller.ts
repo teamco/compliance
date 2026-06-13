@@ -19,6 +19,12 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
+  RiskAssessment,
+  RiskAssessmentInput,
+  RiskAssessmentPatch,
+  RiskAssessmentItem,
+  RiskAssessmentItemInput,
+  RiskAssessmentItemPatch,
   Organization,
   OrganizationInput,
   ReportTemplate,
@@ -338,5 +344,60 @@ export class NotesController {
   @MessagePattern('notes.risks.delete')
   deleteRisk(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteRisk(payload.id);
+  }
+
+  // ─── Risk Assessments ────────────────────────────────────────────────────
+
+  @MessagePattern('notes.assessments.list')
+  listAssessments(@Payload() p: { orgId: string }): Promise<RiskAssessment[]> {
+    return this.strategy.listAssessments(p.orgId);
+  }
+
+  @MessagePattern('notes.assessments.create')
+  createAssessment(
+    @Payload() p: { orgId: string; userId: string; data: RiskAssessmentInput },
+  ): Promise<RiskAssessment> {
+    return this.strategy.createAssessment(p.orgId, p.userId, p.data);
+  }
+
+  @MessagePattern('notes.assessments.get')
+  getAssessment(@Payload() p: { id: string }): Promise<RiskAssessment | null> {
+    return this.strategy.getAssessment(p.id);
+  }
+
+  @MessagePattern('notes.assessments.update')
+  updateAssessment(
+    @Payload() p: { id: string; patch: RiskAssessmentPatch },
+  ): Promise<RiskAssessment> {
+    return this.strategy.updateAssessment(p.id, p.patch);
+  }
+
+  @MessagePattern('notes.assessments.delete')
+  deleteAssessment(@Payload() p: { id: string }): Promise<void> {
+    return this.strategy.deleteAssessment(p.id);
+  }
+
+  @MessagePattern('notes.assessments.items.list')
+  listAssessmentItems(@Payload() p: { assessmentId: string }): Promise<RiskAssessmentItem[]> {
+    return this.strategy.listAssessmentItems(p.assessmentId);
+  }
+
+  @MessagePattern('notes.assessments.items.add')
+  addAssessmentItem(
+    @Payload() p: { assessmentId: string; data: RiskAssessmentItemInput },
+  ): Promise<RiskAssessmentItem> {
+    return this.strategy.addAssessmentItem(p.assessmentId, p.data);
+  }
+
+  @MessagePattern('notes.assessments.items.update')
+  updateAssessmentItem(
+    @Payload() p: { id: string; patch: RiskAssessmentItemPatch },
+  ): Promise<RiskAssessmentItem> {
+    return this.strategy.updateAssessmentItem(p.id, p.patch);
+  }
+
+  @MessagePattern('notes.assessments.items.delete')
+  deleteAssessmentItem(@Payload() p: { id: string }): Promise<void> {
+    return this.strategy.deleteAssessmentItem(p.id);
   }
 }
