@@ -810,6 +810,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       updatedAt: now,
     };
     this.assessmentItems.push(item);
+    this.recomputeAssessmentScore(assessmentId);
     return item;
   }
 
@@ -829,10 +830,29 @@ export class FakeNotesStrategy implements NotesStrategy {
       merged.itemScore = this.computeRiskScore(merged.likelihood, merged.impact);
     }
     this.assessmentItems[idx] = merged;
+    this.recomputeAssessmentScore(merged.assessmentId);
     return merged;
   }
 
   async deleteAssessmentItem(id: string): Promise<void> {
+    const item = this.assessmentItems.find((i) => i.id === id);
     this.assessmentItems = this.assessmentItems.filter((i) => i.id !== id);
+    if (item) this.recomputeAssessmentScore(item.assessmentId);
+  }
+
+  private recomputeAssessmentScore(assessmentId: string): void {
+    const items = this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
+    const idx = this.assessments.findIndex((a) => a.id === assessmentId);
+    if (idx === -1) return;
+    const riskScore =
+      items.length > 0
+        ? Math.round(items.reduce((sum, i) => sum + i.itemScore, 0) / items.length)
+        : 0;
+    this.assessments[idx] = {
+      ...this.assessments[idx]!,
+      riskScore,
+      itemCount: items.length,
+      updatedAt: new Date().toISOString(),
+    };
   }
 }
