@@ -11,10 +11,16 @@ import type {
   AuditLogFilters,
   AuditLogPage,
   DocumentStandard,
+  Exception,
+  ExceptionInput,
+  ExceptionPatch,
   Framework,
   FrameworkControl,
   GapAnalysis,
   GapAnalysisResult,
+  Issue,
+  IssueInput,
+  IssuePatch,
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
@@ -323,5 +329,59 @@ export class NotesClientService {
     return firstValueFrom(
       this.client.send<AiUsageTimeseriesPoint[]>('admin.ai-usage.timeseries', { since, userId }),
     );
+  }
+
+  // ─── Exceptions ──────────────────────────────────────────────────────────
+
+  listExceptions(orgId: string): Promise<Exception[]> {
+    return firstValueFrom(this.client.send<Exception[]>('notes.exceptions.list', { orgId }));
+  }
+
+  createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception> {
+    return firstValueFrom(
+      this.client.send<Exception>('notes.exceptions.create', { orgId, userId, data }),
+    );
+  }
+
+  getException(id: string): Promise<Exception | null> {
+    return firstValueFrom(this.client.send<Exception | null>('notes.exceptions.get', { id }));
+  }
+
+  updateException(id: string, patch: ExceptionPatch): Promise<Exception> {
+    return firstValueFrom(this.client.send<Exception>('notes.exceptions.update', { id, patch }));
+  }
+
+  approveException(id: string): Promise<Exception> {
+    return firstValueFrom(this.client.send<Exception>('notes.exceptions.approve', { id }));
+  }
+
+  rejectException(id: string): Promise<Exception> {
+    return firstValueFrom(this.client.send<Exception>('notes.exceptions.reject', { id }));
+  }
+
+  deleteException(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.exceptions.delete', { id }));
+  }
+
+  // ─── Issues ──────────────────────────────────────────────────────────────
+
+  listIssues(orgId: string): Promise<Issue[]> {
+    return firstValueFrom(this.client.send<Issue[]>('notes.issues.list', { orgId }));
+  }
+
+  createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue> {
+    return firstValueFrom(this.client.send<Issue>('notes.issues.create', { orgId, userId, data }));
+  }
+
+  getIssue(id: string): Promise<Issue | null> {
+    return firstValueFrom(this.client.send<Issue | null>('notes.issues.get', { id }));
+  }
+
+  updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
+    return firstValueFrom(this.client.send<Issue>('notes.issues.update', { id, patch }));
+  }
+
+  deleteIssue(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.issues.delete', { id }));
   }
 }
