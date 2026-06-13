@@ -27,6 +27,9 @@ import type {
   Organization,
   OrganizationInput,
   OrgProfile,
+  PolicyInput,
+  PolicyPatch,
+  PolicyControlInput,
   VerifiedToken,
   WorkflowTransition,
   AssetInput,
@@ -586,6 +589,123 @@ export class NotesController {
   ) {
     this.uid(req);
     return this.notes.deleteAssessmentItem(itemId);
+  }
+
+  // ─── Policies ────────────────────────────────────────────────────────────
+
+  @Get('policies')
+  @ApiOperation({ summary: 'List policies for org' })
+  listPolicies(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listPolicies(orgId);
+  }
+
+  @Post('policies')
+  @ApiOperation({ summary: 'Create policy' })
+  createPolicy(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: PolicyInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createPolicy(orgId, userId, body);
+  }
+
+  @Get('policies/for-control')
+  @ApiOperation({ summary: 'List policies linked to a specific control' })
+  listPoliciesForControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('controlCode') controlCode: string,
+    @Query('frameworkId') frameworkId: string,
+  ) {
+    this.uid(req);
+    if (!controlCode || !frameworkId)
+      throw new BadRequestException('controlCode and frameworkId required');
+    return this.notes.listPoliciesForControl(controlCode, frameworkId);
+  }
+
+  @Post('policies/clone/:templateId')
+  @ApiOperation({ summary: 'Clone a policy template into org' })
+  cloneTemplate(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('templateId') templateId: string,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.cloneTemplate(orgId, userId, templateId);
+  }
+
+  @Get('policy-templates')
+  @ApiOperation({ summary: 'List policy templates (platform-wide)' })
+  listPolicyTemplates(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('frameworkId') frameworkId?: string,
+  ) {
+    this.uid(req);
+    return this.notes.listPolicyTemplates(frameworkId);
+  }
+
+  @Delete('policies/controls/:mappingId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Remove a policy-control mapping' })
+  removePolicyControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('mappingId') mappingId: string,
+  ) {
+    this.uid(req);
+    return this.notes.removePolicyControl(mappingId);
+  }
+
+  @Get('policies/:id')
+  @ApiOperation({ summary: 'Get policy' })
+  async getPolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const p = await this.notes.getPolicy(id);
+    if (!p) throw new NotFoundException();
+    return p;
+  }
+
+  @Patch('policies/:id')
+  @ApiOperation({ summary: 'Update policy' })
+  updatePolicy(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: PolicyPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updatePolicy(id, patch);
+  }
+
+  @Delete('policies/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete policy' })
+  deletePolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deletePolicy(id);
+  }
+
+  @Get('policies/:id/controls')
+  @ApiOperation({ summary: 'List controls linked to a policy' })
+  listPolicyControls(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') policyId: string,
+  ) {
+    this.uid(req);
+    return this.notes.listPolicyControls(policyId);
+  }
+
+  @Post('policies/:id/controls')
+  @ApiOperation({ summary: 'Add control mapping to policy' })
+  addPolicyControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') policyId: string,
+    @Body() body: PolicyControlInput,
+  ) {
+    this.uid(req);
+    return this.notes.addPolicyControl(policyId, body);
   }
 
   private uid(req: Request & { user?: VerifiedToken }): string {

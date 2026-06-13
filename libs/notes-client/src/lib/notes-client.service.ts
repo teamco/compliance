@@ -26,6 +26,12 @@ import type {
   IssuePatch,
   Organization,
   OrganizationInput,
+  Policy,
+  PolicyInput,
+  PolicyPatch,
+  PolicyTemplate,
+  PolicyControl,
+  PolicyControlInput,
   PushSubscriptionPayload,
   ReportTemplate,
   ReportTemplateInput,
@@ -482,5 +488,63 @@ export class NotesClientService {
 
   deleteAssessmentItem(id: string): Promise<void> {
     return firstValueFrom(this.client.send<void>('notes.assessments.items.delete', { id }));
+  }
+
+  // ─── Policies ────────────────────────────────────────────────────────────
+
+  listPolicies(orgId: string): Promise<Policy[]> {
+    return firstValueFrom(this.client.send<Policy[]>('notes.policies.list', { orgId }));
+  }
+
+  createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy> {
+    return firstValueFrom(
+      this.client.send<Policy>('notes.policies.create', { orgId, userId, data }),
+    );
+  }
+
+  getPolicy(id: string): Promise<Policy | null> {
+    return firstValueFrom(this.client.send<Policy | null>('notes.policies.get', { id }));
+  }
+
+  updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
+    return firstValueFrom(this.client.send<Policy>('notes.policies.update', { id, patch }));
+  }
+
+  deletePolicy(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.policies.delete', { id }));
+  }
+
+  cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
+    return firstValueFrom(
+      this.client.send<Policy>('notes.policies.clone-template', { orgId, userId, templateId }),
+    );
+  }
+
+  listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]> {
+    return firstValueFrom(
+      this.client.send<PolicyTemplate[]>('notes.policy-templates.list', { frameworkId }),
+    );
+  }
+
+  listPolicyControls(policyId: string): Promise<PolicyControl[]> {
+    return firstValueFrom(
+      this.client.send<PolicyControl[]>('notes.policies.controls.list', { policyId }),
+    );
+  }
+
+  addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl> {
+    return firstValueFrom(
+      this.client.send<PolicyControl>('notes.policies.controls.add', { policyId, data }),
+    );
+  }
+
+  removePolicyControl(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.policies.controls.remove', { id }));
+  }
+
+  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+    return firstValueFrom(
+      this.client.send<Policy[]>('notes.policies.for-control', { controlCode, frameworkId }),
+    );
   }
 }
