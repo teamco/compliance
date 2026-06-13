@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -92,9 +93,21 @@ function AddVendorDialog({
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
   const [tier, setTier] = useState<VendorInput['tier']>('medium');
+  const [errors, setErrors] = useState<{ name?: string; domain?: string }>({});
+
+  const DOMAIN_RE = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+
+  function validate() {
+    const e: { name?: string; domain?: string } = {};
+    if (!name.trim()) e.name = t('vendors.nameRequired');
+    if (!domain.trim()) e.domain = t('vendors.domainRequired');
+    else if (!DOMAIN_RE.test(domain.trim())) e.domain = t('vendors.domainInvalid');
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  }
 
   function submit() {
-    if (!name.trim() || !domain.trim()) return;
+    if (!validate()) return;
     create.mutate(
       {
         name: name.trim(),
@@ -109,6 +122,7 @@ function AddVendorDialog({
           onClose();
           setName('');
           setDomain('');
+          setErrors({});
         },
       },
     );
@@ -118,32 +132,50 @@ function AddVendorDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) onClose();
+        if (!v) {
+          onClose();
+          setErrors({});
+        }
       }}
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('vendors.addVendor')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('vendors.addVendor')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
-          <Input
-            placeholder={t('vendors.vendorName')}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <Input
-            placeholder={t('vendors.domain')}
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
-          />
+          <div className="space-y-1">
+            <Input
+              placeholder={t('vendors.vendorName')}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
+            />
+            {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
+          </div>
+          <div className="space-y-1">
+            <Input
+              placeholder={t('vendors.domain')}
+              value={domain}
+              onChange={(e) => {
+                setDomain(e.target.value);
+                if (errors.domain) setErrors((prev) => ({ ...prev, domain: undefined }));
+              }}
+              className={errors.domain ? 'border-red-500 focus-visible:ring-red-500' : ''}
+            />
+            {errors.domain && <p className="text-xs text-red-400">{errors.domain}</p>}
+          </div>
           <Select value={tier} onValueChange={(v) => setTier(v as VendorInput['tier'])}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="top">
               {TIER_OPTIONS.map((tierOption) => (
                 <SelectItem key={tierOption} value={tierOption}>
-                  {tierOption}
+                  {t(`vendors.tier.${tierOption}`)}
                 </SelectItem>
               ))}
             </SelectContent>

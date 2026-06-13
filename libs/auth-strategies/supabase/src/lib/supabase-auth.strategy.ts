@@ -12,19 +12,28 @@ import {
 
 export interface SupabaseAuthStrategyOptions {
   client: SupabaseClient;
+  siteUrl?: string;
 }
 
 export class SupabaseAuthStrategy implements AuthStrategy {
   private readonly client: SupabaseClient;
+  private readonly siteUrl?: string;
 
   constructor(opts: SupabaseAuthStrategyOptions) {
     this.client = opts.client;
+    this.siteUrl = opts.siteUrl;
   }
 
   async signUp(email: string, password: string): Promise<AuthSession> {
-    const { data, error } = await this.client.auth.signUp({ email, password });
-    if (error || !data.session) {
-      throw new Error(error?.message ?? 'signup_failed');
+    const emailRedirectTo = this.siteUrl ? `${this.siteUrl}/auth/oauth/callback` : undefined;
+    const { data, error } = await this.client.auth.signUp({
+      email,
+      password,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
+    if (error) throw new Error(error.message);
+    if (!data.session) {
+      throw new Error('email_confirmation_required');
     }
     return this.toSession(data.session);
   }

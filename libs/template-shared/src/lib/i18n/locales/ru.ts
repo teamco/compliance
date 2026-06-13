@@ -21,6 +21,10 @@ export const ru = {
   auth: {
     signIn: 'Войти',
     signInSubtitle: 'Введите учётные данные для доступа к платформе',
+    signUpSubtitle: 'Создайте аккаунт чтобы начать',
+    confirmPassword: 'Подтвердите пароль',
+    passwordMismatch: 'Пароли не совпадают',
+    passwordTooShort: 'Пароль должен содержать минимум 8 символов',
     email: 'Email',
     password: 'Пароль',
     login: 'Войти',
@@ -423,6 +427,15 @@ export const ru = {
     runFirstScan: 'Запустить первое сканирование',
     runScan: 'Сканировать',
     deepScan: 'Глубокое сканирование',
+    nameRequired: 'Имя поставщика обязательно',
+    domainRequired: 'Домен обязателен',
+    domainInvalid: 'Введите корректный домен (например: example.com)',
+    tier: {
+      critical: 'Критический',
+      high: 'Высокий',
+      medium: 'Средний',
+      low: 'Низкий',
+    },
   },
   error: {
     accessDenied: 'Доступ запрещён',

@@ -21,6 +21,10 @@ export const he = {
   auth: {
     signIn: 'כניסה',
     signInSubtitle: 'הזן את פרטי הכניסה לגישה לפלטפורמה',
+    signUpSubtitle: 'צור את חשבונך כדי להתחיל',
+    confirmPassword: 'אמת סיסמה',
+    passwordMismatch: 'הסיסמאות אינן תואמות',
+    passwordTooShort: 'הסיסמה חייבת להכיל לפחות 8 תווים',
     email: 'אימייל',
     password: 'סיסמה',
     login: 'כניסה',
@@ -418,6 +422,15 @@ export const he = {
     runFirstScan: 'הפעל סריקה ראשונה',
     runScan: 'סריקה',
     deepScan: 'סריקה עמוקה',
+    nameRequired: 'שם הספק הוא שדה חובה',
+    domainRequired: 'דומיין הוא שדה חובה',
+    domainInvalid: 'הכנס דומיין תקין (לדוגמה: example.com)',
+    tier: {
+      critical: 'קריטי',
+      high: 'גבוה',
+      medium: 'בינוני',
+      low: 'נמוך',
+    },
   },
   error: {
     accessDenied: 'גישה נדחתה',
