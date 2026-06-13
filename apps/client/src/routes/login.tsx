@@ -273,7 +273,7 @@ function LoginPage() {
             {/* Password form */}
             {mode === 'password' && (
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="email" className="text-slate-300 text-xs font-medium">
                     {t('auth.email')}
                   </Label>
@@ -287,7 +287,7 @@ function LoginPage() {
                     className="bg-[#0f172a] border-[#1e293b] text-white placeholder:text-slate-600 focus:border-green-500/50 focus:ring-green-500/20"
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="password" className="text-slate-300 text-xs font-medium">
                     {t('auth.password')}
                   </Label>
@@ -314,7 +314,7 @@ function LoginPage() {
             {/* Magic link form */}
             {mode === 'magicLinkRequest' && (
               <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="email-ml" className="text-slate-300 text-xs font-medium">
                     {t('auth.email')}
                   </Label>
@@ -341,7 +341,7 @@ function LoginPage() {
             {/* Register form */}
             {mode === 'register' && (
               <form onSubmit={handleRegisterSubmit} className="space-y-4">
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="email-reg" className="text-slate-300 text-xs font-medium">
                     {t('auth.email')}
                   </Label>
@@ -355,7 +355,7 @@ function LoginPage() {
                     className="bg-[#0f172a] border-[#1e293b] text-white placeholder:text-slate-600 focus:border-green-500/50 focus:ring-green-500/20"
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="password-reg" className="text-slate-300 text-xs font-medium">
                     {t('auth.password')}
                   </Label>
@@ -369,7 +369,7 @@ function LoginPage() {
                     className="bg-[#0f172a] border-[#1e293b] text-white placeholder:text-slate-600 focus:border-green-500/50 focus:ring-green-500/20"
                   />
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   <Label htmlFor="confirm-password" className="text-slate-300 text-xs font-medium">
                     {t('auth.confirmPassword')}
                   </Label>
