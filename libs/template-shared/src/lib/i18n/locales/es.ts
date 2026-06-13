@@ -30,6 +30,10 @@ export const es = {
   auth: {
     signIn: 'Iniciar sesión',
     signInSubtitle: 'Ingresa tus credenciales para acceder a la plataforma',
+    signUpSubtitle: 'Crea tu cuenta para comenzar',
+    confirmPassword: 'Confirmar contraseña',
+    passwordMismatch: 'Las contraseñas no coinciden',
+    passwordTooShort: 'La contraseña debe tener al menos 8 caracteres',
     email: 'Correo electrónico',
     password: 'Contraseña',
     login: 'Iniciar sesión',

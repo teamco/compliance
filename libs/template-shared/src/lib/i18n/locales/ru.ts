@@ -21,6 +21,10 @@ export const ru = {
   auth: {
     signIn: 'Войти',
     signInSubtitle: 'Введите учётные данные для доступа к платформе',
+    signUpSubtitle: 'Создайте аккаунт чтобы начать',
+    confirmPassword: 'Подтвердите пароль',
+    passwordMismatch: 'Пароли не совпадают',
+    passwordTooShort: 'Пароль должен содержать минимум 8 символов',
     email: 'Email',
     password: 'Пароль',
     login: 'Войти',

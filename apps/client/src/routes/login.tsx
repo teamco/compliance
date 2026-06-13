@@ -13,7 +13,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
-type Mode = 'password' | 'magicLinkRequest' | 'magicLinkSent';
+type Mode = 'password' | 'magicLinkRequest' | 'magicLinkSent' | 'register';
 
 function LoginPage() {
   const { t } = useTranslation();
@@ -24,6 +24,7 @@ function LoginPage() {
   const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   async function handlePasswordSubmit(e: SyntheticEvent<HTMLFormElement>) {
@@ -41,6 +42,37 @@ function LoginPage() {
       });
       setAuth(session);
       notify.success(t('auth.login'));
+      await navigate({ to: '/dashboard' });
+    } catch (err) {
+      notify.error(err instanceof Error ? err.message : t('error.unknown'));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleRegisterSubmit(e: SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (password.length < 8) {
+      notify.error(t('auth.passwordTooShort'));
+      return;
+    }
+    if (password !== confirmPassword) {
+      notify.error(t('auth.passwordMismatch'));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const session = await api<{
+        accessToken: string;
+        refreshToken: string;
+        user: { id: string; email: string; role?: string };
+      }>('/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      setAuth(session);
+      notify.success(t('auth.register'));
       await navigate({ to: '/dashboard' });
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('error.unknown'));
@@ -142,12 +174,39 @@ function LoginPage() {
         <div className="flex flex-1 items-center justify-center px-8 pb-12">
           <div className="w-full max-w-sm space-y-6">
             <div>
-              <h2 className="text-2xl font-bold text-white">{t('auth.signIn')}</h2>
-              <p className="mt-1 text-sm text-slate-400">{t('auth.signInSubtitle')}</p>
+              <h2 className="text-2xl font-bold text-white">
+                {mode === 'register' ? t('auth.register') : t('auth.signIn')}
+              </h2>
+              <p className="mt-1 text-sm text-slate-400">
+                {mode === 'register' ? t('auth.signUpSubtitle') : t('auth.signInSubtitle')}
+              </p>
             </div>
 
-            {/* OAuth */}
+            {/* Login / Register toggle */}
             {mode !== 'magicLinkSent' && (
+              <div className="flex items-center justify-between text-xs">
+                {mode === 'register' ? (
+                  <button
+                    type="button"
+                    onClick={() => setMode('password')}
+                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                  >
+                    {t('auth.switchToLogin')}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setMode('register')}
+                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                  >
+                    {t('auth.switchToRegister')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* OAuth */}
+            {mode !== 'magicLinkSent' && mode !== 'register' && (
               <button
                 type="button"
                 onClick={() => window.location.assign('/api/auth/oauth/google')}
@@ -175,7 +234,7 @@ function LoginPage() {
               </button>
             )}
 
-            {mode !== 'magicLinkSent' && (
+            {mode !== 'magicLinkSent' && mode !== 'register' && (
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#1e293b]" />
                 <span className="text-xs text-slate-600">{t('common.or')}</span>
@@ -183,8 +242,8 @@ function LoginPage() {
               </div>
             )}
 
-            {/* Mode toggle */}
-            {mode !== 'magicLinkSent' && (
+            {/* Mode toggle (password / magic link) — hidden on register */}
+            {mode !== 'magicLinkSent' && mode !== 'register' && (
               <div className="flex rounded-lg border border-[#1e293b] p-1 gap-1">
                 <button
                   type="button"
@@ -275,6 +334,61 @@ function LoginPage() {
                   className="w-full bg-green-500 text-[#020617] font-semibold hover:bg-green-400 disabled:opacity-50"
                 >
                   {submitting ? t('common.loading') : t('auth.sendMagicLink')}
+                </Button>
+              </form>
+            )}
+
+            {/* Register form */}
+            {mode === 'register' && (
+              <form onSubmit={handleRegisterSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email-reg" className="text-slate-300 text-xs font-medium">
+                    {t('auth.email')}
+                  </Label>
+                  <Input
+                    id="email-reg"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    autoComplete="email"
+                    className="bg-[#0f172a] border-[#1e293b] text-white placeholder:text-slate-600 focus:border-green-500/50 focus:ring-green-500/20"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password-reg" className="text-slate-300 text-xs font-medium">
+                    {t('auth.password')}
+                  </Label>
+                  <Input
+                    id="password-reg"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    className="bg-[#0f172a] border-[#1e293b] text-white placeholder:text-slate-600 focus:border-green-500/50 focus:ring-green-500/20"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="confirm-password" className="text-slate-300 text-xs font-medium">
+                    {t('auth.confirmPassword')}
+                  </Label>
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    autoComplete="new-password"
+                    className="bg-[#0f172a] border-[#1e293b] text-white placeholder:text-slate-600 focus:border-green-500/50 focus:ring-green-500/20"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full bg-green-500 text-[#020617] font-semibold hover:bg-green-400 disabled:opacity-50"
+                >
+                  {submitting ? t('common.loading') : t('auth.register')}
                 </Button>
               </form>
             )}

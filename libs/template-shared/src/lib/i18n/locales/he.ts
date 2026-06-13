@@ -21,6 +21,10 @@ export const he = {
   auth: {
     signIn: 'כניסה',
     signInSubtitle: 'הזן את פרטי הכניסה לגישה לפלטפורמה',
+    signUpSubtitle: 'צור את חשבונך כדי להתחיל',
+    confirmPassword: 'אמת סיסמה',
+    passwordMismatch: 'הסיסמאות אינן תואמות',
+    passwordTooShort: 'הסיסמה חייבת להכיל לפחות 8 תווים',
     email: 'אימייל',
     password: 'סיסמה',
     login: 'כניסה',
