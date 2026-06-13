@@ -303,6 +303,6 @@ function VendorDetailPage() {
   );
 }
 
-export const Route = createFileRoute('/_dashboard/vendors/$id')({
+export const Route = createFileRoute('/_dashboard/vendors_/$id')({
   component: VendorDetailPage,
 });
