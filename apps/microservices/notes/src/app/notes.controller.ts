@@ -2,10 +2,16 @@ import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
   DocumentStandard,
+  Exception,
+  ExceptionInput,
+  ExceptionPatch,
   Framework,
   FrameworkControl,
   GapAnalysis,
   GapAnalysisResult,
+  Issue,
+  IssueInput,
+  IssuePatch,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -200,5 +206,73 @@ export class NotesController {
   @MessagePattern('notes.gap.get')
   getGapAnalysis(@Payload() payload: { id: string }): Promise<GapAnalysis | null> {
     return this.strategy.getGapAnalysis(payload.id);
+  }
+
+  // ─── Exceptions ──────────────────────────────────────────────────────────
+
+  @MessagePattern('notes.exceptions.list')
+  listExceptions(@Payload() payload: { orgId: string }): Promise<Exception[]> {
+    return this.strategy.listExceptions(payload.orgId);
+  }
+
+  @MessagePattern('notes.exceptions.create')
+  createException(
+    @Payload() payload: { orgId: string; userId: string; data: ExceptionInput },
+  ): Promise<Exception> {
+    return this.strategy.createException(payload.orgId, payload.userId, payload.data);
+  }
+
+  @MessagePattern('notes.exceptions.get')
+  getException(@Payload() payload: { id: string }): Promise<Exception | null> {
+    return this.strategy.getException(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.update')
+  updateException(@Payload() payload: { id: string; patch: ExceptionPatch }): Promise<Exception> {
+    return this.strategy.updateException(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.exceptions.approve')
+  approveException(@Payload() payload: { id: string }): Promise<Exception> {
+    return this.strategy.approveException(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.reject')
+  rejectException(@Payload() payload: { id: string }): Promise<Exception> {
+    return this.strategy.rejectException(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.delete')
+  deleteException(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteException(payload.id);
+  }
+
+  // ─── Issues ──────────────────────────────────────────────────────────────
+
+  @MessagePattern('notes.issues.list')
+  listIssues(@Payload() payload: { orgId: string }): Promise<Issue[]> {
+    return this.strategy.listIssues(payload.orgId);
+  }
+
+  @MessagePattern('notes.issues.create')
+  createIssue(
+    @Payload() payload: { orgId: string; userId: string; data: IssueInput },
+  ): Promise<Issue> {
+    return this.strategy.createIssue(payload.orgId, payload.userId, payload.data);
+  }
+
+  @MessagePattern('notes.issues.get')
+  getIssue(@Payload() payload: { id: string }): Promise<Issue | null> {
+    return this.strategy.getIssue(payload.id);
+  }
+
+  @MessagePattern('notes.issues.update')
+  updateIssue(@Payload() payload: { id: string; patch: IssuePatch }): Promise<Issue> {
+    return this.strategy.updateIssue(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.issues.delete')
+  deleteIssue(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteIssue(payload.id);
   }
 }
