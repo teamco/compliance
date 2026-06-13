@@ -142,7 +142,7 @@ function AddVendorDialog({
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="top">
               {TIER_OPTIONS.map((tierOption) => (
                 <SelectItem key={tierOption} value={tierOption}>
                   {tierOption}
