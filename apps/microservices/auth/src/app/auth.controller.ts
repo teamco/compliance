@@ -41,9 +41,17 @@ export class AuthController {
 
   @MessagePattern('auth.signup')
   async signup(@Payload() payload: { email: string; password: string }): Promise<AuthSession> {
-    const session = await this.strategy.signUp(payload.email, payload.password);
-    await this.assignInitialRole(session.user.id, session.user.email);
-    return session;
+    try {
+      const session = await this.strategy.signUp(payload.email, payload.password);
+      await this.assignInitialRole(session.user.id, session.user.email);
+      return session;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'email_confirmation_required') {
+        throw new RpcException({ code: 'email_confirmation_required', message: msg, status: 202 });
+      }
+      throw err;
+    }
   }
 
   @MessagePattern('auth.refresh')

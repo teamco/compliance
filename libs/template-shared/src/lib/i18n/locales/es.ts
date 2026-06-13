@@ -30,6 +30,10 @@ export const es = {
   auth: {
     signIn: 'Iniciar sesión',
     signInSubtitle: 'Ingresa tus credenciales para acceder a la plataforma',
+    signUpSubtitle: 'Crea tu cuenta para comenzar',
+    confirmPassword: 'Confirmar contraseña',
+    passwordMismatch: 'Las contraseñas no coinciden',
+    passwordTooShort: 'La contraseña debe tener al menos 8 caracteres',
     email: 'Correo electrónico',
     password: 'Contraseña',
     login: 'Iniciar sesión',
@@ -436,6 +440,15 @@ export const es = {
     runFirstScan: 'Ejecutar primer escaneo',
     runScan: 'Escanear',
     deepScan: 'Escaneo Profundo',
+    nameRequired: 'El nombre del proveedor es obligatorio',
+    domainRequired: 'El dominio es obligatorio',
+    domainInvalid: 'Ingrese un dominio válido (ej. example.com)',
+    tier: {
+      critical: 'Crítico',
+      high: 'Alto',
+      medium: 'Medio',
+      low: 'Bajo',
+    },
   },
   error: {
     accessDenied: 'Acceso denegado',

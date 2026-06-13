@@ -30,6 +30,10 @@ export const en = {
   auth: {
     signIn: 'Sign in',
     signInSubtitle: 'Enter your credentials to access the platform',
+    signUpSubtitle: 'Create your account to get started',
+    confirmPassword: 'Confirm password',
+    passwordMismatch: 'Passwords do not match',
+    passwordTooShort: 'Password must be at least 8 characters',
     email: 'Email',
     password: 'Password',
     login: 'Log in',
@@ -457,6 +461,15 @@ export const en = {
     runFirstScan: 'Run First Scan',
     runScan: 'Scan',
     deepScan: 'Deep Scan',
+    nameRequired: 'Vendor name is required',
+    domainRequired: 'Domain is required',
+    domainInvalid: 'Enter a valid domain (e.g. example.com)',
+    tier: {
+      critical: 'Critical',
+      high: 'High',
+      medium: 'Medium',
+      low: 'Low',
+    },
   },
   error: {
     accessDenied: 'Access denied',

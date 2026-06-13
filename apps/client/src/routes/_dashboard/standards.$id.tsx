@@ -352,9 +352,11 @@ function StandardsDetailPage() {
       </div>
 
       <div>
-        <h1 className="text-xl font-semibold text-foreground">{t('standards.assessmentTitle')}</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t('gapAnalysis.assessmentTitle')}
+        </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {t('standards.assessmentSubtitle', { count: doc.standards.length })} ·{' '}
+          {t('gapAnalysis.assessmentSubtitle', { count: doc.standards.length })} ·{' '}
           {t('standards.generatedOn')} {new Date(doc.createdAt).toLocaleDateString()}
         </p>
       </div>
@@ -517,13 +519,13 @@ function StandardsDetailPage() {
                 </div>
 
                 {/* Requirements */}
-                {std.requirements.length > 0 && (
+                {(std.requirements?.length ?? 0) > 0 && (
                   <div className="pl-9 space-y-1">
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
                       {t('standards.requirements')}
                     </p>
                     <ul className="space-y-1">
-                      {std.requirements.map((req, i) => (
+                      {(std.requirements ?? []).map((req, i) => (
                         <li key={i} className="flex items-start gap-1.5 text-xs text-foreground/80">
                           <span className="text-muted-foreground/40 shrink-0 mt-0.5">•</span>
                           <span>{req}</span>
