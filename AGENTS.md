@@ -22,6 +22,12 @@
 - **Post-coding routine**: `npx prettier --write <files>` → `yarn nx lint <project>` → `yarn nx build <project>` — all green before committing.
 - **Nx generators only**: never hand-write `project.json` / tsconfig stacks. Use `yarn nx g @nx/<plugin>:<schematic>`.
 
+## 🚨 UI Work Rules (non-negotiable)
+
+- **Playwright before "done"**: Any UI change MUST be verified in browser via Playwright MCP before reporting complete. No exceptions. "I read the code and it looks correct" is not verification.
+- **Propose architecture first**: For any non-trivial decision (routing, state shape, error flow) — write 2-3 sentence proposal + tradeoffs, wait for approval. Never pick the first idea and implement it silently.
+- **No self-report without proof**: Never say "verified", "tested", "checked" without attaching Playwright screenshot or server log as evidence.
+
 ## Architecture
 
 ```
