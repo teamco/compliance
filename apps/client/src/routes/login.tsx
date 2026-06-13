@@ -13,7 +13,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 
-type Mode = 'password' | 'magicLinkRequest' | 'magicLinkSent' | 'register';
+type Mode = 'password' | 'magicLinkRequest' | 'magicLinkSent' | 'register' | 'registerSent';
 
 function LoginPage() {
   const { t } = useTranslation();
@@ -75,7 +75,12 @@ function LoginPage() {
       notify.success(t('auth.register'));
       await navigate({ to: '/dashboard' });
     } catch (err) {
-      notify.error(err instanceof Error ? err.message : t('error.unknown'));
+      const msg = err instanceof Error ? err.message : '';
+      if (msg === 'email_confirmation_required') {
+        setMode('registerSent');
+        return;
+      }
+      notify.error(msg || t('error.unknown'));
     } finally {
       setSubmitting(false);
     }
@@ -391,6 +396,33 @@ function LoginPage() {
                   {submitting ? t('common.loading') : t('auth.register')}
                 </Button>
               </form>
+            )}
+
+            {/* Register sent — email confirmation required */}
+            {mode === 'registerSent' && (
+              <div className="space-y-4 text-center">
+                <div className="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-green-500/10 border border-green-500/20">
+                  <ShieldCheck className="w-6 h-6 text-green-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-white">{t('auth.magicLinkSent')}</h3>
+                  <p className="mt-1 text-sm text-slate-400">
+                    {t('auth.magicLinkSentDescription', { email })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('register');
+                    setEmail('');
+                    setPassword('');
+                    setConfirmPassword('');
+                  }}
+                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                >
+                  {t('auth.magicLinkUseDifferentEmail')}
+                </button>
+              </div>
             )}
 
             {/* Magic link sent */}
