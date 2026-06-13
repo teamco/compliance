@@ -457,6 +457,12 @@ export const en = {
     runFirstScan: 'Run First Scan',
     runScan: 'Scan',
     deepScan: 'Deep Scan',
+    tier: {
+      critical: 'Critical',
+      high: 'High',
+      medium: 'Medium',
+      low: 'Low',
+    },
   },
   error: {
     accessDenied: 'Access denied',

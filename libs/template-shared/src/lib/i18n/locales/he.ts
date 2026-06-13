@@ -418,6 +418,12 @@ export const he = {
     runFirstScan: 'הפעל סריקה ראשונה',
     runScan: 'סריקה',
     deepScan: 'סריקה עמוקה',
+    tier: {
+      critical: 'קריטי',
+      high: 'גבוה',
+      medium: 'בינוני',
+      low: 'נמוך',
+    },
   },
   error: {
     accessDenied: 'גישה נדחתה',

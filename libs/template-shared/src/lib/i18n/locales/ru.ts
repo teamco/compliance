@@ -423,6 +423,12 @@ export const ru = {
     runFirstScan: 'Запустить первое сканирование',
     runScan: 'Сканировать',
     deepScan: 'Глубокое сканирование',
+    tier: {
+      critical: 'Критический',
+      high: 'Высокий',
+      medium: 'Средний',
+      low: 'Низкий',
+    },
   },
   error: {
     accessDenied: 'Доступ запрещён',
