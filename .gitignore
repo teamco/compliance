@@ -29,6 +29,7 @@ dist-ssr
 tsconfig.node.tsbuildinfo
 
 **/.env
+**/.env.*
 **/firebase-admin.json
 
 .vite
