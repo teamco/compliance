@@ -322,6 +322,62 @@ export interface RiskAssessmentItemPatch {
   mitigations?: string;
 }
 
+// ─── Policies ──────────────────────────────────────────────────────────────
+
+export type PolicyStatus = 'draft' | 'approved';
+
+export interface Policy {
+  id: string;
+  orgId: string;
+  userId: string;
+  frameworkId: string;
+  title: string;
+  content: string;
+  status: PolicyStatus;
+  version: number;
+  templateId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PolicyInput {
+  frameworkId: string;
+  title: string;
+  content: string;
+  templateId?: string;
+}
+
+export interface PolicyPatch {
+  title?: string;
+  content?: string;
+  status?: PolicyStatus;
+}
+
+// ─── Policy Templates ──────────────────────────────────────────────────────
+
+export interface PolicyTemplate {
+  id: string;
+  frameworkId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
+// ─── Controls ↔ Policies mapping ───────────────────────────────────────────
+
+export interface PolicyControl {
+  id: string;
+  policyId: string;
+  controlCode: string;
+  frameworkId: string;
+  createdAt: string;
+}
+
+export interface PolicyControlInput {
+  controlCode: string;
+  frameworkId: string;
+}
+
 export interface AiUsageLogEntry {
   user_id: string;
   provider: string;
@@ -531,6 +587,23 @@ export interface NotesStrategy {
   ): Promise<RiskAssessmentItem>;
   updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem>;
   deleteAssessmentItem(id: string): Promise<void>;
+
+  // Policies
+  listPolicies(orgId: string): Promise<Policy[]>;
+  createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy>;
+  getPolicy(id: string): Promise<Policy | null>;
+  updatePolicy(id: string, patch: PolicyPatch): Promise<Policy>;
+  deletePolicy(id: string): Promise<void>;
+  cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy>;
+
+  // Policy templates (platform-wide seed data)
+  listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]>;
+
+  // Controls ↔ Policies
+  listPolicyControls(policyId: string): Promise<PolicyControl[]>;
+  addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl>;
+  removePolicyControl(id: string): Promise<void>;
+  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
