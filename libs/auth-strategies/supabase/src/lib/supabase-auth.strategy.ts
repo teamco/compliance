@@ -23,8 +23,9 @@ export class SupabaseAuthStrategy implements AuthStrategy {
 
   async signUp(email: string, password: string): Promise<AuthSession> {
     const { data, error } = await this.client.auth.signUp({ email, password });
-    if (error || !data.session) {
-      throw new Error(error?.message ?? 'signup_failed');
+    if (error) throw new Error(error.message);
+    if (!data.session) {
+      throw new Error('email_confirmation_required');
     }
     return this.toSession(data.session);
   }
