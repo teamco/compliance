@@ -29,10 +29,14 @@ import type {
   OrgProfile,
   VerifiedToken,
   WorkflowTransition,
+  AssetInput,
+  AssetPatch,
   ExceptionInput,
   ExceptionPatch,
   IssueInput,
   IssuePatch,
+  RiskInput,
+  RiskPatch,
 } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
 import { StandardsQueueService } from './standards-queue.service';
@@ -388,6 +392,106 @@ export class NotesController {
   deleteIssue(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     return this.notes.deleteIssue(id);
+  }
+
+  // ─── Assets ──────────────────────────────────────────────────────────────
+
+  @Get('assets')
+  @ApiOperation({ summary: 'List assets for org' })
+  listAssets(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listAssets(orgId);
+  }
+
+  @Post('assets')
+  @ApiOperation({ summary: 'Create asset' })
+  createAsset(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: AssetInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createAsset(orgId, userId, body);
+  }
+
+  @Get('assets/:id')
+  @ApiOperation({ summary: 'Get asset' })
+  async getAsset(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const asset = await this.notes.getAsset(id);
+    if (!asset) throw new NotFoundException();
+    return asset;
+  }
+
+  @Patch('assets/:id')
+  @ApiOperation({ summary: 'Update asset' })
+  updateAsset(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: AssetPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateAsset(id, patch);
+  }
+
+  @Delete('assets/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete asset' })
+  deleteAsset(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deleteAsset(id);
+  }
+
+  // ─── Risks ───────────────────────────────────────────────────────────────
+
+  @Get('risks')
+  @ApiOperation({ summary: 'List risks for org (sorted by risk score desc)' })
+  listRisks(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listRisks(orgId);
+  }
+
+  @Post('risks')
+  @ApiOperation({ summary: 'Create risk entry' })
+  createRisk(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: RiskInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createRisk(orgId, userId, body);
+  }
+
+  @Get('risks/:id')
+  @ApiOperation({ summary: 'Get risk' })
+  async getRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    return risk;
+  }
+
+  @Patch('risks/:id')
+  @ApiOperation({ summary: 'Update risk' })
+  updateRisk(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: RiskPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateRisk(id, patch);
+  }
+
+  @Delete('risks/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete risk' })
+  deleteRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deleteRisk(id);
   }
 
   private uid(req: Request & { user?: VerifiedToken }): string {

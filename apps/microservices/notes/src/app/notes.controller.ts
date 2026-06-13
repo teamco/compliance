@@ -2,6 +2,9 @@ import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
   DocumentStandard,
+  Asset,
+  AssetInput,
+  AssetPatch,
   Exception,
   ExceptionInput,
   ExceptionPatch,
@@ -13,6 +16,9 @@ import type {
   IssueInput,
   IssuePatch,
   NotesStrategy,
+  Risk,
+  RiskInput,
+  RiskPatch,
   Organization,
   OrganizationInput,
   ReportTemplate,
@@ -274,5 +280,63 @@ export class NotesController {
   @MessagePattern('notes.issues.delete')
   deleteIssue(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteIssue(payload.id);
+  }
+
+  // ─── Assets ──────────────────────────────────────────────────────────────
+
+  @MessagePattern('notes.assets.list')
+  listAssets(@Payload() payload: { orgId: string }): Promise<Asset[]> {
+    return this.strategy.listAssets(payload.orgId);
+  }
+
+  @MessagePattern('notes.assets.create')
+  createAsset(
+    @Payload() payload: { orgId: string; userId: string; data: AssetInput },
+  ): Promise<Asset> {
+    return this.strategy.createAsset(payload.orgId, payload.userId, payload.data);
+  }
+
+  @MessagePattern('notes.assets.get')
+  getAsset(@Payload() payload: { id: string }): Promise<Asset | null> {
+    return this.strategy.getAsset(payload.id);
+  }
+
+  @MessagePattern('notes.assets.update')
+  updateAsset(@Payload() payload: { id: string; patch: AssetPatch }): Promise<Asset> {
+    return this.strategy.updateAsset(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.assets.delete')
+  deleteAsset(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteAsset(payload.id);
+  }
+
+  // ─── Risks ───────────────────────────────────────────────────────────────
+
+  @MessagePattern('notes.risks.list')
+  listRisks(@Payload() payload: { orgId: string }): Promise<Risk[]> {
+    return this.strategy.listRisks(payload.orgId);
+  }
+
+  @MessagePattern('notes.risks.create')
+  createRisk(
+    @Payload() payload: { orgId: string; userId: string; data: RiskInput },
+  ): Promise<Risk> {
+    return this.strategy.createRisk(payload.orgId, payload.userId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.get')
+  getRisk(@Payload() payload: { id: string }): Promise<Risk | null> {
+    return this.strategy.getRisk(payload.id);
+  }
+
+  @MessagePattern('notes.risks.update')
+  updateRisk(@Payload() payload: { id: string; patch: RiskPatch }): Promise<Risk> {
+    return this.strategy.updateRisk(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.risks.delete')
+  deleteRisk(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteRisk(payload.id);
   }
 }
