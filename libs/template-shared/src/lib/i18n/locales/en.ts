@@ -457,6 +457,9 @@ export const en = {
     runFirstScan: 'Run First Scan',
     runScan: 'Scan',
     deepScan: 'Deep Scan',
+    nameRequired: 'Vendor name is required',
+    domainRequired: 'Domain is required',
+    domainInvalid: 'Enter a valid domain (e.g. example.com)',
     tier: {
       critical: 'Critical',
       high: 'High',

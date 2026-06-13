@@ -418,6 +418,9 @@ export const he = {
     runFirstScan: 'הפעל סריקה ראשונה',
     runScan: 'סריקה',
     deepScan: 'סריקה עמוקה',
+    nameRequired: 'שם הספק הוא שדה חובה',
+    domainRequired: 'דומיין הוא שדה חובה',
+    domainInvalid: 'הכנס דומיין תקין (לדוגמה: example.com)',
     tier: {
       critical: 'קריטי',
       high: 'גבוה',

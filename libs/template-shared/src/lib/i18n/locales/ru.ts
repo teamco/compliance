@@ -423,6 +423,9 @@ export const ru = {
     runFirstScan: 'Запустить первое сканирование',
     runScan: 'Сканировать',
     deepScan: 'Глубокое сканирование',
+    nameRequired: 'Имя поставщика обязательно',
+    domainRequired: 'Домен обязателен',
+    domainInvalid: 'Введите корректный домен (например: example.com)',
     tier: {
       critical: 'Критический',
       high: 'Высокий',
