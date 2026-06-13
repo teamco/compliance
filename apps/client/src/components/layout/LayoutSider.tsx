@@ -18,6 +18,8 @@ import {
   ScrollText,
   ShieldAlert,
   Bug,
+  Server,
+  AlertTriangle,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -42,7 +44,9 @@ type NavKey =
   | 'nav.sectionPlatform'
   | 'nav.sectionCompliance'
   | 'nav.sectionRisk'
-  | 'nav.sectionAdmin';
+  | 'nav.sectionAdmin'
+  | 'nav.assets'
+  | 'nav.risks';
 
 interface NavItem {
   labelKey: NavKey;
@@ -79,7 +83,11 @@ const NAV: NavSection[] = [
   },
   {
     titleKey: 'nav.sectionRisk',
-    items: [{ labelKey: 'nav.vendors', to: '/vendors', icon: Shield }],
+    items: [
+      { labelKey: 'nav.vendors', to: '/vendors', icon: Shield },
+      { labelKey: 'nav.assets', to: '/assets', icon: Server },
+      { labelKey: 'nav.risks', to: '/risks', icon: AlertTriangle },
+    ],
   },
   {
     titleKey: 'nav.sectionAdmin',

@@ -183,6 +183,85 @@ export interface IssuePatch {
   resolvedAt?: string | null;
 }
 
+// ─── Assets ────────────────────────────────────────────────────────────────
+
+export type AssetType = 'service' | 'application' | 'infrastructure' | 'data' | 'device' | 'other';
+export type AssetCriticality = 'critical' | 'high' | 'medium' | 'low';
+
+export interface Asset {
+  id: string;
+  orgId: string;
+  userId: string;
+  name: string;
+  type: AssetType;
+  criticality: AssetCriticality;
+  description: string;
+  owner: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetInput {
+  name: string;
+  type: AssetType;
+  criticality: AssetCriticality;
+  description: string;
+  owner: string;
+  tags?: string[];
+}
+
+export interface AssetPatch {
+  name?: string;
+  type?: AssetType;
+  criticality?: AssetCriticality;
+  description?: string;
+  owner?: string;
+  tags?: string[];
+}
+
+// ─── Risks ─────────────────────────────────────────────────────────────────
+
+export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
+export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
+export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
+
+export interface Risk {
+  id: string;
+  orgId: string;
+  userId: string;
+  title: string;
+  description: string;
+  category: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  riskScore: number;
+  treatment: RiskTreatment;
+  assetId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskInput {
+  title: string;
+  description: string;
+  category: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  treatment?: RiskTreatment;
+  assetId?: string;
+}
+
+export interface RiskPatch {
+  title?: string;
+  description?: string;
+  category?: string;
+  likelihood?: RiskLikelihood;
+  impact?: RiskImpact;
+  treatment?: RiskTreatment;
+  assetId?: string | null;
+}
+
 export interface AiUsageLogEntry {
   user_id: string;
   provider: string;
@@ -358,6 +437,20 @@ export interface NotesStrategy {
   getIssue(id: string): Promise<Issue | null>;
   updateIssue(id: string, patch: IssuePatch): Promise<Issue>;
   deleteIssue(id: string): Promise<void>;
+
+  // Assets
+  listAssets(orgId: string): Promise<Asset[]>;
+  createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset>;
+  getAsset(id: string): Promise<Asset | null>;
+  updateAsset(id: string, patch: AssetPatch): Promise<Asset>;
+  deleteAsset(id: string): Promise<void>;
+
+  // Risks
+  listRisks(orgId: string): Promise<Risk[]>;
+  createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk>;
+  getRisk(id: string): Promise<Risk | null>;
+  updateRisk(id: string, patch: RiskPatch): Promise<Risk>;
+  deleteRisk(id: string): Promise<void>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
