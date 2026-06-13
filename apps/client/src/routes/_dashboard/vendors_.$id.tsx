@@ -174,9 +174,9 @@ function ScanHistoryRow({ scan }: { scan: VendorScan }) {
         <span className="text-[10px] text-muted-foreground/60 capitalize">{scan.triggeredBy}</span>
         {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </button>
-      {open && scan.findings.length > 0 && (
+      {open && (scan.findings?.length ?? 0) > 0 && (
         <div className="px-4 pb-3 space-y-2">
-          {scan.findings.map((f, i) => (
+          {(scan.findings ?? []).map((f, i) => (
             <FindingItem key={i} f={f} />
           ))}
         </div>
@@ -254,11 +254,11 @@ function VendorDetailPage() {
           </div>
 
           {/* Findings */}
-          {latestScan.findings.length > 0 && (
+          {(latestScan.findings?.length ?? 0) > 0 && (
             <section className="space-y-3">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <AlertTriangle size={14} className="text-amber-400" />
-                {t('vendors.findings')} ({latestScan.findings.length})
+                {t('vendors.findings')} ({latestScan.findings?.length ?? 0})
               </h2>
               <div className="space-y-2">
                 {[...latestScan.findings]

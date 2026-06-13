@@ -59,7 +59,7 @@ function ControlsPage() {
 
   const coverageCount = useMemo(() => {
     if (!doc) return 0;
-    return doc.controls.filter(
+    return (doc.controls ?? []).filter(
       (c) =>
         selectedFrameworks.length > 0 &&
         selectedFrameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
@@ -137,7 +137,7 @@ function ControlsPage() {
           <span className="ml-auto text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{coverageCount}</span>
             {' / '}
-            <span className="font-semibold text-foreground">{doc.controls.length}</span>{' '}
+            <span className="font-semibold text-foreground">{doc.controls?.length ?? 0}</span>{' '}
             {t('controls.controlsMapped')}
           </span>
         )}

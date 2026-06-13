@@ -203,7 +203,7 @@ function SnapshotRow({ snap }: { snap: StandardsSnapshot }) {
             })}
           </span>
           <span className="text-xs text-muted-foreground/60">
-            {t('standards.count', { count: snap.standards.length })}
+            {t('standards.count', { count: snap.standards?.length ?? 0 })}
           </span>
         </div>
         {open ? (
@@ -356,7 +356,7 @@ function StandardsDetailPage() {
           {t('gapAnalysis.assessmentTitle')}
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {t('gapAnalysis.assessmentSubtitle', { count: doc.standards.length })} ·{' '}
+          {t('gapAnalysis.assessmentSubtitle', { count: doc.standards?.length ?? 0 })} ·{' '}
           {t('standards.generatedOn')} {new Date(doc.createdAt).toLocaleDateString()}
         </p>
       </div>
@@ -382,7 +382,7 @@ function StandardsDetailPage() {
 
       <div className="@container">
         <div className="grid grid-cols-1 @[650px]:grid-cols-2 gap-3">
-          {doc.standards.map((std) => {
+          {(doc.standards ?? []).map((std) => {
             const isEditingObjective = editing?.code === std.code && editing.field === 'objective';
             const isEditingScope = editing?.code === std.code && editing.field === 'scope';
             const isSaving =

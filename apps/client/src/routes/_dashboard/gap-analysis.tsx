@@ -125,18 +125,18 @@ function GapAnalysisPage() {
 
   async function handleAnalyze() {
     if (!selectedDoc) return;
-    const controls = selectedDoc.controls.map((c) => ({
+    const controls = (selectedDoc.controls ?? []).map((c) => ({
       id: c.code,
       title: c.title,
       description: c.description,
       implementationGuidance: c.implementation,
     }));
-    const findingsList: ControlFinding[] = selectedDoc.controls.map((c) => ({
+    const findingsList: ControlFinding[] = (selectedDoc.controls ?? []).map((c) => ({
       controlId: c.code,
       status: findings[c.code]?.status ?? 'non-compliant',
       evidence: findings[c.code]?.evidence || undefined,
     }));
-    const findingsDetail = selectedDoc.controls.map((c) => ({
+    const findingsDetail = (selectedDoc.controls ?? []).map((c) => ({
       controlId: c.code,
       title: c.title,
       status: findings[c.code]?.status ?? ('non-compliant' as const),
@@ -280,7 +280,7 @@ function GapAnalysisPage() {
               </div>
 
               <div className="grid grid-cols-1 @[600px]:grid-cols-2 gap-3">
-                {selectedDoc.controls.map((ctrl) => {
+                {(selectedDoc.controls ?? []).map((ctrl) => {
                   const finding = findings[ctrl.code];
                   const status = finding?.status;
                   const statusCfg = status ? STATUS_CONFIG[status] : null;
