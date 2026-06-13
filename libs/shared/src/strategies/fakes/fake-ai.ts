@@ -9,6 +9,7 @@ import type {
   OrgProfile,
   StandardsResult,
 } from '../ai';
+import type { VendorPostureInput, VendorPostureResult } from '../vendor-risk';
 
 export class FakeAiStrategy implements AiStrategy {
   async chat(messages: ChatMessage[], _context: ChatContext): Promise<ChatResult> {
@@ -43,6 +44,14 @@ export class FakeAiStrategy implements AiStrategy {
       criticalGaps: [],
       recommendations: [],
       riskScore: 0,
+    };
+  }
+
+  async analyzeVendorPosture(_input: VendorPostureInput): Promise<VendorPostureResult> {
+    return {
+      summary: 'Fake vendor posture analysis — no real assessment performed.',
+      riskRating: 'low',
+      recommendations: [{ priority: 1, action: 'No action required (fake).', effort: 'low' }],
     };
   }
 }

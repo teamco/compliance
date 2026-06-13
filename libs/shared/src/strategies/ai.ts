@@ -75,6 +75,8 @@ export interface GapAnalysisResult {
   findings?: GapFinding[];
 }
 
+import type { VendorPostureInput, VendorPostureResult } from './vendor-risk';
+
 export interface AiStrategy {
   chat(messages: ChatMessage[], context: ChatContext): Promise<ChatResult>;
   generateStandards(orgProfile: OrgProfile, frameworkIds: string[]): Promise<StandardsResult[]>;
@@ -82,4 +84,5 @@ export interface AiStrategy {
     standards: GeneratedStandard[],
     findings: ControlFinding[],
   ): Promise<GapAnalysisResult>;
+  analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult>;
 }

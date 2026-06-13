@@ -4,6 +4,7 @@ export * from './db';
 export * from './ai';
 export * from './notes';
 export * from './fakes';
+export * from './vendor-risk';
 // NOTE: the strategy contract harness (runAuthContract / runStorageContract /
 // runDBContract) is intentionally NOT exported here — it is test-only code and
 // lives behind the '@icore/shared/testing' entry. See ../testing.ts.

@@ -2029,6 +2029,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@icore/vendor-risk-client@npm:*, @icore/vendor-risk-client@workspace:libs/vendor-risk-client":
+  version: 0.0.0-use.local
+  resolution: "@icore/vendor-risk-client@workspace:libs/vendor-risk-client"
+  dependencies:
+    "@icore/shared": "npm:*"
+    "@nestjs/common": "npm:^11.1.24"
+    "@nestjs/microservices": "npm:^11.1.24"
+    rxjs: "npm:^7.8.2"
+    tslib: "npm:^2.3.0"
+  languageName: unknown
+  linkType: soft
+
 "@icore/vite-plugins@workspace:*, @icore/vite-plugins@workspace:libs/vite-plugins":
   version: 0.0.0-use.local
   resolution: "@icore/vite-plugins@workspace:libs/vite-plugins"
@@ -3352,6 +3364,18 @@ __metadata:
     "@nestjs/common": ^11.0.0
     "@nestjs/core": ^11.0.0
   checksum: 10c0/528230bf31dd32efa357348e75aed3239afe641f77a3172c69a8aea35546050b606a3ee29effc7f28cd35e10628baf18213effab1448b4aec85f50c2c478906d
+  languageName: node
+  linkType: hard
+
+"@nestjs/schedule@npm:^6.1.3":
+  version: 6.1.3
+  resolution: "@nestjs/schedule@npm:6.1.3"
+  dependencies:
+    cron: "npm:4.4.0"
+  peerDependencies:
+    "@nestjs/common": ^10.0.0 || ^11.0.0
+    "@nestjs/core": ^10.0.0 || ^11.0.0
+  checksum: 10c0/de6da8d0246f486f7fdefaf6991fea18718f7a2d2eb698cf40094bfaa21e028107e37a27352af4571370c14cd757ca7402b5398af544438cc046d28575dee827
   languageName: node
   linkType: hard
 
@@ -7056,6 +7080,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@types/luxon@npm:~3.7.0":
+  version: 3.7.1
+  resolution: "@types/luxon@npm:3.7.1"
+  checksum: 10c0/2db30c13b58adcd86daa447faa3ba59515fe907ead8ee3e6bb716d662812af0619d712f6c1eb190cdd7f9d2c00444c3ecd80af0f36e8143eb0c5e7339d6b2aca
+  languageName: node
+  linkType: hard
+
 "@types/mdast@npm:^4.0.0":
   version: 4.0.4
   resolution: "@types/mdast@npm:4.0.4"
@@ -8344,6 +8375,7 @@ __metadata:
     "@icore/notes-client": "npm:0.0.1"
     "@icore/shared": "npm:*"
     "@icore/upload-client": "npm:*"
+    "@icore/vendor-risk-client": "npm:*"
     "@nestjs/common": "npm:^11.1.24"
     "@nestjs/config": "npm:^4.0.4"
     "@nestjs/core": "npm:^11.1.24"
@@ -9702,6 +9734,7 @@ __metadata:
     "@nestjs/core": "npm:^11.1.24"
     "@nestjs/microservices": "npm:^11.1.24"
     "@nestjs/platform-express": "npm:^11.1.24"
+    "@nestjs/schedule": "npm:^6.1.3"
     "@nestjs/schematics": "npm:^11.1.0"
     "@nestjs/swagger": "npm:^11.4.4"
     "@nestjs/testing": "npm:^11.1.24"
@@ -10093,6 +10126,16 @@ __metadata:
   dependencies:
     luxon: "npm:^3.7.1"
   checksum: 10c0/ffbda13dcfca26cd79c07d7cb4aa317c3634119696f3690dedf4f3baceacade5b1459fc160f65563b3a367ec1b020a2fd065fa49c4b6d937536ba3d637191cd2
+  languageName: node
+  linkType: hard
+
+"cron@npm:4.4.0":
+  version: 4.4.0
+  resolution: "cron@npm:4.4.0"
+  dependencies:
+    "@types/luxon": "npm:~3.7.0"
+    luxon: "npm:~3.7.0"
+  checksum: 10c0/e3762fda4a9a2404ac2e54e1104a3c6c695747e14b2321bbc5531aa1192c75a319075695fcaf68b6927e0ffd877b5454f314c680f6586db1a78b2c25b76b8a32
   languageName: node
   linkType: hard
 
@@ -15060,7 +15103,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.2.1, luxon@npm:^3.7.1":
+"luxon@npm:^3.2.1, luxon@npm:^3.7.1, luxon@npm:~3.7.0":
   version: 3.7.2
   resolution: "luxon@npm:3.7.2"
   checksum: 10c0/ed8f0f637826c08c343a29dd478b00628be93bba6f068417b1d8896b61cb61c6deacbe1df1e057dbd9298334044afa150f9aaabbeb3181418ac8520acfdc2ae2
