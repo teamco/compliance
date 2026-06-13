@@ -63,7 +63,11 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["apps/microservices/notes-e2e/**/*", "apps/microservices/jobs-e2e/**/*"]
+      "exclude": [
+        "apps/microservices/notes-e2e/**/*",
+        "apps/microservices/jobs-e2e/**/*",
+        "apps/microservices/vendor-risk-e2e/**/*"
+      ]
     }
   ],
   "targetDefaults": {

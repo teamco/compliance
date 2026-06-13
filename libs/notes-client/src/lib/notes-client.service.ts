@@ -10,7 +10,7 @@ import type {
   ApiKeyWithSecret,
   AuditLogFilters,
   AuditLogPage,
-  ControlPatch,
+  DocumentStandard,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -18,8 +18,10 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
@@ -77,9 +79,9 @@ export class NotesClientService {
     );
   }
 
-  saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.save', { id, controls }),
+      this.client.send<{ ok: boolean }>('notes.standards.save', { id, standards }),
     ).then(() => undefined);
   }
 
@@ -90,15 +92,15 @@ export class NotesClientService {
   }
 
   deleteStandardsDocument(id: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.delete', { id }),
-    ).then(() => undefined);
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.standards.delete', { id })).then(
+      () => undefined,
+    );
   }
 
   resetStandardsDocument(id: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.reset', { id }),
-    ).then(() => undefined);
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.standards.reset', { id })).then(
+      () => undefined,
+    );
   }
 
   getStandardsDocument(id: string): Promise<StandardsDocument | null> {
@@ -117,9 +119,9 @@ export class NotesClientService {
     );
   }
 
-  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard> {
     return firstValueFrom(
-      this.client.send<StandardControl>('notes.standards.update-control', { docId, code, patch }),
+      this.client.send<DocumentStandard>('notes.standards.update-standard', { docId, code, patch }),
     );
   }
 
@@ -249,6 +251,40 @@ export class NotesClientService {
   ): Promise<RetentionPrefsPayload> {
     return firstValueFrom(
       this.client.send<RetentionPrefsPayload>('admin.retention.update', { userId, patch }),
+    );
+  }
+
+  // ─── Report templates ────────────────────────────────────────────────────
+
+  listReportTemplates(): Promise<ReportTemplate[]> {
+    return firstValueFrom(this.client.send<ReportTemplate[]>('notes.templates.list', {}));
+  }
+
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.create', { userId, input }),
+    );
+  }
+
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.update', { id, patch }),
+    );
+  }
+
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.templates.delete', { id }));
+  }
+
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.favorite.add', { id, orgId }),
+    );
+  }
+
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.favorite.remove', { id, orgId }),
     );
   }
 

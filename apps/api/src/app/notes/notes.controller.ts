@@ -22,7 +22,7 @@ import { subject } from '@casl/ability';
 import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
 import type {
-  ControlPatch,
+  StandardPatch,
   GapAnalysisResult,
   Organization,
   OrganizationInput,
@@ -143,11 +143,15 @@ export class NotesController {
     return result;
   }
 
-  @Patch('standards/:id/controls/:code')
-  @ApiOperation({ summary: 'Update a single generated control (priority, implementation)' })
+  @Patch('standards/:id/standards/:code')
+  @ApiOperation({ summary: 'Update a single generated standard (objective, scope)' })
   @ApiBody({ schema: { type: 'object' } })
-  updateControl(@Param('id') id: string, @Param('code') code: string, @Body() patch: ControlPatch) {
-    return this.notes.updateControl(id, code, patch);
+  updateStandard(
+    @Param('id') id: string,
+    @Param('code') code: string,
+    @Body() patch: StandardPatch,
+  ) {
+    return this.notes.updateStandard(id, code, patch);
   }
 
   @Get('standards/:id/snapshots')
@@ -202,10 +206,7 @@ export class NotesController {
   @Delete('standards/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a standards document' })
-  async deleteStandards(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
+  async deleteStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
     if (doc.status === 'pending') {
@@ -216,17 +217,13 @@ export class NotesController {
 
   @Post('standards/:id/retry')
   @ApiOperation({ summary: 'Retry a failed or stuck pending standards document' })
-  async retryStandards(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
+  async retryStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
 
     const STUCK_MS = 5 * 60 * 1000;
     const isPendingTooLong =
-      doc.status === 'pending' &&
-      Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
+      doc.status === 'pending' && Date.now() - new Date(doc.createdAt).getTime() > STUCK_MS;
 
     if (doc.status !== 'failed' && !isPendingTooLong) {
       throw new BadRequestException('doc_not_retryable');

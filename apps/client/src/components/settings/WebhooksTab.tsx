@@ -26,9 +26,7 @@ export function WebhooksTab() {
   const [selectedEvents, setSelectedEvents] = useState<WebhookEvent[]>([]);
 
   function toggleEvent(ev: WebhookEvent) {
-    setSelectedEvents((prev) =>
-      prev.includes(ev) ? prev.filter((e) => e !== ev) : [...prev, ev],
-    );
+    setSelectedEvents((prev) => (prev.includes(ev) ? prev.filter((e) => e !== ev) : [...prev, ev]));
   }
 
   function handleCreate() {
@@ -71,10 +69,15 @@ export function WebhooksTab() {
             />
           </div>
           <div>
-            <p className="mb-2 text-xs font-medium text-foreground">{t('settings.webhooks.events')}</p>
+            <p className="mb-2 text-xs font-medium text-foreground">
+              {t('settings.webhooks.events')}
+            </p>
             <div className="grid grid-cols-2 gap-1.5">
               {ALL_EVENTS.map((ev) => (
-                <label key={ev} className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
+                <label
+                  key={ev}
+                  className="flex items-center gap-2 text-xs text-foreground cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={selectedEvents.includes(ev)}

@@ -8,7 +8,7 @@ import type {
   AuditLog,
   AuditLogFilters,
   AuditLogPage,
-  ControlPatch,
+  StandardPatch,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -17,8 +17,10 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  DocumentStandard,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
@@ -42,6 +44,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   private apiKeys = new Map<string, ApiKey[]>();
   private webhooks = new Map<string, Webhook[]>();
   private retentionPrefs = new Map<string, RetentionPrefsPayload>();
+  private reportTemplates: ReportTemplate[] = [];
 
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
@@ -108,7 +111,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       userId,
       orgId,
       frameworkIds,
-      controls: [],
+      standards: [],
       status: 'pending',
       workflowStatus: 'draft',
       createdAt: new Date().toISOString(),
@@ -116,10 +119,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return { id };
   }
 
-  async saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  async saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     const existing = this.docs.get(id);
     if (!existing) throw new Error(`doc_not_found: ${id}`);
-    this.docs.set(id, { ...existing, controls, status: 'completed' });
+    this.docs.set(id, { ...existing, standards, status: 'completed' });
   }
 
   async failStandardsDocument(id: string, _reason?: string): Promise<void> {
@@ -136,7 +139,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   async resetStandardsDocument(id: string): Promise<void> {
     const existing = this.docs.get(id);
     if (!existing) throw new Error(`doc_not_found: ${id}`);
-    this.docs.set(id, { ...existing, status: 'pending', controls: [] });
+    this.docs.set(id, { ...existing, status: 'pending', standards: [] });
   }
 
   async getStandardsDocument(id: string): Promise<StandardsDocument | null> {
@@ -147,15 +150,19 @@ export class FakeNotesStrategy implements NotesStrategy {
     return [...this.docs.values()].filter((d) => d.orgId === orgId);
   }
 
-  async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  async updateStandard(
+    docId: string,
+    code: string,
+    patch: StandardPatch,
+  ): Promise<DocumentStandard> {
     const doc = this.docs.get(docId);
     if (!doc) throw new Error(`doc_not_found: ${docId}`);
-    const idx = doc.controls.findIndex((c) => c.code === code);
-    if (idx === -1) throw new Error(`control_not_found: ${code}`);
-    const updated = { ...doc.controls[idx], ...patch } as StandardControl;
-    const controls = [...doc.controls];
-    controls[idx] = updated;
-    this.docs.set(docId, { ...doc, controls });
+    const idx = doc.standards.findIndex((s) => s.code === code);
+    if (idx === -1) throw new Error(`standard_not_found: ${code}`);
+    const updated = { ...doc.standards[idx], ...patch } as DocumentStandard;
+    const standards = [...doc.standards];
+    standards[idx] = updated;
+    this.docs.set(docId, { ...doc, standards });
     return updated;
   }
 
@@ -175,7 +182,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         documentId: id,
         version,
         workflowStatus: to,
-        controls: [...doc.controls],
+        standards: [...doc.standards],
         createdAt: new Date().toISOString(),
       });
     }
@@ -406,6 +413,54 @@ export class FakeNotesStrategy implements NotesStrategy {
     const updated = { ...current, ...patch };
     this.retentionPrefs.set(userId, updated);
     return updated;
+  }
+
+  async listReportTemplates(): Promise<ReportTemplate[]> {
+    return this.reportTemplates;
+  }
+
+  async createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    const tpl: ReportTemplate = {
+      id: `tpl-${this.reportTemplates.length + 1}`,
+      ...input,
+      createdBy: userId,
+      createdAt: new Date().toISOString(),
+    };
+    this.reportTemplates.push(tpl);
+    return tpl;
+  }
+
+  async updateReportTemplate(
+    id: string,
+    patch: Partial<ReportTemplateInput>,
+  ): Promise<ReportTemplate> {
+    const existing = this.reportTemplates.find((t) => t.id === id);
+    if (!existing) throw new Error(`ReportTemplate ${id} not found`);
+    const updated: ReportTemplate = { ...existing, ...patch };
+    this.reportTemplates = this.reportTemplates.map((t) => (t.id === id ? updated : t));
+    return updated;
+  }
+
+  async deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    this.reportTemplates = this.reportTemplates.filter((t) => t.id !== id);
+    return { ok: true };
+  }
+
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const tpl = this.reportTemplates.find((t) => t.id === id);
+    if (!tpl) throw new Error(`ReportTemplate ${id} not found`);
+    if (!tpl.favoriteOrgIds.includes(orgId)) {
+      return this.updateReportTemplate(id, { favoriteOrgIds: [...tpl.favoriteOrgIds, orgId] });
+    }
+    return tpl;
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const tpl = this.reportTemplates.find((t) => t.id === id);
+    if (!tpl) throw new Error(`ReportTemplate ${id} not found`);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: tpl.favoriteOrgIds.filter((o) => o !== orgId),
+    });
   }
 
   logAiUsage(_entry: AiUsageLogEntry): void {

@@ -10,7 +10,7 @@ import type {
   AuditLogPage,
   ApiKey,
   ApiKeyWithSecret,
-  ControlPatch,
+  DocumentStandard,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -19,8 +19,10 @@ import type {
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
@@ -198,7 +200,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         user_id: userId,
         org_profile_id: orgId,
         framework_ids: frameworkIds,
-        controls: [],
+        standards: [],
         status: 'pending',
         workflow_status: 'draft',
       })
@@ -208,10 +210,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return { id: r.id };
   }
 
-  async saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  async saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     const { error } = await this.db
       .from('generated_standards')
-      .update({ controls, status: 'completed' })
+      .update({ standards, status: 'completed' })
       .eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -232,7 +234,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async resetStandardsDocument(id: string): Promise<void> {
     const { error } = await this.db
       .from('generated_standards')
-      .update({ status: 'pending', controls: [] })
+      .update({ status: 'pending', standards: [] })
       .eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -279,7 +281,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         document_id: id,
         version,
         workflow_status: to,
-        controls: doc.controls,
+        standards: doc.standards,
       });
       if (snapErr) throw new Error(snapErr.message);
     }
@@ -305,17 +307,21 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.mapSnapshot(data) : null;
   }
 
-  async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  async updateStandard(
+    docId: string,
+    code: string,
+    patch: StandardPatch,
+  ): Promise<DocumentStandard> {
     const doc = await this.getStandardsDocument(docId);
     if (!doc) throw new Error('doc_not_found');
-    const idx = doc.controls.findIndex((c) => c.code === code);
-    if (idx === -1) throw new Error('control_not_found');
-    const updated = { ...doc.controls[idx], ...patch } as StandardControl;
-    const controls = [...doc.controls];
-    controls[idx] = updated;
+    const idx = doc.standards.findIndex((c) => c.code === code);
+    if (idx === -1) throw new Error('standard_not_found');
+    const updated = { ...doc.standards[idx], ...patch } as DocumentStandard;
+    const standards = [...doc.standards];
+    standards[idx] = updated;
     const { error } = await this.db
       .from('generated_standards')
-      .update({ controls })
+      .update({ standards })
       .eq('id', docId);
     if (error) throw new Error(error.message);
     return updated;
@@ -620,6 +626,127 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     };
   }
 
+  // ─── Report templates ──────────────────────────────────────────────────────
+
+  async listReportTemplates(): Promise<ReportTemplate[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select()
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapReportTemplate(r));
+  }
+
+  async createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .insert({
+        name: input.name,
+        scope: input.scope,
+        brand_name: input.brandName,
+        accent_color: input.accentColor,
+        include_summary: input.includeSummary,
+        include_details: input.includeDetails,
+        include_recommendations: input.includeRecommendations,
+        footer_note: input.footerNote,
+        favorite_org_ids: input.favoriteOrgIds,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapReportTemplate(data);
+  }
+
+  async updateReportTemplate(
+    id: string,
+    patch: Partial<ReportTemplateInput>,
+  ): Promise<ReportTemplate> {
+    const update: Record<string, unknown> = {};
+    if (patch.name !== undefined) update['name'] = patch.name;
+    if (patch.scope !== undefined) update['scope'] = patch.scope;
+    if (patch.brandName !== undefined) update['brand_name'] = patch.brandName;
+    if (patch.accentColor !== undefined) update['accent_color'] = patch.accentColor;
+    if (patch.includeSummary !== undefined) update['include_summary'] = patch.includeSummary;
+    if (patch.includeDetails !== undefined) update['include_details'] = patch.includeDetails;
+    if (patch.includeRecommendations !== undefined)
+      update['include_recommendations'] = patch.includeRecommendations;
+    if (patch.footerNote !== undefined) update['footer_note'] = patch.footerNote;
+    if (patch.favoriteOrgIds !== undefined) update['favorite_org_ids'] = patch.favoriteOrgIds;
+
+    const { data, error } = await this.db
+      .from('report_templates')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapReportTemplate(data);
+  }
+
+  async deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db.from('report_templates').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    const next = current.includes(orgId) ? current : [...current, orgId];
+    return this.updateReportTemplate(id, { favoriteOrgIds: next });
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: current.filter((o) => o !== orgId),
+    });
+  }
+
+  private async getTemplateFavorites(id: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select('favorite_org_ids')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+    return ((data as { favorite_org_ids: string[] | null })?.favorite_org_ids ?? []) as string[];
+  }
+
+  private mapReportTemplate(r: unknown): ReportTemplate {
+    const row = r as {
+      id: string;
+      name: string;
+      scope: string;
+      brand_name: string;
+      accent_color: string;
+      include_summary: boolean;
+      include_details: boolean;
+      include_recommendations: boolean;
+      footer_note: string;
+      favorite_org_ids: string[] | null;
+      created_by: string | null;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      name: row.name,
+      scope: row.scope as ReportTemplate['scope'],
+      brandName: row.brand_name,
+      accentColor: row.accent_color,
+      includeSummary: row.include_summary,
+      includeDetails: row.include_details,
+      includeRecommendations: row.include_recommendations,
+      footerNote: row.footer_note,
+      favoriteOrgIds: row.favorite_org_ids ?? [],
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+    };
+  }
+
   // ─── Retention ─────────────────────────────────────────────────────────────
 
   async getRetentionPrefs(userId: string): Promise<RetentionPrefsPayload> {
@@ -730,7 +857,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       document_id: string;
       version: number;
       workflow_status: string;
-      controls: StandardControl[];
+      standards: DocumentStandard[];
       created_at: string;
       created_by?: string;
     };
@@ -739,7 +866,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       documentId: row.document_id,
       version: row.version,
       workflowStatus: row.workflow_status as StandardsSnapshot['workflowStatus'],
-      controls: row.controls ?? [],
+      standards: row.standards ?? [],
       createdAt: row.created_at,
       createdBy: row.created_by,
     };
@@ -821,7 +948,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       user_id: string;
       org_profile_id: string;
       framework_ids: string[];
-      controls: StandardControl[];
+      standards: DocumentStandard[];
       status: string;
       workflow_status: string | null;
       created_at: string;
@@ -831,7 +958,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       userId: row.user_id,
       orgId: row.org_profile_id,
       frameworkIds: row.framework_ids,
-      controls: row.controls ?? [],
+      standards: row.standards ?? [],
       status: row.status as StandardsDocument['status'],
       workflowStatus: (row.workflow_status ?? 'draft') as StandardsDocument['workflowStatus'],
       createdAt: row.created_at,

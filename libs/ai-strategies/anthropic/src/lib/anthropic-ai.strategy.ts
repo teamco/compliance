@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { Logger } from '@nestjs/common';
 import type {
   AiStrategy,
   ChatContext,
@@ -6,9 +7,11 @@ import type {
   ChatResult,
   ControlFinding,
   GapAnalysisResult,
-  GeneratedControl,
+  GeneratedStandard,
   OrgProfile,
   StandardsResult,
+  VendorPostureInput,
+  VendorPostureResult,
 } from '@icore/shared';
 
 export interface AnthropicAiStrategyOptions {
@@ -24,6 +27,7 @@ function stripJsonFences(raw: string): string {
 
 export class AnthropicAiStrategy implements AiStrategy {
   private readonly client: Anthropic;
+  private readonly logger = new Logger(AnthropicAiStrategy.name);
 
   constructor(opts: AnthropicAiStrategyOptions) {
     this.client = new Anthropic({ apiKey: opts.apiKey });
@@ -36,20 +40,37 @@ export class AnthropicAiStrategy implements AiStrategy {
     if (context.pageContext) systemParts.push(`Current page context: ${context.pageContext}`);
     if (context.frameworkId) systemParts.push(`Active framework: ${context.frameworkId}`);
 
-    const stream = this.client.messages.stream({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system: systemParts.join('\n'),
-      messages: messages.map((m) => ({ role: m.role, content: m.content })),
-    });
+    const started = Date.now();
+    const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
+    this.logger.log(`chat start — ${messages.length} msg(s), ${totalChars} chars in`);
 
-    const text = await stream.finalText();
-    const final = await stream.finalMessage();
-    return {
-      text,
-      inputTokens: final.usage.input_tokens,
-      outputTokens: final.usage.output_tokens,
-    };
+    try {
+      const stream = this.client.messages.stream({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 4096,
+        system: systemParts.join('\n'),
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+      });
+
+      const text = await stream.finalText();
+      const final = await stream.finalMessage();
+      const ms = Date.now() - started;
+      this.logger.log(
+        `chat done in ${ms}ms — in:${final.usage.input_tokens} out:${final.usage.output_tokens} text:${text.length} chars`,
+      );
+      return {
+        text,
+        inputTokens: final.usage.input_tokens,
+        outputTokens: final.usage.output_tokens,
+      };
+    } catch (err) {
+      const ms = Date.now() - started;
+      const e = err as { name?: string; status?: number; message?: string };
+      this.logger.error(
+        `chat FAILED after ${ms}ms — ${e.name ?? 'Error'}${e.status ? ` (${e.status})` : ''}: ${e.message ?? String(err)}`,
+      );
+      throw err;
+    }
   }
 
   async generateStandards(
@@ -57,9 +78,21 @@ export class AnthropicAiStrategy implements AiStrategy {
     frameworkIds: string[],
   ): Promise<StandardsResult[]> {
     const system = [
-      'You are a compliance standards expert. Generate security controls for the given frameworks.',
+      'You are a compliance standards expert. Generate formal security standards for the given frameworks.',
+      'Standards define WHAT must be done (the mandatory requirement), not HOW to implement it.',
+      'Example of correct Standards language: "All user accounts must be protected by multi-factor authentication."',
+      'Example of wrong Controls language (do not use): "Configure Okta MFA policy with TOTP as primary factor."',
       'Return ONLY a valid JSON array matching this TypeScript type:',
-      'Array<{ frameworkId: string; controls: Array<{ id: string; title: string; description: string; implementationGuidance: string }> }>',
+      'Array<{',
+      '  frameworkId: string;',
+      '  standards: Array<{',
+      '    id: string;',
+      '    title: string;',
+      '    objective: string;',
+      '    scope: string;',
+      '    requirements: string[]',
+      '  }>',
+      '}>',
       'No markdown, no explanation — raw JSON only.',
     ].join('\n');
 
@@ -70,7 +103,8 @@ export class AnthropicAiStrategy implements AiStrategy {
       `  Size: ${orgProfile.size}`,
       `  Regions: ${orgProfile.regions.join(', ')}`,
       ``,
-      `Generate tailored security controls for these frameworks: ${frameworkIds.join(', ')}`,
+      `Generate tailored formal security standards for these frameworks: ${frameworkIds.join(', ')}`,
+      `Each standard should have 3-8 specific requirements as mandatory statements.`,
     ].join('\n');
 
     const response = await this.client.messages.create({
@@ -89,7 +123,7 @@ export class AnthropicAiStrategy implements AiStrategy {
   }
 
   async analyzeGap(
-    controls: GeneratedControl[],
+    standards: GeneratedStandard[],
     findings: ControlFinding[],
   ): Promise<GapAnalysisResult> {
     const system = [
@@ -100,8 +134,8 @@ export class AnthropicAiStrategy implements AiStrategy {
     ].join('\n');
 
     const userPrompt = [
-      `Controls (${controls.length} total):`,
-      JSON.stringify(controls.slice(0, 50)),
+      `Standards (${standards.length} total):`,
+      JSON.stringify(standards.slice(0, 50)),
       ``,
       `Findings (${findings.length} total):`,
       JSON.stringify(findings),
@@ -122,5 +156,36 @@ export class AnthropicAiStrategy implements AiStrategy {
       .join('');
 
     return JSON.parse(stripJsonFences(raw)) as GapAnalysisResult;
+  }
+
+  async analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
+    const system = [
+      'You are a cybersecurity analyst specializing in vendor risk assessment.',
+      'Analyze the provided domain scan results and return specific, actionable findings.',
+      'No generic advice — every recommendation must reference a concrete finding.',
+      'Return ONLY valid JSON matching this TypeScript type:',
+      '{ summary: string; riskRating: "critical"|"high"|"medium"|"low"; recommendations: Array<{ priority: number; action: string; effort: "low"|"medium"|"high" }> }',
+      'No markdown, no explanation — raw JSON only.',
+    ].join('\n');
+
+    const userPrompt = [
+      `Domain: ${input.domain}`,
+      `Score breakdown: ${JSON.stringify(input.breakdown)}`,
+      `Findings (${input.findings.length}): ${JSON.stringify(input.findings)}`,
+    ].join('\n');
+
+    const response = await this.client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as { type: 'text'; text: string }).text)
+      .join('');
+
+    return JSON.parse(stripJsonFences(raw)) as VendorPostureResult;
   }
 }

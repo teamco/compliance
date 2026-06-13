@@ -7,7 +7,12 @@ interface SectionHeaderProps {
   align?: 'left' | 'center';
 }
 
-export function SectionHeader({ eyebrow, title, description, align = 'center' }: SectionHeaderProps) {
+export function SectionHeader({
+  eyebrow,
+  title,
+  description,
+  align = 'center',
+}: SectionHeaderProps) {
   return (
     <div className={align === 'center' ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl'}>
       <LandingBadge>{eyebrow}</LandingBadge>

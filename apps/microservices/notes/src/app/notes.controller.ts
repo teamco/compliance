@@ -1,7 +1,7 @@
 import { Controller, Inject } from '@nestjs/common';
 import { MessagePattern, Payload } from '@nestjs/microservices';
 import type {
-  ControlPatch,
+  DocumentStandard,
   Framework,
   FrameworkControl,
   GapAnalysis,
@@ -9,7 +9,9 @@ import type {
   NotesStrategy,
   Organization,
   OrganizationInput,
-  StandardControl,
+  ReportTemplate,
+  ReportTemplateInput,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   WorkflowTransition,
@@ -76,9 +78,9 @@ export class NotesController {
 
   @MessagePattern('notes.standards.save')
   async saveStandardsDocument(
-    @Payload() payload: { id: string; controls: StandardControl[] },
+    @Payload() payload: { id: string; standards: DocumentStandard[] },
   ): Promise<{ ok: boolean }> {
-    await this.strategy.saveStandardsDocument(payload.id, payload.controls);
+    await this.strategy.saveStandardsDocument(payload.id, payload.standards);
     return { ok: true };
   }
 
@@ -119,11 +121,11 @@ export class NotesController {
     return this.strategy.transitionWorkflow(payload.id, payload.transition);
   }
 
-  @MessagePattern('notes.standards.update-control')
-  updateControl(
-    @Payload() payload: { docId: string; code: string; patch: ControlPatch },
-  ): Promise<StandardControl> {
-    return this.strategy.updateControl(payload.docId, payload.code, payload.patch);
+  @MessagePattern('notes.standards.update-standard')
+  updateStandard(
+    @Payload() payload: { docId: string; code: string; patch: StandardPatch },
+  ): Promise<DocumentStandard> {
+    return this.strategy.updateStandard(payload.docId, payload.code, payload.patch);
   }
 
   @MessagePattern('notes.standards.snapshots.list')
@@ -134,6 +136,42 @@ export class NotesController {
   @MessagePattern('notes.standards.snapshots.get')
   getSnapshot(@Payload() payload: { snapshotId: string }): Promise<StandardsSnapshot | null> {
     return this.strategy.getSnapshot(payload.snapshotId);
+  }
+
+  @MessagePattern('notes.templates.list')
+  listReportTemplates(): Promise<ReportTemplate[]> {
+    return this.strategy.listReportTemplates();
+  }
+
+  @MessagePattern('notes.templates.create')
+  createReportTemplate(
+    @Payload() payload: { userId: string; input: ReportTemplateInput },
+  ): Promise<ReportTemplate> {
+    return this.strategy.createReportTemplate(payload.userId, payload.input);
+  }
+
+  @MessagePattern('notes.templates.update')
+  updateReportTemplate(
+    @Payload() payload: { id: string; patch: Partial<ReportTemplateInput> },
+  ): Promise<ReportTemplate> {
+    return this.strategy.updateReportTemplate(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.templates.delete')
+  deleteReportTemplate(@Payload() payload: { id: string }): Promise<{ ok: boolean }> {
+    return this.strategy.deleteReportTemplate(payload.id);
+  }
+
+  @MessagePattern('notes.templates.favorite.add')
+  addTemplateFavorite(@Payload() payload: { id: string; orgId: string }): Promise<ReportTemplate> {
+    return this.strategy.addTemplateFavorite(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.templates.favorite.remove')
+  removeTemplateFavorite(
+    @Payload() payload: { id: string; orgId: string },
+  ): Promise<ReportTemplate> {
+    return this.strategy.removeTemplateFavorite(payload.id, payload.orgId);
   }
 
   @MessagePattern('notes.gap.save')

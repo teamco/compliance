@@ -1,29 +1,39 @@
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type {
-  AuthSession,
-  AuthStrategy,
-  MagicLinkRequest,
-  OAuthProvider,
-  OAuthStartResult,
-  VerifiedToken,
+import {
+  TokenExpiredError,
+  type AuthSession,
+  type AuthStrategy,
+  type MagicLinkRequest,
+  type OAuthProvider,
+  type OAuthStartResult,
+  type VerifiedToken,
 } from '@icore/shared';
 
 export interface SupabaseAuthStrategyOptions {
   client: SupabaseClient;
+  siteUrl?: string;
 }
 
 export class SupabaseAuthStrategy implements AuthStrategy {
   private readonly client: SupabaseClient;
+  private readonly siteUrl?: string;
 
   constructor(opts: SupabaseAuthStrategyOptions) {
     this.client = opts.client;
+    this.siteUrl = opts.siteUrl;
   }
 
   async signUp(email: string, password: string): Promise<AuthSession> {
-    const { data, error } = await this.client.auth.signUp({ email, password });
-    if (error || !data.session) {
-      throw new Error(error?.message ?? 'signup_failed');
+    const emailRedirectTo = this.siteUrl ? `${this.siteUrl}/auth/oauth/callback` : undefined;
+    const { data, error } = await this.client.auth.signUp({
+      email,
+      password,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
+    if (error) throw new Error(error.message);
+    if (!data.session) {
+      throw new Error('email_confirmation_required');
     }
     return this.toSession(data.session);
   }
@@ -47,7 +57,10 @@ export class SupabaseAuthStrategy implements AuthStrategy {
   async verifyToken(token: string): Promise<VerifiedToken> {
     const { data, error } = await this.client.auth.getUser(token);
     if (error || !data.user) {
-      throw new Error(error?.message ?? 'invalid_token');
+      const message = error?.message ?? 'invalid_token';
+      // GoTrue reports expiry inside the message ("token has invalid claims: token is expired")
+      if (/expired/i.test(message)) throw new TokenExpiredError(message);
+      throw new Error(message);
     }
     const u = data.user as {
       app_metadata?: { role?: string };

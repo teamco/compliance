@@ -1,7 +1,6 @@
 export type FrameworkCategory = 'security' | 'privacy' | 'cloud' | 'risk';
 export type OrgSize = 'startup' | 'smb' | 'enterprise';
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
-export type StandardControlPriority = 'critical' | 'high' | 'medium' | 'low';
 
 export interface Framework {
   id: string;
@@ -39,16 +38,14 @@ export interface Organization {
 
 export type OrganizationInput = Omit<Organization, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
 
-// An AI-generated compliance control stored as part of a StandardsDocument.
-export interface StandardControl {
+// An AI-generated compliance standard stored as part of a StandardsDocument.
+export interface DocumentStandard {
   code: string;
   title: string;
-  description: string;
-  implementation: string;
-  evidence: string[];
-  frameworkMappings: { frameworkId: string; controlCode: string }[];
-  priority: StandardControlPriority;
-  category: string;
+  objective: string;
+  scope: string;
+  requirements: string[];
+  frameworkMappings: { frameworkId: string; standardCode: string }[];
 }
 
 export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
@@ -71,15 +68,15 @@ export interface StandardsDocument {
   userId: string;
   orgId: string;
   frameworkIds: string[];
-  controls: StandardControl[];
+  standards: DocumentStandard[];
   status: StandardsStatus;
   workflowStatus: WorkflowStatus;
   createdAt: string;
 }
 
-export interface ControlPatch {
-  priority?: StandardControlPriority;
-  implementation?: string;
+export interface StandardPatch {
+  objective?: string;
+  scope?: string;
 }
 
 export interface StandardsSnapshot {
@@ -87,7 +84,7 @@ export interface StandardsSnapshot {
   documentId: string;
   version: number;
   workflowStatus: WorkflowStatus;
-  controls: StandardControl[];
+  standards: DocumentStandard[];
   createdAt: string;
   createdBy?: string;
 }
@@ -97,6 +94,7 @@ export type {
   RecommendationEffort,
   GapItem,
   Recommendation,
+  GapFinding,
   GapAnalysisResult,
 } from './ai';
 import type { GapAnalysisResult } from './ai';
@@ -188,14 +186,14 @@ export interface NotesStrategy {
     orgId: string,
     frameworkIds: string[],
   ): Promise<{ id: string }>;
-  saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void>;
+  saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void>;
   failStandardsDocument(id: string, reason?: string): Promise<void>;
   deleteStandardsDocument(id: string): Promise<void>;
   resetStandardsDocument(id: string): Promise<void>;
   getStandardsDocument(id: string): Promise<StandardsDocument | null>;
   listStandardsDocuments(orgId: string): Promise<StandardsDocument[]>;
 
-  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl>;
+  updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard>;
 
   transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument>;
 
@@ -262,6 +260,14 @@ export interface NotesStrategy {
     userId: string,
     patch: Partial<RetentionPrefsPayload>,
   ): Promise<RetentionPrefsPayload>;
+
+  // Report templates
+  listReportTemplates(): Promise<ReportTemplate[]>;
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate>;
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate>;
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }>;
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
@@ -390,6 +396,39 @@ export interface Webhook {
 export interface WebhookInput {
   url: string;
   events: WebhookEvent[];
+}
+
+// ─── Report templates ──────────────────────────────────────────────────────
+
+export type ReportTemplateScope = 'gap' | 'standards' | 'all';
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  // Orgs that favorited (assigned) this global template — surfaced first in the
+  // export menu for the matching org.
+  favoriteOrgIds: string[];
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ReportTemplateInput {
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  favoriteOrgIds: string[];
 }
 
 export interface RetentionPrefsPayload {

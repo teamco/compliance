@@ -136,13 +136,20 @@ function GapAnalysisPage() {
       status: findings[c.code]?.status ?? 'non-compliant',
       evidence: findings[c.code]?.evidence || undefined,
     }));
+    const findingsDetail = selectedDoc.controls.map((c) => ({
+      controlId: c.code,
+      title: c.title,
+      status: findings[c.code]?.status ?? ('non-compliant' as const),
+      evidence: findings[c.code]?.evidence || undefined,
+    }));
     analyzeGap.mutate(
       { controls, findings: findingsList },
       {
         onSuccess: (data) => {
           if (activeOrgId) {
+            const result = { ...data, findings: findingsDetail };
             saveGap.mutate(
-              { orgId: activeOrgId, docId: selectedDocId || undefined, result: data },
+              { orgId: activeOrgId, docId: selectedDocId || undefined, result },
               {
                 onSuccess: (saved) => {
                   void navigate({ to: '/gap-analysis/$id', params: { id: saved.id } });
@@ -402,7 +409,7 @@ function GapAnalysisPage() {
                 '30d': now - 30 * 86_400_000,
                 '90d': boundary90,
               };
-              return t >= cutoff[dateRange];
+              return t >= (cutoff[dateRange] ?? 0);
             });
             if (filtered.length === 0) {
               return (
