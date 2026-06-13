@@ -33,6 +33,14 @@ import type {
   Issue,
   IssueInput,
   IssuePatch,
+  Asset,
+  AssetInput,
+  AssetPatch,
+  Risk,
+  RiskInput,
+  RiskPatch,
+  RiskLikelihood,
+  RiskImpact,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -615,5 +623,110 @@ export class FakeNotesStrategy implements NotesStrategy {
   async deleteIssue(id: string): Promise<void> {
     if (!this.issues.has(id)) throw new Error(`issue_not_found: ${id}`);
     this.issues.delete(id);
+  }
+
+  // ─── Assets ──────────────────────────────────────────────────────────────
+  private assets: Asset[] = [];
+
+  async listAssets(orgId: string): Promise<Asset[]> {
+    return this.assets.filter((a) => a.orgId === orgId);
+  }
+
+  async createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset> {
+    const asset: Asset = {
+      id: globalThis.crypto.randomUUID(),
+      orgId,
+      userId,
+      name: data.name,
+      type: data.type,
+      criticality: data.criticality,
+      description: data.description,
+      owner: data.owner,
+      tags: data.tags ?? [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.assets.push(asset);
+    return asset;
+  }
+
+  async getAsset(id: string): Promise<Asset | null> {
+    return this.assets.find((a) => a.id === id) ?? null;
+  }
+
+  async updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
+    const idx = this.assets.findIndex((a) => a.id === id);
+    if (idx === -1) throw new Error('asset_not_found');
+    const updated: Asset = { ...this.assets[idx]!, ...patch, updatedAt: new Date().toISOString() };
+    this.assets[idx] = updated;
+    return updated;
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    this.assets = this.assets.filter((a) => a.id !== id);
+  }
+
+  // ─── Risks ───────────────────────────────────────────────────────────────
+  private risks: Risk[] = [];
+
+  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
+    const L: Record<RiskLikelihood, number> = {
+      very_low: 1,
+      low: 2,
+      medium: 3,
+      high: 4,
+      very_high: 5,
+    };
+    const I: Record<RiskImpact, number> = {
+      very_low: 1,
+      low: 2,
+      medium: 3,
+      high: 4,
+      very_high: 5,
+    };
+    return L[likelihood] * I[impact];
+  }
+
+  async listRisks(orgId: string): Promise<Risk[]> {
+    return this.risks.filter((r) => r.orgId === orgId);
+  }
+
+  async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    const risk: Risk = {
+      id: globalThis.crypto.randomUUID(),
+      orgId,
+      userId,
+      title: data.title,
+      description: data.description,
+      category: data.category,
+      likelihood: data.likelihood,
+      impact: data.impact,
+      riskScore: this.computeRiskScore(data.likelihood, data.impact),
+      treatment: data.treatment ?? 'mitigate',
+      assetId: data.assetId ?? null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.risks.push(risk);
+    return risk;
+  }
+
+  async getRisk(id: string): Promise<Risk | null> {
+    return this.risks.find((r) => r.id === id) ?? null;
+  }
+
+  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+    const idx = this.risks.findIndex((r) => r.id === id);
+    if (idx === -1) throw new Error('risk_not_found');
+    const merged: Risk = { ...this.risks[idx]!, ...patch, updatedAt: new Date().toISOString() };
+    if (patch.likelihood !== undefined || patch.impact !== undefined) {
+      merged.riskScore = this.computeRiskScore(merged.likelihood, merged.impact);
+    }
+    this.risks[idx] = merged;
+    return merged;
+  }
+
+  async deleteRisk(id: string): Promise<void> {
+    this.risks = this.risks.filter((r) => r.id !== id);
   }
 }
