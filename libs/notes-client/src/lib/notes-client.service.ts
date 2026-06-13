@@ -8,6 +8,9 @@ import type {
   AiUsageTimeseriesPoint,
   ApiKey,
   ApiKeyWithSecret,
+  Asset,
+  AssetInput,
+  AssetPatch,
   AuditLogFilters,
   AuditLogPage,
   DocumentStandard,
@@ -27,6 +30,9 @@ import type {
   ReportTemplate,
   ReportTemplateInput,
   RetentionPrefsPayload,
+  Risk,
+  RiskInput,
+  RiskPatch,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -383,5 +389,37 @@ export class NotesClientService {
 
   deleteIssue(id: string): Promise<void> {
     return firstValueFrom(this.client.send<void>('notes.issues.delete', { id }));
+  }
+
+  listAssets(orgId: string): Promise<Asset[]> {
+    return firstValueFrom(this.client.send<Asset[]>('notes.assets.list', { orgId }));
+  }
+  createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset> {
+    return firstValueFrom(this.client.send<Asset>('notes.assets.create', { orgId, userId, data }));
+  }
+  getAsset(id: string): Promise<Asset | null> {
+    return firstValueFrom(this.client.send<Asset | null>('notes.assets.get', { id }));
+  }
+  updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
+    return firstValueFrom(this.client.send<Asset>('notes.assets.update', { id, patch }));
+  }
+  deleteAsset(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.assets.delete', { id }));
+  }
+
+  listRisks(orgId: string): Promise<Risk[]> {
+    return firstValueFrom(this.client.send<Risk[]>('notes.risks.list', { orgId }));
+  }
+  createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    return firstValueFrom(this.client.send<Risk>('notes.risks.create', { orgId, userId, data }));
+  }
+  getRisk(id: string): Promise<Risk | null> {
+    return firstValueFrom(this.client.send<Risk | null>('notes.risks.get', { id }));
+  }
+  updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+    return firstValueFrom(this.client.send<Risk>('notes.risks.update', { id, patch }));
+  }
+  deleteRisk(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.risks.delete', { id }));
   }
 }
