@@ -436,6 +436,9 @@ export const es = {
     runFirstScan: 'Ejecutar primer escaneo',
     runScan: 'Escanear',
     deepScan: 'Escaneo Profundo',
+    nameRequired: 'El nombre del proveedor es obligatorio',
+    domainRequired: 'El dominio es obligatorio',
+    domainInvalid: 'Ingrese un dominio válido (ej. example.com)',
     tier: {
       critical: 'Crítico',
       high: 'Alto',
