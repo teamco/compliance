@@ -145,7 +145,7 @@ function AddVendorDialog({
             <SelectContent side="top">
               {TIER_OPTIONS.map((tierOption) => (
                 <SelectItem key={tierOption} value={tierOption}>
-                  {tierOption}
+                  {t(`vendors.tier.${tierOption}`)}
                 </SelectItem>
               ))}
             </SelectContent>
