@@ -10,6 +10,8 @@ import type {
   GeneratedStandard,
   OrgProfile,
   StandardsResult,
+  VendorPostureInput,
+  VendorPostureResult,
 } from '@icore/shared';
 
 export interface AnthropicAiStrategyOptions {
@@ -154,5 +156,36 @@ export class AnthropicAiStrategy implements AiStrategy {
       .join('');
 
     return JSON.parse(stripJsonFences(raw)) as GapAnalysisResult;
+  }
+
+  async analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
+    const system = [
+      'You are a cybersecurity analyst specializing in vendor risk assessment.',
+      'Analyze the provided domain scan results and return specific, actionable findings.',
+      'No generic advice — every recommendation must reference a concrete finding.',
+      'Return ONLY valid JSON matching this TypeScript type:',
+      '{ summary: string; riskRating: "critical"|"high"|"medium"|"low"; recommendations: Array<{ priority: number; action: string; effort: "low"|"medium"|"high" }> }',
+      'No markdown, no explanation — raw JSON only.',
+    ].join('\n');
+
+    const userPrompt = [
+      `Domain: ${input.domain}`,
+      `Score breakdown: ${JSON.stringify(input.breakdown)}`,
+      `Findings (${input.findings.length}): ${JSON.stringify(input.findings)}`,
+    ].join('\n');
+
+    const response = await this.client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      system,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const raw = response.content
+      .filter((b) => b.type === 'text')
+      .map((b) => (b as { type: 'text'; text: string }).text)
+      .join('');
+
+    return JSON.parse(stripJsonFences(raw)) as VendorPostureResult;
   }
 }

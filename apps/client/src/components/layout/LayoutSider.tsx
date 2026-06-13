@@ -32,10 +32,12 @@ type NavKey =
   | 'nav.standards'
   | 'nav.controls'
   | 'nav.gapAnalysis'
+  | 'nav.vendors'
   | 'nav.aiUsage'
   | 'nav.users'
   | 'nav.sectionPlatform'
   | 'nav.sectionCompliance'
+  | 'nav.sectionRisk'
   | 'nav.sectionAdmin';
 
 interface NavItem {
@@ -68,6 +70,10 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.controls', to: '/controls', icon: Shield },
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
     ],
+  },
+  {
+    titleKey: 'nav.sectionRisk',
+    items: [{ labelKey: 'nav.vendors', to: '/vendors', icon: Shield }],
   },
   {
     titleKey: 'nav.sectionAdmin',

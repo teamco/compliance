@@ -1,0 +1,19 @@
+{
+  "name": "crawler",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/vendor-risk-strategies/crawler/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/vendor-risk-strategies/crawler",
+        "main": "libs/vendor-risk-strategies/crawler/src/index.ts",
+        "tsConfig": "libs/vendor-risk-strategies/crawler/tsconfig.lib.json",
+        "assets": ["libs/vendor-risk-strategies/crawler/*.md"]
+      }
+    }
+  }
+}
