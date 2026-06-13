@@ -11,10 +11,16 @@ import type {
   ApiKey,
   ApiKeyWithSecret,
   DocumentStandard,
+  Exception,
+  ExceptionInput,
+  ExceptionPatch,
   Framework,
   FrameworkControl,
   GapAnalysis,
   GapAnalysisResult,
+  Issue,
+  IssueInput,
+  IssuePatch,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -962,6 +968,177 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       status: row.status as StandardsDocument['status'],
       workflowStatus: (row.workflow_status ?? 'draft') as StandardsDocument['workflowStatus'],
       createdAt: row.created_at,
+    };
+  }
+
+  // ─── Exceptions ────────────────────────────────────────────────────────────
+
+  async listExceptions(orgId: string): Promise<Exception[]> {
+    const { data, error } = await this.db
+      .from('exceptions')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toException(row));
+  }
+
+  async createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception> {
+    const { data: row, error } = await this.db
+      .from('exceptions')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        control_code: data.controlCode,
+        standard_code: data.standardCode ?? null,
+        framework_id: data.frameworkId,
+        title: data.title,
+        justification: data.justification,
+        expires_at: data.expiresAt ?? null,
+      })
+      .select()
+      .single();
+    return this.toException(ok(row, error));
+  }
+
+  async getException(id: string): Promise<Exception | null> {
+    const { data, error } = await this.db.from('exceptions').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toException(data) : null;
+  }
+
+  async updateException(id: string, patch: ExceptionPatch): Promise<Exception> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.justification !== undefined) update['justification'] = patch.justification;
+    if ('expiresAt' in patch) update['expires_at'] = patch.expiresAt;
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
+  async approveException(id: string): Promise<Exception> {
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
+  async rejectException(id: string): Promise<Exception> {
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
+  async deleteException(id: string): Promise<void> {
+    const { error } = await this.db.from('exceptions').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toException(row: Record<string, unknown>): Exception {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      controlCode: row['control_code'] as string,
+      standardCode: row['standard_code'] as string | undefined,
+      frameworkId: row['framework_id'] as string,
+      title: row['title'] as string,
+      justification: row['justification'] as string,
+      status: row['status'] as Exception['status'],
+      expiresAt: row['expires_at'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Issues ────────────────────────────────────────────────────────────────
+
+  async listIssues(orgId: string): Promise<Issue[]> {
+    const { data, error } = await this.db
+      .from('issues')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toIssue(row));
+  }
+
+  async createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue> {
+    const { data: row, error } = await this.db
+      .from('issues')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        title: data.title,
+        description: data.description,
+        severity: data.severity,
+        source: data.source ?? 'manual',
+        source_id: data.sourceId ?? null,
+        due_date: data.dueDate ?? null,
+      })
+      .select()
+      .single();
+    return this.toIssue(ok(row, error));
+  }
+
+  async getIssue(id: string): Promise<Issue | null> {
+    const { data, error } = await this.db.from('issues').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toIssue(data) : null;
+  }
+
+  async updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.severity !== undefined) update['severity'] = patch.severity;
+    if (patch.status !== undefined) {
+      update['status'] = patch.status;
+      if (!('resolvedAt' in patch)) {
+        update['resolved_at'] = patch.status === 'resolved' ? new Date().toISOString() : null;
+      }
+    }
+    if ('resolvedAt' in patch) update['resolved_at'] = patch.resolvedAt;
+    if ('dueDate' in patch) update['due_date'] = patch.dueDate;
+    const { data, error } = await this.db
+      .from('issues')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toIssue(ok(data, error));
+  }
+
+  async deleteIssue(id: string): Promise<void> {
+    const { error } = await this.db.from('issues').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toIssue(row: Record<string, unknown>): Issue {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      severity: row['severity'] as Issue['severity'],
+      status: row['status'] as Issue['status'],
+      source: row['source'] as Issue['source'],
+      sourceId: row['source_id'] as string | null,
+      dueDate: row['due_date'] as string | null,
+      resolvedAt: row['resolved_at'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
     };
   }
 }
