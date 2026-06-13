@@ -20,6 +20,7 @@ import {
   Bug,
   Server,
   AlertTriangle,
+  ClipboardList,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -46,7 +47,8 @@ type NavKey =
   | 'nav.sectionRisk'
   | 'nav.sectionAdmin'
   | 'nav.assets'
-  | 'nav.risks';
+  | 'nav.risks'
+  | 'nav.assessments';
 
 interface NavItem {
   labelKey: NavKey;
@@ -87,6 +89,7 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.vendors', to: '/vendors', icon: Shield },
       { labelKey: 'nav.assets', to: '/assets', icon: Server },
       { labelKey: 'nav.risks', to: '/risks', icon: AlertTriangle },
+      { labelKey: 'nav.assessments', to: '/assessments', icon: ClipboardList },
     ],
   },
   {

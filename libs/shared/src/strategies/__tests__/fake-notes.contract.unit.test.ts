@@ -256,3 +256,96 @@ describe('risks', () => {
     expect(await s.listRisks('org1')).toHaveLength(0);
   });
 });
+
+describe('risk assessments', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('creates CVRA assessment with draft status', async () => {
+    const a = await s.createAssessment('org1', 'u1', {
+      type: 'cvra',
+      title: 'Q2 CVRA',
+      scope: 'Payment services',
+    });
+    expect(a.type).toBe('cvra');
+    expect(a.status).toBe('draft');
+    expect(a.riskScore).toBe(0);
+    expect(a.itemCount).toBe(0);
+  });
+
+  it('creates CTRA assessment', async () => {
+    const a = await s.createAssessment('org1', 'u1', {
+      type: 'ctra',
+      title: 'Ransomware CTRA',
+      scope: 'All systems',
+    });
+    expect(a.type).toBe('ctra');
+  });
+
+  it('adds items and recomputes aggregate score', async () => {
+    const a = await s.createAssessment('org1', 'u1', {
+      type: 'cvra',
+      title: 'T',
+      scope: 'S',
+    });
+    await s.addAssessmentItem(a.id, {
+      subject: 'Unpatched OS',
+      description: 'Missing patches',
+      likelihood: 'high',
+      impact: 'high',
+    });
+    await s.addAssessmentItem(a.id, {
+      subject: 'Weak auth',
+      description: 'No MFA',
+      likelihood: 'medium',
+      impact: 'medium',
+    });
+    const updated = await s.getAssessment(a.id);
+    expect(updated!.itemCount).toBe(2);
+    expect(updated!.riskScore).toBe(Math.round((16 + 9) / 2)); // (4*4 + 3*3) / 2 = 12
+  });
+
+  it('updates assessment status', async () => {
+    const a = await s.createAssessment('org1', 'u1', {
+      type: 'cvra',
+      title: 'T',
+      scope: 'S',
+    });
+    const updated = await s.updateAssessment(a.id, { status: 'in_review' });
+    expect(updated.status).toBe('in_review');
+  });
+
+  it('lists assessments scoped by orgId', async () => {
+    await s.createAssessment('org1', 'u1', { type: 'cvra', title: 'T', scope: 'S' });
+    expect(await s.listAssessments('org2')).toHaveLength(0);
+    expect(await s.listAssessments('org1')).toHaveLength(1);
+  });
+
+  it('deletes assessment and its items', async () => {
+    const a = await s.createAssessment('org1', 'u1', { type: 'cvra', title: 'T', scope: 'S' });
+    await s.addAssessmentItem(a.id, {
+      subject: 'X',
+      description: '',
+      likelihood: 'low',
+      impact: 'low',
+    });
+    await s.deleteAssessment(a.id);
+    expect(await s.listAssessments('org1')).toHaveLength(0);
+    expect(await s.listAssessmentItems(a.id)).toHaveLength(0);
+  });
+
+  it('updates item and recomputes score', async () => {
+    const a = await s.createAssessment('org1', 'u1', { type: 'cvra', title: 'T', scope: 'S' });
+    const item = await s.addAssessmentItem(a.id, {
+      subject: 'X',
+      description: '',
+      likelihood: 'low',
+      impact: 'low',
+    });
+    await s.updateAssessmentItem(item.id, { likelihood: 'very_high', impact: 'very_high' });
+    const updated = await s.getAssessment(a.id);
+    expect(updated!.riskScore).toBe(25); // 5*5
+  });
+});

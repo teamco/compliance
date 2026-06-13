@@ -33,6 +33,12 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
+  RiskAssessment,
+  RiskAssessmentInput,
+  RiskAssessmentPatch,
+  RiskAssessmentItem,
+  RiskAssessmentItemInput,
+  RiskAssessmentItemPatch,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -421,5 +427,60 @@ export class NotesClientService {
   }
   deleteRisk(id: string): Promise<void> {
     return firstValueFrom(this.client.send<void>('notes.risks.delete', { id }));
+  }
+
+  // ─── Risk Assessments ────────────────────────────────────────────────────
+
+  listAssessments(orgId: string): Promise<RiskAssessment[]> {
+    return firstValueFrom(this.client.send<RiskAssessment[]>('notes.assessments.list', { orgId }));
+  }
+
+  createAssessment(
+    orgId: string,
+    userId: string,
+    data: RiskAssessmentInput,
+  ): Promise<RiskAssessment> {
+    return firstValueFrom(
+      this.client.send<RiskAssessment>('notes.assessments.create', { orgId, userId, data }),
+    );
+  }
+
+  getAssessment(id: string): Promise<RiskAssessment | null> {
+    return firstValueFrom(this.client.send<RiskAssessment | null>('notes.assessments.get', { id }));
+  }
+
+  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
+    return firstValueFrom(
+      this.client.send<RiskAssessment>('notes.assessments.update', { id, patch }),
+    );
+  }
+
+  deleteAssessment(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.assessments.delete', { id }));
+  }
+
+  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+    return firstValueFrom(
+      this.client.send<RiskAssessmentItem[]>('notes.assessments.items.list', { assessmentId }),
+    );
+  }
+
+  addAssessmentItem(
+    assessmentId: string,
+    data: RiskAssessmentItemInput,
+  ): Promise<RiskAssessmentItem> {
+    return firstValueFrom(
+      this.client.send<RiskAssessmentItem>('notes.assessments.items.add', { assessmentId, data }),
+    );
+  }
+
+  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem> {
+    return firstValueFrom(
+      this.client.send<RiskAssessmentItem>('notes.assessments.items.update', { id, patch }),
+    );
+  }
+
+  deleteAssessmentItem(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.assessments.items.delete', { id }));
   }
 }
