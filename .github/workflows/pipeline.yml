@@ -84,7 +84,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        project: [api, auth, upload, notes, ai, client]
+        project: [api, auth, upload, notes, ai, vendor-risk, client]
     steps:
       - name: Check if affected
         id: gate
