@@ -29,6 +29,10 @@ import type {
   OrgProfile,
   VerifiedToken,
   WorkflowTransition,
+  ExceptionInput,
+  ExceptionPatch,
+  IssueInput,
+  IssuePatch,
 } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
 import { StandardsQueueService } from './standards-queue.service';
@@ -270,6 +274,120 @@ export class NotesController {
     const gap = await this.notes.getGapAnalysis(id);
     if (!gap) throw new NotFoundException();
     return gap;
+  }
+
+  // ─── Exceptions ──────────────────────────────────────────────────────────
+
+  @Get('exceptions')
+  @ApiOperation({ summary: 'List exceptions for org' })
+  listExceptions(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listExceptions(orgId);
+  }
+
+  @Post('exceptions')
+  @ApiOperation({ summary: 'Create exception' })
+  createException(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: ExceptionInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createException(orgId, userId, body);
+  }
+
+  @Get('exceptions/:id')
+  @ApiOperation({ summary: 'Get exception' })
+  async getException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const exc = await this.notes.getException(id);
+    if (!exc) throw new NotFoundException();
+    return exc;
+  }
+
+  @Patch('exceptions/:id')
+  @ApiOperation({ summary: 'Update exception' })
+  updateException(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: ExceptionPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateException(id, patch);
+  }
+
+  @Post('exceptions/:id/approve')
+  @ApiOperation({ summary: 'Approve exception' })
+  approveException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.approveException(id);
+  }
+
+  @Post('exceptions/:id/reject')
+  @ApiOperation({ summary: 'Reject exception' })
+  rejectException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.rejectException(id);
+  }
+
+  @Delete('exceptions/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete exception' })
+  deleteException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deleteException(id);
+  }
+
+  // ─── Issues ──────────────────────────────────────────────────────────────
+
+  @Get('issues')
+  @ApiOperation({ summary: 'List issues for org' })
+  listIssues(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listIssues(orgId);
+  }
+
+  @Post('issues')
+  @ApiOperation({ summary: 'Create issue' })
+  createIssue(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: IssueInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createIssue(orgId, userId, body);
+  }
+
+  @Get('issues/:id')
+  @ApiOperation({ summary: 'Get issue' })
+  async getIssue(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    return issue;
+  }
+
+  @Patch('issues/:id')
+  @ApiOperation({ summary: 'Update issue status / severity' })
+  updateIssue(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: IssuePatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateIssue(id, patch);
+  }
+
+  @Delete('issues/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete issue' })
+  deleteIssue(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deleteIssue(id);
   }
 
   private uid(req: Request & { user?: VerifiedToken }): string {
