@@ -349,3 +349,105 @@ describe('risk assessments', () => {
     expect(updated!.riskScore).toBe(25); // 5*5
   });
 });
+
+describe('policies', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('creates policy with draft status', async () => {
+    const p = await s.createPolicy('org1', 'u1', {
+      frameworkId: 'fw1',
+      title: 'Access Control Policy',
+      content: '# Access Control\n\nAll systems require MFA.',
+    });
+    expect(p.status).toBe('draft');
+    expect(p.version).toBe(1);
+  });
+
+  it('approves policy', async () => {
+    const p = await s.createPolicy('org1', 'u1', {
+      frameworkId: 'fw1',
+      title: 'T',
+      content: 'C',
+    });
+    const approved = await s.updatePolicy(p.id, { status: 'approved' });
+    expect(approved.status).toBe('approved');
+  });
+
+  it('bumps version on content update', async () => {
+    const p = await s.createPolicy('org1', 'u1', {
+      frameworkId: 'fw1',
+      title: 'T',
+      content: 'C v1',
+    });
+    const updated = await s.updatePolicy(p.id, { content: 'C v2' });
+    expect(updated.version).toBe(2);
+  });
+
+  it('lists policies scoped by orgId', async () => {
+    await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
+    expect(await s.listPolicies('org2')).toHaveLength(0);
+    expect(await s.listPolicies('org1')).toHaveLength(1);
+  });
+
+  it('deletes policy and its control mappings', async () => {
+    const p = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
+    await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    await s.deletePolicy(p.id);
+    expect(await s.listPolicies('org1')).toHaveLength(0);
+    expect(await s.listPolicyControls(p.id)).toHaveLength(0);
+  });
+
+  it('clones template into a new draft policy', async () => {
+    const cloned = await s.cloneTemplate('org1', 'u1', 'tmpl-1');
+    expect(cloned.templateId).toBe('tmpl-1');
+    expect(cloned.status).toBe('draft');
+    expect(cloned.content).toContain('SOC 2');
+  });
+
+  it('lists policy templates filtered by framework', async () => {
+    const all = await s.listPolicyTemplates();
+    const filtered = await s.listPolicyTemplates('fw-soc2');
+    expect(filtered.length).toBeLessThanOrEqual(all.length);
+    filtered.forEach((t) => expect(t.frameworkId).toBe('fw-soc2'));
+  });
+});
+
+describe('policy controls mapping', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('adds control mapping and lists it', async () => {
+    const p = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
+    const pc = await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    expect(pc.controlCode).toBe('AC-1');
+    const list = await s.listPolicyControls(p.id);
+    expect(list).toHaveLength(1);
+  });
+
+  it('deduplicates: adding same mapping twice returns existing', async () => {
+    const p = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
+    await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    expect(await s.listPolicyControls(p.id)).toHaveLength(1);
+  });
+
+  it('lists policies for a given control code', async () => {
+    const p = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
+    await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    const policies = await s.listPoliciesForControl('AC-1', 'fw1');
+    expect(policies).toHaveLength(1);
+    expect(policies[0].id).toBe(p.id);
+  });
+
+  it('removes control mapping', async () => {
+    const p = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
+    const pc = await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    await s.removePolicyControl(pc.id);
+    expect(await s.listPolicyControls(p.id)).toHaveLength(0);
+  });
+});

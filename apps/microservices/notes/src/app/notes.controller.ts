@@ -16,6 +16,12 @@ import type {
   IssueInput,
   IssuePatch,
   NotesStrategy,
+  Policy,
+  PolicyInput,
+  PolicyPatch,
+  PolicyTemplate,
+  PolicyControl,
+  PolicyControlInput,
   Risk,
   RiskInput,
   RiskPatch,
@@ -399,5 +405,70 @@ export class NotesController {
   @MessagePattern('notes.assessments.items.delete')
   deleteAssessmentItem(@Payload() p: { id: string }): Promise<void> {
     return this.strategy.deleteAssessmentItem(p.id);
+  }
+
+  // ─── Policies ────────────────────────────────────────────────────────────
+
+  @MessagePattern('notes.policies.list')
+  listPolicies(@Payload() p: { orgId: string }): Promise<Policy[]> {
+    return this.strategy.listPolicies(p.orgId);
+  }
+
+  @MessagePattern('notes.policies.create')
+  createPolicy(
+    @Payload() p: { orgId: string; userId: string; data: PolicyInput },
+  ): Promise<Policy> {
+    return this.strategy.createPolicy(p.orgId, p.userId, p.data);
+  }
+
+  @MessagePattern('notes.policies.get')
+  getPolicy(@Payload() p: { id: string }): Promise<Policy | null> {
+    return this.strategy.getPolicy(p.id);
+  }
+
+  @MessagePattern('notes.policies.update')
+  updatePolicy(@Payload() p: { id: string; patch: PolicyPatch }): Promise<Policy> {
+    return this.strategy.updatePolicy(p.id, p.patch);
+  }
+
+  @MessagePattern('notes.policies.delete')
+  deletePolicy(@Payload() p: { id: string }): Promise<void> {
+    return this.strategy.deletePolicy(p.id);
+  }
+
+  @MessagePattern('notes.policies.clone-template')
+  cloneTemplate(
+    @Payload() p: { orgId: string; userId: string; templateId: string },
+  ): Promise<Policy> {
+    return this.strategy.cloneTemplate(p.orgId, p.userId, p.templateId);
+  }
+
+  @MessagePattern('notes.policy-templates.list')
+  listPolicyTemplates(@Payload() p: { frameworkId?: string }): Promise<PolicyTemplate[]> {
+    return this.strategy.listPolicyTemplates(p.frameworkId);
+  }
+
+  @MessagePattern('notes.policies.controls.list')
+  listPolicyControls(@Payload() p: { policyId: string }): Promise<PolicyControl[]> {
+    return this.strategy.listPolicyControls(p.policyId);
+  }
+
+  @MessagePattern('notes.policies.controls.add')
+  addPolicyControl(
+    @Payload() p: { policyId: string; data: PolicyControlInput },
+  ): Promise<PolicyControl> {
+    return this.strategy.addPolicyControl(p.policyId, p.data);
+  }
+
+  @MessagePattern('notes.policies.controls.remove')
+  removePolicyControl(@Payload() p: { id: string }): Promise<void> {
+    return this.strategy.removePolicyControl(p.id);
+  }
+
+  @MessagePattern('notes.policies.for-control')
+  listPoliciesForControl(
+    @Payload() p: { controlCode: string; frameworkId: string },
+  ): Promise<Policy[]> {
+    return this.strategy.listPoliciesForControl(p.controlCode, p.frameworkId);
   }
 }

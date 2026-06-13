@@ -51,6 +51,12 @@ import type {
   Webhook,
   WebhookInput,
   WorkflowTransition,
+  Policy,
+  PolicyInput,
+  PolicyPatch,
+  PolicyTemplate,
+  PolicyControl,
+  PolicyControlInput,
 } from '@icore/shared';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
 
@@ -1516,6 +1522,157 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       mitigations: row['mitigations'] as string,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Policies ──────────────────────────────────────────────────────────────
+
+  async listPolicies(orgId: string): Promise<Policy[]> {
+    const { data, error } = await this.db
+      .from('policies')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map(this.toPolicy);
+  }
+
+  async createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy> {
+    const { data: row, error } = await this.db
+      .from('policies')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        framework_id: data.frameworkId,
+        title: data.title,
+        content: data.content,
+        template_id: data.templateId ?? null,
+      })
+      .select()
+      .single();
+    return this.toPolicy(ok(row, error));
+  }
+
+  async getPolicy(id: string): Promise<Policy | null> {
+    const { data, error } = await this.db.from('policies').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toPolicy(data) : null;
+  }
+
+  async updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.status !== undefined) update['status'] = patch.status;
+    if (patch.content !== undefined) {
+      update['content'] = patch.content;
+      const cur = await this.db.from('policies').select('version').eq('id', id).single();
+      update['version'] = ((cur.data?.['version'] as number) ?? 1) + 1;
+    }
+    const { data, error } = await this.db
+      .from('policies')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toPolicy(ok(data, error));
+  }
+
+  async deletePolicy(id: string): Promise<void> {
+    const { error } = await this.db.from('policies').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
+    const { data: tmpl, error } = await this.db
+      .from('policy_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+    if (error || !tmpl) throw new Error('template_not_found');
+    return this.createPolicy(orgId, userId, {
+      frameworkId: tmpl['framework_id'] as string,
+      title: tmpl['title'] as string,
+      content: tmpl['content'] as string,
+      templateId,
+    });
+  }
+
+  async listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]> {
+    let q = this.db.from('policy_templates').select('*').order('title');
+    if (frameworkId) q = q.eq('framework_id', frameworkId);
+    const { data, error } = await q;
+    return ok(data, error).map((r: Record<string, unknown>) => ({
+      id: r['id'] as string,
+      frameworkId: r['framework_id'] as string,
+      title: r['title'] as string,
+      content: r['content'] as string,
+      createdAt: r['created_at'] as string,
+    }));
+  }
+
+  async listPolicyControls(policyId: string): Promise<PolicyControl[]> {
+    const { data, error } = await this.db
+      .from('policy_controls')
+      .select('*')
+      .eq('policy_id', policyId)
+      .order('created_at');
+    return ok(data, error).map(this.toPolicyControl);
+  }
+
+  async addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl> {
+    const { data: row, error } = await this.db
+      .from('policy_controls')
+      .upsert(
+        { policy_id: policyId, control_code: data.controlCode, framework_id: data.frameworkId },
+        { onConflict: 'policy_id,control_code,framework_id', ignoreDuplicates: false },
+      )
+      .select()
+      .single();
+    return this.toPolicyControl(ok(row, error));
+  }
+
+  async removePolicyControl(id: string): Promise<void> {
+    const { error } = await this.db.from('policy_controls').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+    const { data, error } = await this.db
+      .from('policy_controls')
+      .select('policy_id')
+      .eq('control_code', controlCode)
+      .eq('framework_id', frameworkId);
+    const policyIds = ok(data, error).map((r: Record<string, unknown>) => r['policy_id'] as string);
+    if (policyIds.length === 0) return [];
+    const { data: policies, error: pErr } = await this.db
+      .from('policies')
+      .select('*')
+      .in('id', policyIds);
+    return ok(policies, pErr).map(this.toPolicy);
+  }
+
+  private toPolicy(row: Record<string, unknown>): Policy {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      frameworkId: row['framework_id'] as string,
+      title: row['title'] as string,
+      content: row['content'] as string,
+      status: row['status'] as Policy['status'],
+      version: row['version'] as number,
+      templateId: row['template_id'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  private toPolicyControl(row: Record<string, unknown>): PolicyControl {
+    return {
+      id: row['id'] as string,
+      policyId: row['policy_id'] as string,
+      controlCode: row['control_code'] as string,
+      frameworkId: row['framework_id'] as string,
+      createdAt: row['created_at'] as string,
     };
   }
 }
