@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -124,6 +125,7 @@ function AddVendorDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t('vendors.addVendor')}</DialogTitle>
+          <DialogDescription className="sr-only">{t('vendors.addVendor')}</DialogDescription>
         </DialogHeader>
         <div className="space-y-3 py-2">
           <Input
