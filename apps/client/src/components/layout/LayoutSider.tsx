@@ -16,6 +16,8 @@ import {
   PanelLeftOpen,
   Building2,
   ScrollText,
+  ShieldAlert,
+  Bug,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -35,6 +37,8 @@ type NavKey =
   | 'nav.vendors'
   | 'nav.aiUsage'
   | 'nav.users'
+  | 'nav.exceptions'
+  | 'nav.issues'
   | 'nav.sectionPlatform'
   | 'nav.sectionCompliance'
   | 'nav.sectionRisk'
@@ -69,6 +73,8 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.standards', to: '/standards', icon: ScrollText },
       { labelKey: 'nav.controls', to: '/controls', icon: Shield },
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
+      { labelKey: 'nav.exceptions', to: '/exceptions', icon: ShieldAlert },
+      { labelKey: 'nav.issues', to: '/issues', icon: Bug },
     ],
   },
   {

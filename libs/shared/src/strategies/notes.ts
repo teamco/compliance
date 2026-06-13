@@ -109,6 +109,80 @@ export interface GapAnalysis {
   createdAt: string;
 }
 
+// ─── Exceptions ────────────────────────────────────────────────────────────
+
+export type ExceptionStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface Exception {
+  id: string;
+  orgId: string;
+  userId: string;
+  controlCode: string;
+  standardCode?: string;
+  frameworkId: string;
+  title: string;
+  justification: string;
+  status: ExceptionStatus;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExceptionInput {
+  controlCode: string;
+  standardCode?: string;
+  frameworkId: string;
+  title: string;
+  justification: string;
+  expiresAt?: string;
+}
+
+export interface ExceptionPatch {
+  title?: string;
+  justification?: string;
+  expiresAt?: string | null;
+}
+
+// ─── Issues ────────────────────────────────────────────────────────────────
+
+export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'wont_fix';
+export type IssueSource = 'manual' | 'gap_analysis' | 'vendor_risk';
+
+export interface Issue {
+  id: string;
+  orgId: string;
+  userId: string;
+  title: string;
+  description: string;
+  severity: IssueSeverity;
+  status: IssueStatus;
+  source: IssueSource;
+  sourceId: string | null;
+  dueDate: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueInput {
+  title: string;
+  description: string;
+  severity: IssueSeverity;
+  source?: IssueSource;
+  sourceId?: string;
+  dueDate?: string;
+}
+
+export interface IssuePatch {
+  title?: string;
+  description?: string;
+  severity?: IssueSeverity;
+  status?: IssueStatus;
+  dueDate?: string | null;
+  resolvedAt?: string | null;
+}
+
 export interface AiUsageLogEntry {
   user_id: string;
   provider: string;
@@ -268,6 +342,22 @@ export interface NotesStrategy {
   deleteReportTemplate(id: string): Promise<{ ok: boolean }>;
   addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
   removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
+
+  // Exceptions
+  listExceptions(orgId: string): Promise<Exception[]>;
+  createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception>;
+  getException(id: string): Promise<Exception | null>;
+  updateException(id: string, patch: ExceptionPatch): Promise<Exception>;
+  approveException(id: string): Promise<Exception>;
+  rejectException(id: string): Promise<Exception>;
+  deleteException(id: string): Promise<void>;
+
+  // Issues
+  listIssues(orgId: string): Promise<Issue[]>;
+  createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue>;
+  getIssue(id: string): Promise<Issue | null>;
+  updateIssue(id: string, patch: IssuePatch): Promise<Issue>;
+  deleteIssue(id: string): Promise<void>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
