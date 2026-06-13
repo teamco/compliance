@@ -352,9 +352,11 @@ function StandardsDetailPage() {
       </div>
 
       <div>
-        <h1 className="text-xl font-semibold text-foreground">{t('standards.assessmentTitle')}</h1>
+        <h1 className="text-xl font-semibold text-foreground">
+          {t('gapAnalysis.assessmentTitle')}
+        </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {t('standards.assessmentSubtitle', { count: doc.standards.length })} ·{' '}
+          {t('gapAnalysis.assessmentSubtitle', { count: doc.standards.length })} ·{' '}
           {t('standards.generatedOn')} {new Date(doc.createdAt).toLocaleDateString()}
         </p>
       </div>
