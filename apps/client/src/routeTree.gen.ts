@@ -18,6 +18,7 @@ import { Route as DashboardStandardsRouteImport } from './routes/_dashboard/stan
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
 import { Route as DashboardRisksRouteImport } from './routes/_dashboard/risks'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
+import { Route as DashboardPoliciesRouteImport } from './routes/_dashboard/policies'
 import { Route as DashboardOrgRouteImport } from './routes/_dashboard/org'
 import { Route as DashboardIssuesRouteImport } from './routes/_dashboard/issues'
 import { Route as DashboardGapAnalysisRouteImport } from './routes/_dashboard/gap-analysis'
@@ -30,6 +31,7 @@ import { Route as DashboardAssessmentsRouteImport } from './routes/_dashboard/as
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
 import { Route as DashboardVendorsIdRouteImport } from './routes/_dashboard/vendors_.$id'
 import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
+import { Route as DashboardPoliciesIdRouteImport } from './routes/_dashboard/policies_.$id'
 import { Route as DashboardGapAnalysisIdRouteImport } from './routes/_dashboard/gap-analysis.$id'
 import { Route as DashboardAssessmentsIdRouteImport } from './routes/_dashboard/assessments_.$id'
 import { Route as DashboardAdminAiUsageRouteImport } from './routes/_dashboard/admin.ai-usage'
@@ -76,6 +78,11 @@ const DashboardRisksRoute = DashboardRisksRouteImport.update({
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPoliciesRoute = DashboardPoliciesRouteImport.update({
+  id: '/policies',
+  path: '/policies',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardOrgRoute = DashboardOrgRouteImport.update({
@@ -138,6 +145,11 @@ const DashboardStandardsIdRoute = DashboardStandardsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => DashboardStandardsRoute,
 } as any)
+const DashboardPoliciesIdRoute = DashboardPoliciesIdRouteImport.update({
+  id: '/policies_/$id',
+  path: '/policies/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardGapAnalysisIdRoute = DashboardGapAnalysisIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -166,6 +178,7 @@ export interface FileRoutesByFullPath {
   '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
   '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
+  '/policies': typeof DashboardPoliciesRoute
   '/profile': typeof DashboardProfileRoute
   '/risks': typeof DashboardRisksRoute
   '/settings': typeof DashboardSettingsRoute
@@ -175,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
   '/assessments/$id': typeof DashboardAssessmentsIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
+  '/policies/$id': typeof DashboardPoliciesIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/vendors/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
@@ -191,6 +205,7 @@ export interface FileRoutesByTo {
   '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
   '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
+  '/policies': typeof DashboardPoliciesRoute
   '/profile': typeof DashboardProfileRoute
   '/risks': typeof DashboardRisksRoute
   '/settings': typeof DashboardSettingsRoute
@@ -200,6 +215,7 @@ export interface FileRoutesByTo {
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
   '/assessments/$id': typeof DashboardAssessmentsIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
+  '/policies/$id': typeof DashboardPoliciesIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/vendors/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
@@ -218,6 +234,7 @@ export interface FileRoutesById {
   '/_dashboard/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
   '/_dashboard/issues': typeof DashboardIssuesRoute
   '/_dashboard/org': typeof DashboardOrgRoute
+  '/_dashboard/policies': typeof DashboardPoliciesRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
   '/_dashboard/risks': typeof DashboardRisksRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
@@ -227,6 +244,7 @@ export interface FileRoutesById {
   '/_dashboard/admin/ai-usage': typeof DashboardAdminAiUsageRoute
   '/_dashboard/assessments_/$id': typeof DashboardAssessmentsIdRoute
   '/_dashboard/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
+  '/_dashboard/policies_/$id': typeof DashboardPoliciesIdRoute
   '/_dashboard/standards/$id': typeof DashboardStandardsIdRoute
   '/_dashboard/vendors_/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
@@ -245,6 +263,7 @@ export interface FileRouteTypes {
     | '/gap-analysis'
     | '/issues'
     | '/org'
+    | '/policies'
     | '/profile'
     | '/risks'
     | '/settings'
@@ -254,6 +273,7 @@ export interface FileRouteTypes {
     | '/admin/ai-usage'
     | '/assessments/$id'
     | '/gap-analysis/$id'
+    | '/policies/$id'
     | '/standards/$id'
     | '/vendors/$id'
     | '/auth/oauth/callback'
@@ -270,6 +290,7 @@ export interface FileRouteTypes {
     | '/gap-analysis'
     | '/issues'
     | '/org'
+    | '/policies'
     | '/profile'
     | '/risks'
     | '/settings'
@@ -279,6 +300,7 @@ export interface FileRouteTypes {
     | '/admin/ai-usage'
     | '/assessments/$id'
     | '/gap-analysis/$id'
+    | '/policies/$id'
     | '/standards/$id'
     | '/vendors/$id'
     | '/auth/oauth/callback'
@@ -296,6 +318,7 @@ export interface FileRouteTypes {
     | '/_dashboard/gap-analysis'
     | '/_dashboard/issues'
     | '/_dashboard/org'
+    | '/_dashboard/policies'
     | '/_dashboard/profile'
     | '/_dashboard/risks'
     | '/_dashboard/settings'
@@ -305,6 +328,7 @@ export interface FileRouteTypes {
     | '/_dashboard/admin/ai-usage'
     | '/_dashboard/assessments_/$id'
     | '/_dashboard/gap-analysis/$id'
+    | '/_dashboard/policies_/$id'
     | '/_dashboard/standards/$id'
     | '/_dashboard/vendors_/$id'
     | '/auth/oauth/callback'
@@ -381,6 +405,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/policies': {
+      id: '/_dashboard/policies'
+      path: '/policies'
+      fullPath: '/policies'
+      preLoaderRoute: typeof DashboardPoliciesRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/org': {
@@ -467,6 +498,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardStandardsIdRouteImport
       parentRoute: typeof DashboardStandardsRoute
     }
+    '/_dashboard/policies_/$id': {
+      id: '/_dashboard/policies_/$id'
+      path: '/policies/$id'
+      fullPath: '/policies/$id'
+      preLoaderRoute: typeof DashboardPoliciesIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/gap-analysis/$id': {
       id: '/_dashboard/gap-analysis/$id'
       path: '/$id'
@@ -523,6 +561,7 @@ interface DashboardRouteChildren {
   DashboardGapAnalysisRoute: typeof DashboardGapAnalysisRouteWithChildren
   DashboardIssuesRoute: typeof DashboardIssuesRoute
   DashboardOrgRoute: typeof DashboardOrgRoute
+  DashboardPoliciesRoute: typeof DashboardPoliciesRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
   DashboardRisksRoute: typeof DashboardRisksRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
@@ -530,6 +569,7 @@ interface DashboardRouteChildren {
   DashboardVendorsRoute: typeof DashboardVendorsRoute
   DashboardAdminAiUsageRoute: typeof DashboardAdminAiUsageRoute
   DashboardAssessmentsIdRoute: typeof DashboardAssessmentsIdRoute
+  DashboardPoliciesIdRoute: typeof DashboardPoliciesIdRoute
   DashboardVendorsIdRoute: typeof DashboardVendorsIdRoute
 }
 
@@ -543,6 +583,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardGapAnalysisRoute: DashboardGapAnalysisRouteWithChildren,
   DashboardIssuesRoute: DashboardIssuesRoute,
   DashboardOrgRoute: DashboardOrgRoute,
+  DashboardPoliciesRoute: DashboardPoliciesRoute,
   DashboardProfileRoute: DashboardProfileRoute,
   DashboardRisksRoute: DashboardRisksRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
@@ -550,6 +591,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardVendorsRoute: DashboardVendorsRoute,
   DashboardAdminAiUsageRoute: DashboardAdminAiUsageRoute,
   DashboardAssessmentsIdRoute: DashboardAssessmentsIdRoute,
+  DashboardPoliciesIdRoute: DashboardPoliciesIdRoute,
   DashboardVendorsIdRoute: DashboardVendorsIdRoute,
 }
 
