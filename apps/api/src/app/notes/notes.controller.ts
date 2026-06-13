@@ -37,6 +37,10 @@ import type {
   IssuePatch,
   RiskInput,
   RiskPatch,
+  RiskAssessmentInput,
+  RiskAssessmentPatch,
+  RiskAssessmentItemInput,
+  RiskAssessmentItemPatch,
 } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
 import { StandardsQueueService } from './standards-queue.service';
@@ -492,6 +496,96 @@ export class NotesController {
   deleteRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     return this.notes.deleteRisk(id);
+  }
+
+  // ─── Risk Assessments ────────────────────────────────────────────────────
+
+  @Get('assessments')
+  @ApiOperation({ summary: 'List risk assessments for org' })
+  listAssessments(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listAssessments(orgId);
+  }
+
+  @Post('assessments')
+  @ApiOperation({ summary: 'Create risk assessment' })
+  createAssessment(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: RiskAssessmentInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createAssessment(orgId, userId, body);
+  }
+
+  @Get('assessments/:id')
+  @ApiOperation({ summary: 'Get risk assessment' })
+  async getAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    return a;
+  }
+
+  @Patch('assessments/:id')
+  @ApiOperation({ summary: 'Update risk assessment' })
+  updateAssessment(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: RiskAssessmentPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateAssessment(id, patch);
+  }
+
+  @Delete('assessments/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete risk assessment' })
+  deleteAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deleteAssessment(id);
+  }
+
+  @Get('assessments/:id/items')
+  @ApiOperation({ summary: 'List items for a risk assessment' })
+  listAssessmentItems(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listAssessmentItems(id);
+  }
+
+  @Post('assessments/:id/items')
+  @ApiOperation({ summary: 'Add item to risk assessment' })
+  addAssessmentItem(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') assessmentId: string,
+    @Body() body: RiskAssessmentItemInput,
+  ) {
+    this.uid(req);
+    return this.notes.addAssessmentItem(assessmentId, body);
+  }
+
+  @Patch('assessments/items/:itemId')
+  @ApiOperation({ summary: 'Update risk assessment item' })
+  updateAssessmentItem(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+    @Body() patch: RiskAssessmentItemPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateAssessmentItem(itemId, patch);
+  }
+
+  @Delete('assessments/items/:itemId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete risk assessment item' })
+  deleteAssessmentItem(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+  ) {
+    this.uid(req);
+    return this.notes.deleteAssessmentItem(itemId);
   }
 
   private uid(req: Request & { user?: VerifiedToken }): string {
