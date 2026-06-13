@@ -24,7 +24,8 @@ function makeSupabaseAuth(cfg: ConfigService): AuthStrategy {
     requireEnv(cfg, 'SUPABASE_SERVICE_ROLE_KEY'),
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
-  return new SupabaseAuthStrategy({ client });
+  const siteUrl = cfg.get<string>('CLIENT_ORIGIN');
+  return new SupabaseAuthStrategy({ client, siteUrl });
 }
 
 @Module({
