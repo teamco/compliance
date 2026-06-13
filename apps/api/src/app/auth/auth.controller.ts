@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -50,8 +51,19 @@ export class AuthController {
       },
     },
   })
-  register(@Body() body: { email: string; password: string }) {
-    return this.authClient.signup(body.email, body.password);
+  async register(@Body() body: { email: string; password: string }) {
+    try {
+      return await this.authClient.signup(body.email, body.password);
+    } catch (err) {
+      const msg =
+        (err as { message?: string; code?: string })?.message ??
+        (err as { code?: string })?.code ??
+        '';
+      if (msg === 'email_confirmation_required') {
+        throw new BadRequestException('email_confirmation_required');
+      }
+      throw err;
+    }
   }
 
   @Public()
