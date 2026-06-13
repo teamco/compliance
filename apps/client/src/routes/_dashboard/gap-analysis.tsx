@@ -243,7 +243,7 @@ function GapAnalysisPage() {
                   </option>
                   {completedDocs.map((d) => (
                     <option key={d.id} value={d.id} className="bg-surface text-foreground">
-                      {t('standards.controls', { count: d.controls.length })} ·{' '}
+                      {t('standards.controls', { count: d.controls?.length ?? 0 })} ·{' '}
                       {new Date(d.createdAt).toLocaleDateString()}
                     </option>
                   ))}
