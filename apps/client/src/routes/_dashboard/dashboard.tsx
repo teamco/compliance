@@ -81,7 +81,7 @@ function DashboardHome() {
 
   const totalControls = (docs ?? [])
     .filter((d) => d.status === 'completed')
-    .reduce((sum, d) => sum + d.controls.length, 0);
+    .reduce((sum, d) => sum + (d.controls?.length ?? 0), 0);
   const frameworkCount = (frameworks ?? []).length;
   const greeting =
     hour < 12
