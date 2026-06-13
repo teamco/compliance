@@ -532,11 +532,15 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   async approveException(id: string): Promise<Exception> {
-    return this.updateException(id, { title: this.exceptions.get(id)?.title ?? '' }).then((e) => {
-      const approved = { ...e, status: 'approved' as const, updatedAt: new Date().toISOString() };
-      this.exceptions.set(id, approved);
-      return approved;
-    });
+    const existing = this.exceptions.get(id);
+    if (!existing) throw new Error('exception_not_found');
+    const approved: Exception = {
+      ...existing,
+      status: 'approved',
+      updatedAt: new Date().toISOString(),
+    };
+    this.exceptions.set(id, approved);
+    return approved;
   }
 
   async rejectException(id: string): Promise<Exception> {
@@ -589,8 +593,21 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
     const existing = this.issues.get(id);
-    if (!existing) throw new Error(`issue_not_found: ${id}`);
-    const updated: Issue = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    if (!existing) throw new Error('issue_not_found');
+    const resolvedAt: string | null =
+      'resolvedAt' in patch
+        ? (patch.resolvedAt ?? null)
+        : patch.status === 'resolved'
+          ? new Date().toISOString()
+          : patch.status !== undefined
+            ? null
+            : existing.resolvedAt;
+    const updated: Issue = {
+      ...existing,
+      ...patch,
+      resolvedAt,
+      updatedAt: new Date().toISOString(),
+    };
     this.issues.set(id, updated);
     return updated;
   }
