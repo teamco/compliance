@@ -17,6 +17,7 @@
 ## 🚀 Mandatory Workflow
 
 - **Branch strategy**: `dev` is default. Cut `feature/<name>` or `bug/<name>` from dev. PRs only target dev. Never push directly to main.
+- **Check PR before push**: Run `gh pr list --state open --head $(git branch --show-current)` before every `git push`. If PR is merged/closed — stop, create new branch + PR.
 - **No code without approval**: Propose changes first, wait for go-ahead.
 - **RULE — no crash on missing .env**: MS factories must catch config errors, print a boxed banner with ALL missing vars, and return a Fake strategy in dev. In prod (`NODE_ENV=production`) throw the same banner. The `formatEnvBanner` + `missingEnv` helpers from `@icore/shared` handle this.
 - **Post-coding routine**: `npx prettier --write <files>` → `yarn nx lint <project>` → `yarn nx build <project>` — all green before committing.
