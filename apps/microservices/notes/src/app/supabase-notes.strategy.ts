@@ -32,6 +32,14 @@ import type {
   ReportTemplateInput,
   RetentionPrefsPayload,
   Risk,
+  RiskAssessment,
+  RiskAssessmentInput,
+  RiskAssessmentItem,
+  RiskAssessmentItemInput,
+  RiskAssessmentItemPatch,
+  RiskAssessmentPatch,
+  AssessmentType,
+  AssessmentStatus,
   RiskImpact,
   RiskInput,
   RiskLikelihood,
@@ -1316,6 +1324,196 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       riskScore: row['risk_score'] as number,
       treatment: row['treatment'] as Risk['treatment'],
       assetId: row['asset_id'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Risk Assessments ──────────────────────────────────────────────────────
+
+  async listAssessments(orgId: string): Promise<RiskAssessment[]> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map(this.toAssessment);
+  }
+
+  async createAssessment(
+    orgId: string,
+    userId: string,
+    data: RiskAssessmentInput,
+  ): Promise<RiskAssessment> {
+    const { data: row, error } = await this.db
+      .from('risk_assessments')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        type: data.type,
+        title: data.title,
+        scope: data.scope,
+      })
+      .select()
+      .single();
+    return this.toAssessment(ok(row, error));
+  }
+
+  async getAssessment(id: string): Promise<RiskAssessment | null> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAssessment(data) : null;
+  }
+
+  async updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.scope !== undefined) update['scope'] = patch.scope;
+    if (patch.status !== undefined) update['status'] = patch.status;
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async deleteAssessment(id: string): Promise<void> {
+    const { error } = await this.db.from('risk_assessments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('assessment_id', assessmentId)
+      .order('item_score', { ascending: false });
+    return ok(data, error).map(this.toAssessmentItem);
+  }
+
+  async addAssessmentItem(
+    assessmentId: string,
+    data: RiskAssessmentItemInput,
+  ): Promise<RiskAssessmentItem> {
+    const itemScore = this.computeRiskScore(data.likelihood, data.impact);
+    const { data: row, error } = await this.db
+      .from('risk_assessment_items')
+      .insert({
+        assessment_id: assessmentId,
+        subject: data.subject,
+        description: data.description,
+        likelihood: data.likelihood,
+        impact: data.impact,
+        item_score: itemScore,
+        mitigations: data.mitigations ?? '',
+      })
+      .select()
+      .single();
+    const item = this.toAssessmentItem(ok(row, error));
+    await this.recomputeAssessmentScore(assessmentId);
+    return item;
+  }
+
+  async updateAssessmentItem(
+    id: string,
+    patch: RiskAssessmentItemPatch,
+  ): Promise<RiskAssessmentItem> {
+    const existing = await this.db
+      .from('risk_assessment_items')
+      .select('likelihood, impact, assessment_id')
+      .eq('id', id)
+      .single();
+    if (existing.error) throw new Error(existing.error.message);
+    const newLikelihood = patch.likelihood ?? (existing.data['likelihood'] as RiskLikelihood);
+    const newImpact = patch.impact ?? (existing.data['impact'] as RiskImpact);
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      item_score: this.computeRiskScore(newLikelihood, newImpact),
+    };
+    if (patch.subject !== undefined) update['subject'] = patch.subject;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
+    if (patch.impact !== undefined) update['impact'] = patch.impact;
+    if (patch.mitigations !== undefined) update['mitigations'] = patch.mitigations;
+    const { data: row, error } = await this.db
+      .from('risk_assessment_items')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    const item = this.toAssessmentItem(ok(row, error));
+    await this.recomputeAssessmentScore(existing.data['assessment_id'] as string);
+    return item;
+  }
+
+  async deleteAssessmentItem(id: string): Promise<void> {
+    const { data: existing } = await this.db
+      .from('risk_assessment_items')
+      .select('assessment_id')
+      .eq('id', id)
+      .single();
+    const { error } = await this.db.from('risk_assessment_items').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    if (existing) await this.recomputeAssessmentScore(existing['assessment_id'] as string);
+  }
+
+  private async recomputeAssessmentScore(assessmentId: string): Promise<void> {
+    const { data: items } = await this.db
+      .from('risk_assessment_items')
+      .select('item_score')
+      .eq('assessment_id', assessmentId);
+    const rows = items ?? [];
+    const riskScore =
+      rows.length > 0
+        ? Math.round(
+            rows.reduce(
+              (s: number, r: Record<string, unknown>) => s + (r['item_score'] as number),
+              0,
+            ) / rows.length,
+          )
+        : 0;
+    await this.db
+      .from('risk_assessments')
+      .update({
+        risk_score: riskScore,
+        item_count: rows.length,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', assessmentId);
+  }
+
+  private toAssessment(row: Record<string, unknown>): RiskAssessment {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      type: row['type'] as AssessmentType,
+      title: row['title'] as string,
+      scope: row['scope'] as string,
+      status: row['status'] as AssessmentStatus,
+      riskScore: row['risk_score'] as number,
+      itemCount: row['item_count'] as number,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  private toAssessmentItem(row: Record<string, unknown>): RiskAssessmentItem {
+    return {
+      id: row['id'] as string,
+      assessmentId: row['assessment_id'] as string,
+      subject: row['subject'] as string,
+      description: row['description'] as string,
+      likelihood: row['likelihood'] as RiskAssessmentItem['likelihood'],
+      impact: row['impact'] as RiskAssessmentItem['impact'],
+      itemScore: row['item_score'] as number,
+      mitigations: row['mitigations'] as string,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
