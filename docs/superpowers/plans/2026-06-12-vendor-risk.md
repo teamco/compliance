@@ -13,6 +13,7 @@
 ### Task 1: Scaffold new Nx libs + MS
 
 **Files:**
+
 - Create: `libs/vendor-risk-client/` (generator)
 - Create: `libs/vendor-risk-strategies/crawler/` (generator)
 - Create: `libs/vendor-risk-strategies/scorecard/` (generator)
@@ -54,6 +55,7 @@ yarn add -D @types/cron
 ```bash
 yarn nx build vendor-risk-client
 ```
+
 Expected: `Successfully ran target build`
 
 - [ ] **Step 6: Commit**
@@ -68,6 +70,7 @@ git commit -m "chore: scaffold vendor-risk MS + libs"
 ### Task 2: Shared types + VendorRiskStrategy interface
 
 **Files:**
+
 - Create: `libs/shared/src/strategies/vendor-risk.ts`
 - Modify: `libs/shared/src/strategies/index.ts`
 
@@ -121,7 +124,10 @@ export interface Vendor {
   updatedAt: string;
 }
 
-export type VendorInput = Omit<Vendor, 'id' | 'orgId' | 'lastScannedAt' | 'createdAt' | 'updatedAt'>;
+export type VendorInput = Omit<
+  Vendor,
+  'id' | 'orgId' | 'lastScannedAt' | 'createdAt' | 'updatedAt'
+>;
 
 export interface VendorScan {
   id: string;
@@ -164,6 +170,7 @@ export interface VendorPostureResult {
 - [ ] **Step 2: Export from `libs/shared/src/strategies/index.ts`**
 
 Add at end:
+
 ```typescript
 export * from './vendor-risk';
 ```
@@ -173,6 +180,7 @@ export * from './vendor-risk';
 ```bash
 yarn nx build shared
 ```
+
 Expected: success
 
 - [ ] **Step 4: Commit**
@@ -187,6 +195,7 @@ git commit -m "feat(shared): add VendorRiskStrategy interface + vendor types"
 ### Task 3: AiStrategy extension — analyzeVendorPosture
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/ai.ts`
 - Modify: `libs/shared/src/strategies/fakes/fake-ai.ts`
 - Modify: `libs/ai-strategies/anthropic/src/lib/anthropic-ai.strategy.ts`
@@ -196,11 +205,13 @@ git commit -m "feat(shared): add VendorRiskStrategy interface + vendor types"
 - [ ] **Step 1: Add to AiStrategy interface in `libs/shared/src/strategies/ai.ts`**
 
 Add these imports at top (they come from vendor-risk.ts via same index):
+
 ```typescript
 import type { VendorPostureInput, VendorPostureResult } from './vendor-risk';
 ```
 
 Add to `AiStrategy` interface:
+
 ```typescript
 analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult>;
 ```
@@ -208,11 +219,13 @@ analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult>;
 - [ ] **Step 2: Implement in `libs/shared/src/strategies/fakes/fake-ai.ts`**
 
 Add import:
+
 ```typescript
 import type { VendorPostureInput, VendorPostureResult } from '../vendor-risk';
 ```
 
 Add method to `FakeAiStrategy`:
+
 ```typescript
 async analyzeVendorPosture(_input: VendorPostureInput): Promise<VendorPostureResult> {
   return {
@@ -226,11 +239,13 @@ async analyzeVendorPosture(_input: VendorPostureInput): Promise<VendorPostureRes
 - [ ] **Step 3: Implement in `libs/ai-strategies/anthropic/src/lib/anthropic-ai.strategy.ts`**
 
 Add import:
+
 ```typescript
 import type { VendorPostureInput, VendorPostureResult } from '@icore/shared';
 ```
 
 Add method to `AnthropicAiStrategy`:
+
 ```typescript
 async analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
   const system = [
@@ -267,11 +282,13 @@ async analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResu
 - [ ] **Step 4: Add proxy in `libs/ai-client/src/lib/ai-client.service.ts`**
 
 Add import:
+
 ```typescript
 import type { VendorPostureInput, VendorPostureResult } from '@icore/shared';
 ```
 
 Add method:
+
 ```typescript
 analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
   return firstValueFrom(
@@ -285,11 +302,13 @@ analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
 - [ ] **Step 5: Add handler in `apps/microservices/ai/src/app/ai.controller.ts`**
 
 Add import:
+
 ```typescript
 import type { VendorPostureInput, VendorPostureResult } from '@icore/shared';
 ```
 
 Add handler:
+
 ```typescript
 @MessagePattern('vendor.posture.analyze')
 analyzeVendorPosture(@Payload() payload: VendorPostureInput): Promise<VendorPostureResult> {
@@ -302,6 +321,7 @@ analyzeVendorPosture(@Payload() payload: VendorPostureInput): Promise<VendorPost
 ```bash
 yarn nx build ai-client && yarn nx build ai
 ```
+
 Expected: both succeed
 
 - [ ] **Step 7: Commit**
@@ -316,6 +336,7 @@ git commit -m "feat(ai): add analyzeVendorPosture operation to AiStrategy + Anth
 ### Task 4: FakeVendorRiskStrategy + contract harness
 
 **Files:**
+
 - Create: `libs/shared/src/strategies/fakes/fake-vendor-risk.ts`
 - Create: `libs/shared/src/strategies/__tests__/vendor-risk.contract.unit.test.ts`
 - Modify: `libs/shared/src/strategies/fakes/index.ts`
@@ -333,12 +354,19 @@ import type {
 } from '../vendor-risk';
 
 function makeCategoryResult(score: number): CategoryResult {
-  const grade =
-    score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
+  const grade = score >= 90 ? 'A' : score >= 80 ? 'B' : score >= 70 ? 'C' : score >= 60 ? 'D' : 'F';
   return { score, grade, findingCount: score < 80 ? 1 : 0 };
 }
 
-const CATEGORIES: ScanCategory[] = ['dns', 'email', 'tls', 'web', 'network', 'breach', 'reputation'];
+const CATEGORIES: ScanCategory[] = [
+  'dns',
+  'email',
+  'tls',
+  'web',
+  'network',
+  'breach',
+  'reputation',
+];
 
 export class FakeVendorRiskStrategy implements VendorRiskStrategy {
   async scan(domain: string, _mode: ScanMode): Promise<VendorScanResult> {
@@ -415,6 +443,7 @@ export function runVendorRiskContract(name: string, factory: () => VendorRiskStr
 - [ ] **Step 3: Export from `libs/shared/src/strategies/fakes/index.ts`**
 
 Add:
+
 ```typescript
 export * from './fake-vendor-risk';
 ```
@@ -422,6 +451,7 @@ export * from './fake-vendor-risk';
 - [ ] **Step 4: Export from `libs/shared/src/testing.ts`**
 
 Add:
+
 ```typescript
 export { runVendorRiskContract } from './strategies/__tests__/vendor-risk.contract.unit.test';
 ```
@@ -431,6 +461,7 @@ export { runVendorRiskContract } from './strategies/__tests__/vendor-risk.contra
 ```bash
 yarn nx test shared
 ```
+
 Expected: all pass
 
 - [ ] **Step 6: Commit**
@@ -445,6 +476,7 @@ git commit -m "feat(shared): FakeVendorRiskStrategy + contract harness"
 ### Task 5: OwnCrawlerStrategy
 
 **Files:**
+
 - Create: `libs/vendor-risk-strategies/crawler/src/lib/own-crawler.strategy.ts`
 - Create: `libs/vendor-risk-strategies/crawler/src/lib/__tests__/own-crawler.contract.unit.test.ts`
 - Modify: `libs/vendor-risk-strategies/crawler/src/index.ts`
@@ -502,7 +534,10 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
       this.checkReputation(domain),
     ]);
 
-    function unwrap(r: PromiseSettledResult<{ score: number; findings: ScanFinding[] }>, fallbackScore = 50) {
+    function unwrap(
+      r: PromiseSettledResult<{ score: number; findings: ScanFinding[] }>,
+      fallbackScore = 50,
+    ) {
       return r.status === 'fulfilled' ? r.value : { score: fallbackScore, findings: [] };
     }
 
@@ -517,11 +552,11 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
     const score = Math.round(
       dns_.score * 0.15 +
         email_.score * 0.15 +
-        tls_.score * 0.20 +
+        tls_.score * 0.2 +
         web_.score * 0.15 +
         network_.score * 0.15 +
-        breach_.score * 0.10 +
-        reputation_.score * 0.10,
+        breach_.score * 0.1 +
+        reputation_.score * 0.1,
     );
 
     const findings = [
@@ -642,39 +677,42 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
       const findings: ScanFinding[] = [];
       let score = 100;
 
-      const socket = tls.connect({ host: domain, port: 443, servername: domain, timeout: 5000 }, () => {
-        const cert = socket.getPeerCertificate();
-        const protocol = socket.getProtocol();
-        socket.destroy();
+      const socket = tls.connect(
+        { host: domain, port: 443, servername: domain, timeout: 5000 },
+        () => {
+          const cert = socket.getPeerCertificate();
+          const protocol = socket.getProtocol();
+          socket.destroy();
 
-        if (protocol === 'TLSv1' || protocol === 'TLSv1.1') {
-          findings.push({
-            category: 'tls',
-            severity: 'high',
-            title: `Legacy TLS: ${protocol}`,
-            detail: `Server negotiated ${protocol} which is deprecated.`,
-            remediation: 'Disable TLS 1.0 and 1.1; require TLS 1.2+.',
-          });
-          score -= 40;
-        }
-
-        if (cert && cert.valid_to) {
-          const expiry = new Date(cert.valid_to);
-          const daysLeft = Math.floor((expiry.getTime() - Date.now()) / 86_400_000);
-          if (daysLeft < 30) {
+          if (protocol === 'TLSv1' || protocol === 'TLSv1.1') {
             findings.push({
               category: 'tls',
-              severity: daysLeft < 7 ? 'critical' : 'high',
-              title: `Certificate expires in ${daysLeft} days`,
-              detail: `Certificate for ${domain} expires ${cert.valid_to}.`,
-              remediation: 'Renew the TLS certificate immediately.',
+              severity: 'high',
+              title: `Legacy TLS: ${protocol}`,
+              detail: `Server negotiated ${protocol} which is deprecated.`,
+              remediation: 'Disable TLS 1.0 and 1.1; require TLS 1.2+.',
             });
-            score -= daysLeft < 7 ? 50 : 25;
+            score -= 40;
           }
-        }
 
-        resolve({ score: Math.max(0, score), findings });
-      });
+          if (cert && cert.valid_to) {
+            const expiry = new Date(cert.valid_to);
+            const daysLeft = Math.floor((expiry.getTime() - Date.now()) / 86_400_000);
+            if (daysLeft < 30) {
+              findings.push({
+                category: 'tls',
+                severity: daysLeft < 7 ? 'critical' : 'high',
+                title: `Certificate expires in ${daysLeft} days`,
+                detail: `Certificate for ${domain} expires ${cert.valid_to}.`,
+                remediation: 'Renew the TLS certificate immediately.',
+              });
+              score -= daysLeft < 7 ? 50 : 25;
+            }
+          }
+
+          resolve({ score: Math.max(0, score), findings });
+        },
+      );
 
       socket.on('error', () => {
         findings.push({
@@ -701,10 +739,26 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
 
       const headers = res.headers;
       const checks: Array<{ header: string; title: string; remediation: string }> = [
-        { header: 'strict-transport-security', title: 'Missing HSTS header', remediation: 'Add Strict-Transport-Security with max-age >= 31536000.' },
-        { header: 'x-content-type-options', title: 'Missing X-Content-Type-Options', remediation: 'Add X-Content-Type-Options: nosniff.' },
-        { header: 'x-frame-options', title: 'Missing X-Frame-Options', remediation: 'Add X-Frame-Options: DENY or SAMEORIGIN.' },
-        { header: 'content-security-policy', title: 'Missing Content-Security-Policy', remediation: 'Implement a strict CSP header.' },
+        {
+          header: 'strict-transport-security',
+          title: 'Missing HSTS header',
+          remediation: 'Add Strict-Transport-Security with max-age >= 31536000.',
+        },
+        {
+          header: 'x-content-type-options',
+          title: 'Missing X-Content-Type-Options',
+          remediation: 'Add X-Content-Type-Options: nosniff.',
+        },
+        {
+          header: 'x-frame-options',
+          title: 'Missing X-Frame-Options',
+          remediation: 'Add X-Frame-Options: DENY or SAMEORIGIN.',
+        },
+        {
+          header: 'content-security-policy',
+          title: 'Missing Content-Security-Policy',
+          remediation: 'Implement a strict CSP header.',
+        },
       ];
 
       for (const check of checks) {
@@ -735,11 +789,14 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
     try {
       const ips = await dns.resolve4(domain);
       const ip = ips[0];
-      const res = await this.fetch(`https://api.shodan.io/shodan/host/${ip}?key=${this.opts.shodanApiKey}`, {
-        signal: AbortSignal.timeout(8000),
-      });
+      const res = await this.fetch(
+        `https://api.shodan.io/shodan/host/${ip}?key=${this.opts.shodanApiKey}`,
+        {
+          signal: AbortSignal.timeout(8000),
+        },
+      );
       if (res.ok) {
-        const data = await res.json() as { ports?: number[] };
+        const data = (await res.json()) as { ports?: number[] };
         const riskyPorts = (data.ports ?? []).filter((p) => [21, 23, 3389, 5900, 445].includes(p));
         for (const port of riskyPorts) {
           findings.push({
@@ -773,7 +830,7 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
       });
 
       if (res.status === 200) {
-        const breaches = await res.json() as unknown[];
+        const breaches = (await res.json()) as unknown[];
         if (breaches.length > 0) {
           findings.push({
             category: 'breach',
@@ -792,7 +849,9 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
     return { score: Math.max(0, score), findings };
   }
 
-  private async checkReputation(domain: string): Promise<{ score: number; findings: ScanFinding[] }> {
+  private async checkReputation(
+    domain: string,
+  ): Promise<{ score: number; findings: ScanFinding[] }> {
     if (!this.opts.abuseipdbApiKey) return { score: 70, findings: [] };
 
     const findings: ScanFinding[] = [];
@@ -809,7 +868,7 @@ export class OwnCrawlerStrategy implements VendorRiskStrategy {
         },
       );
       if (res.ok) {
-        const data = await res.json() as { data?: { abuseConfidenceScore?: number } };
+        const data = (await res.json()) as { data?: { abuseConfidenceScore?: number } };
         const abuseScore = data.data?.abuseConfidenceScore ?? 0;
         if (abuseScore > 25) {
           findings.push({
@@ -842,7 +901,9 @@ vi.mock('node:dns/promises', () => ({
   resolve4: vi.fn().mockResolvedValue(['1.2.3.4']),
   resolveMx: vi.fn().mockResolvedValue([{ exchange: 'mail.example.com', priority: 10 }]),
   resolveNs: vi.fn().mockResolvedValue(['ns1.example.com', 'ns2.example.com']),
-  resolveTxt: vi.fn().mockResolvedValue([['v=spf1 include:_spf.example.com ~all'], ['v=DMARC1; p=quarantine']]),
+  resolveTxt: vi
+    .fn()
+    .mockResolvedValue([['v=spf1 include:_spf.example.com ~all'], ['v=DMARC1; p=quarantine']]),
 }));
 
 vi.mock('node:tls', () => ({
@@ -864,7 +925,12 @@ function makeFakeFetch(score: number) {
     status: 200,
     headers: {
       get: (h: string) =>
-        ['strict-transport-security', 'x-content-type-options', 'x-frame-options', 'content-security-policy'].includes(h)
+        [
+          'strict-transport-security',
+          'x-content-type-options',
+          'x-frame-options',
+          'content-security-policy',
+        ].includes(h)
           ? 'present'
           : null,
     },
@@ -872,14 +938,16 @@ function makeFakeFetch(score: number) {
   });
 }
 
-runVendorRiskContract('OwnCrawlerStrategy (mocked I/O)', () =>
-  new OwnCrawlerStrategy({ fetch: makeFakeFetch(85) }),
+runVendorRiskContract(
+  'OwnCrawlerStrategy (mocked I/O)',
+  () => new OwnCrawlerStrategy({ fetch: makeFakeFetch(85) }),
 );
 ```
 
 - [ ] **Step 3: Update `libs/vendor-risk-strategies/crawler/src/index.ts`**
 
 Replace generator content with:
+
 ```typescript
 export * from './lib/own-crawler.strategy';
 ```
@@ -889,6 +957,7 @@ export * from './lib/own-crawler.strategy';
 ```bash
 yarn nx test vendor-risk-crawler
 ```
+
 Expected: all pass
 
 - [ ] **Step 5: Commit**
@@ -903,6 +972,7 @@ git commit -m "feat(vendor-risk): OwnCrawlerStrategy — DNS/email/TLS/web/netwo
 ### Task 6: SecurityScorecardStrategy
 
 **Files:**
+
 - Create: `libs/vendor-risk-strategies/scorecard/src/lib/scorecard.strategy.ts`
 - Create: `libs/vendor-risk-strategies/scorecard/src/lib/__tests__/scorecard.contract.unit.test.ts`
 - Modify: `libs/vendor-risk-strategies/scorecard/src/index.ts`
@@ -950,17 +1020,14 @@ export class SecurityScorecardStrategy implements VendorRiskStrategy {
   }
 
   async scan(domain: string, _mode: ScanMode): Promise<VendorScanResult> {
-    const res = await this.fetch(
-      `https://api.securityscorecard.io/companies/${domain}/factors`,
-      {
-        headers: { Authorization: `Token ${this.opts.apiKey}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
+    const res = await this.fetch(`https://api.securityscorecard.io/companies/${domain}/factors`, {
+      headers: { Authorization: `Token ${this.opts.apiKey}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(15_000),
+    });
 
     if (!res.ok) throw new Error(`SecurityScorecard API ${res.status} for ${domain}`);
 
-    const data = await res.json() as {
+    const data = (await res.json()) as {
       score?: number;
       grade?: string;
       entries?: Array<{ key: string; score: number; findings?: unknown[] }>;
@@ -1026,8 +1093,9 @@ const fakeFetch = vi.fn().mockResolvedValue({
   }),
 });
 
-runVendorRiskContract('SecurityScorecardStrategy (mocked API)', () =>
-  new SecurityScorecardStrategy({ apiKey: 'test-key', fetch: fakeFetch }),
+runVendorRiskContract(
+  'SecurityScorecardStrategy (mocked API)',
+  () => new SecurityScorecardStrategy({ apiKey: 'test-key', fetch: fakeFetch }),
 );
 ```
 
@@ -1042,6 +1110,7 @@ export * from './lib/scorecard.strategy';
 ```bash
 yarn nx test vendor-risk-scorecard
 ```
+
 Expected: all pass
 
 - [ ] **Step 5: Commit**
@@ -1056,6 +1125,7 @@ git commit -m "feat(vendor-risk): SecurityScorecardStrategy"
 ### Task 7: vendor-risk-client lib
 
 **Files:**
+
 - Create: `libs/vendor-risk-client/src/lib/vendor-risk-client.tokens.ts`
 - Create: `libs/vendor-risk-client/src/lib/vendor-risk-client.module.ts`
 - Create: `libs/vendor-risk-client/src/lib/vendor-risk-client.service.ts`
@@ -1064,6 +1134,7 @@ git commit -m "feat(vendor-risk): SecurityScorecardStrategy"
 - [ ] **Step 1: Create tokens file**
 
 `libs/vendor-risk-client/src/lib/vendor-risk-client.tokens.ts`:
+
 ```typescript
 export const VENDOR_RISK_CLIENT = 'VENDOR_RISK_CLIENT';
 ```
@@ -1071,6 +1142,7 @@ export const VENDOR_RISK_CLIENT = 'VENDOR_RISK_CLIENT';
 - [ ] **Step 2: Create module**
 
 `libs/vendor-risk-client/src/lib/vendor-risk-client.module.ts`:
+
 ```typescript
 import { DynamicModule, Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
@@ -1101,16 +1173,12 @@ export class VendorRiskClientModule {
 - [ ] **Step 3: Create service**
 
 `libs/vendor-risk-client/src/lib/vendor-risk-client.service.ts`:
+
 ```typescript
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom, timeout } from 'rxjs';
-import type {
-  Vendor,
-  VendorInput,
-  VendorScan,
-  VendorAiAnalysis,
-} from '@icore/shared';
+import type { Vendor, VendorInput, VendorScan, VendorAiAnalysis } from '@icore/shared';
 import { VENDOR_RISK_CLIENT } from './vendor-risk-client.tokens';
 
 const SCAN_TIMEOUT_MS = 120_000;
@@ -1122,25 +1190,33 @@ export class VendorRiskClientService {
 
   listVendors(orgId: string): Promise<Vendor[]> {
     return firstValueFrom(
-      this.client.send<Vendor[]>('vendor.list', { orgId }).pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
+      this.client
+        .send<Vendor[]>('vendor.list', { orgId })
+        .pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
     );
   }
 
   getVendor(id: string): Promise<Vendor | null> {
     return firstValueFrom(
-      this.client.send<Vendor | null>('vendor.get', { id }).pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
+      this.client
+        .send<Vendor | null>('vendor.get', { id })
+        .pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
     );
   }
 
   createVendor(orgId: string, input: VendorInput): Promise<Vendor> {
     return firstValueFrom(
-      this.client.send<Vendor>('vendor.create', { orgId, input }).pipe(timeout({ each: SCAN_TIMEOUT_MS })),
+      this.client
+        .send<Vendor>('vendor.create', { orgId, input })
+        .pipe(timeout({ each: SCAN_TIMEOUT_MS })),
     );
   }
 
   updateVendor(id: string, patch: Partial<VendorInput>): Promise<Vendor> {
     return firstValueFrom(
-      this.client.send<Vendor>('vendor.update', { id, patch }).pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
+      this.client
+        .send<Vendor>('vendor.update', { id, patch })
+        .pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
     );
   }
 
@@ -1152,13 +1228,17 @@ export class VendorRiskClientService {
 
   triggerScan(id: string, mode: 'baseline' | 'deep'): Promise<VendorScan> {
     return firstValueFrom(
-      this.client.send<VendorScan>('vendor.scan', { id, mode }).pipe(timeout({ each: SCAN_TIMEOUT_MS })),
+      this.client
+        .send<VendorScan>('vendor.scan', { id, mode })
+        .pipe(timeout({ each: SCAN_TIMEOUT_MS })),
     );
   }
 
   listScans(vendorId: string): Promise<VendorScan[]> {
     return firstValueFrom(
-      this.client.send<VendorScan[]>('vendor.scans.list', { vendorId }).pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
+      this.client
+        .send<VendorScan[]>('vendor.scans.list', { vendorId })
+        .pipe(timeout({ each: DEFAULT_TIMEOUT_MS })),
     );
   }
 
@@ -1185,6 +1265,7 @@ export * from './lib/vendor-risk-client.service';
 ```bash
 yarn nx build vendor-risk-client
 ```
+
 Expected: success
 
 - [ ] **Step 6: Commit**
@@ -1199,6 +1280,7 @@ git commit -m "feat(vendor-risk-client): TCP proxy lib for vendor-risk MS"
 ### Task 8: Supabase DB migration
 
 **Files:**
+
 - Create: `supabase/migrations/<timestamp>_vendor_risk.sql`
 
 - [ ] **Step 1: Get timestamp**
@@ -1210,6 +1292,7 @@ date +%Y%m%d%H%M%S
 - [ ] **Step 2: Create migration file** (use timestamp from Step 1 as prefix)
 
 `supabase/migrations/<timestamp>_vendor_risk.sql`:
+
 ```sql
 -- vendors
 create table public.vendors (
@@ -1285,6 +1368,7 @@ git commit -m "feat(db): vendor_risk tables — vendors, vendor_scans, vendor_ai
 ### Task 9: vendor-risk MS — app module + hybrid strategy + controller
 
 **Files:**
+
 - Modify: `apps/microservices/vendor-risk/src/main.ts`
 - Create: `apps/microservices/vendor-risk/src/app/hybrid-vendor-risk.strategy.ts`
 - Create: `apps/microservices/vendor-risk/src/app/vendor-risk.service.ts`
@@ -1303,7 +1387,8 @@ import { AppModule } from './app/app.module';
 
 void bootstrapMicroservice(
   'VENDOR_RISK',
-  () => NestFactory.createMicroservice<MicroserviceOptions>(AppModule, buildTransportMS('VENDOR_RISK')),
+  () =>
+    NestFactory.createMicroservice<MicroserviceOptions>(AppModule, buildTransportMS('VENDOR_RISK')),
   new Logger('VendorRisk-Bootstrap'),
 );
 ```
@@ -1377,7 +1462,11 @@ export class VendorRiskService {
   ) {}
 
   async listVendors(orgId: string): Promise<Vendor[]> {
-    const { data, error } = await this.db.from('vendors').select('*').eq('org_id', orgId).order('created_at', { ascending: false });
+    const { data, error } = await this.db
+      .from('vendors')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []).map(this.mapVendor);
   }
@@ -1391,7 +1480,15 @@ export class VendorRiskService {
   async createVendor(orgId: string, input: VendorInput): Promise<Vendor> {
     const { data, error } = await this.db
       .from('vendors')
-      .insert({ org_id: orgId, name: input.name, domain: input.domain, tags: input.tags, tier: input.tier, rescan_interval_days: input.rescanIntervalDays, alert_threshold: input.alertThreshold })
+      .insert({
+        org_id: orgId,
+        name: input.name,
+        domain: input.domain,
+        tags: input.tags,
+        tier: input.tier,
+        rescan_interval_days: input.rescanIntervalDays,
+        alert_threshold: input.alertThreshold,
+      })
       .select('*')
       .single();
     if (error) throw error;
@@ -1408,11 +1505,17 @@ export class VendorRiskService {
     if (patch.domain !== undefined) update['domain'] = patch.domain;
     if (patch.tags !== undefined) update['tags'] = patch.tags;
     if (patch.tier !== undefined) update['tier'] = patch.tier;
-    if (patch.rescanIntervalDays !== undefined) update['rescan_interval_days'] = patch.rescanIntervalDays;
+    if (patch.rescanIntervalDays !== undefined)
+      update['rescan_interval_days'] = patch.rescanIntervalDays;
     if (patch.alertThreshold !== undefined) update['alert_threshold'] = patch.alertThreshold;
     update['updated_at'] = new Date().toISOString();
 
-    const { data, error } = await this.db.from('vendors').update(update).eq('id', id).select('*').single();
+    const { data, error } = await this.db
+      .from('vendors')
+      .update(update)
+      .eq('id', id)
+      .select('*')
+      .single();
     if (error) throw error;
     return this.mapVendor(data);
   }
@@ -1445,7 +1548,10 @@ export class VendorRiskService {
       .single();
     if (scanErr) throw scanErr;
 
-    await this.db.from('vendors').update({ last_scanned_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', vendorId);
+    await this.db
+      .from('vendors')
+      .update({ last_scanned_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+      .eq('id', vendorId);
 
     const scan = this.mapScan(scanRow);
 
@@ -1494,7 +1600,11 @@ export class VendorRiskService {
   }
 
   async getScan(scanId: string): Promise<VendorScan & { analysis: VendorAiAnalysis | null }> {
-    const { data: scan, error } = await this.db.from('vendor_scans').select('*').eq('id', scanId).maybeSingle();
+    const { data: scan, error } = await this.db
+      .from('vendor_scans')
+      .select('*')
+      .eq('id', scanId)
+      .maybeSingle();
     if (error) throw error;
     if (!scan) throw new NotFoundException(`Scan ${scanId} not found`);
 
@@ -1537,7 +1647,11 @@ export class VendorRiskService {
     });
   }
 
-  private async checkAndFireAlert(vendor: Vendor, scoreBefore: number, scan: VendorScan): Promise<void> {
+  private async checkAndFireAlert(
+    vendor: Vendor,
+    scoreBefore: number,
+    scan: VendorScan,
+  ): Promise<void> {
     const drop = scoreBefore - scan.score;
     if (drop < vendor.alertThreshold) return;
 
@@ -1650,7 +1764,9 @@ export class VendorRiskController {
   }
 
   @MessagePattern('vendor.scans.get')
-  getScan(@Payload() payload: { scanId: string }): Promise<VendorScan & { analysis: VendorAiAnalysis | null }> {
+  getScan(
+    @Payload() payload: { scanId: string },
+  ): Promise<VendorScan & { analysis: VendorAiAnalysis | null }> {
     return this.svc.getScan(payload.scanId);
   }
 }
@@ -1721,10 +1837,18 @@ const ENV_PATH = 'apps/microservices/vendor-risk/.env';
       useFactory: (cfg: ConfigService): VendorRiskStrategy => {
         const logger = new Logger('VendorRiskStrategy');
         const provider = cfg.get<string>('VENDOR_RISK_PROVIDER')?.trim() ?? 'hybrid';
-        const missing = missingEnv((k) => cfg.get<string>(k), ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']);
+        const missing = missingEnv(
+          (k) => cfg.get<string>(k),
+          ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'],
+        );
 
         if (missing.length > 0) {
-          const banner = formatEnvBanner({ service: 'vendor-risk MS', provider, missing, envPath: ENV_PATH });
+          const banner = formatEnvBanner({
+            service: 'vendor-risk MS',
+            provider,
+            missing,
+            envPath: ENV_PATH,
+          });
           if (process.env['NODE_ENV'] === 'production') throw new Error(banner);
           logger.warn(banner);
           return new FakeVendorRiskStrategy();
@@ -1737,7 +1861,9 @@ const ENV_PATH = 'apps/microservices/vendor-risk/.env';
         });
 
         const scorecardKey = cfg.get<string>('SCORECARD_API_KEY');
-        const scorecard = scorecardKey ? new SecurityScorecardStrategy({ apiKey: scorecardKey }) : null;
+        const scorecard = scorecardKey
+          ? new SecurityScorecardStrategy({ apiKey: scorecardKey })
+          : null;
 
         return new HybridVendorRiskStrategy(crawler, scorecard);
       },
@@ -1755,8 +1881,11 @@ const ENV_PATH = 'apps/microservices/vendor-risk/.env';
     },
     {
       provide: VendorRiskService,
-      useFactory: (db: ReturnType<typeof createClient>, strategy: VendorRiskStrategy, ai: import('@icore/ai-client').AiClientService) =>
-        new VendorRiskService(db, strategy, ai),
+      useFactory: (
+        db: ReturnType<typeof createClient>,
+        strategy: VendorRiskStrategy,
+        ai: import('@icore/ai-client').AiClientService,
+      ) => new VendorRiskService(db, strategy, ai),
       inject: ['SupabaseClient', 'VendorRiskStrategy', import('@icore/ai-client').AiClientService],
     },
     VendorRiskSchedulerService,
@@ -1770,6 +1899,7 @@ export class AppModule {}
 - [ ] **Step 7: Create `.env.example`**
 
 `apps/microservices/vendor-risk/.env.example`:
+
 ```
 VENDOR_RISK_PROVIDER=hybrid
 VENDOR_RISK_TRANSPORT=tcp
@@ -1791,6 +1921,7 @@ AI_PORT=4005
 ```bash
 yarn nx build vendor-risk
 ```
+
 Expected: success
 
 - [ ] **Step 9: Commit**
@@ -1805,10 +1936,11 @@ git commit -m "feat(vendor-risk): MS with HybridStrategy, VendorRiskService, con
 ### Task 10: API Gateway — VendorsModule + VendorsController
 
 **Files:**
+
 - Create: `apps/api/src/app/vendors/vendors.module.ts`
 - Create: `apps/api/src/app/vendors/vendors.controller.ts`
 - Modify: `apps/api/src/app/app.module.ts`
-- Modify: `apps/api/.env` (add VENDOR_RISK_* vars)
+- Modify: `apps/api/.env` (add VENDOR*RISK*\* vars)
 
 - [ ] **Step 1: Create `apps/api/src/app/vendors/vendors.module.ts`**
 
@@ -1871,10 +2003,7 @@ export class VendorsController {
 
   @Post()
   @ApiOperation({ summary: 'Add vendor (triggers immediate baseline scan)' })
-  create(
-    @Body() body: VendorInput,
-    @Req() req: Request & { user?: VerifiedToken },
-  ) {
+  create(@Body() body: VendorInput, @Req() req: Request & { user?: VerifiedToken }) {
     return this.vendorRisk.createVendor(this.orgId(req), body);
   }
 
@@ -1928,11 +2057,13 @@ export class VendorsController {
 - [ ] **Step 3: Add VendorsModule to `apps/api/src/app/app.module.ts`**
 
 Add import:
+
 ```typescript
 import { VendorsModule } from './vendors/vendors.module';
 ```
 
 Add to `imports` array:
+
 ```typescript
 VendorsModule,
 ```
@@ -1950,6 +2081,7 @@ VENDOR_RISK_PORT=4006
 ```bash
 yarn nx build api
 ```
+
 Expected: success
 
 - [ ] **Step 6: Commit**
@@ -1964,6 +2096,7 @@ git commit -m "feat(api): VendorsModule + VendorsController — /api/vendors RES
 ### Task 11: Client queries
 
 **Files:**
+
 - Create: `apps/client/src/queries/vendors.ts`
 
 - [ ] **Step 1: Create `apps/client/src/queries/vendors.ts`**
@@ -1981,7 +2114,15 @@ import type {
   ScanFinding,
 } from '@icore/shared';
 
-export type { Vendor, VendorInput, VendorScan, VendorAiAnalysis, CategoryResult, ScanCategory, ScanFinding };
+export type {
+  Vendor,
+  VendorInput,
+  VendorScan,
+  VendorAiAnalysis,
+  CategoryResult,
+  ScanCategory,
+  ScanFinding,
+};
 
 export interface VendorScanDetail extends VendorScan {
   analysis: VendorAiAnalysis | null;
@@ -2059,7 +2200,9 @@ export function useTriggerScan(vendorId: string) {
   const qc = useQueryClient();
   return useMutation<VendorScan, Error, 'baseline' | 'deep'>({
     mutationFn: (mode) =>
-      api<VendorScan>(`/vendors/${vendorId}/scan${mode === 'deep' ? '/deep' : ''}`, { method: 'POST' }),
+      api<VendorScan>(`/vendors/${vendorId}/scan${mode === 'deep' ? '/deep' : ''}`, {
+        method: 'POST',
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['vendors', vendorId] });
       qc.invalidateQueries({ queryKey: ['vendors', vendorId, 'scans'] });
@@ -2080,6 +2223,7 @@ git commit -m "feat(client): vendor TanStack Query hooks"
 ### Task 12: Client /vendors list page
 
 **Files:**
+
 - Create: `apps/client/src/routes/_dashboard/vendors.tsx`
 
 - [ ] **Step 1: Create `apps/client/src/routes/_dashboard/vendors.tsx`**
@@ -2263,6 +2407,7 @@ git commit -m "feat(client): /vendors list page"
 ### Task 13: Client /vendors/:id detail page
 
 **Files:**
+
 - Create: `apps/client/src/routes/_dashboard/vendors.$id.tsx`
 
 - [ ] **Step 1: Create `apps/client/src/routes/_dashboard/vendors.$id.tsx`**
@@ -2542,6 +2687,7 @@ git commit -m "feat(client): /vendors/:id detail page — score gauge, breakdown
 ### Task 14: Navigation + i18n
 
 **Files:**
+
 - Modify: `apps/client/src/components/layout/LayoutSider.tsx`
 - Modify: `apps/client/src/components/layout/LayoutHeader.tsx`
 - Modify: `libs/template-shared/src/lib/i18n/locales/en.ts`
@@ -2552,12 +2698,14 @@ git commit -m "feat(client): /vendors/:id detail page — score gauge, breakdown
 - [ ] **Step 1: Update `LayoutSider.tsx` — add NavKey + nav item**
 
 In the `NavKey` type union, add:
+
 ```typescript
 | 'nav.vendors'
 | 'nav.sectionRisk'
 ```
 
 In the `NAV` array, after `sectionCompliance`, add a new section:
+
 ```typescript
 {
   titleKey: 'nav.sectionRisk',
@@ -2572,6 +2720,7 @@ Also add `Shield` to the existing lucide import if not already there.
 - [ ] **Step 2: Update `LayoutHeader.tsx`**
 
 In the active-route prefix array, add:
+
 ```typescript
 { prefix: '/vendors', key: 'nav.vendors' },
 ```
@@ -2579,12 +2728,14 @@ In the active-route prefix array, add:
 - [ ] **Step 3: Add i18n keys to `en.ts`**
 
 In the `nav` object, add:
+
 ```typescript
 vendors: 'Vendor Risk',
 sectionRisk: 'Risk',
 ```
 
 Add a top-level `vendors` key:
+
 ```typescript
 vendors: {
   title: 'Vendor Risk',
@@ -2703,6 +2854,7 @@ vendors: {
 ```bash
 yarn nx build client
 ```
+
 Expected: success
 
 - [ ] **Step 8: Commit**
@@ -2721,6 +2873,7 @@ git commit -m "feat(client): add vendors nav item + i18n keys (en/es/he/ru)"
 ```bash
 yarn nx run-many -t lint -p shared ai ai-client vendor-risk-client vendor-risk-crawler vendor-risk-scorecard vendor-risk api client template-shared
 ```
+
 Fix any lint errors before proceeding.
 
 - [ ] **Step 2: Build all projects**
@@ -2728,6 +2881,7 @@ Fix any lint errors before proceeding.
 ```bash
 yarn nx run-many -t build -p shared ai-client vendor-risk-client vendor-risk-crawler vendor-risk-scorecard vendor-risk api client
 ```
+
 Expected: all succeed.
 
 - [ ] **Step 3: Run all tests**
@@ -2735,6 +2889,7 @@ Expected: all succeed.
 ```bash
 yarn nx run-many -t test -p shared vendor-risk-crawler vendor-risk-scorecard ai-strategies-anthropic
 ```
+
 Expected: all pass.
 
 - [ ] **Step 4: Format all changed files**
