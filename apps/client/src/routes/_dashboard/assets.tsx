@@ -148,7 +148,7 @@ function AssetsPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>{t('assets.type')}</Label>
+                <Label>{t('assets.typeLabel')}</Label>
                 <select
                   value={form.type}
                   onChange={(e) =>
