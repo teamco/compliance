@@ -21,6 +21,7 @@ import {
   Server,
   AlertTriangle,
   ClipboardList,
+  FileText,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -48,7 +49,8 @@ type NavKey =
   | 'nav.sectionAdmin'
   | 'nav.assets'
   | 'nav.risks'
-  | 'nav.assessments';
+  | 'nav.assessments'
+  | 'nav.policies';
 
 interface NavItem {
   labelKey: NavKey;
@@ -81,6 +83,7 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
       { labelKey: 'nav.exceptions', to: '/exceptions', icon: ShieldAlert },
       { labelKey: 'nav.issues', to: '/issues', icon: Bug },
+      { labelKey: 'nav.policies', to: '/policies', icon: FileText },
     ],
   },
   {

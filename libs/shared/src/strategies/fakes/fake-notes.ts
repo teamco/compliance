@@ -47,6 +47,12 @@ import type {
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  Policy,
+  PolicyInput,
+  PolicyPatch,
+  PolicyTemplate,
+  PolicyControl,
+  PolicyControlInput,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -854,5 +860,108 @@ export class FakeNotesStrategy implements NotesStrategy {
       itemCount: items.length,
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  // ─── Policies ────────────────────────────────────────────────────────────
+  private policies: Policy[] = [];
+  private policyTemplates: PolicyTemplate[] = [
+    {
+      id: 'tmpl-1',
+      frameworkId: 'fw-soc2',
+      title: 'SOC 2 Policy Template',
+      content: '# SOC 2 Policy\n\nThis policy covers SOC 2 Type II requirements.',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  private policyControls: PolicyControl[] = [];
+
+  async listPolicies(orgId: string): Promise<Policy[]> {
+    return this.policies.filter((p) => p.orgId === orgId);
+  }
+
+  async createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy> {
+    const policy: Policy = {
+      id: crypto.randomUUID(),
+      orgId,
+      userId,
+      frameworkId: data.frameworkId,
+      title: data.title,
+      content: data.content,
+      status: 'draft',
+      version: 1,
+      templateId: data.templateId ?? null,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.policies.push(policy);
+    return policy;
+  }
+
+  async getPolicy(id: string): Promise<Policy | null> {
+    return this.policies.find((p) => p.id === id) ?? null;
+  }
+
+  async updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
+    const idx = this.policies.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error('policy_not_found');
+    const updated = { ...this.policies[idx], ...patch, updatedAt: new Date().toISOString() };
+    if (patch.content !== undefined) updated.version = this.policies[idx]!.version + 1;
+    this.policies[idx] = updated as Policy;
+    return this.policies[idx]!;
+  }
+
+  async deletePolicy(id: string): Promise<void> {
+    this.policyControls = this.policyControls.filter((c) => c.policyId !== id);
+    this.policies = this.policies.filter((p) => p.id !== id);
+  }
+
+  async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
+    const tmpl = this.policyTemplates.find((t) => t.id === templateId);
+    if (!tmpl) throw new Error('template_not_found');
+    return this.createPolicy(orgId, userId, {
+      frameworkId: tmpl.frameworkId,
+      title: tmpl.title,
+      content: tmpl.content,
+      templateId: tmpl.id,
+    });
+  }
+
+  async listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]> {
+    if (frameworkId) return this.policyTemplates.filter((t) => t.frameworkId === frameworkId);
+    return [...this.policyTemplates];
+  }
+
+  async listPolicyControls(policyId: string): Promise<PolicyControl[]> {
+    return this.policyControls.filter((c) => c.policyId === policyId);
+  }
+
+  async addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl> {
+    const existing = this.policyControls.find(
+      (c) =>
+        c.policyId === policyId &&
+        c.controlCode === data.controlCode &&
+        c.frameworkId === data.frameworkId,
+    );
+    if (existing) return existing;
+    const pc: PolicyControl = {
+      id: crypto.randomUUID(),
+      policyId,
+      controlCode: data.controlCode,
+      frameworkId: data.frameworkId,
+      createdAt: new Date().toISOString(),
+    };
+    this.policyControls.push(pc);
+    return pc;
+  }
+
+  async removePolicyControl(id: string): Promise<void> {
+    this.policyControls = this.policyControls.filter((c) => c.id !== id);
+  }
+
+  async listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+    const policyIds = this.policyControls
+      .filter((c) => c.controlCode === controlCode && c.frameworkId === frameworkId)
+      .map((c) => c.policyId);
+    return this.policies.filter((p) => policyIds.includes(p.id));
   }
 }

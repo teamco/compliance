@@ -76,6 +76,7 @@ export const es = {
     assets: 'Catálogo de activos',
     risks: 'Catálogo de riesgos',
     assessments: 'Evaluaciones de riesgo',
+    policies: 'Políticas',
   },
   dashboard: {
     greetingMorning: 'Buenos días',
@@ -583,6 +584,32 @@ export const es = {
     mitigationsPlaceholder: 'Controles compensatorios o correcciones planeadas',
     backToList: 'Volver a evaluaciones',
     notFound: 'Evaluación no encontrada',
+  },
+  policies: {
+    subtitle: 'Documentos de política por framework — borrador, aprobar y vincular a controles',
+    newPolicy: 'Nueva política',
+    newDescription: 'Crear una política desde una plantilla de framework o desde cero',
+    empty: 'Sin políticas',
+    framework: 'Framework',
+    title: 'Título',
+    titlePlaceholder: 'ej. Política de control de acceso',
+    selectTemplate: 'Desde plantilla',
+    chooseTemplate: 'Elige una plantilla…',
+    mode: {
+      template: 'Desde plantilla',
+      scratch: 'Desde cero',
+    },
+    status: {
+      draft: 'Borrador',
+      approved: 'Aprobado',
+    },
+    backToList: 'Volver a políticas',
+    notFound: 'Política no encontrada',
+    linkedControls: 'Controles vinculados',
+    linkControl: 'Vincular control',
+    link: 'Vincular',
+    linkControlDescription:
+      'Asociar un código de control del framework a este documento de política',
   },
   error: {
     accessDenied: 'Acceso denegado',
