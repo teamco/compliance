@@ -16,6 +16,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as DashboardVendorsRouteImport } from './routes/_dashboard/vendors'
 import { Route as DashboardStandardsRouteImport } from './routes/_dashboard/standards'
 import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
+import { Route as DashboardRisksRouteImport } from './routes/_dashboard/risks'
 import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
 import { Route as DashboardOrgRouteImport } from './routes/_dashboard/org'
 import { Route as DashboardIssuesRouteImport } from './routes/_dashboard/issues'
@@ -24,6 +25,7 @@ import { Route as DashboardFrameworksRouteImport } from './routes/_dashboard/fra
 import { Route as DashboardExceptionsRouteImport } from './routes/_dashboard/exceptions'
 import { Route as DashboardDashboardRouteImport } from './routes/_dashboard/dashboard'
 import { Route as DashboardControlsRouteImport } from './routes/_dashboard/controls'
+import { Route as DashboardAssetsRouteImport } from './routes/_dashboard/assets'
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
 import { Route as DashboardVendorsIdRouteImport } from './routes/_dashboard/vendors_.$id'
 import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
@@ -62,6 +64,11 @@ const DashboardStandardsRoute = DashboardStandardsRouteImport.update({
 const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardRisksRoute = DashboardRisksRouteImport.update({
+  id: '/risks',
+  path: '/risks',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardProfileRoute = DashboardProfileRouteImport.update({
@@ -104,6 +111,11 @@ const DashboardControlsRoute = DashboardControlsRouteImport.update({
   path: '/controls',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAssetsRoute = DashboardAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const AuthOauthCallbackRoute = AuthOauthCallbackRouteImport.update({
   id: '/auth/oauth/callback',
   path: '/auth/oauth/callback',
@@ -133,6 +145,7 @@ const DashboardAdminAiUsageRoute = DashboardAdminAiUsageRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assets': typeof DashboardAssetsRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
   '/exceptions': typeof DashboardExceptionsRoute
@@ -141,6 +154,7 @@ export interface FileRoutesByFullPath {
   '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
   '/profile': typeof DashboardProfileRoute
+  '/risks': typeof DashboardRisksRoute
   '/settings': typeof DashboardSettingsRoute
   '/standards': typeof DashboardStandardsRouteWithChildren
   '/vendors': typeof DashboardVendorsRoute
@@ -154,6 +168,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assets': typeof DashboardAssetsRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
   '/exceptions': typeof DashboardExceptionsRoute
@@ -162,6 +177,7 @@ export interface FileRoutesByTo {
   '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
   '/profile': typeof DashboardProfileRoute
+  '/risks': typeof DashboardRisksRoute
   '/settings': typeof DashboardSettingsRoute
   '/standards': typeof DashboardStandardsRouteWithChildren
   '/vendors': typeof DashboardVendorsRoute
@@ -177,6 +193,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/_dashboard/assets': typeof DashboardAssetsRoute
   '/_dashboard/controls': typeof DashboardControlsRoute
   '/_dashboard/dashboard': typeof DashboardDashboardRoute
   '/_dashboard/exceptions': typeof DashboardExceptionsRoute
@@ -185,6 +202,7 @@ export interface FileRoutesById {
   '/_dashboard/issues': typeof DashboardIssuesRoute
   '/_dashboard/org': typeof DashboardOrgRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
+  '/_dashboard/risks': typeof DashboardRisksRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/standards': typeof DashboardStandardsRouteWithChildren
   '/_dashboard/vendors': typeof DashboardVendorsRoute
@@ -200,6 +218,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/assets'
     | '/controls'
     | '/dashboard'
     | '/exceptions'
@@ -208,6 +227,7 @@ export interface FileRouteTypes {
     | '/issues'
     | '/org'
     | '/profile'
+    | '/risks'
     | '/settings'
     | '/standards'
     | '/vendors'
@@ -221,6 +241,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/assets'
     | '/controls'
     | '/dashboard'
     | '/exceptions'
@@ -229,6 +250,7 @@ export interface FileRouteTypes {
     | '/issues'
     | '/org'
     | '/profile'
+    | '/risks'
     | '/settings'
     | '/standards'
     | '/vendors'
@@ -243,6 +265,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_dashboard'
     | '/login'
+    | '/_dashboard/assets'
     | '/_dashboard/controls'
     | '/_dashboard/dashboard'
     | '/_dashboard/exceptions'
@@ -251,6 +274,7 @@ export interface FileRouteTypes {
     | '/_dashboard/issues'
     | '/_dashboard/org'
     | '/_dashboard/profile'
+    | '/_dashboard/risks'
     | '/_dashboard/settings'
     | '/_dashboard/standards'
     | '/_dashboard/vendors'
@@ -321,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardSettingsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/risks': {
+      id: '/_dashboard/risks'
+      path: '/risks'
+      fullPath: '/risks'
+      preLoaderRoute: typeof DashboardRisksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/profile': {
       id: '/_dashboard/profile'
       path: '/profile'
@@ -375,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/controls'
       fullPath: '/controls'
       preLoaderRoute: typeof DashboardControlsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/assets': {
+      id: '/_dashboard/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof DashboardAssetsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/auth/oauth/callback': {
@@ -438,6 +476,7 @@ const DashboardStandardsRouteWithChildren =
   DashboardStandardsRoute._addFileChildren(DashboardStandardsRouteChildren)
 
 interface DashboardRouteChildren {
+  DashboardAssetsRoute: typeof DashboardAssetsRoute
   DashboardControlsRoute: typeof DashboardControlsRoute
   DashboardDashboardRoute: typeof DashboardDashboardRoute
   DashboardExceptionsRoute: typeof DashboardExceptionsRoute
@@ -446,6 +485,7 @@ interface DashboardRouteChildren {
   DashboardIssuesRoute: typeof DashboardIssuesRoute
   DashboardOrgRoute: typeof DashboardOrgRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardRisksRoute: typeof DashboardRisksRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardStandardsRoute: typeof DashboardStandardsRouteWithChildren
   DashboardVendorsRoute: typeof DashboardVendorsRoute
@@ -454,6 +494,7 @@ interface DashboardRouteChildren {
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAssetsRoute: DashboardAssetsRoute,
   DashboardControlsRoute: DashboardControlsRoute,
   DashboardDashboardRoute: DashboardDashboardRoute,
   DashboardExceptionsRoute: DashboardExceptionsRoute,
@@ -462,6 +503,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardIssuesRoute: DashboardIssuesRoute,
   DashboardOrgRoute: DashboardOrgRoute,
   DashboardProfileRoute: DashboardProfileRoute,
+  DashboardRisksRoute: DashboardRisksRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardStandardsRoute: DashboardStandardsRouteWithChildren,
   DashboardVendorsRoute: DashboardVendorsRoute,
