@@ -26,10 +26,12 @@ import { Route as DashboardExceptionsRouteImport } from './routes/_dashboard/exc
 import { Route as DashboardDashboardRouteImport } from './routes/_dashboard/dashboard'
 import { Route as DashboardControlsRouteImport } from './routes/_dashboard/controls'
 import { Route as DashboardAssetsRouteImport } from './routes/_dashboard/assets'
+import { Route as DashboardAssessmentsRouteImport } from './routes/_dashboard/assessments'
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
 import { Route as DashboardVendorsIdRouteImport } from './routes/_dashboard/vendors_.$id'
 import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
 import { Route as DashboardGapAnalysisIdRouteImport } from './routes/_dashboard/gap-analysis.$id'
+import { Route as DashboardAssessmentsIdRouteImport } from './routes/_dashboard/assessments_.$id'
 import { Route as DashboardAdminAiUsageRouteImport } from './routes/_dashboard/admin.ai-usage'
 
 const LoginRoute = LoginRouteImport.update({
@@ -116,6 +118,11 @@ const DashboardAssetsRoute = DashboardAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAssessmentsRoute = DashboardAssessmentsRouteImport.update({
+  id: '/assessments',
+  path: '/assessments',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const AuthOauthCallbackRoute = AuthOauthCallbackRouteImport.update({
   id: '/auth/oauth/callback',
   path: '/auth/oauth/callback',
@@ -136,6 +143,11 @@ const DashboardGapAnalysisIdRoute = DashboardGapAnalysisIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => DashboardGapAnalysisRoute,
 } as any)
+const DashboardAssessmentsIdRoute = DashboardAssessmentsIdRouteImport.update({
+  id: '/assessments_/$id',
+  path: '/assessments/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardAdminAiUsageRoute = DashboardAdminAiUsageRouteImport.update({
   id: '/admin/ai-usage',
   path: '/admin/ai-usage',
@@ -145,6 +157,7 @@ const DashboardAdminAiUsageRoute = DashboardAdminAiUsageRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assessments': typeof DashboardAssessmentsRoute
   '/assets': typeof DashboardAssetsRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
@@ -160,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/vendors': typeof DashboardVendorsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/assessments/$id': typeof DashboardAssessmentsIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/vendors/$id': typeof DashboardVendorsIdRoute
@@ -168,6 +182,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assessments': typeof DashboardAssessmentsRoute
   '/assets': typeof DashboardAssetsRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
@@ -183,6 +198,7 @@ export interface FileRoutesByTo {
   '/vendors': typeof DashboardVendorsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/assessments/$id': typeof DashboardAssessmentsIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/vendors/$id': typeof DashboardVendorsIdRoute
@@ -193,6 +209,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/_dashboard/assessments': typeof DashboardAssessmentsRoute
   '/_dashboard/assets': typeof DashboardAssetsRoute
   '/_dashboard/controls': typeof DashboardControlsRoute
   '/_dashboard/dashboard': typeof DashboardDashboardRoute
@@ -208,6 +225,7 @@ export interface FileRoutesById {
   '/_dashboard/vendors': typeof DashboardVendorsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_dashboard/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/_dashboard/assessments_/$id': typeof DashboardAssessmentsIdRoute
   '/_dashboard/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/_dashboard/standards/$id': typeof DashboardStandardsIdRoute
   '/_dashboard/vendors_/$id': typeof DashboardVendorsIdRoute
@@ -218,6 +236,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/assessments'
     | '/assets'
     | '/controls'
     | '/dashboard'
@@ -233,6 +252,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/auth/callback'
     | '/admin/ai-usage'
+    | '/assessments/$id'
     | '/gap-analysis/$id'
     | '/standards/$id'
     | '/vendors/$id'
@@ -241,6 +261,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/assessments'
     | '/assets'
     | '/controls'
     | '/dashboard'
@@ -256,6 +277,7 @@ export interface FileRouteTypes {
     | '/vendors'
     | '/auth/callback'
     | '/admin/ai-usage'
+    | '/assessments/$id'
     | '/gap-analysis/$id'
     | '/standards/$id'
     | '/vendors/$id'
@@ -265,6 +287,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_dashboard'
     | '/login'
+    | '/_dashboard/assessments'
     | '/_dashboard/assets'
     | '/_dashboard/controls'
     | '/_dashboard/dashboard'
@@ -280,6 +303,7 @@ export interface FileRouteTypes {
     | '/_dashboard/vendors'
     | '/auth/callback'
     | '/_dashboard/admin/ai-usage'
+    | '/_dashboard/assessments_/$id'
     | '/_dashboard/gap-analysis/$id'
     | '/_dashboard/standards/$id'
     | '/_dashboard/vendors_/$id'
@@ -415,6 +439,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardAssetsRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/assessments': {
+      id: '/_dashboard/assessments'
+      path: '/assessments'
+      fullPath: '/assessments'
+      preLoaderRoute: typeof DashboardAssessmentsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/auth/oauth/callback': {
       id: '/auth/oauth/callback'
       path: '/auth/oauth/callback'
@@ -442,6 +473,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/gap-analysis/$id'
       preLoaderRoute: typeof DashboardGapAnalysisIdRouteImport
       parentRoute: typeof DashboardGapAnalysisRoute
+    }
+    '/_dashboard/assessments_/$id': {
+      id: '/_dashboard/assessments_/$id'
+      path: '/assessments/$id'
+      fullPath: '/assessments/$id'
+      preLoaderRoute: typeof DashboardAssessmentsIdRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/admin/ai-usage': {
       id: '/_dashboard/admin/ai-usage'
@@ -476,6 +514,7 @@ const DashboardStandardsRouteWithChildren =
   DashboardStandardsRoute._addFileChildren(DashboardStandardsRouteChildren)
 
 interface DashboardRouteChildren {
+  DashboardAssessmentsRoute: typeof DashboardAssessmentsRoute
   DashboardAssetsRoute: typeof DashboardAssetsRoute
   DashboardControlsRoute: typeof DashboardControlsRoute
   DashboardDashboardRoute: typeof DashboardDashboardRoute
@@ -490,10 +529,12 @@ interface DashboardRouteChildren {
   DashboardStandardsRoute: typeof DashboardStandardsRouteWithChildren
   DashboardVendorsRoute: typeof DashboardVendorsRoute
   DashboardAdminAiUsageRoute: typeof DashboardAdminAiUsageRoute
+  DashboardAssessmentsIdRoute: typeof DashboardAssessmentsIdRoute
   DashboardVendorsIdRoute: typeof DashboardVendorsIdRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAssessmentsRoute: DashboardAssessmentsRoute,
   DashboardAssetsRoute: DashboardAssetsRoute,
   DashboardControlsRoute: DashboardControlsRoute,
   DashboardDashboardRoute: DashboardDashboardRoute,
@@ -508,6 +549,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardStandardsRoute: DashboardStandardsRouteWithChildren,
   DashboardVendorsRoute: DashboardVendorsRoute,
   DashboardAdminAiUsageRoute: DashboardAdminAiUsageRoute,
+  DashboardAssessmentsIdRoute: DashboardAssessmentsIdRoute,
   DashboardVendorsIdRoute: DashboardVendorsIdRoute,
 }
 
