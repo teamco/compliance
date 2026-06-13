@@ -133,3 +133,126 @@ describe('issues', () => {
     expect(await s.listIssues('org2')).toHaveLength(0);
   });
 });
+
+describe('assets', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('creates and lists assets for org', async () => {
+    const asset = await s.createAsset('org1', 'u1', {
+      name: 'Payment API',
+      type: 'service',
+      criticality: 'critical',
+      description: 'Handles card payments',
+      owner: 'Platform team',
+    });
+    expect(asset.type).toBe('service');
+    const list = await s.listAssets('org1');
+    expect(list).toHaveLength(1);
+    expect(list[0].id).toBe(asset.id);
+  });
+
+  it('updates asset criticality', async () => {
+    const asset = await s.createAsset('org1', 'u1', {
+      name: 'DB',
+      type: 'infrastructure',
+      criticality: 'low',
+      description: '',
+      owner: '',
+    });
+    const updated = await s.updateAsset(asset.id, { criticality: 'high' });
+    expect(updated.criticality).toBe('high');
+  });
+
+  it('deletes an asset', async () => {
+    const asset = await s.createAsset('org1', 'u1', {
+      name: 'N',
+      type: 'other',
+      criticality: 'low',
+      description: '',
+      owner: '',
+    });
+    await s.deleteAsset(asset.id);
+    expect(await s.listAssets('org1')).toHaveLength(0);
+  });
+
+  it('scopes by orgId', async () => {
+    await s.createAsset('org1', 'u1', {
+      name: 'N',
+      type: 'other',
+      criticality: 'low',
+      description: '',
+      owner: '',
+    });
+    expect(await s.listAssets('org2')).toHaveLength(0);
+  });
+});
+
+describe('risks', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('creates risk and computes score', async () => {
+    const risk = await s.createRisk('org1', 'u1', {
+      title: 'SQL Injection',
+      description: 'Input not sanitized',
+      category: 'Web Security',
+      likelihood: 'high',
+      impact: 'high',
+    });
+    expect(risk.riskScore).toBe(16); // 4 * 4
+    expect(risk.treatment).toBe('mitigate');
+  });
+
+  it('lists risks for org', async () => {
+    await s.createRisk('org1', 'u1', {
+      title: 'R1',
+      description: '',
+      category: 'Cat',
+      likelihood: 'low',
+      impact: 'low',
+    });
+    const list = await s.listRisks('org1');
+    expect(list).toHaveLength(1);
+  });
+
+  it('updates risk treatment', async () => {
+    const risk = await s.createRisk('org1', 'u1', {
+      title: 'R',
+      description: '',
+      category: 'C',
+      likelihood: 'low',
+      impact: 'low',
+    });
+    const updated = await s.updateRisk(risk.id, { treatment: 'accept' });
+    expect(updated.treatment).toBe('accept');
+  });
+
+  it('recomputes score when likelihood changes', async () => {
+    const risk = await s.createRisk('org1', 'u1', {
+      title: 'R',
+      description: '',
+      category: 'C',
+      likelihood: 'low',
+      impact: 'medium',
+    });
+    const updated = await s.updateRisk(risk.id, { likelihood: 'very_high' });
+    expect(updated.riskScore).toBe(15); // 5 * 3
+  });
+
+  it('deletes a risk', async () => {
+    const risk = await s.createRisk('org1', 'u1', {
+      title: 'R',
+      description: '',
+      category: 'C',
+      likelihood: 'low',
+      impact: 'low',
+    });
+    await s.deleteRisk(risk.id);
+    expect(await s.listRisks('org1')).toHaveLength(0);
+  });
+});

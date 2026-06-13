@@ -5,6 +5,9 @@ import type {
   AiUsageLogEntry,
   AiUsageSummaryRpc,
   AiUsageTimeseriesPoint,
+  Asset,
+  AssetInput,
+  AssetPatch,
   AuditLog,
   AuditLogFilters,
   AuditLogPage,
@@ -28,6 +31,11 @@ import type {
   ReportTemplate,
   ReportTemplateInput,
   RetentionPrefsPayload,
+  Risk,
+  RiskImpact,
+  RiskInput,
+  RiskLikelihood,
+  RiskPatch,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -45,6 +53,18 @@ function ok<T>(data: T | null, error: { message: string } | null): T {
 
 export class SupabaseNotesStrategy implements NotesStrategy {
   constructor(private readonly db: SupabaseClient) {}
+
+  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
+    const L: Record<RiskLikelihood, number> = {
+      very_low: 1,
+      low: 2,
+      medium: 3,
+      high: 4,
+      very_high: 5,
+    };
+    const I: Record<RiskImpact, number> = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 };
+    return L[likelihood] * I[impact];
+  }
 
   async listFrameworks(): Promise<Framework[]> {
     const { data, error } = await this.db
@@ -1137,6 +1157,165 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       sourceId: row['source_id'] as string | null,
       dueDate: row['due_date'] as string | null,
       resolvedAt: row['resolved_at'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Assets ────────────────────────────────────────────────────────────────
+
+  async listAssets(orgId: string): Promise<Asset[]> {
+    const { data, error } = await this.db
+      .from('assets')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    return ok(data, error).map((row) => this.toAsset(row));
+  }
+
+  async createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset> {
+    const { data: row, error } = await this.db
+      .from('assets')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        name: data.name,
+        type: data.type,
+        criticality: data.criticality,
+        description: data.description,
+        owner: data.owner,
+        tags: data.tags ?? [],
+      })
+      .select()
+      .single();
+    return this.toAsset(ok(row, error));
+  }
+
+  async getAsset(id: string): Promise<Asset | null> {
+    const { data, error } = await this.db.from('assets').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAsset(data) : null;
+  }
+
+  async updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.name !== undefined) update['name'] = patch.name;
+    if (patch.type !== undefined) update['type'] = patch.type;
+    if (patch.criticality !== undefined) update['criticality'] = patch.criticality;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.owner !== undefined) update['owner'] = patch.owner;
+    if (patch.tags !== undefined) update['tags'] = patch.tags;
+    const { data, error } = await this.db
+      .from('assets')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAsset(ok(data, error));
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    const { error } = await this.db.from('assets').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toAsset(row: Record<string, unknown>): Asset {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      name: row['name'] as string,
+      type: row['type'] as Asset['type'],
+      criticality: row['criticality'] as Asset['criticality'],
+      description: row['description'] as string,
+      owner: row['owner'] as string,
+      tags: row['tags'] as string[],
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Risks ─────────────────────────────────────────────────────────────────
+
+  async listRisks(orgId: string): Promise<Risk[]> {
+    const { data, error } = await this.db
+      .from('risks')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('risk_score', { ascending: false });
+    return ok(data, error).map((row) => this.toRisk(row));
+  }
+
+  async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    const riskScore = this.computeRiskScore(data.likelihood, data.impact);
+    const { data: row, error } = await this.db
+      .from('risks')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        likelihood: data.likelihood,
+        impact: data.impact,
+        risk_score: riskScore,
+        treatment: data.treatment ?? 'mitigate',
+        asset_id: data.assetId ?? null,
+      })
+      .select()
+      .single();
+    return this.toRisk(ok(row, error));
+  }
+
+  async getRisk(id: string): Promise<Risk | null> {
+    const { data, error } = await this.db.from('risks').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRisk(data) : null;
+  }
+
+  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+    const current = await this.getRisk(id);
+    if (!current) throw new Error('risk_not_found');
+    const newLikelihood = patch.likelihood ?? current.likelihood;
+    const newImpact = patch.impact ?? current.impact;
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      risk_score: this.computeRiskScore(newLikelihood, newImpact),
+    };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.category !== undefined) update['category'] = patch.category;
+    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
+    if (patch.impact !== undefined) update['impact'] = patch.impact;
+    if (patch.treatment !== undefined) update['treatment'] = patch.treatment;
+    if ('assetId' in patch) update['asset_id'] = patch.assetId;
+    const { data, error } = await this.db
+      .from('risks')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRisk(ok(data, error));
+  }
+
+  async deleteRisk(id: string): Promise<void> {
+    const { error } = await this.db.from('risks').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toRisk(row: Record<string, unknown>): Risk {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      category: row['category'] as string,
+      likelihood: row['likelihood'] as Risk['likelihood'],
+      impact: row['impact'] as Risk['impact'],
+      riskScore: row['risk_score'] as number,
+      treatment: row['treatment'] as Risk['treatment'],
+      assetId: row['asset_id'] as string | null,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
