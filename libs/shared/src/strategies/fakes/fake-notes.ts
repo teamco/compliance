@@ -27,6 +27,12 @@ import type {
   Webhook,
   WebhookInput,
   WorkflowTransition,
+  Exception,
+  ExceptionInput,
+  ExceptionPatch,
+  Issue,
+  IssueInput,
+  IssuePatch,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -45,6 +51,8 @@ export class FakeNotesStrategy implements NotesStrategy {
   private webhooks = new Map<string, Webhook[]>();
   private retentionPrefs = new Map<string, RetentionPrefsPayload>();
   private reportTemplates: ReportTemplate[] = [];
+  private exceptions = new Map<string, Exception>();
+  private issues = new Map<string, Issue>();
 
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
@@ -483,5 +491,129 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async getAiUsageTimeseries(_since: string, _userId?: string): Promise<AiUsageTimeseriesPoint[]> {
     return [];
+  }
+
+  // ─── Exceptions ────────────────────────────────────────────────────────────
+
+  async listExceptions(orgId: string): Promise<Exception[]> {
+    return [...this.exceptions.values()].filter((e) => e.orgId === orgId);
+  }
+
+  async createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception> {
+    const now = new Date().toISOString();
+    const exc: Exception = {
+      id: globalThis.crypto.randomUUID(),
+      orgId,
+      userId,
+      controlCode: data.controlCode,
+      standardCode: data.standardCode,
+      frameworkId: data.frameworkId,
+      title: data.title,
+      justification: data.justification,
+      status: 'pending',
+      expiresAt: data.expiresAt ?? null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.exceptions.set(exc.id, exc);
+    return exc;
+  }
+
+  async getException(id: string): Promise<Exception | null> {
+    return this.exceptions.get(id) ?? null;
+  }
+
+  async updateException(id: string, patch: ExceptionPatch): Promise<Exception> {
+    const existing = this.exceptions.get(id);
+    if (!existing) throw new Error(`exception_not_found: ${id}`);
+    const updated: Exception = { ...existing, ...patch, updatedAt: new Date().toISOString() };
+    this.exceptions.set(id, updated);
+    return updated;
+  }
+
+  async approveException(id: string): Promise<Exception> {
+    const existing = this.exceptions.get(id);
+    if (!existing) throw new Error('exception_not_found');
+    const approved: Exception = {
+      ...existing,
+      status: 'approved',
+      updatedAt: new Date().toISOString(),
+    };
+    this.exceptions.set(id, approved);
+    return approved;
+  }
+
+  async rejectException(id: string): Promise<Exception> {
+    const existing = this.exceptions.get(id);
+    if (!existing) throw new Error(`exception_not_found: ${id}`);
+    const rejected: Exception = {
+      ...existing,
+      status: 'rejected',
+      updatedAt: new Date().toISOString(),
+    };
+    this.exceptions.set(id, rejected);
+    return rejected;
+  }
+
+  async deleteException(id: string): Promise<void> {
+    if (!this.exceptions.has(id)) throw new Error(`exception_not_found: ${id}`);
+    this.exceptions.delete(id);
+  }
+
+  // ─── Issues ────────────────────────────────────────────────────────────────
+
+  async listIssues(orgId: string): Promise<Issue[]> {
+    return [...this.issues.values()].filter((i) => i.orgId === orgId);
+  }
+
+  async createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue> {
+    const now = new Date().toISOString();
+    const issue: Issue = {
+      id: globalThis.crypto.randomUUID(),
+      orgId,
+      userId,
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
+      status: 'open',
+      source: data.source ?? 'manual',
+      sourceId: data.sourceId ?? null,
+      dueDate: data.dueDate ?? null,
+      resolvedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.issues.set(issue.id, issue);
+    return issue;
+  }
+
+  async getIssue(id: string): Promise<Issue | null> {
+    return this.issues.get(id) ?? null;
+  }
+
+  async updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
+    const existing = this.issues.get(id);
+    if (!existing) throw new Error('issue_not_found');
+    const resolvedAt: string | null =
+      'resolvedAt' in patch
+        ? (patch.resolvedAt ?? null)
+        : patch.status === 'resolved'
+          ? new Date().toISOString()
+          : patch.status !== undefined
+            ? null
+            : existing.resolvedAt;
+    const updated: Issue = {
+      ...existing,
+      ...patch,
+      resolvedAt,
+      updatedAt: new Date().toISOString(),
+    };
+    this.issues.set(id, updated);
+    return updated;
+  }
+
+  async deleteIssue(id: string): Promise<void> {
+    if (!this.issues.has(id)) throw new Error(`issue_not_found: ${id}`);
+    this.issues.delete(id);
   }
 }
