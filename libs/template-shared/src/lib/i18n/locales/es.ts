@@ -208,6 +208,8 @@ export const es = {
       low: 'Bajo',
     },
     implementation: 'Implementación',
+    objective: 'Objetivo',
+    scope: 'Alcance',
     editPriority: 'Cambiar prioridad',
     addImplementation: 'Haz clic para agregar guía de implementación…',
     versionHistory: 'Historial de versiones',

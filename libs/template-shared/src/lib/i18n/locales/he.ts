@@ -193,6 +193,8 @@ export const he = {
       low: 'נמוך',
     },
     implementation: 'יישום',
+    objective: 'מטרה',
+    scope: 'היקף',
     editPriority: 'שנה עדיפות',
     addImplementation: 'לחץ להוספת הנחיות יישום…',
     versionHistory: 'היסטוריית גרסאות',
