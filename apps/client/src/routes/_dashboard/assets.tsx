@@ -1,8 +1,19 @@
 import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { Plus, Server } from 'lucide-react';
+import { Pencil, Plus, Server } from 'lucide-react';
+import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { EditSheet } from '@/components/EditSheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageLayout } from '@/components/PageLayout';
@@ -19,8 +31,10 @@ import {
   useAssets,
   useCreateAsset,
   useDeleteAsset,
+  useUpdateAsset,
   type Asset,
   type AssetInput,
+  type AssetPatch,
 } from '@/queries/assets';
 
 export const Route = createFileRoute('/_dashboard/assets')({
@@ -52,6 +66,13 @@ function AssetsPage() {
   const { data: assets = [], isPending } = useAssets(orgId);
   const createMut = useCreateAsset(orgId);
   const deleteMut = useDeleteAsset(orgId);
+  const updateMut = useUpdateAsset(orgId);
+  const notify = useNotify();
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSnapshotAsset, setEditSnapshotAsset] = useState<Asset | null>(null);
+  const [editForm, setEditForm] = useState<AssetPatch>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AssetInput>({
@@ -62,6 +83,22 @@ function AssetsPage() {
     owner: '',
   });
 
+  function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingId) return;
+    if (!editForm.name?.trim() || !editForm.owner?.trim()) return;
+    updateMut.mutate(
+      { id: editingId, patch: editForm },
+      {
+        onSuccess: () => {
+          setEditingId(null);
+          notify.success(t('assets.updated'));
+        },
+        onError: () => notify.error(t('error.unknown')),
+      },
+    );
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name || !form.owner) return;
@@ -69,7 +106,9 @@ function AssetsPage() {
       onSuccess: () => {
         setOpen(false);
         setForm({ name: '', type: 'service', criticality: 'medium', description: '', owner: '' });
+        notify.success(t('assets.created'));
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 
@@ -118,13 +157,33 @@ function AssetsPage() {
               {asset.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2">{asset.description}</p>
               )}
-              <button
-                type="button"
-                onClick={() => deleteMut.mutate(asset.id)}
-                className="self-end text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
-              >
-                {t('common.delete')}
-              </button>
+              <div className="flex items-center justify-end gap-2 mt-auto pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditSnapshotAsset(asset);
+                    setEditForm({
+                      name: asset.name,
+                      type: asset.type,
+                      criticality: asset.criticality,
+                      owner: asset.owner,
+                      description: asset.description,
+                    });
+                    setEditingId(asset.id);
+                  }}
+                  className="text-xs text-muted-foreground/50 hover:text-foreground transition-colors flex items-center gap-1"
+                >
+                  <Pencil size={11} />
+                  {t('common.edit')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteId(asset.id)}
+                  className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
+                >
+                  {t('common.delete')}
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -158,7 +217,7 @@ function AssetsPage() {
                 >
                   {ASSET_TYPES.map((tp) => (
                     <option key={tp} value={tp}>
-                      {tp}
+                      {t(`assets.type.${tp}`)}
                     </option>
                   ))}
                 </select>
@@ -174,7 +233,7 @@ function AssetsPage() {
                 >
                   {CRITICALITY_LEVELS.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {t(`assets.criticality.${c}`)}
                     </option>
                   ))}
                 </select>
@@ -209,6 +268,108 @@ function AssetsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('assets.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('assets.deleteDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteId) deleteMut.mutate(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit — Sheet */}
+      <EditSheet
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
+        title={t('assets.editTitle')}
+        onSubmit={handleEditSubmit}
+        isPending={updateMut.isPending}
+        saveDisabled={!editForm.name?.trim() || !editForm.owner?.trim()}
+      >
+        {editSnapshotAsset && (
+          <>
+            <div className="flex flex-col gap-3">
+              <Label>{t('assets.name')}</Label>
+              <Input
+                value={editForm.name ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder={t('assets.namePlaceholder')}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-3">
+                <Label>{t('assets.typeLabel')}</Label>
+                <select
+                  value={editForm.type ?? 'service'}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, type: e.target.value as Asset['type'] }))
+                  }
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
+                >
+                  {ASSET_TYPES.map((tp) => (
+                    <option key={tp} value={tp}>
+                      {t(`assets.type.${tp}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Label>{t('assets.criticality.label')}</Label>
+                <select
+                  value={editForm.criticality ?? 'medium'}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      criticality: e.target.value as Asset['criticality'],
+                    }))
+                  }
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
+                >
+                  {CRITICALITY_LEVELS.map((c) => (
+                    <option key={c} value={c}>
+                      {t(`assets.criticality.${c}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Label>{t('assets.owner')}</Label>
+              <Input
+                value={editForm.owner ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, owner: e.target.value }))}
+                placeholder={t('assets.ownerPlaceholder')}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Label>{t('assets.description')}</Label>
+              <textarea
+                value={editForm.description ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
+              />
+            </div>
+          </>
+        )}
+      </EditSheet>
     </PageLayout>
   );
 }
