@@ -35,7 +35,7 @@ export function exportStandardsCsv(
   const fwName = (id: string) => frameworks.find((f) => f.id === id)?.name ?? id;
   const rows: unknown[][] = [
     ['Framework', 'Code', 'Title', 'Priority', 'Category', 'Implementation'],
-    ...doc.controls.map((c) => [
+    ...doc.standards.map((c) => [
       c.frameworkMappings.map((m) => fwName(m.frameworkId)).join('; '),
       c.code,
       c.title,
