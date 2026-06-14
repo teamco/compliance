@@ -126,7 +126,11 @@ export function OrgPage() {
           </SheetHeader>
           <div className="min-h-0 flex-1">
             {editSnapshotOrg && (
-              <EditOrgForm org={editSnapshotOrg} onSaved={() => setEditingId(null)} />
+              <EditOrgForm
+                org={editSnapshotOrg}
+                onSaved={() => setEditingId(null)}
+                onCancel={() => setEditingId(null)}
+              />
             )}
           </div>
         </SheetContent>

@@ -12,9 +12,10 @@ interface OrgFormProps {
   onSave: (data: OrganizationInput) => void;
   isPending: boolean;
   submitLabel: string;
+  onCancel?: () => void;
 }
 
-export function OrgForm({ initial, onSave, isPending, submitLabel }: OrgFormProps) {
+export function OrgForm({ initial, onSave, isPending, submitLabel, onCancel }: OrgFormProps) {
   const { t } = useTranslation();
   const [form, setForm] = useState<OrganizationInput>(initial);
   const [errors, setErrors] = useState<{ name?: string }>({});
@@ -154,8 +155,17 @@ export function OrgForm({ initial, onSave, isPending, submitLabel }: OrgFormProp
         </div>
       </div>
 
-      <footer className="border-t border-border p-4">
-        <Button type="submit" disabled={isPending || !form.name.trim()} className="w-full">
+      <footer className="border-t border-border p-4 flex gap-2">
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+            {t('common.cancel')}
+          </Button>
+        )}
+        <Button
+          type="submit"
+          disabled={isPending || !form.name.trim()}
+          className={onCancel ? 'flex-1' : 'w-full'}
+        >
           <Save size={14} className="mr-2" />
           {isPending ? t('org.saving') : submitLabel}
         </Button>
