@@ -1,9 +1,9 @@
 #!/bin/bash
-# Blocks git push if the current branch's PR is already merged/closed.
+# Blocks git commit and git push if the current branch's PR is already merged/closed.
 INPUT=$(cat)
 COMMAND=$(echo "$INPUT" | jq -r '.command // ""')
 
-if ! echo "$COMMAND" | grep -q 'git push'; then
+if ! echo "$COMMAND" | grep -qE 'git (push|commit)'; then
   exit 0
 fi
 
