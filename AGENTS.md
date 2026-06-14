@@ -53,6 +53,23 @@ libs/
 
 ## Key patterns
 
+**Client UI overlay pattern** — enforced across all dashboard pages:
+
+| Operation | Component | When |
+|-----------|-----------|------|
+| Create    | `Dialog` (shadcn) | User starts from scratch, no background context needed |
+| Edit      | `Sheet` (shadcn, right panel) | User edits existing record, background data stays visible |
+| Delete    | `AlertDialog` (shadcn) | Destructive confirmation only |
+
+State shape:
+```tsx
+const [createOpen, setCreateOpen] = useState(false);             // Dialog
+const [editingId, setEditingId] = useState<string | null>(null); // Sheet
+const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // AlertDialog
+```
+
+Never combine create and edit into a single `modalMode` state — keep them separate so the components are independent.
+
 **Strategy swap** — provider is chosen at runtime via env. Never import a concrete strategy in app code; always inject via the factory token (`AuthStrategy`, `StorageStrategy`, `DBStrategy`, `AiStrategy`).
 
 **Transport** — `buildTransport(prefix)` reads `TCP*` vars. Same helper on gateway client-modules and each MS `main.ts`. Supports tcp / nats / mqtt / rmq / kafka — change by flipping `*_TRANSPORT` in `.env`.
