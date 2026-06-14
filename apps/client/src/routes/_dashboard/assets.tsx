@@ -75,6 +75,7 @@ function AssetsPage() {
   function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingId) return;
+    if (!editForm.name?.trim() || !editForm.owner?.trim()) return;
     updateMut.mutate(
       { id: editingId, patch: editForm },
       {
@@ -82,6 +83,7 @@ function AssetsPage() {
           setEditingId(null);
           notify.success(t('assets.updated'));
         },
+        onError: () => notify.error(t('error.unknown')),
       },
     );
   }
@@ -202,7 +204,7 @@ function AssetsPage() {
                 >
                   {ASSET_TYPES.map((tp) => (
                     <option key={tp} value={tp}>
-                      {tp}
+                      {t(`assets.type.${tp}`)}
                     </option>
                   ))}
                 </select>
@@ -218,7 +220,7 @@ function AssetsPage() {
                 >
                   {CRITICALITY_LEVELS.map((c) => (
                     <option key={c} value={c}>
-                      {c}
+                      {t(`assets.criticality.${c}`)}
                     </option>
                   ))}
                 </select>
