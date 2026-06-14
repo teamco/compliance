@@ -5,6 +5,16 @@ import { Pencil, Plus, Server } from 'lucide-react';
 import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -62,6 +72,7 @@ function AssetsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editSnapshotAsset, setEditSnapshotAsset] = useState<Asset | null>(null);
   const [editForm, setEditForm] = useState<AssetPatch>({});
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<AssetInput>({
@@ -95,7 +106,9 @@ function AssetsPage() {
       onSuccess: () => {
         setOpen(false);
         setForm({ name: '', type: 'service', criticality: 'medium', description: '', owner: '' });
+        notify.success(t('assets.created'));
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 
@@ -165,7 +178,7 @@ function AssetsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => deleteMut.mutate(asset.id)}
+                  onClick={() => setConfirmDeleteId(asset.id)}
                   className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
                 >
                   {t('common.delete')}
@@ -255,6 +268,29 @@ function AssetsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={confirmDeleteId !== null}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('assets.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('assets.deleteDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteId) deleteMut.mutate(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit — Sheet */}
       <Sheet open={editingId !== null} onOpenChange={(open) => !open && setEditingId(null)}>
