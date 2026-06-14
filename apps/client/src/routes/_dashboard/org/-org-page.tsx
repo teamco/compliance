@@ -6,6 +6,7 @@ import {
   useCreateOrganization,
   useDeleteOrganization,
   useOrganizations,
+  type Organization,
   type OrganizationInput,
 } from '@/queries/notes';
 import { useActiveOrgStore } from '@/stores/active-org';
@@ -28,14 +29,13 @@ export function OrgPage() {
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
   const [createOpen, setCreateOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSnapshotOrg, setEditSnapshotOrg] = useState<Organization | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const orgList = orgs ?? [];
   const filteredOrgs = orgList.filter((org) =>
     org.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
-  const editingOrg = orgList.find((org) => org.id === editingId);
-
   async function handleCreate(data: OrganizationInput) {
     try {
       const org = await create.mutateAsync(data);
@@ -125,7 +125,9 @@ export function OrgPage() {
             <SheetTitle>{t('org.editTitle')}</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1">
-            {editingOrg && <EditOrgForm org={editingOrg} onSaved={() => setEditingId(null)} />}
+            {editSnapshotOrg && (
+              <EditOrgForm org={editSnapshotOrg} onSaved={() => setEditingId(null)} />
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -133,7 +135,11 @@ export function OrgPage() {
       <OrgList
         orgs={filteredOrgs}
         activeOrgId={activeOrgId}
-        onEdit={setEditingId}
+        onEdit={(orgId) => {
+          const org = orgList.find((o) => o.id === orgId) ?? null;
+          setEditSnapshotOrg(org);
+          setEditingId(orgId);
+        }}
         onDelete={setConfirmDeleteId}
       />
 
