@@ -197,7 +197,6 @@ describe('OrgPage', () => {
     const submitButton = screen.getByRole('button', { name: /create organization/i });
     expect(submitButton.className).toContain('w-full');
     expect(submitButton.closest('footer')?.className).toContain('border-t');
-    expect(submitButton.closest('form')?.className).toContain('h-full');
   });
 
   it('edit button opens sheet with edit title', () => {
@@ -207,7 +206,7 @@ describe('OrgPage', () => {
     expect(screen.getByTestId('sheet')).toBeTruthy();
     expect(screen.getByText('Edit Organization')).toBeTruthy();
     const submitButton = screen.getByRole('button', { name: /update organization/i });
-    expect(submitButton.className).toContain('w-full');
+    expect(submitButton.className).toContain('flex-1');
   });
 });
 

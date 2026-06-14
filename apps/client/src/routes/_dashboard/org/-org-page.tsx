@@ -13,7 +13,6 @@ import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { EMPTY_FORM } from './-constants';
 import { OrgForm } from './-org-form';
 import { EditOrgForm } from './-edit-org-form';
@@ -28,14 +27,14 @@ export function OrgPage() {
   const deleteOrg = useDeleteOrganization();
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editSnapshotOrg, setEditSnapshotOrg] = useState<Organization | null>(null);
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const orgList = orgs ?? [];
   const filteredOrgs = orgList.filter((org) =>
     org.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
+
   async function handleCreate(data: OrganizationInput) {
     try {
       const org = await create.mutateAsync(data);
@@ -114,35 +113,19 @@ export function OrgPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit — Sheet */}
-      <Sheet open={editingId !== null} onOpenChange={(open) => !open && setEditingId(null)}>
-        <SheetContent
-          className="w-full max-w-110"
-          onPointerDownOutside={(event) => event.preventDefault()}
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <SheetHeader>
-            <SheetTitle>{t('org.editTitle')}</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1">
-            {editSnapshotOrg && (
-              <EditOrgForm
-                org={editSnapshotOrg}
-                onSaved={() => setEditingId(null)}
-                onCancel={() => setEditingId(null)}
-              />
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+      {/* Edit — Sheet (owned by EditOrgForm) */}
+      <EditOrgForm
+        open={editingOrg !== null}
+        org={editingOrg}
+        onClose={() => setEditingOrg(null)}
+      />
 
       <OrgList
         orgs={filteredOrgs}
         activeOrgId={activeOrgId}
         onEdit={(orgId) => {
           const org = orgList.find((o) => o.id === orgId) ?? null;
-          setEditSnapshotOrg(org);
-          setEditingId(orgId);
+          setEditingOrg(org);
         }}
         onDelete={setConfirmDeleteId}
       />
