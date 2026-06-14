@@ -369,11 +369,16 @@ function AssetsPage() {
                   />
                 </div>
               </div>
-              <footer className="border-t border-border p-4 flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setEditingId(null)}>
+              <footer className="border-t border-border p-4 flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingId(null)}
+                  className="flex-1"
+                >
                   {t('common.cancel')}
                 </Button>
-                <Button type="submit" disabled={updateMut.isPending}>
+                <Button type="submit" disabled={updateMut.isPending} className="flex-1">
                   {updateMut.isPending ? t('common.saving') : t('common.save')}
                 </Button>
               </footer>
