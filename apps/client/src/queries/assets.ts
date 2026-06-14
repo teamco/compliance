@@ -7,7 +7,7 @@ export type { Asset, AssetInput, AssetPatch };
 export function useAssets(orgId: string) {
   return useQuery<Asset[]>({
     queryKey: ['assets', orgId],
-    queryFn: () => api<Asset[]>(`/assets?orgId=${encodeURIComponent(orgId)}`),
+    queryFn: () => api<Asset[]>(`/notes/assets?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
   });
 }
@@ -16,7 +16,7 @@ export function useCreateAsset(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Asset, Error, AssetInput>({
     mutationFn: (data) =>
-      api<Asset>(`/assets?orgId=${encodeURIComponent(orgId)}`, {
+      api<Asset>(`/notes/assets?orgId=${encodeURIComponent(orgId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -29,7 +29,7 @@ export function useUpdateAsset(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Asset, Error, { id: string; patch: AssetPatch }>({
     mutationFn: ({ id, patch }) =>
-      api<Asset>(`/assets/${id}`, {
+      api<Asset>(`/notes/assets/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -41,7 +41,7 @@ export function useUpdateAsset(orgId: string) {
 export function useDeleteAsset(orgId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/assets/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/assets/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assets', orgId] }),
   });
 }
