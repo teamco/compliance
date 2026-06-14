@@ -73,6 +73,32 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
   };
 });
 
+vi.mock('@/components/ui/dialog', () => ({
+  Dialog: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
+    open ? <div data-testid="dialog">{children}</div> : null,
+  DialogContent: ({
+    children,
+    onPointerDownOutside,
+    onInteractOutside,
+  }: {
+    children: React.ReactNode;
+    onPointerDownOutside?: (event: { preventDefault: () => void }) => void;
+    onInteractOutside?: (event: { preventDefault: () => void }) => void;
+  }) => (
+    <div
+      data-testid="dialog-content"
+      data-blocks-pointer-outside={String(!!onPointerDownOutside)}
+      data-blocks-interact-outside={String(!!onInteractOutside)}
+    >
+      {children}
+    </div>
+  ),
+  DialogHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+  DialogDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+  DialogFooter: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}));
+
 vi.mock('@/components/ui/sheet', () => ({
   Sheet: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
     open ? <div data-testid="sheet">{children}</div> : null,
@@ -157,21 +183,20 @@ describe('OrgPage', () => {
     expect(container.querySelectorAll('[class*="border-green"]').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('create button opens sheet with create title', () => {
+  it('create button opens dialog with create title', () => {
     render(wrap(<OrgPage />));
     fireEvent.click(screen.getByRole('button', { name: /create new organization/i }));
-    expect(screen.getByTestId('sheet')).toBeTruthy();
-    expect(screen.getByTestId('sheet-content').getAttribute('data-blocks-pointer-outside')).toBe(
+    expect(screen.getByTestId('dialog')).toBeTruthy();
+    expect(screen.getByTestId('dialog-content').getAttribute('data-blocks-pointer-outside')).toBe(
       'true',
     );
-    expect(screen.getByTestId('sheet-content').getAttribute('data-blocks-interact-outside')).toBe(
+    expect(screen.getByTestId('dialog-content').getAttribute('data-blocks-interact-outside')).toBe(
       'true',
     );
     expect(screen.getByText('New Organization')).toBeTruthy();
     const submitButton = screen.getByRole('button', { name: /create organization/i });
     expect(submitButton.className).toContain('w-full');
     expect(submitButton.closest('footer')?.className).toContain('border-t');
-    expect(submitButton.closest('form')?.className).toContain('h-full');
   });
 
   it('edit button opens sheet with edit title', () => {
@@ -181,7 +206,7 @@ describe('OrgPage', () => {
     expect(screen.getByTestId('sheet')).toBeTruthy();
     expect(screen.getByText('Edit Organization')).toBeTruthy();
     const submitButton = screen.getByRole('button', { name: /update organization/i });
-    expect(submitButton.className).toContain('w-full');
+    expect(submitButton.className).toContain('flex-1');
   });
 });
 

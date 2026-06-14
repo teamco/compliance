@@ -525,6 +525,12 @@ export const en = {
     subtitle: 'Inventory of organizational IT assets',
     addAsset: 'New Asset',
     addDescription: 'Register an IT asset — service, application, infrastructure, or device',
+    editTitle: 'Edit Asset',
+    updated: 'Asset updated',
+    created: 'Asset created',
+    deleteTitle: 'Delete asset?',
+    deleteDescription:
+      'This action cannot be undone. The asset will be permanently removed from the catalog.',
     empty: 'No assets registered',
     name: 'Asset Name',
     namePlaceholder: 'e.g. Payment API, Customer DB',
