@@ -525,6 +525,8 @@ export const en = {
     subtitle: 'Inventory of organizational IT assets',
     addAsset: 'New Asset',
     addDescription: 'Register an IT asset — service, application, infrastructure, or device',
+    editTitle: 'Edit Asset',
+    updated: 'Asset updated',
     empty: 'No assets registered',
     name: 'Asset Name',
     namePlaceholder: 'e.g. Payment API, Customer DB',
