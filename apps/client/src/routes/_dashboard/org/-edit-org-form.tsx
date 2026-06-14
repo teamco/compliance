@@ -6,9 +6,10 @@ import { OrgForm } from './-org-form';
 interface EditOrgFormProps {
   org: Organization;
   onSaved: () => void;
+  onCancel?: () => void;
 }
 
-export function EditOrgForm({ org, onSaved }: EditOrgFormProps) {
+export function EditOrgForm({ org, onSaved, onCancel }: EditOrgFormProps) {
   const { t } = useTranslation();
   const notify = useNotify();
   const update = useUpdateOrganization(org.id);
@@ -38,6 +39,7 @@ export function EditOrgForm({ org, onSaved }: EditOrgFormProps) {
       onSave={(data) => void handleSave(data)}
       isPending={update.isPending}
       submitLabel={t('org.updateOrganization')}
+      onCancel={onCancel}
     />
   );
 }
