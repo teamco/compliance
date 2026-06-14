@@ -22,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { EditSheet } from '@/components/EditSheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PageLayout } from '@/components/PageLayout';
@@ -293,99 +293,83 @@ function AssetsPage() {
       </AlertDialog>
 
       {/* Edit — Sheet */}
-      <Sheet open={editingId !== null} onOpenChange={(open) => !open && setEditingId(null)}>
-        <SheetContent
-          onPointerDownOutside={(event) => event.preventDefault()}
-          onInteractOutside={(event) => event.preventDefault()}
-        >
-          <SheetHeader>
-            <SheetTitle>{t('assets.editTitle')}</SheetTitle>
-          </SheetHeader>
-          {editSnapshotAsset && (
-            <form onSubmit={handleEditSubmit} className="flex h-full min-h-0 flex-col">
-              <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
-                <div className="flex flex-col gap-3">
-                  <Label>{t('assets.name')}</Label>
-                  <Input
-                    value={editForm.name ?? ''}
-                    onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                    placeholder={t('assets.namePlaceholder')}
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="flex flex-col gap-3">
-                    <Label>{t('assets.typeLabel')}</Label>
-                    <select
-                      value={editForm.type ?? 'service'}
-                      onChange={(e) =>
-                        setEditForm((f) => ({ ...f, type: e.target.value as Asset['type'] }))
-                      }
-                      className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
-                    >
-                      {ASSET_TYPES.map((tp) => (
-                        <option key={tp} value={tp}>
-                          {t(`assets.type.${tp}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <Label>{t('assets.criticality.label')}</Label>
-                    <select
-                      value={editForm.criticality ?? 'medium'}
-                      onChange={(e) =>
-                        setEditForm((f) => ({
-                          ...f,
-                          criticality: e.target.value as Asset['criticality'],
-                        }))
-                      }
-                      className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
-                    >
-                      {CRITICALITY_LEVELS.map((c) => (
-                        <option key={c} value={c}>
-                          {t(`assets.criticality.${c}`)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Label>{t('assets.owner')}</Label>
-                  <Input
-                    value={editForm.owner ?? ''}
-                    onChange={(e) => setEditForm((f) => ({ ...f, owner: e.target.value }))}
-                    placeholder={t('assets.ownerPlaceholder')}
-                    required
-                  />
-                </div>
-                <div className="flex flex-col gap-3">
-                  <Label>{t('assets.description')}</Label>
-                  <textarea
-                    value={editForm.description ?? ''}
-                    onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
-                    rows={3}
-                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
-                  />
-                </div>
-              </div>
-              <footer className="border-t border-border p-4 flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setEditingId(null)}
-                  className="flex-1"
+      <EditSheet
+        open={editingId !== null}
+        onClose={() => setEditingId(null)}
+        title={t('assets.editTitle')}
+        onSubmit={handleEditSubmit}
+        isPending={updateMut.isPending}
+        saveDisabled={!editForm.name?.trim() || !editForm.owner?.trim()}
+      >
+        {editSnapshotAsset && (
+          <>
+            <div className="flex flex-col gap-3">
+              <Label>{t('assets.name')}</Label>
+              <Input
+                value={editForm.name ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                placeholder={t('assets.namePlaceholder')}
+                required
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-3">
+                <Label>{t('assets.typeLabel')}</Label>
+                <select
+                  value={editForm.type ?? 'service'}
+                  onChange={(e) =>
+                    setEditForm((f) => ({ ...f, type: e.target.value as Asset['type'] }))
+                  }
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
                 >
-                  {t('common.cancel')}
-                </Button>
-                <Button type="submit" disabled={updateMut.isPending} className="flex-1">
-                  {updateMut.isPending ? t('common.saving') : t('common.save')}
-                </Button>
-              </footer>
-            </form>
-          )}
-        </SheetContent>
-      </Sheet>
+                  {ASSET_TYPES.map((tp) => (
+                    <option key={tp} value={tp}>
+                      {t(`assets.type.${tp}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-3">
+                <Label>{t('assets.criticality.label')}</Label>
+                <select
+                  value={editForm.criticality ?? 'medium'}
+                  onChange={(e) =>
+                    setEditForm((f) => ({
+                      ...f,
+                      criticality: e.target.value as Asset['criticality'],
+                    }))
+                  }
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
+                >
+                  {CRITICALITY_LEVELS.map((c) => (
+                    <option key={c} value={c}>
+                      {t(`assets.criticality.${c}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-col gap-3">
+              <Label>{t('assets.owner')}</Label>
+              <Input
+                value={editForm.owner ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, owner: e.target.value }))}
+                placeholder={t('assets.ownerPlaceholder')}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-3">
+              <Label>{t('assets.description')}</Label>
+              <textarea
+                value={editForm.description ?? ''}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
+              />
+            </div>
+          </>
+        )}
+      </EditSheet>
     </PageLayout>
   );
 }
