@@ -14,7 +14,7 @@ export type { Policy, PolicyInput, PolicyPatch, PolicyTemplate, PolicyControl, P
 export function usePolicies(orgId: string) {
   return useQuery<Policy[]>({
     queryKey: ['policies', orgId],
-    queryFn: () => api<Policy[]>(`/policies?orgId=${encodeURIComponent(orgId)}`),
+    queryFn: () => api<Policy[]>(`/notes/policies?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
   });
 }
@@ -22,7 +22,7 @@ export function usePolicies(orgId: string) {
 export function usePolicy(id: string) {
   return useQuery<Policy>({
     queryKey: ['policies', id],
-    queryFn: () => api<Policy>(`/policies/${id}`),
+    queryFn: () => api<Policy>(`/notes/policies/${id}`),
     enabled: !!id,
   });
 }
@@ -33,8 +33,8 @@ export function usePolicyTemplates(frameworkId?: string) {
     queryFn: () =>
       api<PolicyTemplate[]>(
         frameworkId
-          ? `/policy-templates?frameworkId=${encodeURIComponent(frameworkId)}`
-          : '/policy-templates',
+          ? `/notes/policy-templates?frameworkId=${encodeURIComponent(frameworkId)}`
+          : '/notes/policy-templates',
       ),
   });
 }
@@ -42,7 +42,7 @@ export function usePolicyTemplates(frameworkId?: string) {
 export function usePolicyControls(policyId: string) {
   return useQuery<PolicyControl[]>({
     queryKey: ['policies', policyId, 'controls'],
-    queryFn: () => api<PolicyControl[]>(`/policies/${policyId}/controls`),
+    queryFn: () => api<PolicyControl[]>(`/notes/policies/${policyId}/controls`),
     enabled: !!policyId,
   });
 }
@@ -52,7 +52,7 @@ export function usePoliciesForControl(controlCode: string, frameworkId: string) 
     queryKey: ['policies', 'for-control', controlCode, frameworkId],
     queryFn: () =>
       api<Policy[]>(
-        `/policies/for-control?controlCode=${encodeURIComponent(controlCode)}&frameworkId=${encodeURIComponent(frameworkId)}`,
+        `/notes/policies/for-control?controlCode=${encodeURIComponent(controlCode)}&frameworkId=${encodeURIComponent(frameworkId)}`,
       ),
     enabled: !!controlCode && !!frameworkId,
   });
@@ -62,7 +62,7 @@ export function useCreatePolicy(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Policy, Error, PolicyInput>({
     mutationFn: (data) =>
-      api<Policy>(`/policies?orgId=${encodeURIComponent(orgId)}`, {
+      api<Policy>(`/notes/policies?orgId=${encodeURIComponent(orgId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -75,7 +75,7 @@ export function useCloneTemplate(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Policy, Error, string>({
     mutationFn: (templateId) =>
-      api<Policy>(`/policies/clone/${templateId}?orgId=${encodeURIComponent(orgId)}`, {
+      api<Policy>(`/notes/policies/clone/${templateId}?orgId=${encodeURIComponent(orgId)}`, {
         method: 'POST',
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['policies', orgId] }),
@@ -86,7 +86,7 @@ export function useUpdatePolicy(orgId: string, id: string) {
   const qc = useQueryClient();
   return useMutation<Policy, Error, PolicyPatch>({
     mutationFn: (patch) =>
-      api<Policy>(`/policies/${id}`, {
+      api<Policy>(`/notes/policies/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -101,7 +101,7 @@ export function useUpdatePolicy(orgId: string, id: string) {
 export function useDeletePolicy(orgId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/policies/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/policies/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['policies', orgId] }),
   });
 }
@@ -110,7 +110,7 @@ export function useAddPolicyControl(policyId: string) {
   const qc = useQueryClient();
   return useMutation<PolicyControl, Error, PolicyControlInput>({
     mutationFn: (data) =>
-      api<PolicyControl>(`/policies/${policyId}/controls`, {
+      api<PolicyControl>(`/notes/policies/${policyId}/controls`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -122,7 +122,7 @@ export function useAddPolicyControl(policyId: string) {
 export function useRemovePolicyControl(policyId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/policies/controls/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/policies/controls/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['policies', policyId, 'controls'] }),
   });
 }
