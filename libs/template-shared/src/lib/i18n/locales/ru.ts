@@ -193,6 +193,8 @@ export const ru = {
       low: 'Низкий',
     },
     implementation: 'Реализация',
+    objective: 'Цель',
+    scope: 'Область применения',
     editPriority: 'Изменить приоритет',
     addImplementation: 'Нажмите, чтобы добавить инструкцию по реализации…',
     versionHistory: 'История версий',

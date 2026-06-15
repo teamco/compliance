@@ -7,7 +7,7 @@ export type { Risk, RiskInput, RiskPatch };
 export function useRisks(orgId: string) {
   return useQuery<Risk[]>({
     queryKey: ['risks', orgId],
-    queryFn: () => api<Risk[]>(`/risks?orgId=${encodeURIComponent(orgId)}`),
+    queryFn: () => api<Risk[]>(`/notes/risks?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
   });
 }
@@ -16,7 +16,7 @@ export function useCreateRisk(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Risk, Error, RiskInput>({
     mutationFn: (data) =>
-      api<Risk>(`/risks?orgId=${encodeURIComponent(orgId)}`, {
+      api<Risk>(`/notes/risks?orgId=${encodeURIComponent(orgId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -29,7 +29,7 @@ export function useUpdateRisk(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Risk, Error, { id: string; patch: RiskPatch }>({
     mutationFn: ({ id, patch }) =>
-      api<Risk>(`/risks/${id}`, {
+      api<Risk>(`/notes/risks/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -41,7 +41,7 @@ export function useUpdateRisk(orgId: string) {
 export function useDeleteRisk(orgId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/risks/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/risks/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['risks', orgId] }),
   });
 }

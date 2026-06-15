@@ -7,7 +7,7 @@ export type { Issue, IssueInput, IssuePatch };
 export function useIssues(orgId: string) {
   return useQuery<Issue[]>({
     queryKey: ['issues', orgId],
-    queryFn: () => api<Issue[]>(`/issues?orgId=${encodeURIComponent(orgId)}`),
+    queryFn: () => api<Issue[]>(`/notes/issues?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
   });
 }
@@ -16,7 +16,7 @@ export function useCreateIssue(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Issue, Error, IssueInput>({
     mutationFn: (data) =>
-      api<Issue>(`/issues?orgId=${encodeURIComponent(orgId)}`, {
+      api<Issue>(`/notes/issues?orgId=${encodeURIComponent(orgId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -29,7 +29,7 @@ export function useUpdateIssue(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Issue, Error, { id: string; patch: IssuePatch }>({
     mutationFn: ({ id, patch }) =>
-      api<Issue>(`/issues/${id}`, {
+      api<Issue>(`/notes/issues/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -41,7 +41,7 @@ export function useUpdateIssue(orgId: string) {
 export function useDeleteIssue(orgId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/issues/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/issues/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['issues', orgId] }),
   });
 }
