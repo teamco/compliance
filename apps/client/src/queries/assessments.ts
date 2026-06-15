@@ -21,7 +21,7 @@ export type {
 export function useAssessments(orgId: string) {
   return useQuery<RiskAssessment[]>({
     queryKey: ['assessments', orgId],
-    queryFn: () => api<RiskAssessment[]>(`/assessments?orgId=${encodeURIComponent(orgId)}`),
+    queryFn: () => api<RiskAssessment[]>(`/notes/assessments?orgId=${encodeURIComponent(orgId)}`),
     enabled: !!orgId,
   });
 }
@@ -29,7 +29,7 @@ export function useAssessments(orgId: string) {
 export function useAssessment(id: string) {
   return useQuery<RiskAssessment>({
     queryKey: ['assessments', id],
-    queryFn: () => api<RiskAssessment>(`/assessments/${id}`),
+    queryFn: () => api<RiskAssessment>(`/notes/assessments/${id}`),
     enabled: !!id,
   });
 }
@@ -37,7 +37,7 @@ export function useAssessment(id: string) {
 export function useAssessmentItems(assessmentId: string) {
   return useQuery<RiskAssessmentItem[]>({
     queryKey: ['assessments', assessmentId, 'items'],
-    queryFn: () => api<RiskAssessmentItem[]>(`/assessments/${assessmentId}/items`),
+    queryFn: () => api<RiskAssessmentItem[]>(`/notes/assessments/${assessmentId}/items`),
     enabled: !!assessmentId,
   });
 }
@@ -46,7 +46,7 @@ export function useCreateAssessment(orgId: string) {
   const qc = useQueryClient();
   return useMutation<RiskAssessment, Error, RiskAssessmentInput>({
     mutationFn: (data) =>
-      api<RiskAssessment>(`/assessments?orgId=${encodeURIComponent(orgId)}`, {
+      api<RiskAssessment>(`/notes/assessments?orgId=${encodeURIComponent(orgId)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -59,7 +59,7 @@ export function useUpdateAssessment(orgId: string, id: string) {
   const qc = useQueryClient();
   return useMutation<RiskAssessment, Error, RiskAssessmentPatch>({
     mutationFn: (patch) =>
-      api<RiskAssessment>(`/assessments/${id}`, {
+      api<RiskAssessment>(`/notes/assessments/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -74,7 +74,7 @@ export function useUpdateAssessment(orgId: string, id: string) {
 export function useDeleteAssessment(orgId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/assessments/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/assessments/${id}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assessments', orgId] }),
   });
 }
@@ -83,7 +83,7 @@ export function useAddAssessmentItem(assessmentId: string) {
   const qc = useQueryClient();
   return useMutation<RiskAssessmentItem, Error, RiskAssessmentItemInput>({
     mutationFn: (data) =>
-      api<RiskAssessmentItem>(`/assessments/${assessmentId}/items`, {
+      api<RiskAssessmentItem>(`/notes/assessments/${assessmentId}/items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export function useUpdateAssessmentItem(assessmentId: string) {
   const qc = useQueryClient();
   return useMutation<RiskAssessmentItem, Error, { id: string; patch: RiskAssessmentItemPatch }>({
     mutationFn: ({ id, patch }) =>
-      api<RiskAssessmentItem>(`/assessments/items/${id}`, {
+      api<RiskAssessmentItem>(`/notes/assessments/items/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
@@ -114,7 +114,7 @@ export function useUpdateAssessmentItem(assessmentId: string) {
 export function useDeleteAssessmentItem(assessmentId: string) {
   const qc = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (id) => api<void>(`/assessments/items/${id}`, { method: 'DELETE' }),
+    mutationFn: (id) => api<void>(`/notes/assessments/items/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['assessments', assessmentId, 'items'] });
       qc.invalidateQueries({ queryKey: ['assessments', assessmentId] });
