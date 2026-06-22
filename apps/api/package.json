@@ -5,7 +5,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/multer": "^2.1.0",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.9"
   },
   "dependencies": {
     "@casl/ability": "^7.0.0",
@@ -15,14 +15,14 @@
     "@icore/shared": "*",
     "@icore/upload-client": "*",
     "@icore/vendor-risk-client": "*",
-    "@nestjs/common": "^11.1.24",
+    "@nestjs/common": "^11.1.27",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.24",
-    "@nestjs/platform-express": "^11.1.24",
+    "@nestjs/core": "^11.1.27",
+    "@nestjs/platform-express": "^11.1.27",
     "@nestjs/swagger": "^11.4.4",
     "@nestjs/throttler": "^6.5.0",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
-    "pg-boss": "^12.18.2"
+    "pg-boss": "^12.20.0"
   }
 }
