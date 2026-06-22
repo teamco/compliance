@@ -72,3 +72,4 @@ gha-creds-*.json
 /.tanstack/
 
 .claude/settings.local.json
+.nx/migrate-runs
