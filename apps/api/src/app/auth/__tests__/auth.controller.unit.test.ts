@@ -1,7 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
+import { BadRequestException, ForbiddenException, type ExecutionContext } from '@nestjs/common';
 import type { AuthClientService } from '@icore/auth-client';
 import { AuthController } from '../auth.controller';
+import { AbilityFactory } from '../../abilities/ability.factory';
+import { AbilityGuard } from '../../abilities/ability.guard';
+import { CHECK_ABILITY_KEY } from '../../abilities/check-ability.decorator';
 
 function makeConfig(env: Record<string, string | undefined>): ConfigService {
   return { get: (key: string) => env[key] } as unknown as ConfigService;
@@ -29,6 +34,7 @@ function makeAuthClient(): AuthClientService {
       expiresIn: 3600,
       user: { id: 'u1', email: 'a@x.com' },
     }),
+    setRole: vi.fn().mockResolvedValue(undefined),
   } as unknown as AuthClientService;
 }
 
@@ -146,5 +152,54 @@ describe('AuthController (gateway) — OAuth', () => {
     await expect(
       controller.oauthStart('apple', res as unknown as import('express').Response),
     ).rejects.toThrow();
+  });
+});
+
+describe('AuthController (gateway) — setRole', () => {
+  it('forwards uid + role to the auth client', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    const result = await controller.setRole({ uid: 'u2', role: 'admin' });
+    expect(client.setRole).toHaveBeenCalledWith('u2', 'admin');
+    expect(result).toEqual({ ok: true });
+  });
+
+  it('rejects an unknown role without touching the auth client', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    await expect(controller.setRole({ uid: 'u2', role: 'superadmin' })).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(client.setRole).not.toHaveBeenCalled();
+  });
+
+  it('rejects a missing uid', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    await expect(controller.setRole({ uid: '', role: 'admin' })).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(client.setRole).not.toHaveBeenCalled();
+  });
+
+  // The route is admin-only via @CheckAbility('manage','all') + the global
+  // AbilityGuard. Assert the metadata is wired and that a regular user is denied.
+  it('is guarded as admin-only — a regular user is denied 403', () => {
+    const required = new Reflector().get(CHECK_ABILITY_KEY, AuthController.prototype.setRole);
+    expect(required).toEqual({ action: 'manage', subject: 'all' });
+
+    const guard = new AbilityGuard(
+      { getAllAndOverride: () => required } as unknown as Reflector,
+      new AbilityFactory(),
+    );
+    const ctx = (role: string) =>
+      ({
+        getHandler: () => AuthController.prototype.setRole,
+        getClass: () => AuthController,
+        switchToHttp: () => ({ getRequest: () => ({ user: { uid: 'u', role } }) }),
+      }) as unknown as ExecutionContext;
+
+    expect(guard.canActivate(ctx('admin'))).toBe(true);
+    expect(() => guard.canActivate(ctx('user'))).toThrow(ForbiddenException);
   });
 });
