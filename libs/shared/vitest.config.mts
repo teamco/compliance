@@ -3,9 +3,8 @@ import { defineConfig, configDefaults } from 'vitest/config';
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../../node_modules/.vite/libs/shared',
-  resolve: {
-    tsconfigPaths: true,
-  },
+  resolve: { tsconfigPaths: true },
+  plugins: [],
   test: {
     name: 'shared',
     watch: false,
