@@ -17,8 +17,11 @@ import type { Request, Response } from 'express';
 import { AuthClientService } from '@icore/auth-client';
 import type { OAuthProvider, VerifiedToken } from '@icore/shared';
 import { Public } from './public.decorator';
+import { CheckAbility } from '../abilities/check-ability.decorator';
 
 const OAUTH_PROVIDERS: ReadonlySet<OAuthProvider> = new Set(['google', 'github']);
+
+const ROLES: ReadonlySet<string> = new Set(['admin', 'user']);
 
 function assertProvider(value: string): OAuthProvider {
   if (!OAUTH_PROVIDERS.has(value as OAuthProvider)) {
@@ -139,6 +142,27 @@ export class AuthController {
       user.avatarUrl,
     );
     return { ...user, role };
+  }
+
+  @Post('role')
+  @CheckAbility('manage', 'all')
+  @ApiOperation({ summary: 'Set a user role (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['uid', 'role'],
+      properties: {
+        uid: { type: 'string' },
+        role: { type: 'string', enum: ['admin', 'user'] },
+      },
+    },
+  })
+  async setRole(@Body() body: { uid: string; role: string }) {
+    if (!body.uid || !ROLES.has(body.role)) {
+      throw new BadRequestException('invalid_uid_or_role');
+    }
+    await this.authClient.setRole(body.uid, body.role);
+    return { ok: true };
   }
 
   @Public()
