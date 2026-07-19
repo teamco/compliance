@@ -76,6 +76,7 @@
     "prettier": "~3.9.5",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "swc-loader": "^0.2.7",
     "ts-jest": "^29.4.11",
     "ts-node": "10.9.2",
     "tsconfig-paths-webpack-plugin": "^4.2.0",
