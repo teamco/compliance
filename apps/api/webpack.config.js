@@ -12,6 +12,7 @@ module.exports = {
       compiler: 'tsc',
       main: 'apps/api/src/main.ts',
       outputHashing: 'none',
+      sourceMap: true,
     }),
   ],
 };
