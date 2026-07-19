@@ -4,8 +4,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
 import {
   apiInfoPlugin,
   commonDefines,
@@ -31,6 +29,9 @@ export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/client',
   server: commonServer(4200),
+  resolve: {
+    tsconfigPaths: true,
+  },
   preview: {
     port: 4200,
     host: 'localhost',
@@ -47,15 +48,6 @@ export default defineConfig(() => ({
     }),
     react(),
     tailwindcss(),
-    tsconfigPaths(),
-    viteStaticCopy({
-      targets: [
-        {
-          src: '*.md',
-          dest: '.',
-        },
-      ],
-    }),
     noServerModulesPlugin(),
     apiInfoPlugin(),
     injectAppVersionPlugin(rootPackageJson),

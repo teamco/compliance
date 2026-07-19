@@ -83,8 +83,6 @@
     "typescript": "6.0.3",
     "typescript-eslint": "^8.64.0",
     "vite": "^8.1.5",
-    "vite-plugin-static-copy": "^4.1.1",
-    "vite-tsconfig-paths": "^6.1.1",
     "vitest": "~4.1.10",
     "webpack-cli": "^7.2.1",
     "webpack-dev-server": "5.2.6"
