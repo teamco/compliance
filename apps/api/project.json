@@ -62,7 +62,7 @@
       "options": {
         "buildTarget": "api:build",
         "runBuildTargetDependencies": false,
-        "port": 9229
+        "port": 9234
       },
       "configurations": {
         "development": {
