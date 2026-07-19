@@ -32,7 +32,10 @@
       "@icore/vendor-risk-client": ["./libs/vendor-risk-client/src/index.ts"],
       "@icore/vendor-risk-crawler": ["./libs/vendor-risk-strategies/crawler/src/index.ts"],
       "@icore/vendor-risk-scorecard": ["./libs/vendor-risk-strategies/scorecard/src/index.ts"]
-    }
+    },
+    "noUncheckedSideEffectImports": false,
+    "types": ["*"],
+    "ignoreDeprecations": "6.0"
   },
   "exclude": ["node_modules", "dist", ".nx"]
 }
