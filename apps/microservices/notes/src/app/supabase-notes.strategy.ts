@@ -166,6 +166,29 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     }));
   }
 
+  async listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]> {
+    const { data, error } = await this.db
+      .from('generated_standards')
+      .select('standards')
+      .eq('org_profile_id', orgId)
+      .eq('status', 'completed');
+    const rows = ok(data, error) as Array<{ standards: DocumentStandard[] }>;
+    const seen = new Set<string>();
+    const result: DocumentStandard[] = [];
+    for (const row of rows) {
+      for (const std of row.standards ?? []) {
+        if (
+          std.frameworkMappings?.some((m) => m.frameworkId === frameworkId) &&
+          !seen.has(std.code)
+        ) {
+          seen.add(std.code);
+          result.push(std);
+        }
+      }
+    }
+    return result;
+  }
+
   async listOrganizations(userId: string): Promise<Organization[]> {
     const { data, error } = await this.db
       .from('org_profiles')
@@ -1026,7 +1049,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         standard_code: data.standardCode ?? null,
         framework_id: data.frameworkId,
         title: data.title,
+        statement: data.statement,
         justification: data.justification,
+        owner_id: data.ownerId,
+        compensating_controls: data.compensatingControls ?? null,
         expires_at: data.expiresAt ?? null,
       })
       .select()
@@ -1043,7 +1069,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updateException(id: string, patch: ExceptionPatch): Promise<Exception> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.statement !== undefined) update['statement'] = patch.statement;
     if (patch.justification !== undefined) update['justification'] = patch.justification;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.compensatingControls !== undefined)
+      update['compensating_controls'] = patch.compensatingControls;
     if ('expiresAt' in patch) update['expires_at'] = patch.expiresAt;
     const { data, error } = await this.db
       .from('exceptions')
@@ -1088,7 +1118,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       standardCode: row['standard_code'] as string | undefined,
       frameworkId: row['framework_id'] as string,
       title: row['title'] as string,
+      statement: row['statement'] as string,
       justification: row['justification'] as string,
+      ownerId: row['owner_id'] as string,
+      compensatingControls: row['compensating_controls'] as string | undefined,
       status: row['status'] as Exception['status'],
       expiresAt: row['expires_at'] as string | null,
       createdAt: row['created_at'] as string,
