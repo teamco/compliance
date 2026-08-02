@@ -478,3 +478,41 @@ describe('policy controls mapping', () => {
     expect(await s.listPolicyControls(p.id)).toHaveLength(0);
   });
 });
+
+describe('listStandardsByFramework', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('returns standards mapped to the given framework, deduplicated by code', async () => {
+    const { id } = await s.createStandardsDocument('u1', 'org1', ['fw1']);
+    await s.saveStandardsDocument(id, [
+      {
+        code: 'STD-1',
+        title: 'Access Control',
+        objective: 'Restrict access',
+        scope: 'All systems',
+        requirements: ['MFA required'],
+        frameworkMappings: [{ frameworkId: 'fw1', standardCode: 'AC-1' }],
+      },
+      {
+        code: 'STD-2',
+        title: 'Unrelated',
+        objective: 'N/A',
+        scope: 'N/A',
+        requirements: [],
+        frameworkMappings: [{ frameworkId: 'fw2', standardCode: 'X-1' }],
+      },
+    ]);
+
+    const result = await s.listStandardsByFramework('org1', 'fw1');
+    expect(result).toHaveLength(1);
+    expect(result[0].code).toBe('STD-1');
+  });
+
+  it('returns an empty array for an org with no standards documents', async () => {
+    const result = await s.listStandardsByFramework('org-none', 'fw1');
+    expect(result).toEqual([]);
+  });
+});
