@@ -132,7 +132,7 @@
     "dayjs": "^1.11.21",
     "i18next": "^26.3.6",
     "lucide-react": "^1.28.0",
-    "pg-boss": "^12.26.3",
+    "pg-boss": "^12.26.4",
     "react-i18next": "^17.0.11",
     "react-is": "^19.2.8",
     "react-markdown": "^10.1.0",
