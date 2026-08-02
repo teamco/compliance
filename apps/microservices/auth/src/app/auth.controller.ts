@@ -7,6 +7,7 @@ import {
   type AuthStrategy,
   type OAuthProvider,
   type OAuthStartResult,
+  type OrgMember,
   type VerifiedToken,
 } from '@icore/shared';
 
@@ -132,6 +133,11 @@ export class AuthController {
     lastSignedIn?: string;
   } | null> {
     return this.strategy.getProfile(payload.uid);
+  }
+
+  @MessagePattern('auth.org.members.list')
+  listOrgMembers(@Payload() payload: { orgId: string }): Promise<OrgMember[]> {
+    return this.strategy.listOrgMembers(payload.orgId);
   }
 
   @MessagePattern('auth.profile.update')

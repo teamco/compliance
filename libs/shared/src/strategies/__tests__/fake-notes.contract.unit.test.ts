@@ -15,11 +15,28 @@ describe('exceptions', () => {
       frameworkId: 'fw1',
       title: 'Cannot implement AC-1',
       justification: 'Legacy system limitation',
+      statement: 'S',
+      ownerId: 'owner-1',
     });
     expect(exc.status).toBe('pending');
     const list = await s.listExceptions('org1');
     expect(list).toHaveLength(1);
     expect(list[0].id).toBe(exc.id);
+  });
+
+  it('carries statement, ownerId, and compensatingControls through create', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'Cannot implement AC-1',
+      statement: 'AC-1 requires MFA on all admin accounts.',
+      justification: 'Legacy system limitation',
+      ownerId: 'user-owner-1',
+      compensatingControls: 'Manual quarterly access review',
+    });
+    expect(exc.statement).toBe('AC-1 requires MFA on all admin accounts.');
+    expect(exc.ownerId).toBe('user-owner-1');
+    expect(exc.compensatingControls).toBe('Manual quarterly access review');
   });
 
   it('approves an exception', async () => {
@@ -28,6 +45,8 @@ describe('exceptions', () => {
       frameworkId: 'fw1',
       title: 'T',
       justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
     });
     const approved = await s.approveException(exc.id);
     expect(approved.status).toBe('approved');
@@ -39,6 +58,8 @@ describe('exceptions', () => {
       frameworkId: 'fw1',
       title: 'T',
       justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
     });
     const rejected = await s.rejectException(exc.id);
     expect(rejected.status).toBe('rejected');
@@ -50,6 +71,8 @@ describe('exceptions', () => {
       frameworkId: 'fw1',
       title: 'Old',
       justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
     });
     const updated = await s.updateException(exc.id, { title: 'New' });
     expect(updated.title).toBe('New');
@@ -61,6 +84,8 @@ describe('exceptions', () => {
       frameworkId: 'fw1',
       title: 'T',
       justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
     });
     await s.deleteException(exc.id);
     expect(await s.listExceptions('org1')).toHaveLength(0);
@@ -72,6 +97,8 @@ describe('exceptions', () => {
       frameworkId: 'fw1',
       title: 'T',
       justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
     });
     expect(await s.listExceptions('org2')).toHaveLength(0);
   });
@@ -449,5 +476,43 @@ describe('policy controls mapping', () => {
     const pc = await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
     await s.removePolicyControl(pc.id);
     expect(await s.listPolicyControls(p.id)).toHaveLength(0);
+  });
+});
+
+describe('listStandardsByFramework', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('returns standards mapped to the given framework, deduplicated by code', async () => {
+    const { id } = await s.createStandardsDocument('u1', 'org1', ['fw1']);
+    await s.saveStandardsDocument(id, [
+      {
+        code: 'STD-1',
+        title: 'Access Control',
+        objective: 'Restrict access',
+        scope: 'All systems',
+        requirements: ['MFA required'],
+        frameworkMappings: [{ frameworkId: 'fw1', standardCode: 'AC-1' }],
+      },
+      {
+        code: 'STD-2',
+        title: 'Unrelated',
+        objective: 'N/A',
+        scope: 'N/A',
+        requirements: [],
+        frameworkMappings: [{ frameworkId: 'fw2', standardCode: 'X-1' }],
+      },
+    ]);
+
+    const result = await s.listStandardsByFramework('org1', 'fw1');
+    expect(result).toHaveLength(1);
+    expect(result[0].code).toBe('STD-1');
+  });
+
+  it('returns an empty array for an org with no standards documents', async () => {
+    const result = await s.listStandardsByFramework('org-none', 'fw1');
+    expect(result).toEqual([]);
   });
 });

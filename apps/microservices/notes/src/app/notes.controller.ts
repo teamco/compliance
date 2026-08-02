@@ -60,6 +60,13 @@ export class NotesController {
     return this.strategy.listControlsByFramework(payload.frameworkId);
   }
 
+  @MessagePattern('notes.standards.by-framework')
+  listStandardsByFramework(
+    @Payload() payload: { orgId: string; frameworkId: string },
+  ): Promise<DocumentStandard[]> {
+    return this.strategy.listStandardsByFramework(payload.orgId, payload.frameworkId);
+  }
+
   @MessagePattern('notes.org.list')
   listOrganizations(@Payload() payload: { userId: string }): Promise<Organization[]> {
     return this.strategy.listOrganizations(payload.userId);

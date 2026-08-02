@@ -121,7 +121,10 @@ export interface Exception {
   standardCode?: string;
   frameworkId: string;
   title: string;
+  statement: string;
   justification: string;
+  ownerId: string;
+  compensatingControls?: string;
   status: ExceptionStatus;
   expiresAt: string | null;
   createdAt: string;
@@ -133,13 +136,19 @@ export interface ExceptionInput {
   standardCode?: string;
   frameworkId: string;
   title: string;
+  statement: string;
   justification: string;
+  ownerId: string;
+  compensatingControls?: string;
   expiresAt?: string;
 }
 
 export interface ExceptionPatch {
   title?: string;
+  statement?: string;
   justification?: string;
+  ownerId?: string;
+  compensatingControls?: string;
   expiresAt?: string | null;
 }
 
@@ -443,6 +452,7 @@ export interface NotesStrategy {
   listFrameworks(): Promise<Framework[]>;
   getFramework(id: string): Promise<Framework | null>;
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]>;
+  listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]>;
 
   listOrganizations(userId: string): Promise<Organization[]>;
   createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;

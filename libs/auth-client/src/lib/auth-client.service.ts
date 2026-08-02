@@ -1,7 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import type { AuthSession, OAuthProvider, OAuthStartResult, VerifiedToken } from '@icore/shared';
+import type {
+  AuthSession,
+  OAuthProvider,
+  OAuthStartResult,
+  OrgMember,
+  VerifiedToken,
+} from '@icore/shared';
 import { AUTH_CLIENT } from './auth-client.tokens';
 
 @Injectable()
@@ -57,6 +63,10 @@ export class AuthClientService {
         lastSignedIn?: string;
       } | null>('auth.profile.get', { uid }),
     );
+  }
+
+  listOrgMembers(orgId: string): Promise<OrgMember[]> {
+    return firstValueFrom(this.client.send<OrgMember[]>('auth.org.members.list', { orgId }));
   }
 
   updateProfile(uid: string, displayName: string): Promise<void> {
