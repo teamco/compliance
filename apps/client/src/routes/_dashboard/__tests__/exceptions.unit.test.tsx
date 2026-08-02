@@ -37,6 +37,14 @@ vi.mock('@/queries/notes', () => ({
         version: '1',
         category: 'security',
       },
+      {
+        id: 'fw2',
+        slug: 'iso27001',
+        name: 'ISO 27001',
+        description: '',
+        version: '1',
+        category: 'security',
+      },
     ],
   }),
   useFrameworkStandards: () => ({
@@ -121,12 +129,38 @@ describe('ExceptionsPage — New Exception dialog', () => {
     render(wrap(<ExceptionsPage />));
     fireEvent.click(screen.getByText('New Exception'));
 
-    const comboboxes = screen.getAllByRole('combobox');
-    fireEvent.click(comboboxes[0]); // first combobox in field order = Framework
+    // Combobox order in the field layout = Framework, Standard, Control Code, Owner.
+    const comboboxes = () => screen.getAllByRole('combobox');
+
+    // Pick a framework first, which enables the Standard/Control Code comboboxes.
+    fireEvent.click(comboboxes()[0]);
     fireEvent.click(screen.getByText('SOC2 — SOC 2'));
 
-    // After picking a framework, Standard/Control comboboxes show their placeholders again (reset).
+    // Select a non-empty Standard value.
+    fireEvent.click(comboboxes()[1]);
+    fireEvent.click(screen.getByText('STD-1 — Access Control'));
+
+    // Select a non-empty Control Code value.
+    fireEvent.click(comboboxes()[2]);
+    fireEvent.click(screen.getByText('AC-1 — Access Control'));
+
+    // Sanity check: the selections actually took effect (comboboxes show the
+    // selected labels, not their placeholders). Without this, the later "reset"
+    // assertion below would be vacuously true even if nothing were ever selected.
+    expect(screen.getByText('STD-1 — Access Control')).toBeTruthy();
+    expect(screen.getByText('AC-1 — Access Control')).toBeTruthy();
+    expect(screen.queryByText('Select standard…')).toBeNull();
+    expect(screen.queryByText('Select control…')).toBeNull();
+
+    // Now change the Framework selection to a *different* framework.
+    fireEvent.click(comboboxes()[0]);
+    fireEvent.click(screen.getByText('ISO27001 — ISO 27001'));
+
+    // Standard/Control comboboxes must reset back to their placeholders — this is
+    // the actual regression this test guards against.
     expect(screen.getByText('Select standard…')).toBeTruthy();
     expect(screen.getByText('Select control…')).toBeTruthy();
+    expect(screen.queryByText('STD-1 — Access Control')).toBeNull();
+    expect(screen.queryByText('AC-1 — Access Control')).toBeNull();
   });
 });
