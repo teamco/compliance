@@ -3,9 +3,8 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../../../node_modules/.vite/apps/microservices/ai',
-  resolve: {
-    tsconfigPaths: true,
-  },
+  resolve: { tsconfigPaths: true },
+  plugins: [],
   test: {
     name: 'ai',
     watch: false,
