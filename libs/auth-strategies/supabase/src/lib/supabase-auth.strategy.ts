@@ -7,6 +7,7 @@ import {
   type MagicLinkRequest,
   type OAuthProvider,
   type OAuthStartResult,
+  type OrgMember,
   type VerifiedToken,
 } from '@icore/shared';
 
@@ -190,6 +191,41 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     if (error || !data.user) throw new Error(error?.message ?? 'user_missing');
     const meta = data.user.app_metadata as { role?: string } | undefined;
     return meta?.role ?? null;
+  }
+
+  async listOrgMembers(orgId: string): Promise<OrgMember[]> {
+    const { data: members, error } = await this.client
+      .from('organization_members')
+      .select('user_id, role')
+      .eq('org_id', orgId);
+    if (error) throw new Error(error.message);
+    const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
+    if (rows.length === 0) return [];
+
+    const { data: profiles, error: profilesError } = await this.client
+      .from('profiles')
+      .select('id, email, display_name')
+      .in(
+        'id',
+        rows.map((r) => r.user_id),
+      );
+    if (profilesError) throw new Error(profilesError.message);
+    const profileMap = new Map(
+      (profiles ?? []).map((p) => {
+        const row = p as { id: string; email?: string; display_name?: string };
+        return [row.id, row];
+      }),
+    );
+
+    return rows.map((r) => {
+      const profile = profileMap.get(r.user_id);
+      return {
+        userId: r.user_id,
+        role: r.role,
+        email: profile?.email,
+        displayName: profile?.display_name,
+      };
+    });
   }
 
   private toSession(s: {
