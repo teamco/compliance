@@ -4,6 +4,7 @@ import type {
   MagicLinkRequest,
   OAuthProvider,
   OAuthStartResult,
+  OrgMember,
   VerifiedToken,
 } from '../auth';
 
@@ -31,6 +32,7 @@ export class FakeAuthStrategy implements AuthStrategy {
   private readonly oauthStates = new Map<string, PendingOAuth>();
   private readonly oauthCodes = new Map<string, string>();
   private lastOAuthState: string | null = null;
+  private readonly orgMembers = new Map<string, OrgMember[]>();
 
   async signUp(email: string, password: string): Promise<AuthSession> {
     if (this.users.has(email)) throw new Error('user_exists');
@@ -159,6 +161,15 @@ export class FakeAuthStrategy implements AuthStrategy {
     this.oauthStates.set(state, { provider, email });
     this.oauthCodes.set(code, state);
     return { code, state };
+  }
+
+  seedOrgMember(orgId: string, member: OrgMember): void {
+    const existing = this.orgMembers.get(orgId) ?? [];
+    this.orgMembers.set(orgId, [...existing, member]);
+  }
+
+  async listOrgMembers(orgId: string): Promise<OrgMember[]> {
+    return this.orgMembers.get(orgId) ?? [];
   }
 
   private findById(uid: string): StoredUser {
