@@ -1,11 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-
-
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../../../node_modules/.vite/libs/vendor-risk-strategies/crawler',
   resolve: { tsconfigPaths: true },
+  plugins: [],
   test: {
     name: 'crawler',
     watch: false,

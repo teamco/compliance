@@ -43,5 +43,4 @@ export interface StandardsDocumentSubject {
 }
 
 export type AbilitySubject =
-  | InferSubjects<NoteSubject | OrganizationSubject | StandardsDocumentSubject>
-  | `${Subject}`;
+  InferSubjects<NoteSubject | OrganizationSubject | StandardsDocumentSubject> | `${Subject}`;

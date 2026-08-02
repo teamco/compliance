@@ -1,11 +1,10 @@
 import { defineConfig } from 'vitest/config';
 
-
-
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../../../node_modules/.vite/libs/ai-strategies/anthropic',
   resolve: { tsconfigPaths: true },
+  plugins: [],
   test: {
     name: 'ai-anthropic',
     watch: false,

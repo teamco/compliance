@@ -28,10 +28,8 @@ function depVersion(name: string): string {
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/client',
+  resolve: { tsconfigPaths: true },
   server: commonServer(4200),
-  resolve: {
-    tsconfigPaths: true,
-  },
   preview: {
     port: 4200,
     host: 'localhost',
@@ -54,7 +52,7 @@ export default defineConfig(() => ({
   ],
   // Uncomment this if you are using workers.
   // worker: {
-  //   plugins: () => [ tsconfigPaths() ],
+  //   plugins: () => [],
   // },
   build: {
     outDir: '../../dist/apps/client',
