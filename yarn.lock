@@ -8443,7 +8443,7 @@ __metadata:
     "@types/multer": "npm:^2.2.0"
     cookie-parser: "npm:^1.4.7"
     express: "npm:^5.2.1"
-    pg-boss: "npm:^12.26.3"
+    pg-boss: "npm:^12.26.4"
     vitest: "npm:^4.1.10"
   languageName: unknown
   linkType: soft
@@ -9852,7 +9852,7 @@ __metadata:
     lint-staged: "npm:^17.3.0"
     lucide-react: "npm:^1.28.0"
     nx: "npm:23.1.1"
-    pg-boss: "npm:^12.26.3"
+    pg-boss: "npm:^12.26.4"
     prettier: "npm:~3.9.6"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
@@ -17038,16 +17038,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pg-boss@npm:^12.26.3":
-  version: 12.26.3
-  resolution: "pg-boss@npm:12.26.3"
+"pg-boss@npm:^12.26.4":
+  version: 12.26.4
+  resolution: "pg-boss@npm:12.26.4"
   dependencies:
     cron-parser: "npm:^5.6.2"
     pg: "npm:^8.22.0"
     serialize-error: "npm:^13.0.1"
   bin:
     pg-boss: dist/cli.js
-  checksum: 10c0/45bc46f20682b807a6a7f500ec8fd247e7441c6b3ca341197728a8e7eb35c044d0b9b260e42285440bcd1a191b1038371988cea1635d763054b822e632ffda09
+  checksum: 10c0/5377120af7a5c4566e0c69d94af32c603484805693f5483f40f9800e52dabcbf8de1093d2f1aa934c27ed7f1688e12323f3bcd43156d2eb6e2a60e8337626748
   languageName: node
   linkType: hard
 
