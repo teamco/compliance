@@ -452,6 +452,7 @@ export interface NotesStrategy {
   listFrameworks(): Promise<Framework[]>;
   getFramework(id: string): Promise<Framework | null>;
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]>;
+  listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]>;
 
   listOrganizations(userId: string): Promise<Organization[]>;
   createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
