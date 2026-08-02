@@ -144,6 +144,13 @@ export class AuthController {
     return { ...user, role };
   }
 
+  @Get('org/members')
+  @ApiOperation({ summary: 'List members of an organization' })
+  listOrgMembers(@Query('orgId') orgId: string) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.authClient.listOrgMembers(orgId);
+  }
+
   @Post('role')
   @CheckAbility('manage', 'all')
   @ApiOperation({ summary: 'Set a user role (admin only)' })
