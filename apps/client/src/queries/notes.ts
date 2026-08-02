@@ -69,6 +69,17 @@ export function useFrameworkControls(frameworkId: string) {
   });
 }
 
+export function useFrameworkStandards(orgId: string, frameworkId: string) {
+  return useQuery<DocumentStandard[]>({
+    queryKey: ['notes', 'orgs', orgId, 'frameworks', frameworkId, 'standards'],
+    queryFn: () =>
+      api<DocumentStandard[]>(
+        `/notes/frameworks/${frameworkId}/standards?orgId=${encodeURIComponent(orgId)}`,
+      ),
+    enabled: !!orgId && !!frameworkId,
+  });
+}
+
 export function useOrganizations() {
   return useQuery<Organization[]>({
     queryKey: ['notes', 'orgs'],
