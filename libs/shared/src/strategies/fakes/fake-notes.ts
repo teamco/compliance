@@ -94,6 +94,24 @@ export class FakeNotesStrategy implements NotesStrategy {
     return [...this.controls.values()].filter((c) => c.frameworkId === frameworkId);
   }
 
+  async listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]> {
+    const docs = [...this.docs.values()].filter((d) => d.orgId === orgId);
+    const seen = new Set<string>();
+    const result: DocumentStandard[] = [];
+    for (const doc of docs) {
+      for (const std of doc.standards) {
+        if (
+          std.frameworkMappings.some((m) => m.frameworkId === frameworkId) &&
+          !seen.has(std.code)
+        ) {
+          seen.add(std.code);
+          result.push(std);
+        }
+      }
+    }
+    return result;
+  }
+
   async listOrganizations(userId: string): Promise<Organization[]> {
     return [...this.orgs.values()].filter((o) => o.userId === userId);
   }
@@ -529,7 +547,10 @@ export class FakeNotesStrategy implements NotesStrategy {
       standardCode: data.standardCode,
       frameworkId: data.frameworkId,
       title: data.title,
+      statement: data.statement,
       justification: data.justification,
+      ownerId: data.ownerId,
+      compensatingControls: data.compensatingControls,
       status: 'pending',
       expiresAt: data.expiresAt ?? null,
       createdAt: now,

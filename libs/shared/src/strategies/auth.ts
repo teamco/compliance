@@ -42,6 +42,13 @@ export interface OAuthStartResult {
   state: string;
 }
 
+export interface OrgMember {
+  userId: string;
+  displayName?: string;
+  email?: string;
+  role: string;
+}
+
 export interface AuthStrategy {
   verifyToken(token: string): Promise<VerifiedToken>;
   signIn(email: string, password: string): Promise<AuthSession>;
@@ -71,4 +78,5 @@ export interface AuthStrategy {
   verifyMagicLink(token: string): Promise<AuthSession>;
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
+  listOrgMembers(orgId: string): Promise<OrgMember[]>;
 }
