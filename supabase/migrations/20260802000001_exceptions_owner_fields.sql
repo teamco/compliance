@@ -10,15 +10,28 @@ alter table public.exceptions alter column statement drop default;
 -- The Exception "Owner" picker needs to list all members of the current org.
 drop policy if exists "org_members_own" on public.organization_members;
 
+-- SECURITY DEFINER function to avoid infinite RLS recursion when checking org membership.
+-- RLS policies cannot use self-referencing subqueries on the same relation (causes
+-- "infinite recursion detected in policy" error). This function bypasses RLS internally
+-- and returns a boolean, breaking the recursion cycle.
+create or replace function public.is_org_member(check_org_id uuid)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  return exists (
+    select 1 from public.organization_members
+    where org_id = check_org_id and user_id = auth.uid()
+  );
+end;
+$$;
+
 create policy "org_members_read_own_org"
   on public.organization_members for select
-  using (
-    exists (
-      select 1 from public.organization_members self
-      where self.org_id = organization_members.org_id
-        and self.user_id = auth.uid()
-    )
-  );
+  using (public.is_org_member(org_id));
 
 create policy "org_members_write_own_row"
   on public.organization_members for all
