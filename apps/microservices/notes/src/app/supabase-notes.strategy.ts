@@ -1149,6 +1149,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         title: data.title,
         description: data.description,
         severity: data.severity,
+        reporter_id: data.reporterId,
+        owner_id: data.ownerId,
+        affected_assets: data.affectedAssets ?? null,
         source: data.source ?? 'manual',
         source_id: data.sourceId ?? null,
         due_date: data.dueDate ?? null,
@@ -1169,6 +1172,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.title !== undefined) update['title'] = patch.title;
     if (patch.description !== undefined) update['description'] = patch.description;
     if (patch.severity !== undefined) update['severity'] = patch.severity;
+    if (patch.reporterId !== undefined) update['reporter_id'] = patch.reporterId;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.affectedAssets !== undefined) update['affected_assets'] = patch.affectedAssets;
     if (patch.status !== undefined) {
       update['status'] = patch.status;
       if (!('resolvedAt' in patch)) {
@@ -1199,6 +1205,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       title: row['title'] as string,
       description: row['description'] as string,
       severity: row['severity'] as Issue['severity'],
+      reporterId: row['reporter_id'] as string,
+      ownerId: row['owner_id'] as string,
+      affectedAssets: row['affected_assets'] as string | undefined,
       status: row['status'] as Issue['status'],
       source: row['source'] as Issue['source'],
       sourceId: row['source_id'] as string | null,
