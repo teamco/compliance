@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +25,8 @@ import {
   type Exception,
   type ExceptionInput,
 } from '@/queries/exceptions';
-import { useFrameworks } from '@/queries/notes';
+import { useFrameworks, useFrameworkStandards, useFrameworkControls } from '@/queries/notes';
+import { useOrgMembers } from '@/queries/org-members';
 
 export const Route = createFileRoute('/_dashboard/exceptions')({
   component: ExceptionsPage,
@@ -37,33 +39,69 @@ const STATUS_COLORS: Record<Exception['status'], string> = {
   expired: 'bg-muted text-muted-foreground border-border',
 };
 
-function ExceptionsPage() {
+const EMPTY_FORM: ExceptionInput = {
+  title: '',
+  frameworkId: '',
+  standardCode: '',
+  controlCode: '',
+  statement: '',
+  justification: '',
+  ownerId: '',
+  compensatingControls: '',
+};
+
+export function ExceptionsPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
   const orgId = activeOrgId ?? '';
 
   const { data: exceptions = [], isPending } = useExceptions(orgId);
   const { data: frameworks = [] } = useFrameworks();
+  const { data: members = [] } = useOrgMembers(orgId);
   const createMut = useCreateException(orgId);
   const approveMut = useApproveException(orgId);
   const rejectMut = useRejectException(orgId);
   const deleteMut = useDeleteException(orgId);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<ExceptionInput>({
-    controlCode: '',
-    frameworkId: '',
-    title: '',
-    justification: '',
-  });
+  const [form, setForm] = useState<ExceptionInput>(EMPTY_FORM);
+
+  const { data: standards = [] } = useFrameworkStandards(orgId, form.frameworkId);
+  const { data: controls = [] } = useFrameworkControls(form.frameworkId);
+
+  const frameworkOptions = frameworks.map((fw) => ({
+    value: fw.id,
+    label: `${fw.slug.toUpperCase()} — ${fw.name}`,
+  }));
+  const standardOptions = standards.map((s) => ({
+    value: s.code,
+    label: `${s.code} — ${s.title}`,
+  }));
+  const controlOptions = controls.map((c) => ({ value: c.code, label: `${c.code} — ${c.title}` }));
+  const ownerOptions = members.map((m) => ({
+    value: m.userId,
+    label: m.displayName ?? m.email ?? m.userId,
+  }));
+
+  function handleFrameworkChange(frameworkId: string) {
+    setForm((f) => ({ ...f, frameworkId, standardCode: '', controlCode: '' }));
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.controlCode || !form.frameworkId || !form.title || !form.justification) return;
+    if (
+      !form.title ||
+      !form.frameworkId ||
+      !form.controlCode ||
+      !form.statement ||
+      !form.justification ||
+      !form.ownerId
+    )
+      return;
     createMut.mutate(form, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ controlCode: '', frameworkId: '', title: '', justification: '' });
+        setForm(EMPTY_FORM);
       },
     });
   }
@@ -155,38 +193,54 @@ function ExceptionsPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label>{t('exceptions.controlCode')}</Label>
-              <Input
-                value={form.controlCode}
-                onChange={(e) => setForm((f) => ({ ...f, controlCode: e.target.value }))}
-                placeholder="AC-1"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('exceptions.framework')}</Label>
-              <select
-                value={form.frameworkId}
-                onChange={(e) => setForm((f) => ({ ...f, frameworkId: e.target.value }))}
-                className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40"
-                required
-              >
-                <option value="" disabled>
-                  {t('exceptions.selectFramework')}
-                </option>
-                {frameworks.map((fw) => (
-                  <option key={fw.id} value={fw.id}>
-                    {fw.slug.toUpperCase()} — {fw.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
               <Label>{t('exceptions.title')}</Label>
               <Input
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder={t('exceptions.titlePlaceholder')}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('exceptions.framework')}</Label>
+              <Combobox
+                options={frameworkOptions}
+                value={form.frameworkId}
+                onChange={handleFrameworkChange}
+                placeholder={t('exceptions.selectFramework')}
+                searchPlaceholder={t('exceptions.searchFramework')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('exceptions.standard')}</Label>
+              <Combobox
+                options={standardOptions}
+                value={form.standardCode ?? ''}
+                onChange={(v) => setForm((f) => ({ ...f, standardCode: v }))}
+                placeholder={t('exceptions.selectStandard')}
+                searchPlaceholder={t('exceptions.searchStandard')}
+                disabled={!form.frameworkId}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('exceptions.controlCode')}</Label>
+              <Combobox
+                options={controlOptions}
+                value={form.controlCode}
+                onChange={(v) => setForm((f) => ({ ...f, controlCode: v }))}
+                placeholder={t('exceptions.selectControl')}
+                searchPlaceholder={t('exceptions.searchControl')}
+                disabled={!form.frameworkId}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('exceptions.statement')}</Label>
+              <textarea
+                value={form.statement}
+                onChange={(e) => setForm((f) => ({ ...f, statement: e.target.value }))}
+                placeholder={t('exceptions.statementPlaceholder')}
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
                 required
               />
             </div>
@@ -199,6 +253,26 @@ function ExceptionsPage() {
                 rows={3}
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('exceptions.owner')}</Label>
+              <Combobox
+                options={ownerOptions}
+                value={form.ownerId}
+                onChange={(v) => setForm((f) => ({ ...f, ownerId: v }))}
+                placeholder={t('exceptions.selectOwner')}
+                searchPlaceholder={t('exceptions.searchOwner')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('exceptions.compensatingControls')}</Label>
+              <textarea
+                value={form.compensatingControls}
+                onChange={(e) => setForm((f) => ({ ...f, compensatingControls: e.target.value }))}
+                placeholder={t('exceptions.compensatingControlsPlaceholder')}
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
               />
             </div>
             <DialogFooter>
