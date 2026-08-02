@@ -200,6 +200,22 @@ export class SupabaseAuthStrategy implements AuthStrategy {
       .eq('org_id', orgId);
     if (error) throw new Error(error.message);
     const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
+
+    // organization_members has no writer in the app today (v1 scoping decision), so it
+    // will typically be empty. Always include the org's creator as an implicit "owner"
+    // member so the Owner picker has at least one selectable option, and so this method
+    // is correct once organization_members does get populated later.
+    const { data: orgProfile, error: orgProfileError } = await this.client
+      .from('org_profiles')
+      .select('user_id')
+      .eq('id', orgId)
+      .maybeSingle();
+    if (orgProfileError) throw new Error(orgProfileError.message);
+    const ownerId = (orgProfile as { user_id?: string } | null)?.user_id;
+    if (ownerId && !rows.some((r) => r.user_id === ownerId)) {
+      rows.push({ user_id: ownerId, role: 'owner' });
+    }
+
     if (rows.length === 0) return [];
 
     const { data: profiles, error: profilesError } = await this.client
