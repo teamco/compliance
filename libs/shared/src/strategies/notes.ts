@@ -121,7 +121,10 @@ export interface Exception {
   standardCode?: string;
   frameworkId: string;
   title: string;
+  statement: string;
   justification: string;
+  ownerId: string;
+  compensatingControls?: string;
   status: ExceptionStatus;
   expiresAt: string | null;
   createdAt: string;
@@ -133,13 +136,19 @@ export interface ExceptionInput {
   standardCode?: string;
   frameworkId: string;
   title: string;
+  statement: string;
   justification: string;
+  ownerId: string;
+  compensatingControls?: string;
   expiresAt?: string;
 }
 
 export interface ExceptionPatch {
   title?: string;
+  statement?: string;
   justification?: string;
+  ownerId?: string;
+  compensatingControls?: string;
   expiresAt?: string | null;
 }
 
