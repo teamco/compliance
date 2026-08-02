@@ -23,6 +23,7 @@ import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
 import type {
   StandardPatch,
+  DocumentStandard,
   GapAnalysisResult,
   Organization,
   OrganizationInput,
@@ -69,6 +70,16 @@ export class NotesController {
   @ApiOperation({ summary: 'List controls for a framework' })
   listControls(@Param('id') id: string) {
     return this.notes.listControlsByFramework(id);
+  }
+
+  @Get('frameworks/:id/standards')
+  @ApiOperation({ summary: 'List standards mapped to a framework for the current org' })
+  listFrameworkStandards(
+    @Query('orgId') orgId: string,
+    @Param('id') id: string,
+  ): Promise<DocumentStandard[]> {
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listStandardsByFramework(orgId, id);
   }
 
   @Get('orgs')

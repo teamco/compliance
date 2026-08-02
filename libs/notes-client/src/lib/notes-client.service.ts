@@ -73,6 +73,12 @@ export class NotesClientService {
     );
   }
 
+  listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]> {
+    return firstValueFrom(
+      this.client.send<DocumentStandard[]>('notes.standards.by-framework', { orgId, frameworkId }),
+    );
+  }
+
   listOrganizations(userId: string): Promise<Organization[]> {
     return firstValueFrom(this.client.send<Organization[]>('notes.org.list', { userId }));
   }
