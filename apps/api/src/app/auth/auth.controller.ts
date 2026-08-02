@@ -2,7 +2,9 @@ import {
   BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -14,10 +16,13 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle, seconds } from '@nestjs/throttler';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { subject } from '@casl/ability';
 import { AuthClientService } from '@icore/auth-client';
-import type { OAuthProvider, VerifiedToken } from '@icore/shared';
+import { NotesClientService } from '@icore/notes-client';
+import type { Organization, OAuthProvider, VerifiedToken } from '@icore/shared';
 import { Public } from './public.decorator';
 import { CheckAbility } from '../abilities/check-ability.decorator';
+import { AbilityFactory } from '../abilities/ability.factory';
 
 const OAUTH_PROVIDERS: ReadonlySet<OAuthProvider> = new Set(['google', 'github']);
 
@@ -39,6 +44,8 @@ export class AuthController {
   constructor(
     private readonly authClient: AuthClientService,
     private readonly cfg: ConfigService,
+    private readonly notes: NotesClientService,
+    private readonly abilityFactory: AbilityFactory,
   ) {}
 
   @Public()
@@ -146,8 +153,14 @@ export class AuthController {
 
   @Get('org/members')
   @ApiOperation({ summary: 'List members of an organization' })
-  listOrgMembers(@Query('orgId') orgId: string) {
+  async listOrgMembers(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.authClient.listOrgMembers(orgId);
   }
 
@@ -216,5 +229,16 @@ export class AuthController {
       email: session.user.email,
     });
     return res.redirect(`${origin}/auth/oauth/callback#${fragment.toString()}`);
+  }
+
+  private checkOrgAccess(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+    action: 'read' | 'update' | 'delete',
+  ): void {
+    const ability = this.abilityFactory.forUser(req.user);
+    if (!ability.can(action, subject('Organization', { id: org.id, userId: org.userId }))) {
+      throw new ForbiddenException();
+    }
   }
 }

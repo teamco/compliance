@@ -74,11 +74,15 @@ export class NotesController {
 
   @Get('frameworks/:id/standards')
   @ApiOperation({ summary: 'List standards mapped to a framework for the current org' })
-  listFrameworkStandards(
+  async listFrameworkStandards(
+    @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
   ): Promise<DocumentStandard[]> {
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listStandardsByFramework(orgId, id);
   }
 
