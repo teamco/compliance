@@ -165,8 +165,8 @@ export interface Issue {
   title: string;
   description: string;
   severity: IssueSeverity;
-  reporterId: string;
-  ownerId: string;
+  reporterId: string | null;
+  ownerId: string | null;
   affectedAssets?: string;
   status: IssueStatus;
   source: IssueSource;
