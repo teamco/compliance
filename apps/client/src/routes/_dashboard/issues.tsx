@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, Bug } from 'lucide-react';
+import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import {
@@ -67,6 +68,7 @@ export function IssuesPage() {
   const createMut = useCreateIssue(orgId);
   const updateMut = useUpdateIssue(orgId);
   const deleteMut = useDeleteIssue(orgId);
+  const notify = useNotify();
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<IssueInput>(EMPTY_FORM);
@@ -83,7 +85,9 @@ export function IssuesPage() {
       onSuccess: () => {
         setOpen(false);
         setForm(EMPTY_FORM);
+        notify.success(t('issues.created'));
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 

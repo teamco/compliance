@@ -497,6 +497,7 @@ export const es = {
     subtitle: 'Seguimiento de problemas de seguridad y cumplimiento',
     addIssue: 'Nuevo problema',
     addDescription: 'Registrar un hallazgo de seguridad o cumplimiento que necesita atención',
+    created: 'Problema creado',
     empty: 'Sin problemas registrados',
     title: 'Título',
     titlePlaceholder: 'Breve descripción del problema',
