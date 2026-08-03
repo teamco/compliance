@@ -38,6 +38,7 @@ export interface Vendor {
   domain: string;
   tags: string[];
   tier: VendorTier;
+  contractOwnerId: string | null;
   rescanIntervalDays: number;
   alertThreshold: number;
   lastScannedAt: string | null;
@@ -47,8 +48,10 @@ export interface Vendor {
 
 export type VendorInput = Omit<
   Vendor,
-  'id' | 'orgId' | 'lastScannedAt' | 'createdAt' | 'updatedAt'
->;
+  'id' | 'orgId' | 'lastScannedAt' | 'createdAt' | 'updatedAt' | 'contractOwnerId'
+> & {
+  contractOwnerId: string;
+};
 
 export interface VendorScan {
   id: string;
