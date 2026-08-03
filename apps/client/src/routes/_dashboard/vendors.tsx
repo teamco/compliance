@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Globe, Loader2, Plus, Shield } from 'lucide-react';
+import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -92,6 +93,7 @@ function AddVendorDialog({
 }) {
   const { t } = useTranslation();
   const create = useCreateVendor(orgId);
+  const notify = useNotify();
   const { data: members = [] } = useOrgMembers(orgId);
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
@@ -139,7 +141,9 @@ function AddVendorDialog({
           setDomain('');
           setContractOwnerId('');
           setErrors({});
+          notify.success(t('vendors.created'));
         },
+        onError: () => notify.error(t('error.unknown')),
       },
     );
   }
