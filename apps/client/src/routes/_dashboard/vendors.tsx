@@ -19,7 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Combobox } from '@/components/ui/combobox';
 import { useCreateVendor, useVendors, type Vendor, type VendorInput } from '@/queries/vendors';
+import { useOrgMembers } from '@/queries/org-members';
 import { useActiveOrgStore } from '@/stores/active-org';
 
 const GRADE_COLOR: Record<string, string> = {
@@ -90,18 +92,30 @@ function AddVendorDialog({
 }) {
   const { t } = useTranslation();
   const create = useCreateVendor(orgId);
+  const { data: members = [] } = useOrgMembers(orgId);
   const [name, setName] = useState('');
   const [domain, setDomain] = useState('');
+  const [contractOwnerId, setContractOwnerId] = useState('');
   const [tier, setTier] = useState<VendorInput['tier']>('medium');
-  const [errors, setErrors] = useState<{ name?: string; domain?: string }>({});
+  const [errors, setErrors] = useState<{
+    name?: string;
+    domain?: string;
+    contractOwnerId?: string;
+  }>({});
 
   const DOMAIN_RE = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
 
+  const memberOptions = members.map((m) => ({
+    value: m.userId,
+    label: m.displayName ?? m.email ?? m.userId,
+  }));
+
   function validate() {
-    const e: { name?: string; domain?: string } = {};
+    const e: { name?: string; domain?: string; contractOwnerId?: string } = {};
     if (!name.trim()) e.name = t('vendors.nameRequired');
     if (!domain.trim()) e.domain = t('vendors.domainRequired');
     else if (!DOMAIN_RE.test(domain.trim())) e.domain = t('vendors.domainInvalid');
+    if (!contractOwnerId) e.contractOwnerId = t('vendors.contractOwnerRequired');
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -112,6 +126,7 @@ function AddVendorDialog({
       {
         name: name.trim(),
         domain: domain.trim(),
+        contractOwnerId,
         tier,
         tags: [],
         rescanIntervalDays: 7,
@@ -122,6 +137,7 @@ function AddVendorDialog({
           onClose();
           setName('');
           setDomain('');
+          setContractOwnerId('');
           setErrors({});
         },
       },
@@ -168,6 +184,22 @@ function AddVendorDialog({
             />
             {errors.domain && <p className="text-xs text-red-400">{errors.domain}</p>}
           </div>
+          <div className="space-y-1">
+            <Combobox
+              options={memberOptions}
+              value={contractOwnerId}
+              onChange={(v) => {
+                setContractOwnerId(v);
+                if (errors.contractOwnerId)
+                  setErrors((prev) => ({ ...prev, contractOwnerId: undefined }));
+              }}
+              placeholder={t('vendors.selectContractOwner')}
+              searchPlaceholder={t('vendors.searchMembers')}
+            />
+            {errors.contractOwnerId && (
+              <p className="text-xs text-red-400">{errors.contractOwnerId}</p>
+            )}
+          </div>
           <Select value={tier} onValueChange={(v) => setTier(v as VendorInput['tier'])}>
             <SelectTrigger>
               <SelectValue />
@@ -195,7 +227,7 @@ function AddVendorDialog({
   );
 }
 
-function VendorsPage() {
+export function VendorsPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
   const orgId = activeOrgId ?? '';
