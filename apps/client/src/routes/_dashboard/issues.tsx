@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, Bug } from 'lucide-react';
+import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
+import { Combobox } from '@/components/ui/combobox';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +25,7 @@ import {
   type Issue,
   type IssueInput,
 } from '@/queries/issues';
+import { useOrgMembers } from '@/queries/org-members';
 
 export const Route = createFileRoute('/_dashboard/issues')({
   component: IssuesPage,
@@ -46,31 +49,45 @@ const STATUS_COLORS: Record<Issue['status'], string> = {
 const SEVERITY_OPTIONS: Array<Issue['severity']> = ['critical', 'high', 'medium', 'low', 'info'];
 const STATUS_OPTIONS: Array<Issue['status']> = ['open', 'in_progress', 'resolved', 'wont_fix'];
 
-function IssuesPage() {
+const EMPTY_FORM: IssueInput = {
+  title: '',
+  description: '',
+  severity: 'medium',
+  reporterId: '',
+  ownerId: '',
+  affectedAssets: '',
+};
+
+export function IssuesPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
   const orgId = activeOrgId ?? '';
 
   const { data: issues = [], isPending } = useIssues(orgId);
+  const { data: members = [] } = useOrgMembers(orgId);
   const createMut = useCreateIssue(orgId);
   const updateMut = useUpdateIssue(orgId);
   const deleteMut = useDeleteIssue(orgId);
+  const notify = useNotify();
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<IssueInput>({
-    title: '',
-    description: '',
-    severity: 'medium',
-  });
+  const [form, setForm] = useState<IssueInput>(EMPTY_FORM);
+
+  const memberOptions = members.map((m) => ({
+    value: m.userId,
+    label: m.displayName ?? m.email ?? m.userId,
+  }));
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title || !form.description) return;
+    if (!form.title || !form.description || !form.reporterId || !form.ownerId) return;
     createMut.mutate(form, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ title: '', description: '', severity: 'medium' });
+        setForm(EMPTY_FORM);
+        notify.success(t('issues.created'));
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 
@@ -170,7 +187,7 @@ function IssuesPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>{t('issues.severity')}</Label>
+              <Label>{t('issues.severity.label')}</Label>
               <select
                 value={form.severity}
                 onChange={(e) =>
@@ -194,6 +211,34 @@ function IssuesPage() {
                 rows={3}
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
                 required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('issues.reporter')}</Label>
+              <Combobox
+                options={memberOptions}
+                value={form.reporterId}
+                onChange={(v) => setForm((f) => ({ ...f, reporterId: v }))}
+                placeholder={t('issues.selectReporter')}
+                searchPlaceholder={t('issues.searchMembers')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('issues.affectedAssets')}</Label>
+              <Input
+                value={form.affectedAssets}
+                onChange={(e) => setForm((f) => ({ ...f, affectedAssets: e.target.value }))}
+                placeholder={t('issues.affectedAssetsPlaceholder')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>{t('issues.owner')}</Label>
+              <Combobox
+                options={memberOptions}
+                value={form.ownerId}
+                onChange={(v) => setForm((f) => ({ ...f, ownerId: v }))}
+                placeholder={t('issues.selectOwner')}
+                searchPlaceholder={t('issues.searchMembers')}
               />
             </div>
             <DialogFooter>
