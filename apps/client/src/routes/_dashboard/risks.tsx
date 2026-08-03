@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, AlertTriangle } from 'lucide-react';
+import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
@@ -46,6 +48,14 @@ const LIKELIHOOD_OPTIONS: Array<Risk['likelihood']> = [
 const IMPACT_OPTIONS: Array<Risk['impact']> = ['very_low', 'low', 'medium', 'high', 'very_high'];
 const TREATMENT_OPTIONS: Array<Risk['treatment']> = ['accept', 'mitigate', 'transfer', 'avoid'];
 
+const EMPTY_FORM: RiskInput = {
+  title: '',
+  description: '',
+  category: '',
+  likelihood: 'medium',
+  impact: 'medium',
+};
+
 function RisksPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
@@ -58,13 +68,9 @@ function RisksPage() {
   const deleteMut = useDeleteRisk(orgId);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<RiskInput>({
-    title: '',
-    description: '',
-    category: '',
-    likelihood: 'medium',
-    impact: 'medium',
-  });
+  const [form, setForm] = useState<RiskInput>(EMPTY_FORM);
+  const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -72,13 +78,7 @@ function RisksPage() {
     createMut.mutate(form, {
       onSuccess: () => {
         setOpen(false);
-        setForm({
-          title: '',
-          description: '',
-          category: '',
-          likelihood: 'medium',
-          impact: 'medium',
-        });
+        setForm(EMPTY_FORM);
       },
     });
   }
@@ -164,7 +164,10 @@ function RisksPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('risks.addRisk')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle size={18} className="text-primary" />
+              {t('risks.addRisk')}
+            </DialogTitle>
             <DialogDescription>{t('risks.addDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -257,6 +260,7 @@ function RisksPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
     </PageLayout>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, ClipboardList } from 'lucide-react';
+import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
@@ -39,6 +41,8 @@ const SCORE_COLOR = (score: number) => {
   return 'text-green-400';
 };
 
+const EMPTY_FORM: RiskAssessmentInput = { type: 'cvra', title: '', scope: '' };
+
 function AssessmentsPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
@@ -48,7 +52,9 @@ function AssessmentsPage() {
   const createMut = useCreateAssessment(orgId);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<RiskAssessmentInput>({ type: 'cvra', title: '', scope: '' });
+  const [form, setForm] = useState<RiskAssessmentInput>(EMPTY_FORM);
+  const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +62,7 @@ function AssessmentsPage() {
     createMut.mutate(form, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ type: 'cvra', title: '', scope: '' });
+        setForm(EMPTY_FORM);
       },
     });
   }
@@ -123,7 +129,10 @@ function AssessmentsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('assessments.newAssessment')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList size={18} className="text-primary" />
+              {t('assessments.newAssessment')}
+            </DialogTitle>
             <DialogDescription>{t('assessments.newDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -177,6 +186,7 @@ function AssessmentsPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
     </PageLayout>
   );
 }
