@@ -115,6 +115,8 @@ describe('issues', () => {
       title: 'MFA not enforced',
       description: 'Admin accounts lack MFA',
       severity: 'high',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
     });
     expect(issue.status).toBe('open');
     expect(issue.source).toBe('manual');
@@ -123,11 +125,27 @@ describe('issues', () => {
     expect(list[0].id).toBe(issue.id);
   });
 
+  it('carries reporterId, ownerId, and affectedAssets through create', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'MFA not enforced',
+      description: 'Admin accounts lack MFA',
+      severity: 'high',
+      reporterId: 'user-reporter-1',
+      ownerId: 'user-owner-1',
+      affectedAssets: 'Payment API, Customer DB',
+    });
+    expect(issue.reporterId).toBe('user-reporter-1');
+    expect(issue.ownerId).toBe('user-owner-1');
+    expect(issue.affectedAssets).toBe('Payment API, Customer DB');
+  });
+
   it('updates issue status to resolved and sets resolvedAt', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',
       description: 'D',
       severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
     });
     const updated = await s.updateIssue(issue.id, { status: 'resolved' });
     expect(updated.status).toBe('resolved');
@@ -139,6 +157,8 @@ describe('issues', () => {
       title: 'T',
       description: 'D',
       severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
     });
     await s.updateIssue(issue.id, { status: 'resolved' });
     const reopened = await s.updateIssue(issue.id, { status: 'open' });
@@ -150,13 +170,21 @@ describe('issues', () => {
       title: 'T',
       description: 'D',
       severity: 'medium',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
     });
     await s.deleteIssue(issue.id);
     expect(await s.listIssues('org1')).toHaveLength(0);
   });
 
   it('scopes issues by orgId', async () => {
-    await s.createIssue('org1', 'u1', { title: 'T', description: 'D', severity: 'low' });
+    await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
     expect(await s.listIssues('org2')).toHaveLength(0);
   });
 });

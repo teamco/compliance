@@ -165,6 +165,9 @@ export interface Issue {
   title: string;
   description: string;
   severity: IssueSeverity;
+  reporterId: string | null;
+  ownerId: string | null;
+  affectedAssets?: string;
   status: IssueStatus;
   source: IssueSource;
   sourceId: string | null;
@@ -178,6 +181,9 @@ export interface IssueInput {
   title: string;
   description: string;
   severity: IssueSeverity;
+  reporterId: string;
+  ownerId: string;
+  affectedAssets?: string;
   source?: IssueSource;
   sourceId?: string;
   dueDate?: string;
@@ -187,6 +193,9 @@ export interface IssuePatch {
   title?: string;
   description?: string;
   severity?: IssueSeverity;
+  reporterId?: string;
+  ownerId?: string;
+  affectedAssets?: string;
   status?: IssueStatus;
   dueDate?: string | null;
   resolvedAt?: string | null;
