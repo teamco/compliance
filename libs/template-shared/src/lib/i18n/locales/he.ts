@@ -473,6 +473,7 @@ export const he = {
     subtitle: 'מעקב אחר ממצאי אבטחה ותאימות הדורשים תיקון',
     addIssue: 'ממצא חדש',
     addDescription: 'תיעוד ממצא אבטחה או תאימות שיש לטפל בו',
+    created: 'הממצא נוצר',
     empty: 'אין ממצאים רשומים',
     title: 'כותרת',
     titlePlaceholder: 'תיאור קצר של הממצא',

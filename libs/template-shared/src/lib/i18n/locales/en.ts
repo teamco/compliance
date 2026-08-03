@@ -517,6 +517,7 @@ export const en = {
     subtitle: 'Track security and compliance issues requiring remediation',
     addIssue: 'New Issue',
     addDescription: 'Log a security or compliance finding that needs to be addressed',
+    created: 'Issue created',
     empty: 'No issues logged',
     title: 'Title',
     titlePlaceholder: 'Brief description of the issue',
