@@ -48,6 +48,7 @@ export class VendorRiskService {
         domain: input.domain,
         tags: input.tags,
         tier: input.tier,
+        contract_owner_id: input.contractOwnerId,
         rescan_interval_days: input.rescanIntervalDays,
         alert_threshold: input.alertThreshold,
       })
@@ -67,6 +68,7 @@ export class VendorRiskService {
     if (patch.domain !== undefined) update['domain'] = patch.domain;
     if (patch.tags !== undefined) update['tags'] = patch.tags;
     if (patch.tier !== undefined) update['tier'] = patch.tier;
+    if (patch.contractOwnerId !== undefined) update['contract_owner_id'] = patch.contractOwnerId;
     if (patch.rescanIntervalDays !== undefined)
       update['rescan_interval_days'] = patch.rescanIntervalDays;
     if (patch.alertThreshold !== undefined) update['alert_threshold'] = patch.alertThreshold;
@@ -238,6 +240,7 @@ export class VendorRiskService {
       domain: row['domain'] as string,
       tags: (row['tags'] as string[]) ?? [],
       tier: row['tier'] as Vendor['tier'],
+      contractOwnerId: row['contract_owner_id'] as string | null,
       rescanIntervalDays: row['rescan_interval_days'] as number,
       alertThreshold: row['alert_threshold'] as number,
       lastScannedAt: (row['last_scanned_at'] as string | null) ?? null,
