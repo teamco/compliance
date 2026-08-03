@@ -18,6 +18,14 @@ Element.prototype.scrollIntoView = vi.fn();
 
 const createMutate = vi.fn();
 
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useDraft: () => ({ showDialog: false, confirmLeave: vi.fn(), cancelLeave: vi.fn() }),
+  };
+});
+
 vi.mock('@/queries/exceptions', () => ({
   useExceptions: () => ({ data: [], isPending: false }),
   useCreateException: () => ({ mutate: createMutate, isPending: false }),

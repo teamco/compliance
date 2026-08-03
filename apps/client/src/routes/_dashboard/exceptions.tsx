@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, ShieldAlert } from 'lucide-react';
+import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import {
@@ -14,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
@@ -65,6 +67,8 @@ export function ExceptionsPage() {
 
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<ExceptionInput>(EMPTY_FORM);
+  const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
   const { data: standards = [] } = useFrameworkStandards(orgId, form.frameworkId);
   const { data: controls = [] } = useFrameworkControls(form.frameworkId);
@@ -188,7 +192,10 @@ export function ExceptionsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('exceptions.addException')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert size={18} className="text-primary" />
+              {t('exceptions.addException')}
+            </DialogTitle>
             <DialogDescription>{t('exceptions.addDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -286,6 +293,7 @@ export function ExceptionsPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
     </PageLayout>
   );
 }

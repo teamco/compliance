@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { Pencil, Plus, Server } from 'lucide-react';
-import { useNotify } from '@icore/template-shared';
+import { Pencil, Plus, Server, Trash2 } from 'lucide-react';
+import { useDraft, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -25,6 +25,7 @@ import {
 import { EditSheet } from '@/components/EditSheet';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
@@ -58,6 +59,14 @@ const ASSET_TYPES: Array<Asset['type']> = [
 ];
 const CRITICALITY_LEVELS: Array<Asset['criticality']> = ['critical', 'high', 'medium', 'low'];
 
+const EMPTY_FORM: AssetInput = {
+  name: '',
+  type: 'service',
+  criticality: 'medium',
+  description: '',
+  owner: '',
+};
+
 function AssetsPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
@@ -75,13 +84,18 @@ function AssetsPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<AssetInput>({
-    name: '',
-    type: 'service',
-    criticality: 'medium',
-    description: '',
-    owner: '',
-  });
+  const [form, setForm] = useState<AssetInput>(EMPTY_FORM);
+  const isCreateDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+  const createDraft = useDraft(isCreateDirty);
+
+  const isEditDirty =
+    editingId !== null &&
+    (editForm.name !== editSnapshotAsset?.name ||
+      editForm.type !== editSnapshotAsset?.type ||
+      editForm.criticality !== editSnapshotAsset?.criticality ||
+      editForm.owner !== editSnapshotAsset?.owner ||
+      editForm.description !== editSnapshotAsset?.description);
+  const editDraft = useDraft(isEditDirty);
 
   function handleEditSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,7 +119,7 @@ function AssetsPage() {
     createMut.mutate(form, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ name: '', type: 'service', criticality: 'medium', description: '', owner: '' });
+        setForm(EMPTY_FORM);
         notify.success(t('assets.created'));
       },
       onError: () => notify.error(t('error.unknown')),
@@ -192,7 +206,10 @@ function AssetsPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('assets.addAsset')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Server size={18} className="text-primary" />
+              {t('assets.addAsset')}
+            </DialogTitle>
             <DialogDescription>{t('assets.addDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -275,7 +292,10 @@ function AssetsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('assets.deleteTitle')}</AlertDialogTitle>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 size={18} className="text-destructive" />
+              {t('assets.deleteTitle')}
+            </AlertDialogTitle>
             <AlertDialogDescription>{t('assets.deleteDescription')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -370,6 +390,11 @@ function AssetsPage() {
           </>
         )}
       </EditSheet>
+      <UnsavedChangesDialog
+        open={createDraft.showDialog || editDraft.showDialog}
+        onConfirm={createDraft.showDialog ? createDraft.confirmLeave : editDraft.confirmLeave}
+        onCancel={createDraft.showDialog ? createDraft.cancelLeave : editDraft.cancelLeave}
+      />
     </PageLayout>
   );
 }

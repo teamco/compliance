@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Link2 } from 'lucide-react';
+import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import {
   usePolicy,
@@ -29,6 +31,8 @@ import { useFrameworks } from '@/queries/notes';
 export const Route = createFileRoute('/_dashboard/policies_/$id')({
   component: PolicyDetailPage,
 });
+
+const EMPTY_LINK_FORM: PolicyControlInput = { controlCode: '', frameworkId: '' };
 
 function PolicyDetailPage() {
   const { t } = useTranslation();
@@ -48,10 +52,9 @@ function PolicyDetailPage() {
   const [editing, setEditing] = useState(false);
   const [content, setContent] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
-  const [linkForm, setLinkForm] = useState<PolicyControlInput>({
-    controlCode: '',
-    frameworkId: '',
-  });
+  const [linkForm, setLinkForm] = useState<PolicyControlInput>(EMPTY_LINK_FORM);
+  const isLinkDirty = linkOpen && JSON.stringify(linkForm) !== JSON.stringify(EMPTY_LINK_FORM);
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isLinkDirty);
 
   function startEdit() {
     setContent(policy?.content ?? '');
@@ -180,7 +183,10 @@ function PolicyDetailPage() {
       <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('policies.linkControl')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 size={18} className="text-primary" />
+              {t('policies.linkControl')}
+            </DialogTitle>
             <DialogDescription>{t('policies.linkControlDescription')}</DialogDescription>
           </DialogHeader>
           <form
@@ -190,7 +196,7 @@ function PolicyDetailPage() {
               addControlMut.mutate(linkForm, {
                 onSuccess: () => {
                   setLinkOpen(false);
-                  setLinkForm({ controlCode: '', frameworkId: '' });
+                  setLinkForm(EMPTY_LINK_FORM);
                 },
               });
             }}
@@ -234,6 +240,7 @@ function PolicyDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
     </PageLayout>
   );
 }

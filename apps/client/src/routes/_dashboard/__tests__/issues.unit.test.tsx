@@ -6,6 +6,14 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const createMutate = vi.fn();
 
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useDraft: () => ({ showDialog: false, confirmLeave: vi.fn(), cancelLeave: vi.fn() }),
+  };
+});
+
 vi.mock('@/queries/issues', () => ({
   useIssues: () => ({ data: [], isPending: false }),
   useCreateIssue: () => ({ mutate: createMutate, isPending: false }),
