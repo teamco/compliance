@@ -39,6 +39,7 @@ export function SheetContent({ side = 'right', className, children, ...props }: 
             : 'inset-y-0 left-0 w-[380px] border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left',
           className,
         )}
+        onInteractOutside={(e) => e.preventDefault()}
         {...props}
       >
         {children}

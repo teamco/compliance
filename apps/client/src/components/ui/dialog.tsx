@@ -34,6 +34,7 @@ export function DialogContent({
           'data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           className,
         )}
+        onInteractOutside={(e) => e.preventDefault()}
         {...props}
       >
         {children}
