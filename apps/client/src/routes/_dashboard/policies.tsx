@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, FileText } from 'lucide-react';
+import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
@@ -35,6 +37,8 @@ const STATUS_COLORS: Record<Policy['status'], string> = {
   approved: 'bg-green-500/10 text-green-400 border-green-500/20',
 };
 
+const EMPTY_FORM: PolicyInput = { frameworkId: '', title: '', content: '' };
+
 function PoliciesPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
@@ -50,7 +54,13 @@ function PoliciesPage() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<'scratch' | 'template'>('template');
   const [selectedTemplate, setSelectedTemplate] = useState('');
-  const [form, setForm] = useState<PolicyInput>({ frameworkId: '', title: '', content: '' });
+  const [form, setForm] = useState<PolicyInput>(EMPTY_FORM);
+  const isDirty =
+    open &&
+    (mode !== 'template' ||
+      selectedTemplate !== '' ||
+      JSON.stringify(form) !== JSON.stringify(EMPTY_FORM));
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +72,7 @@ function PoliciesPage() {
       createMut.mutate(form, {
         onSuccess: () => {
           setOpen(false);
-          setForm({ frameworkId: '', title: '', content: '' });
+          setForm(EMPTY_FORM);
         },
       });
     }
@@ -134,7 +144,10 @@ function PoliciesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>{t('policies.newPolicy')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText size={18} className="text-primary" />
+              {t('policies.newPolicy')}
+            </DialogTitle>
             <DialogDescription>{t('policies.newDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -220,6 +233,7 @@ function PoliciesPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
     </PageLayout>
   );
 }
