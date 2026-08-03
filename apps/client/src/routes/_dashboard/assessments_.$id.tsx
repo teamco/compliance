@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus } from 'lucide-react';
+import { ArrowLeft, ClipboardList, Plus } from 'lucide-react';
+import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import {
   useAssessment,
@@ -52,6 +54,13 @@ const SCORE_COLOR = (score: number) => {
   return 'text-green-400';
 };
 
+const EMPTY_FORM: RiskAssessmentItemInput = {
+  subject: '',
+  description: '',
+  likelihood: 'medium',
+  impact: 'medium',
+};
+
 function AssessmentDetailPage() {
   const { t } = useTranslation();
   const { id } = Route.useParams();
@@ -66,12 +75,9 @@ function AssessmentDetailPage() {
   const updateAssessmentMut = useUpdateAssessment(orgId, id);
 
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<RiskAssessmentItemInput>({
-    subject: '',
-    description: '',
-    likelihood: 'medium',
-    impact: 'medium',
-  });
+  const [form, setForm] = useState<RiskAssessmentItemInput>(EMPTY_FORM);
+  const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,7 +85,7 @@ function AssessmentDetailPage() {
     addItemMut.mutate(form, {
       onSuccess: () => {
         setOpen(false);
-        setForm({ subject: '', description: '', likelihood: 'medium', impact: 'medium' });
+        setForm(EMPTY_FORM);
       },
     });
   }
@@ -206,7 +212,10 @@ function AssessmentDetailPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t('assessments.addItem')}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <ClipboardList size={18} className="text-primary" />
+              {t('assessments.addItem')}
+            </DialogTitle>
             <DialogDescription>{t('assessments.addItemDescription')}</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -281,6 +290,7 @@ function AssessmentDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
     </PageLayout>
   );
 }

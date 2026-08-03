@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Globe, Loader2, Plus, Shield } from 'lucide-react';
-import { useNotify } from '@icore/template-shared';
+import { useDraft, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -21,6 +22,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Combobox } from '@/components/ui/combobox';
+import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { useCreateVendor, useVendors, type Vendor, type VendorInput } from '@/queries/vendors';
 import { useOrgMembers } from '@/queries/org-members';
 import { useActiveOrgStore } from '@/stores/active-org';
@@ -104,6 +106,9 @@ function AddVendorDialog({
     domain?: string;
     contractOwnerId?: string;
   }>({});
+  const isDirty =
+    open && (name !== '' || domain !== '' || contractOwnerId !== '' || tier !== 'medium');
+  const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
   const DOMAIN_RE = /^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
 
@@ -149,85 +154,97 @@ function AddVendorDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(v) => {
-        if (!v) {
-          onClose();
-          setErrors({});
-        }
-      }}
-    >
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{t('vendors.addVendor')}</DialogTitle>
-          <DialogDescription className="sr-only">{t('vendors.addVendor')}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3 py-2">
-          <div className="space-y-1">
-            <Input
-              placeholder={t('vendors.vendorName')}
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
-              }}
-              className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
-            />
-            {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
+    <>
+      <Dialog
+        open={open}
+        onOpenChange={(v) => {
+          if (!v) {
+            onClose();
+            setErrors({});
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield size={18} className="text-primary" />
+              {t('vendors.addVendor')}
+            </DialogTitle>
+            <DialogDescription className="sr-only">{t('vendors.addVendor')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label>{t('vendors.vendorNameLabel')}</Label>
+              <Input
+                placeholder={t('vendors.vendorName')}
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+                }}
+                className={errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {errors.name && <p className="text-xs text-red-400">{errors.name}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>{t('vendors.domainLabel')}</Label>
+              <Input
+                placeholder={t('vendors.domain')}
+                value={domain}
+                onChange={(e) => {
+                  setDomain(e.target.value);
+                  if (errors.domain) setErrors((prev) => ({ ...prev, domain: undefined }));
+                }}
+                className={errors.domain ? 'border-red-500 focus-visible:ring-red-500' : ''}
+              />
+              {errors.domain && <p className="text-xs text-red-400">{errors.domain}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label>{t('vendors.contractOwner')}</Label>
+              <Combobox
+                options={memberOptions}
+                value={contractOwnerId}
+                onChange={(v) => {
+                  setContractOwnerId(v);
+                  if (errors.contractOwnerId)
+                    setErrors((prev) => ({ ...prev, contractOwnerId: undefined }));
+                }}
+                placeholder={t('vendors.selectContractOwner')}
+                searchPlaceholder={t('vendors.searchMembers')}
+              />
+              {errors.contractOwnerId && (
+                <p className="text-xs text-red-400">{errors.contractOwnerId}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>{t('vendors.criticality')}</Label>
+              <Select value={tier} onValueChange={(v) => setTier(v as VendorInput['tier'])}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {TIER_OPTIONS.map((tierOption) => (
+                    <SelectItem key={tierOption} value={tierOption}>
+                      {t(`vendors.tier.${tierOption}`)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          <div className="space-y-1">
-            <Input
-              placeholder={t('vendors.domain')}
-              value={domain}
-              onChange={(e) => {
-                setDomain(e.target.value);
-                if (errors.domain) setErrors((prev) => ({ ...prev, domain: undefined }));
-              }}
-              className={errors.domain ? 'border-red-500 focus-visible:ring-red-500' : ''}
-            />
-            {errors.domain && <p className="text-xs text-red-400">{errors.domain}</p>}
-          </div>
-          <div className="space-y-1">
-            <Combobox
-              options={memberOptions}
-              value={contractOwnerId}
-              onChange={(v) => {
-                setContractOwnerId(v);
-                if (errors.contractOwnerId)
-                  setErrors((prev) => ({ ...prev, contractOwnerId: undefined }));
-              }}
-              placeholder={t('vendors.selectContractOwner')}
-              searchPlaceholder={t('vendors.searchMembers')}
-            />
-            {errors.contractOwnerId && (
-              <p className="text-xs text-red-400">{errors.contractOwnerId}</p>
-            )}
-          </div>
-          <Select value={tier} onValueChange={(v) => setTier(v as VendorInput['tier'])}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent side="top">
-              {TIER_OPTIONS.map((tierOption) => (
-                <SelectItem key={tierOption} value={tierOption}>
-                  {t(`vendors.tier.${tierOption}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={submit} disabled={create.isPending}>
-            {create.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
-            {t('vendors.addVendor')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={submit} disabled={create.isPending}>
+              {create.isPending && <Loader2 size={14} className="mr-2 animate-spin" />}
+              {t('vendors.addVendor')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
+    </>
   );
 }
 
