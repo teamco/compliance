@@ -195,6 +195,11 @@ function PolicyDetailPage() {
             </DialogTitle>
           </DialogHeader>
           <MarkdownViewer content={policy.content} />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
+              {t('common.close')}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
