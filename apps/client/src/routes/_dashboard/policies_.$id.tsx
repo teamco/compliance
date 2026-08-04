@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Link2 } from 'lucide-react';
+import { ArrowLeft, Link2, Eye } from 'lucide-react';
 import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
+import { MarkdownViewer } from '@/components/markdown-viewer';
 import {
   usePolicy,
   usePolicyControls,
@@ -50,6 +51,7 @@ function PolicyDetailPage() {
   const removeControlMut = useRemovePolicyControl(id);
 
   const [editing, setEditing] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const [content, setContent] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkForm, setLinkForm] = useState<PolicyControlInput>(EMPTY_LINK_FORM);
@@ -109,6 +111,10 @@ function PolicyDetailPage() {
             <option value="draft">{t('policies.status.draft')}</option>
             <option value="approved">{t('policies.status.approved')}</option>
           </select>
+          <Button size="sm" variant="outline" onClick={() => setPreviewOpen(true)}>
+            <Eye size={14} className="mr-1.5" />
+            {t('common.preview')}
+          </Button>
           <Button size="sm" variant="outline" onClick={startEdit}>
             {t('common.edit')}
           </Button>
@@ -179,6 +185,18 @@ function PolicyDetailPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye size={18} className="text-primary" />
+              {policy.title}
+            </DialogTitle>
+          </DialogHeader>
+          <MarkdownViewer content={policy.content} />
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
         <DialogContent>

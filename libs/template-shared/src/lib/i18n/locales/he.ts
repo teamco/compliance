@@ -14,6 +14,7 @@ export const he = {
     create: 'צור',
     saving: 'שומר…',
     edit: 'עריכה',
+    preview: 'תצוגה מקדימה',
     delete: 'מחיקה',
     saveFailed: 'שמירת השינויים נכשלה',
     notFound: 'לא נמצא',
