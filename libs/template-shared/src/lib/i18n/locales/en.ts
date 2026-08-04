@@ -14,6 +14,7 @@ export const en = {
     create: 'Create',
     saving: 'Saving…',
     edit: 'Edit',
+    preview: 'Preview',
     delete: 'Delete',
     saveFailed: 'Failed to save changes',
     notFound: 'Not found',

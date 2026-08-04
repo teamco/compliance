@@ -14,6 +14,7 @@ export const ru = {
     create: 'Создать',
     saving: 'Сохранение…',
     edit: 'Редактировать',
+    preview: 'Предпросмотр',
     delete: 'Удалить',
     saveFailed: 'Не удалось сохранить изменения',
     notFound: 'Не найдено',

@@ -14,6 +14,7 @@ export const es = {
     create: 'Crear',
     saving: 'Guardando…',
     edit: 'Editar',
+    preview: 'Vista previa',
     delete: 'Eliminar',
     saveFailed: 'No se pudieron guardar los cambios',
     notFound: 'No encontrado',
