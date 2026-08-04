@@ -125,9 +125,9 @@ describe('ExceptionsPage — New Exception dialog', () => {
       'Framework',
       'Standard',
       'Control Code',
+      'Owner',
       'Statement',
       'Justification',
-      'Owner',
       'Compensating Controls',
     ]);
   });
