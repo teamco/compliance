@@ -4,6 +4,7 @@ export const es = {
     save: 'Guardar',
     update: 'Actualizar',
     cancel: 'Cancelar',
+    close: 'Cerrar',
     logout: 'Cerrar sesión',
     lastLogin: 'Último acceso',
     or: 'o',

@@ -4,6 +4,7 @@ export const ru = {
     save: 'Сохранить',
     update: 'Обновить',
     cancel: 'Отмена',
+    close: 'Закрыть',
     logout: 'Выйти',
     lastLogin: 'Последний вход',
     or: 'или',

@@ -4,6 +4,7 @@ export const he = {
     save: 'שמור',
     update: 'עדכן',
     cancel: 'ביטול',
+    close: 'סגור',
     logout: 'יציאה',
     lastLogin: 'כניסה אחרונה',
     or: 'או',
