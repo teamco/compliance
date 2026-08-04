@@ -190,7 +190,7 @@ export function ExceptionsPage() {
       )}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShieldAlert size={18} className="text-primary" />
@@ -208,37 +208,51 @@ export function ExceptionsPage() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>{t('exceptions.framework')}</Label>
-              <Combobox
-                options={frameworkOptions}
-                value={form.frameworkId}
-                onChange={handleFrameworkChange}
-                placeholder={t('exceptions.selectFramework')}
-                searchPlaceholder={t('exceptions.searchFramework')}
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t('exceptions.framework')}</Label>
+                <Combobox
+                  options={frameworkOptions}
+                  value={form.frameworkId}
+                  onChange={handleFrameworkChange}
+                  placeholder={t('exceptions.selectFramework')}
+                  searchPlaceholder={t('exceptions.searchFramework')}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('exceptions.standard')}</Label>
+                <Combobox
+                  options={standardOptions}
+                  value={form.standardCode ?? ''}
+                  onChange={(v) => setForm((f) => ({ ...f, standardCode: v }))}
+                  placeholder={t('exceptions.selectStandard')}
+                  searchPlaceholder={t('exceptions.searchStandard')}
+                  disabled={!form.frameworkId}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('exceptions.standard')}</Label>
-              <Combobox
-                options={standardOptions}
-                value={form.standardCode ?? ''}
-                onChange={(v) => setForm((f) => ({ ...f, standardCode: v }))}
-                placeholder={t('exceptions.selectStandard')}
-                searchPlaceholder={t('exceptions.searchStandard')}
-                disabled={!form.frameworkId}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('exceptions.controlCode')}</Label>
-              <Combobox
-                options={controlOptions}
-                value={form.controlCode}
-                onChange={(v) => setForm((f) => ({ ...f, controlCode: v }))}
-                placeholder={t('exceptions.selectControl')}
-                searchPlaceholder={t('exceptions.searchControl')}
-                disabled={!form.frameworkId}
-              />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t('exceptions.controlCode')}</Label>
+                <Combobox
+                  options={controlOptions}
+                  value={form.controlCode}
+                  onChange={(v) => setForm((f) => ({ ...f, controlCode: v }))}
+                  placeholder={t('exceptions.selectControl')}
+                  searchPlaceholder={t('exceptions.searchControl')}
+                  disabled={!form.frameworkId}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('exceptions.owner')}</Label>
+                <Combobox
+                  options={ownerOptions}
+                  value={form.ownerId}
+                  onChange={(v) => setForm((f) => ({ ...f, ownerId: v }))}
+                  placeholder={t('exceptions.selectOwner')}
+                  searchPlaceholder={t('exceptions.searchOwner')}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>{t('exceptions.statement')}</Label>
@@ -260,16 +274,6 @@ export function ExceptionsPage() {
                 rows={3}
                 className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-green-500/40 resize-none"
                 required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('exceptions.owner')}</Label>
-              <Combobox
-                options={ownerOptions}
-                value={form.ownerId}
-                onChange={(v) => setForm((f) => ({ ...f, ownerId: v }))}
-                placeholder={t('exceptions.selectOwner')}
-                searchPlaceholder={t('exceptions.searchOwner')}
               />
             </div>
             <div className="space-y-2">
