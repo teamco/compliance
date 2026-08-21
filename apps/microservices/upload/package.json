@@ -5,12 +5,12 @@
   "dependencies": {
     "@icore/shared": "*",
     "@icore/storage-supabase": "*",
-    "@nestjs/common": "^11.1.28",
+    "@nestjs/common": "^11.2.1",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.28",
-    "@nestjs/microservices": "^11.1.28",
-    "@supabase/supabase-js": "^2.111.0",
-    "cloudinary": "^2.10.0",
+    "@nestjs/core": "^11.2.1",
+    "@nestjs/microservices": "^11.2.1",
+    "@supabase/supabase-js": "^2.112.3",
+    "cloudinary": "^2.10.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tslib": "^2.8.1"
