@@ -50,23 +50,23 @@ Evidence Requirements
 
 ## Target Customers
 
-| Segment | Use Case |
-|---------|----------|
-| Small Businesses | Preparing for SOC 2 / ISO 27001, cybersecurity maturity |
-| Mid-Market Organizations | Multi-framework compliance, internal governance |
-| Enterprise Organizations | Global programs, multiple BUs, regional regulations |
-| Consulting Firms | Compliance consultants, virtual CISOs, advisory firms |
+| Segment                  | Use Case                                                |
+| ------------------------ | ------------------------------------------------------- |
+| Small Businesses         | Preparing for SOC 2 / ISO 27001, cybersecurity maturity |
+| Mid-Market Organizations | Multi-framework compliance, internal governance         |
+| Enterprise Organizations | Global programs, multiple BUs, regional regulations     |
+| Consulting Firms         | Compliance consultants, virtual CISOs, advisory firms   |
 
 ---
 
 ## Revenue Model
 
-| Tier | Price | Target |
-|------|-------|--------|
-| Starter | $299/month | Up to 50 employees |
-| Growth | $999/month | Multi-framework support |
-| Business | $2,499/month | Workflow automation |
-| Enterprise | Custom | SSO, private cloud, custom frameworks, auditor portal |
+| Tier       | Price        | Target                                                |
+| ---------- | ------------ | ----------------------------------------------------- |
+| Starter    | $299/month   | Up to 50 employees                                    |
+| Growth     | $999/month   | Multi-framework support                               |
+| Business   | $2,499/month | Workflow automation                                   |
+| Enterprise | Custom       | SSO, private cloud, custom frameworks, auditor portal |
 
 ---
 
@@ -74,14 +74,15 @@ Evidence Requirements
 
 The platform evolves into a **Cyber Governance Intelligence Platform (CGIP)** with four integrated intelligence layers:
 
-| Layer | Description | Components |
-|-------|-------------|------------|
-| 1 | Framework Intelligence | SOC 2, ISO 27001, NIST, GDPR |
-| 2 | Documentation Intelligence | Policies, Standards, Procedures, Controls |
-| 3 | Operational Intelligence | Tasks, Evidence, Risk, Audits |
-| 4 | Security Reality Intelligence | Attack Surface, Security Ratings, Threat Intel, Exposure |
+| Layer | Description                   | Components                                               |
+| ----- | ----------------------------- | -------------------------------------------------------- |
+| 1     | Framework Intelligence        | SOC 2, ISO 27001, NIST, GDPR                             |
+| 2     | Documentation Intelligence    | Policies, Standards, Procedures, Controls                |
+| 3     | Operational Intelligence      | Tasks, Evidence, Risk, Audits                            |
+| 4     | Security Reality Intelligence | Attack Surface, Security Ratings, Threat Intel, Exposure |
 
 End-to-end traceability:
+
 ```
 Requirement → Control → Standard → Implementation → External Validation → Risk Score → Compliance Impact
 ```

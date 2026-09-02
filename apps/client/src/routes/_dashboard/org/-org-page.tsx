@@ -6,12 +6,13 @@ import {
   useCreateOrganization,
   useDeleteOrganization,
   useOrganizations,
+  type Organization,
   type OrganizationInput,
 } from '@/queries/notes';
 import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EMPTY_FORM } from './-constants';
 import { OrgForm } from './-org-form';
 import { EditOrgForm } from './-edit-org-form';
@@ -25,26 +26,20 @@ export function OrgPage() {
   const create = useCreateOrganization();
   const deleteOrg = useDeleteOrganization();
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
-  const [modalMode, setModalMode] = useState<'create' | 'edit' | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingOrg, setEditingOrg] = useState<Organization | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const orgList = orgs ?? [];
   const filteredOrgs = orgList.filter((org) =>
     org.name.toLowerCase().includes(search.trim().toLowerCase()),
   );
-  const editingOrg = orgList.find((org) => org.id === editingId);
-
-  function closeModal() {
-    setModalMode(null);
-    setEditingId(null);
-  }
 
   async function handleCreate(data: OrganizationInput) {
     try {
       const org = await create.mutateAsync(data);
       setActiveOrgId(org.id);
-      closeModal();
+      setCreateOpen(false);
       notify.success(t('org.created'));
     } catch {
       notify.error(t('error.unknown'));
@@ -94,49 +89,43 @@ export function OrgPage() {
           placeholder={t('org.searchPlaceholder')}
           className="w-full sm:max-w-sm"
         />
-        <Button
-          variant="outline"
-          onClick={() => setModalMode('create')}
-          className="gap-2 sm:ms-auto"
-        >
+        <Button variant="outline" onClick={() => setCreateOpen(true)} className="gap-2 sm:ms-auto">
           <Plus size={14} />
           {t('org.createNew')}
         </Button>
       </div>
 
-      <Sheet open={modalMode !== null} onOpenChange={(open) => !open && closeModal()}>
-        <SheetContent
-          className="w-full max-w-110"
+      {/* Create — Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent
           onPointerDownOutside={(event) => event.preventDefault()}
           onInteractOutside={(event) => event.preventDefault()}
         >
-          <SheetHeader>
-            <SheetTitle>
-              {modalMode === 'edit' ? t('org.editTitle') : t('org.createTitle')}
-            </SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1">
-            {modalMode === 'create' && (
-              <OrgForm
-                initial={EMPTY_FORM}
-                onSave={(data) => void handleCreate(data)}
-                isPending={create.isPending}
-                submitLabel={t('org.createOrganization')}
-              />
-            )}
-            {modalMode === 'edit' && editingOrg && (
-              <EditOrgForm org={editingOrg} onSaved={closeModal} />
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+          <DialogHeader>
+            <DialogTitle>{t('org.createTitle')}</DialogTitle>
+          </DialogHeader>
+          <OrgForm
+            initial={EMPTY_FORM}
+            onSave={(data) => void handleCreate(data)}
+            isPending={create.isPending}
+            submitLabel={t('org.createOrganization')}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit — Sheet (owned by EditOrgForm) */}
+      <EditOrgForm
+        open={editingOrg !== null}
+        org={editingOrg}
+        onClose={() => setEditingOrg(null)}
+      />
 
       <OrgList
         orgs={filteredOrgs}
         activeOrgId={activeOrgId}
         onEdit={(orgId) => {
-          setEditingId(orgId);
-          setModalMode('edit');
+          const org = orgList.find((o) => o.id === orgId) ?? null;
+          setEditingOrg(org);
         }}
         onDelete={setConfirmDeleteId}
       />

@@ -18,7 +18,8 @@ export function Hero() {
             Turn compliance work into an intelligent security operating system.
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-8 text-muted-foreground md:text-lg">
-            Generate standards, analyze gaps, map controls and score security posture across enterprise frameworks — from one AI-assisted governance workspace.
+            Generate standards, analyze gaps, map controls and score security posture across
+            enterprise frameworks — from one AI-assisted governance workspace.
           </p>
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Button asChild size="lg" className="h-12 px-6">

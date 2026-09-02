@@ -94,8 +94,7 @@ describe('server boundary — no browser-only packages in NestJS modules', () =>
   ];
 
   // Regex matches the start of a bare import specifier
-  const BROWSER_ONLY =
-    /^(react(-dom)?|@tanstack\/react-|@radix-ui\/|lucide-react|sonner)/;
+  const BROWSER_ONLY = /^(react(-dom)?|@tanstack\/react-|@radix-ui\/|lucide-react|sonner)/;
 
   it('no browser-only import found in server-side source files', async () => {
     const violations: string[] = [];

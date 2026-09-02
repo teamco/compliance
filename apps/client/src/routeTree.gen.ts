@@ -9,75 +9,55 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as DashboardRouteImport } from './routes/_dashboard'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
-import { Route as DashboardStandardsRouteImport } from './routes/_dashboard/standards'
-import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
-import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
-import { Route as DashboardOrgRouteImport } from './routes/_dashboard/org'
-import { Route as DashboardGapAnalysisRouteImport } from './routes/_dashboard/gap-analysis'
-import { Route as DashboardFrameworksRouteImport } from './routes/_dashboard/frameworks'
-import { Route as DashboardDashboardRouteImport } from './routes/_dashboard/dashboard'
+import { Route as DashboardRouteImport } from './routes/_dashboard'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as DashboardAssessmentsRouteImport } from './routes/_dashboard/assessments'
+import { Route as DashboardAssetsRouteImport } from './routes/_dashboard/assets'
 import { Route as DashboardControlsRouteImport } from './routes/_dashboard/controls'
-import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
-import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
-import { Route as DashboardGapAnalysisIdRouteImport } from './routes/_dashboard/gap-analysis.$id'
+import { Route as DashboardDashboardRouteImport } from './routes/_dashboard/dashboard'
+import { Route as DashboardExceptionsRouteImport } from './routes/_dashboard/exceptions'
+import { Route as DashboardFrameworksRouteImport } from './routes/_dashboard/frameworks'
+import { Route as DashboardGapAnalysisRouteImport } from './routes/_dashboard/gap-analysis'
+import { Route as DashboardIssuesRouteImport } from './routes/_dashboard/issues'
+import { Route as DashboardOrgRouteImport } from './routes/_dashboard/org'
+import { Route as DashboardPoliciesRouteImport } from './routes/_dashboard/policies'
+import { Route as DashboardProfileRouteImport } from './routes/_dashboard/profile'
+import { Route as DashboardRisksRouteImport } from './routes/_dashboard/risks'
+import { Route as DashboardSettingsRouteImport } from './routes/_dashboard/settings'
+import { Route as DashboardStandardsRouteImport } from './routes/_dashboard/standards'
+import { Route as DashboardVendorsRouteImport } from './routes/_dashboard/vendors'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as DashboardAdminAiUsageRouteImport } from './routes/_dashboard/admin.ai-usage'
+import { Route as DashboardAssessmentsIdRouteImport } from './routes/_dashboard/assessments_.$id'
+import { Route as DashboardGapAnalysisIdRouteImport } from './routes/_dashboard/gap-analysis.$id'
+import { Route as DashboardPoliciesIdRouteImport } from './routes/_dashboard/policies_.$id'
+import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
+import { Route as DashboardVendorsIdRouteImport } from './routes/_dashboard/vendors_.$id'
+import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/_dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardStandardsRoute = DashboardStandardsRouteImport.update({
-  id: '/standards',
-  path: '/standards',
+const DashboardAssessmentsRoute = DashboardAssessmentsRouteImport.update({
+  id: '/assessments',
+  path: '/assessments',
   getParentRoute: () => DashboardRoute,
 } as any)
-const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardProfileRoute = DashboardProfileRouteImport.update({
-  id: '/profile',
-  path: '/profile',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardOrgRoute = DashboardOrgRouteImport.update({
-  id: '/org',
-  path: '/org',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardGapAnalysisRoute = DashboardGapAnalysisRouteImport.update({
-  id: '/gap-analysis',
-  path: '/gap-analysis',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardFrameworksRoute = DashboardFrameworksRouteImport.update({
-  id: '/frameworks',
-  path: '/frameworks',
-  getParentRoute: () => DashboardRoute,
-} as any)
-const DashboardDashboardRoute = DashboardDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const DashboardAssetsRoute = DashboardAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
   getParentRoute: () => DashboardRoute,
 } as any)
 const DashboardControlsRoute = DashboardControlsRouteImport.update({
@@ -85,59 +65,159 @@ const DashboardControlsRoute = DashboardControlsRouteImport.update({
   path: '/controls',
   getParentRoute: () => DashboardRoute,
 } as any)
-const AuthOauthCallbackRoute = AuthOauthCallbackRouteImport.update({
-  id: '/auth/oauth/callback',
-  path: '/auth/oauth/callback',
+const DashboardDashboardRoute = DashboardDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardExceptionsRoute = DashboardExceptionsRouteImport.update({
+  id: '/exceptions',
+  path: '/exceptions',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardFrameworksRoute = DashboardFrameworksRouteImport.update({
+  id: '/frameworks',
+  path: '/frameworks',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardGapAnalysisRoute = DashboardGapAnalysisRouteImport.update({
+  id: '/gap-analysis',
+  path: '/gap-analysis',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardIssuesRoute = DashboardIssuesRouteImport.update({
+  id: '/issues',
+  path: '/issues',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardOrgRoute = DashboardOrgRouteImport.update({
+  id: '/org',
+  path: '/org',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardPoliciesRoute = DashboardPoliciesRouteImport.update({
+  id: '/policies',
+  path: '/policies',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardProfileRoute = DashboardProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardRisksRoute = DashboardRisksRouteImport.update({
+  id: '/risks',
+  path: '/risks',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardSettingsRoute = DashboardSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardStandardsRoute = DashboardStandardsRouteImport.update({
+  id: '/standards',
+  path: '/standards',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardVendorsRoute = DashboardVendorsRouteImport.update({
+  id: '/vendors',
+  path: '/vendors',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardStandardsIdRoute = DashboardStandardsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => DashboardStandardsRoute,
-} as any)
-const DashboardGapAnalysisIdRoute = DashboardGapAnalysisIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => DashboardGapAnalysisRoute,
 } as any)
 const DashboardAdminAiUsageRoute = DashboardAdminAiUsageRouteImport.update({
   id: '/admin/ai-usage',
   path: '/admin/ai-usage',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardAssessmentsIdRoute = DashboardAssessmentsIdRouteImport.update({
+  id: '/assessments_/$id',
+  path: '/assessments/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardGapAnalysisIdRoute = DashboardGapAnalysisIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DashboardGapAnalysisRoute,
+} as any)
+const DashboardPoliciesIdRoute = DashboardPoliciesIdRouteImport.update({
+  id: '/policies_/$id',
+  path: '/policies/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const DashboardStandardsIdRoute = DashboardStandardsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => DashboardStandardsRoute,
+} as any)
+const DashboardVendorsIdRoute = DashboardVendorsIdRouteImport.update({
+  id: '/vendors_/$id',
+  path: '/vendors/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
+const AuthOauthCallbackRoute = AuthOauthCallbackRouteImport.update({
+  id: '/auth/oauth/callback',
+  path: '/auth/oauth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assessments': typeof DashboardAssessmentsRoute
+  '/assets': typeof DashboardAssetsRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
+  '/exceptions': typeof DashboardExceptionsRoute
   '/frameworks': typeof DashboardFrameworksRoute
   '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
+  '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
+  '/policies': typeof DashboardPoliciesRoute
   '/profile': typeof DashboardProfileRoute
+  '/risks': typeof DashboardRisksRoute
   '/settings': typeof DashboardSettingsRoute
   '/standards': typeof DashboardStandardsRouteWithChildren
+  '/vendors': typeof DashboardVendorsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/assessments/$id': typeof DashboardAssessmentsIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
+  '/policies/$id': typeof DashboardPoliciesIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
+  '/vendors/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/assessments': typeof DashboardAssessmentsRoute
+  '/assets': typeof DashboardAssetsRoute
   '/controls': typeof DashboardControlsRoute
   '/dashboard': typeof DashboardDashboardRoute
+  '/exceptions': typeof DashboardExceptionsRoute
   '/frameworks': typeof DashboardFrameworksRoute
   '/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
+  '/issues': typeof DashboardIssuesRoute
   '/org': typeof DashboardOrgRoute
+  '/policies': typeof DashboardPoliciesRoute
   '/profile': typeof DashboardProfileRoute
+  '/risks': typeof DashboardRisksRoute
   '/settings': typeof DashboardSettingsRoute
   '/standards': typeof DashboardStandardsRouteWithChildren
+  '/vendors': typeof DashboardVendorsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/assessments/$id': typeof DashboardAssessmentsIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
+  '/policies/$id': typeof DashboardPoliciesIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
+  '/vendors/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
 }
 export interface FileRoutesById {
@@ -145,18 +225,28 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardRouteWithChildren
   '/login': typeof LoginRoute
+  '/_dashboard/assessments': typeof DashboardAssessmentsRoute
+  '/_dashboard/assets': typeof DashboardAssetsRoute
   '/_dashboard/controls': typeof DashboardControlsRoute
   '/_dashboard/dashboard': typeof DashboardDashboardRoute
+  '/_dashboard/exceptions': typeof DashboardExceptionsRoute
   '/_dashboard/frameworks': typeof DashboardFrameworksRoute
   '/_dashboard/gap-analysis': typeof DashboardGapAnalysisRouteWithChildren
+  '/_dashboard/issues': typeof DashboardIssuesRoute
   '/_dashboard/org': typeof DashboardOrgRoute
+  '/_dashboard/policies': typeof DashboardPoliciesRoute
   '/_dashboard/profile': typeof DashboardProfileRoute
+  '/_dashboard/risks': typeof DashboardRisksRoute
   '/_dashboard/settings': typeof DashboardSettingsRoute
   '/_dashboard/standards': typeof DashboardStandardsRouteWithChildren
+  '/_dashboard/vendors': typeof DashboardVendorsRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/_dashboard/admin/ai-usage': typeof DashboardAdminAiUsageRoute
+  '/_dashboard/assessments_/$id': typeof DashboardAssessmentsIdRoute
   '/_dashboard/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
+  '/_dashboard/policies_/$id': typeof DashboardPoliciesIdRoute
   '/_dashboard/standards/$id': typeof DashboardStandardsIdRoute
+  '/_dashboard/vendors_/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
 }
 export interface FileRouteTypes {
@@ -164,53 +254,83 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/assessments'
+    | '/assets'
     | '/controls'
     | '/dashboard'
+    | '/exceptions'
     | '/frameworks'
     | '/gap-analysis'
+    | '/issues'
     | '/org'
+    | '/policies'
     | '/profile'
+    | '/risks'
     | '/settings'
     | '/standards'
+    | '/vendors'
     | '/auth/callback'
     | '/admin/ai-usage'
+    | '/assessments/$id'
     | '/gap-analysis/$id'
+    | '/policies/$id'
     | '/standards/$id'
+    | '/vendors/$id'
     | '/auth/oauth/callback'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/login'
+    | '/assessments'
+    | '/assets'
     | '/controls'
     | '/dashboard'
+    | '/exceptions'
     | '/frameworks'
     | '/gap-analysis'
+    | '/issues'
     | '/org'
+    | '/policies'
     | '/profile'
+    | '/risks'
     | '/settings'
     | '/standards'
+    | '/vendors'
     | '/auth/callback'
     | '/admin/ai-usage'
+    | '/assessments/$id'
     | '/gap-analysis/$id'
+    | '/policies/$id'
     | '/standards/$id'
+    | '/vendors/$id'
     | '/auth/oauth/callback'
   id:
     | '__root__'
     | '/'
     | '/_dashboard'
     | '/login'
+    | '/_dashboard/assessments'
+    | '/_dashboard/assets'
     | '/_dashboard/controls'
     | '/_dashboard/dashboard'
+    | '/_dashboard/exceptions'
     | '/_dashboard/frameworks'
     | '/_dashboard/gap-analysis'
+    | '/_dashboard/issues'
     | '/_dashboard/org'
+    | '/_dashboard/policies'
     | '/_dashboard/profile'
+    | '/_dashboard/risks'
     | '/_dashboard/settings'
     | '/_dashboard/standards'
+    | '/_dashboard/vendors'
     | '/auth/callback'
     | '/_dashboard/admin/ai-usage'
+    | '/_dashboard/assessments_/$id'
     | '/_dashboard/gap-analysis/$id'
+    | '/_dashboard/policies_/$id'
     | '/_dashboard/standards/$id'
+    | '/_dashboard/vendors_/$id'
     | '/auth/oauth/callback'
   fileRoutesById: FileRoutesById
 }
@@ -224,11 +344,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_dashboard': {
@@ -238,67 +358,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_dashboard/standards': {
-      id: '/_dashboard/standards'
-      path: '/standards'
-      fullPath: '/standards'
-      preLoaderRoute: typeof DashboardStandardsRouteImport
+    '/_dashboard/assessments': {
+      id: '/_dashboard/assessments'
+      path: '/assessments'
+      fullPath: '/assessments'
+      preLoaderRoute: typeof DashboardAssessmentsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/_dashboard/settings': {
-      id: '/_dashboard/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof DashboardSettingsRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/profile': {
-      id: '/_dashboard/profile'
-      path: '/profile'
-      fullPath: '/profile'
-      preLoaderRoute: typeof DashboardProfileRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/org': {
-      id: '/_dashboard/org'
-      path: '/org'
-      fullPath: '/org'
-      preLoaderRoute: typeof DashboardOrgRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/gap-analysis': {
-      id: '/_dashboard/gap-analysis'
-      path: '/gap-analysis'
-      fullPath: '/gap-analysis'
-      preLoaderRoute: typeof DashboardGapAnalysisRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/frameworks': {
-      id: '/_dashboard/frameworks'
-      path: '/frameworks'
-      fullPath: '/frameworks'
-      preLoaderRoute: typeof DashboardFrameworksRouteImport
-      parentRoute: typeof DashboardRoute
-    }
-    '/_dashboard/dashboard': {
-      id: '/_dashboard/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardDashboardRouteImport
+    '/_dashboard/assets': {
+      id: '/_dashboard/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof DashboardAssetsRouteImport
       parentRoute: typeof DashboardRoute
     }
     '/_dashboard/controls': {
@@ -308,19 +386,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardControlsRouteImport
       parentRoute: typeof DashboardRoute
     }
-    '/auth/oauth/callback': {
-      id: '/auth/oauth/callback'
-      path: '/auth/oauth/callback'
-      fullPath: '/auth/oauth/callback'
-      preLoaderRoute: typeof AuthOauthCallbackRouteImport
+    '/_dashboard/dashboard': {
+      id: '/_dashboard/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardDashboardRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/exceptions': {
+      id: '/_dashboard/exceptions'
+      path: '/exceptions'
+      fullPath: '/exceptions'
+      preLoaderRoute: typeof DashboardExceptionsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/frameworks': {
+      id: '/_dashboard/frameworks'
+      path: '/frameworks'
+      fullPath: '/frameworks'
+      preLoaderRoute: typeof DashboardFrameworksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/gap-analysis': {
+      id: '/_dashboard/gap-analysis'
+      path: '/gap-analysis'
+      fullPath: '/gap-analysis'
+      preLoaderRoute: typeof DashboardGapAnalysisRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/issues': {
+      id: '/_dashboard/issues'
+      path: '/issues'
+      fullPath: '/issues'
+      preLoaderRoute: typeof DashboardIssuesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/org': {
+      id: '/_dashboard/org'
+      path: '/org'
+      fullPath: '/org'
+      preLoaderRoute: typeof DashboardOrgRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/policies': {
+      id: '/_dashboard/policies'
+      path: '/policies'
+      fullPath: '/policies'
+      preLoaderRoute: typeof DashboardPoliciesRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/profile': {
+      id: '/_dashboard/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof DashboardProfileRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/risks': {
+      id: '/_dashboard/risks'
+      path: '/risks'
+      fullPath: '/risks'
+      preLoaderRoute: typeof DashboardRisksRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/settings': {
+      id: '/_dashboard/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof DashboardSettingsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/standards': {
+      id: '/_dashboard/standards'
+      path: '/standards'
+      fullPath: '/standards'
+      preLoaderRoute: typeof DashboardStandardsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/vendors': {
+      id: '/_dashboard/vendors'
+      path: '/vendors'
+      fullPath: '/vendors'
+      preLoaderRoute: typeof DashboardVendorsRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_dashboard/standards/$id': {
-      id: '/_dashboard/standards/$id'
-      path: '/$id'
-      fullPath: '/standards/$id'
-      preLoaderRoute: typeof DashboardStandardsIdRouteImport
-      parentRoute: typeof DashboardStandardsRoute
+    '/_dashboard/admin/ai-usage': {
+      id: '/_dashboard/admin/ai-usage'
+      path: '/admin/ai-usage'
+      fullPath: '/admin/ai-usage'
+      preLoaderRoute: typeof DashboardAdminAiUsageRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/assessments_/$id': {
+      id: '/_dashboard/assessments_/$id'
+      path: '/assessments/$id'
+      fullPath: '/assessments/$id'
+      preLoaderRoute: typeof DashboardAssessmentsIdRouteImport
+      parentRoute: typeof DashboardRoute
     }
     '/_dashboard/gap-analysis/$id': {
       id: '/_dashboard/gap-analysis/$id'
@@ -329,12 +498,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardGapAnalysisIdRouteImport
       parentRoute: typeof DashboardGapAnalysisRoute
     }
-    '/_dashboard/admin/ai-usage': {
-      id: '/_dashboard/admin/ai-usage'
-      path: '/admin/ai-usage'
-      fullPath: '/admin/ai-usage'
-      preLoaderRoute: typeof DashboardAdminAiUsageRouteImport
+    '/_dashboard/policies_/$id': {
+      id: '/_dashboard/policies_/$id'
+      path: '/policies/$id'
+      fullPath: '/policies/$id'
+      preLoaderRoute: typeof DashboardPoliciesIdRouteImport
       parentRoute: typeof DashboardRoute
+    }
+    '/_dashboard/standards/$id': {
+      id: '/_dashboard/standards/$id'
+      path: '/$id'
+      fullPath: '/standards/$id'
+      preLoaderRoute: typeof DashboardStandardsIdRouteImport
+      parentRoute: typeof DashboardStandardsRoute
+    }
+    '/_dashboard/vendors_/$id': {
+      id: '/_dashboard/vendors_/$id'
+      path: '/vendors/$id'
+      fullPath: '/vendors/$id'
+      preLoaderRoute: typeof DashboardVendorsIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
+    '/auth/oauth/callback': {
+      id: '/auth/oauth/callback'
+      path: '/auth/oauth/callback'
+      fullPath: '/auth/oauth/callback'
+      preLoaderRoute: typeof AuthOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -362,27 +552,47 @@ const DashboardStandardsRouteWithChildren =
   DashboardStandardsRoute._addFileChildren(DashboardStandardsRouteChildren)
 
 interface DashboardRouteChildren {
+  DashboardAssessmentsRoute: typeof DashboardAssessmentsRoute
+  DashboardAssetsRoute: typeof DashboardAssetsRoute
   DashboardControlsRoute: typeof DashboardControlsRoute
   DashboardDashboardRoute: typeof DashboardDashboardRoute
+  DashboardExceptionsRoute: typeof DashboardExceptionsRoute
   DashboardFrameworksRoute: typeof DashboardFrameworksRoute
   DashboardGapAnalysisRoute: typeof DashboardGapAnalysisRouteWithChildren
+  DashboardIssuesRoute: typeof DashboardIssuesRoute
   DashboardOrgRoute: typeof DashboardOrgRoute
+  DashboardPoliciesRoute: typeof DashboardPoliciesRoute
   DashboardProfileRoute: typeof DashboardProfileRoute
+  DashboardRisksRoute: typeof DashboardRisksRoute
   DashboardSettingsRoute: typeof DashboardSettingsRoute
   DashboardStandardsRoute: typeof DashboardStandardsRouteWithChildren
+  DashboardVendorsRoute: typeof DashboardVendorsRoute
   DashboardAdminAiUsageRoute: typeof DashboardAdminAiUsageRoute
+  DashboardAssessmentsIdRoute: typeof DashboardAssessmentsIdRoute
+  DashboardPoliciesIdRoute: typeof DashboardPoliciesIdRoute
+  DashboardVendorsIdRoute: typeof DashboardVendorsIdRoute
 }
 
 const DashboardRouteChildren: DashboardRouteChildren = {
+  DashboardAssessmentsRoute: DashboardAssessmentsRoute,
+  DashboardAssetsRoute: DashboardAssetsRoute,
   DashboardControlsRoute: DashboardControlsRoute,
   DashboardDashboardRoute: DashboardDashboardRoute,
+  DashboardExceptionsRoute: DashboardExceptionsRoute,
   DashboardFrameworksRoute: DashboardFrameworksRoute,
   DashboardGapAnalysisRoute: DashboardGapAnalysisRouteWithChildren,
+  DashboardIssuesRoute: DashboardIssuesRoute,
   DashboardOrgRoute: DashboardOrgRoute,
+  DashboardPoliciesRoute: DashboardPoliciesRoute,
   DashboardProfileRoute: DashboardProfileRoute,
+  DashboardRisksRoute: DashboardRisksRoute,
   DashboardSettingsRoute: DashboardSettingsRoute,
   DashboardStandardsRoute: DashboardStandardsRouteWithChildren,
+  DashboardVendorsRoute: DashboardVendorsRoute,
   DashboardAdminAiUsageRoute: DashboardAdminAiUsageRoute,
+  DashboardAssessmentsIdRoute: DashboardAssessmentsIdRoute,
+  DashboardPoliciesIdRoute: DashboardPoliciesIdRoute,
+  DashboardVendorsIdRoute: DashboardVendorsIdRoute,
 }
 
 const DashboardRouteWithChildren = DashboardRoute._addFileChildren(

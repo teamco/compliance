@@ -165,7 +165,11 @@ export function createMockSupabaseClient(): MockSupabaseClient {
     },
   };
 
-  const client = { auth } as unknown as SupabaseClient;
+  const from = (_table: string) => ({
+    upsert: (_row: unknown) => Promise.resolve({ error: null }),
+  });
+
+  const client = { auth, from } as unknown as SupabaseClient;
   return {
     client,
     getMagicLinkToken(email: string): string {

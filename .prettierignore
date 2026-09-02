@@ -1,3 +1,4 @@
+**/*.md
 node_modules
 .yarn
 .pnp.*
@@ -11,3 +12,9 @@ yarn.lock
 
 # Build artifact (snapshot script regenerates it)
 tools/create-icore/templates
+
+# Tool/daemon-generated state — not source, rewritten continuously
+.claude-flow
+.claude/proven-config.json
+.claude/settings.json
+.mcp.json

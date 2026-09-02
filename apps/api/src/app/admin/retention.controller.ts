@@ -4,7 +4,9 @@ import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { RetentionPrefsPayload, VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 @ApiTags('admin')
 @ApiBearerAuth()

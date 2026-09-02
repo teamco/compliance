@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Reflector } from '@nestjs/core';
 import { UnauthorizedException, type ExecutionContext } from '@nestjs/common';
+import { AUTH_TOKEN_EXPIRED } from '@icore/shared';
 import { AuthGuard } from '../auth.guard';
 
 interface MockReq {
@@ -62,5 +63,30 @@ describe('AuthGuard', () => {
     await expect(guard.canActivate(ctx({ authorization: 'Bearer abc' }))).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+
+  it('surfaces TOKEN_EXPIRED code when the auth MS reports an expired token', async () => {
+    const { guard } = makeGuard({
+      verify: () => Promise.reject({ code: AUTH_TOKEN_EXPIRED, message: 'token is expired' }),
+    });
+    const err = await guard
+      .canActivate(ctx({ authorization: 'Bearer stale' }))
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UnauthorizedException);
+    expect((err as UnauthorizedException).getResponse()).toMatchObject({
+      code: AUTH_TOKEN_EXPIRED,
+      message: 'token_expired',
+    });
+  });
+
+  it('maps non-expiry verify failures to generic invalid_token', async () => {
+    const { guard } = makeGuard({ verify: () => Promise.reject(new Error('malformed')) });
+    const err = await guard
+      .canActivate(ctx({ authorization: 'Bearer junk' }))
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(UnauthorizedException);
+    expect((err as UnauthorizedException).getResponse()).toMatchObject({
+      message: 'invalid_token',
+    });
   });
 });

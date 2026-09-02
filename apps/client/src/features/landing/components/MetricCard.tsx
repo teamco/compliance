@@ -16,7 +16,12 @@ interface MetricCardProps {
 export function MetricCard({ label, value, tone = 'green' }: MetricCardProps) {
   return (
     <div className="rounded-xl border border-border bg-background/60 p-4">
-      <div className={cn('mb-3 inline-flex rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wider', toneClass[tone])}>
+      <div
+        className={cn(
+          'mb-3 inline-flex rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wider',
+          toneClass[tone],
+        )}
+      >
         Live
       </div>
       <div className="text-2xl font-semibold text-foreground tabular-nums">{value}</div>

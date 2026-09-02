@@ -96,6 +96,9 @@ export function commonTestConfig(name, coverageDir) {
     watch: false,
     globals: true,
     environment: 'jsdom',
+    resolve: {
+      tsconfigPaths: true,
+    },
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
     coverage: {

@@ -1,0 +1,1 @@
+export const VENDOR_RISK_CLIENT = 'VENDOR_RISK_CLIENT';

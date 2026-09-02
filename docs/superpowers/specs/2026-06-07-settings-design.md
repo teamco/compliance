@@ -16,14 +16,14 @@ Default tab when no hash: `#appearance`.
 
 ### Data Storage
 
-| Data | Location | Owner |
-|------|----------|-------|
-| `theme`, `language` | new columns on `profiles` table | user |
-| `notification_prefs` (channels + events JSON) | new column on `profiles` table | user |
-| push subscriptions | new table `push_subscriptions` | user |
-| org settings (webhooks, retention) | new table `org_settings` (one row per org) | admin |
-| API keys (name, hash, prefix, scopes, last_used) | new table `api_keys` | admin |
-| Audit log | read-only SQL query over Supabase auth + notes activity | — |
+| Data                                             | Location                                                | Owner |
+| ------------------------------------------------ | ------------------------------------------------------- | ----- |
+| `theme`, `language`                              | new columns on `profiles` table                         | user  |
+| `notification_prefs` (channels + events JSON)    | new column on `profiles` table                          | user  |
+| push subscriptions                               | new table `push_subscriptions`                          | user  |
+| org settings (webhooks, retention)               | new table `org_settings` (one row per org)              | admin |
+| API keys (name, hash, prefix, scopes, last_used) | new table `api_keys`                                    | admin |
+| Audit log                                        | read-only SQL query over Supabase auth + notes activity | —     |
 
 ### API (NestJS gateway → notes MS)
 
@@ -73,12 +73,12 @@ GET /api/settings/audit-log            → paginated events (admin)
 
 **Implemented action values** (what is actually stored and filtered):
 
-| DB value | Display label |
-|---|---|
-| `workflow.submit` | Workflow Submitted |
-| `workflow.approve` | Workflow Approved |
-| `workflow.reject` | Workflow Rejected |
-| `workflow.publish` | Workflow Published |
+| DB value                 | Display label          |
+| ------------------------ | ---------------------- |
+| `workflow.submit`        | Workflow Submitted     |
+| `workflow.approve`       | Workflow Approved      |
+| `workflow.reject`        | Workflow Rejected      |
+| `workflow.publish`       | Workflow Published     |
 | `ai.standards.generated` | AI Standards Generated |
 
 Note: action values use the transition name (present tense verb, e.g. `submit`), not past tense.
@@ -115,13 +115,17 @@ Note: action values use the transition name (present tense verb, e.g. `submit`),
 ## Notifications Delivery
 
 ### In-app
+
 Bell icon in `LayoutHeader` with unread count badge. Clicking opens a dropdown list of recent notifications. Notifications stored in `notifications` table (`user_id`, `type`, `payload`, `read_at`).
 
 ### Browser Push
+
 Service Worker registered at `/sw.js`. On `PushManager.subscribe()` success, endpoint saved to `push_subscriptions`. Backend sends via `web-push` npm library with VAPID keys (free, no external service). Push payload: `{ title, body, url }`.
 
 ### Trigger points
+
 Both channels triggered from the notes MS on:
+
 - Workflow transitions (submit / approve / reject / publish)
 - AI job completion (standards generated, gap analysis done)
 - New framework added to the system

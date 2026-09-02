@@ -29,6 +29,8 @@ dist-ssr
 tsconfig.node.tsbuildinfo
 
 **/.env
+**/.env.*
+supabase/.temp
 **/firebase-admin.json
 
 .vite
@@ -70,3 +72,12 @@ gha-creds-*.json
 /.tanstack/
 
 .claude/settings.local.json
+.nx/migrate-runs
+
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/

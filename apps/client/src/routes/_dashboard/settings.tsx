@@ -2,13 +2,14 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsAdmin } from '@icore/template-shared';
-import { AppearanceTab } from '../../components/settings/AppearanceTab';
-import { NotificationTab } from '../../components/settings/NotificationTab';
-import { AuditLogTab } from '../../components/settings/AuditLogTab';
-import { ApiKeysTab } from '../../components/settings/ApiKeysTab';
-import { WebhooksTab } from '../../components/settings/WebhooksTab';
-import { ExportTab } from '../../components/settings/ExportTab';
-import { RetentionTab } from '../../components/settings/RetentionTab';
+import { AppearanceTab } from '@/components/settings/AppearanceTab';
+import { NotificationTab } from '@/components/settings/NotificationTab';
+import { AuditLogTab } from '@/components/settings/AuditLogTab';
+import { ApiKeysTab } from '@/components/settings/ApiKeysTab';
+import { WebhooksTab } from '@/components/settings/WebhooksTab';
+import { ExportTab } from '@/components/settings/ExportTab';
+import { TemplatesTab } from '@/components/settings/TemplatesTab';
+import { RetentionTab } from '@/components/settings/RetentionTab';
 
 function SettingsPage() {
   const { t } = useTranslation();
@@ -33,6 +34,7 @@ function SettingsPage() {
           { id: 'api-keys', label: t('settings.tabs.apiKeys') },
           { id: 'webhooks', label: t('settings.tabs.webhooks') },
           { id: 'export', label: t('settings.tabs.export') },
+          { id: 'templates', label: t('settings.tabs.templates') },
           { id: 'retention', label: t('settings.tabs.retention') },
         ]
       : []),
@@ -66,6 +68,7 @@ function SettingsPage() {
       {activeTab === 'api-keys' && <ApiKeysTab />}
       {activeTab === 'webhooks' && <WebhooksTab />}
       {activeTab === 'export' && <ExportTab />}
+      {activeTab === 'templates' && <TemplatesTab />}
       {activeTab === 'retention' && <RetentionTab />}
     </div>
   );

@@ -1,7 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
+  ForbiddenException,
   Get,
+  NotFoundException,
   Param,
   Post,
   Query,
@@ -13,11 +16,17 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle, seconds } from '@nestjs/throttler';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
+import { subject } from '@casl/ability';
 import { AuthClientService } from '@icore/auth-client';
-import type { OAuthProvider, VerifiedToken } from '@icore/shared';
+import { NotesClientService } from '@icore/notes-client';
+import type { Organization, OAuthProvider, VerifiedToken } from '@icore/shared';
 import { Public } from './public.decorator';
+import { CheckAbility } from '../abilities/check-ability.decorator';
+import { AbilityFactory } from '../abilities/ability.factory';
 
 const OAUTH_PROVIDERS: ReadonlySet<OAuthProvider> = new Set(['google', 'github']);
+
+const ROLES: ReadonlySet<string> = new Set(['admin', 'user']);
 
 function assertProvider(value: string): OAuthProvider {
   if (!OAUTH_PROVIDERS.has(value as OAuthProvider)) {
@@ -35,6 +44,8 @@ export class AuthController {
   constructor(
     private readonly authClient: AuthClientService,
     private readonly cfg: ConfigService,
+    private readonly notes: NotesClientService,
+    private readonly abilityFactory: AbilityFactory,
   ) {}
 
   @Public()
@@ -50,8 +61,19 @@ export class AuthController {
       },
     },
   })
-  register(@Body() body: { email: string; password: string }) {
-    return this.authClient.signup(body.email, body.password);
+  async register(@Body() body: { email: string; password: string }) {
+    try {
+      return await this.authClient.signup(body.email, body.password);
+    } catch (err) {
+      const msg =
+        (err as { message?: string; code?: string })?.message ??
+        (err as { code?: string })?.code ??
+        '';
+      if (msg === 'email_confirmation_required') {
+        throw new BadRequestException('email_confirmation_required');
+      }
+      throw err;
+    }
   }
 
   @Public()
@@ -129,6 +151,40 @@ export class AuthController {
     return { ...user, role };
   }
 
+  @Get('org/members')
+  @ApiOperation({ summary: 'List members of an organization' })
+  async listOrgMembers(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.authClient.listOrgMembers(orgId);
+  }
+
+  @Post('role')
+  @CheckAbility('manage', 'all')
+  @ApiOperation({ summary: 'Set a user role (admin only)' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['uid', 'role'],
+      properties: {
+        uid: { type: 'string' },
+        role: { type: 'string', enum: ['admin', 'user'] },
+      },
+    },
+  })
+  async setRole(@Body() body: { uid: string; role: string }) {
+    if (!body.uid || !ROLES.has(body.role)) {
+      throw new BadRequestException('invalid_uid_or_role');
+    }
+    await this.authClient.setRole(body.uid, body.role);
+    return { ok: true };
+  }
+
   @Public()
   @Get('oauth/:provider')
   @ApiOperation({ summary: 'Start an OAuth flow — redirects to the provider' })
@@ -173,5 +229,16 @@ export class AuthController {
       email: session.user.email,
     });
     return res.redirect(`${origin}/auth/oauth/callback#${fragment.toString()}`);
+  }
+
+  private checkOrgAccess(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+    action: 'read' | 'update' | 'delete',
+  ): void {
+    const ability = this.abilityFactory.forUser(req.user);
+    if (!ability.can(action, subject('Organization', { id: org.id, userId: org.userId }))) {
+      throw new ForbiddenException();
+    }
   }
 }

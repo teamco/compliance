@@ -9,7 +9,10 @@ export function TrustedFrameworks() {
         </p>
         <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-6">
           {trustedFrameworks.map((framework) => (
-            <div key={framework} className="rounded-xl border border-border bg-background/50 px-4 py-3 text-center text-sm font-medium text-foreground/80">
+            <div
+              key={framework}
+              className="rounded-xl border border-border bg-background/50 px-4 py-3 text-center text-sm font-medium text-foreground/80"
+            >
               {framework}
             </div>
           ))}

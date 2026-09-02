@@ -15,13 +15,13 @@ export const SUPPORTED_LOCALES: ReadonlyArray<{ code: IcoreLocale; label: string
 const RTL_LOCALES: ReadonlySet<IcoreLocale> = new Set(['he']);
 
 export function getStoredLocale(fallback: IcoreLocale = 'en'): IcoreLocale {
-  if (typeof window === 'undefined') return fallback;
+  if (typeof window === 'undefined' || !window.localStorage) return fallback;
   const v = window.localStorage.getItem(STORAGE_KEY);
   return v === 'en' || v === 'ru' || v === 'he' || v === 'es' ? v : fallback;
 }
 
 export function setStoredLocale(loc: IcoreLocale): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !window.localStorage) return;
   window.localStorage.setItem(STORAGE_KEY, loc);
   document.documentElement.dir = RTL_LOCALES.has(loc) ? 'rtl' : 'ltr';
   document.documentElement.lang = loc;

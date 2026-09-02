@@ -12,39 +12,40 @@
 
 ## File Map
 
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/migrations/20260607000001_settings.sql` | Create | DB: profiles columns + push_subscriptions + notifications tables |
-| `libs/shared/src/strategies/notes.ts` | Modify | Add UserPrefsPayload, NotificationPrefsPayload, PushSubscriptionPayload types + NotesStrategy methods |
-| `libs/shared/src/strategies/fakes/fake-notes.ts` | Modify | Extend FakeNotesStrategy with settings in-memory implementations |
-| `apps/microservices/notes/src/app/supabase-notes.strategy.ts` | Modify | Implement settings methods on SupabaseNotesStrategy |
-| `apps/microservices/notes/src/app/settings.controller.ts` | Create | Notes MS: MessagePattern handlers for settings.prefs.* and settings.push.* |
-| `apps/microservices/notes/src/app/app.module.ts` | Modify | Register SettingsController |
-| `libs/notes-client/src/lib/notes-client.service.ts` | Modify | Add getUserPrefs / updateUserPrefs / savePushSubscription / removePushSubscription |
-| `apps/api/src/app/settings/settings.controller.ts` | Create | Gateway REST endpoints: GET/PATCH /api/settings/me, POST/DELETE /api/settings/push |
-| `apps/api/src/app/settings/settings.module.ts` | Create | Gateway NestJS module wiring |
-| `apps/api/src/app/app.module.ts` | Modify | Import SettingsModule |
-| `apps/client/src/queries/settings.ts` | Create | TanStack Query hooks: useUserPrefs, useUpdatePrefs, useSavePushSubscription, useRemovePushSubscription |
-| `apps/client/src/routes/_dashboard/settings.tsx` | Create | Route shell + hash tab navigation |
-| `apps/client/src/components/settings/AppearanceTab.tsx` | Create | Theme toggle + language selector |
-| `apps/client/src/components/settings/NotificationTab.tsx` | Create | Channels toggles + events matrix + push subscription flow |
-| `apps/client/src/components/settings/__tests__/AppearanceTab.unit.test.tsx` | Create | AppearanceTab unit tests |
-| `apps/client/src/components/settings/__tests__/NotificationTab.unit.test.tsx` | Create | NotificationTab unit tests |
-| `apps/client/public/sw.js` | Create | Service worker: push event handler + notificationclick |
-| `apps/client/src/main.tsx` | Modify | Register service worker |
-| `apps/client/.env` | Modify | Add VITE_VAPID_PUBLIC_KEY |
-| `apps/microservices/notes/.env` | Modify | Note: VAPID_PRIVATE_KEY needed in Plan 2 |
-| `libs/template-shared/src/lib/i18n/locales/en.ts` | Modify | Add settings.* keys |
-| `libs/template-shared/src/lib/i18n/locales/ru.ts` | Modify | Add settings.* keys |
-| `libs/template-shared/src/lib/i18n/locales/he.ts` | Modify | Add settings.* keys |
-| `libs/template-shared/src/lib/i18n/locales/es.ts` | Modify | Add settings.* keys |
-| `apps/client/src/components/layout/LayoutSider.tsx` | Modify | Remove `soon: true` from Settings nav item |
+| File                                                                          | Action | Purpose                                                                                                |
+| ----------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------ |
+| `supabase/migrations/20260607000001_settings.sql`                             | Create | DB: profiles columns + push_subscriptions + notifications tables                                       |
+| `libs/shared/src/strategies/notes.ts`                                         | Modify | Add UserPrefsPayload, NotificationPrefsPayload, PushSubscriptionPayload types + NotesStrategy methods  |
+| `libs/shared/src/strategies/fakes/fake-notes.ts`                              | Modify | Extend FakeNotesStrategy with settings in-memory implementations                                       |
+| `apps/microservices/notes/src/app/supabase-notes.strategy.ts`                 | Modify | Implement settings methods on SupabaseNotesStrategy                                                    |
+| `apps/microservices/notes/src/app/settings.controller.ts`                     | Create | Notes MS: MessagePattern handlers for settings.prefs._ and settings.push._                             |
+| `apps/microservices/notes/src/app/app.module.ts`                              | Modify | Register SettingsController                                                                            |
+| `libs/notes-client/src/lib/notes-client.service.ts`                           | Modify | Add getUserPrefs / updateUserPrefs / savePushSubscription / removePushSubscription                     |
+| `apps/api/src/app/settings/settings.controller.ts`                            | Create | Gateway REST endpoints: GET/PATCH /api/settings/me, POST/DELETE /api/settings/push                     |
+| `apps/api/src/app/settings/settings.module.ts`                                | Create | Gateway NestJS module wiring                                                                           |
+| `apps/api/src/app/app.module.ts`                                              | Modify | Import SettingsModule                                                                                  |
+| `apps/client/src/queries/settings.ts`                                         | Create | TanStack Query hooks: useUserPrefs, useUpdatePrefs, useSavePushSubscription, useRemovePushSubscription |
+| `apps/client/src/routes/_dashboard/settings.tsx`                              | Create | Route shell + hash tab navigation                                                                      |
+| `apps/client/src/components/settings/AppearanceTab.tsx`                       | Create | Theme toggle + language selector                                                                       |
+| `apps/client/src/components/settings/NotificationTab.tsx`                     | Create | Channels toggles + events matrix + push subscription flow                                              |
+| `apps/client/src/components/settings/__tests__/AppearanceTab.unit.test.tsx`   | Create | AppearanceTab unit tests                                                                               |
+| `apps/client/src/components/settings/__tests__/NotificationTab.unit.test.tsx` | Create | NotificationTab unit tests                                                                             |
+| `apps/client/public/sw.js`                                                    | Create | Service worker: push event handler + notificationclick                                                 |
+| `apps/client/src/main.tsx`                                                    | Modify | Register service worker                                                                                |
+| `apps/client/.env`                                                            | Modify | Add VITE_VAPID_PUBLIC_KEY                                                                              |
+| `apps/microservices/notes/.env`                                               | Modify | Note: VAPID_PRIVATE_KEY needed in Plan 2                                                               |
+| `libs/template-shared/src/lib/i18n/locales/en.ts`                             | Modify | Add settings.\* keys                                                                                   |
+| `libs/template-shared/src/lib/i18n/locales/ru.ts`                             | Modify | Add settings.\* keys                                                                                   |
+| `libs/template-shared/src/lib/i18n/locales/he.ts`                             | Modify | Add settings.\* keys                                                                                   |
+| `libs/template-shared/src/lib/i18n/locales/es.ts`                             | Modify | Add settings.\* keys                                                                                   |
+| `apps/client/src/components/layout/LayoutSider.tsx`                           | Modify | Remove `soon: true` from Settings nav item                                                             |
 
 ---
 
 ## Task 1: DB Migration
 
 **Files:**
+
 - Create: `supabase/migrations/20260607000001_settings.sql`
 
 - [ ] **Step 1: Create migration file**
@@ -112,6 +113,7 @@ git commit -m "feat(db): settings migration — profile prefs + push_subscriptio
 ## Task 2: Shared Types + FakeNotesStrategy Extension
 
 **Files:**
+
 - Modify: `libs/shared/src/strategies/notes.ts`
 - Modify: `libs/shared/src/strategies/fakes/fake-notes.ts`
 
@@ -182,13 +184,13 @@ Append before the closing of the file (after `NotesStrategy` interface):
 export interface NotificationPrefsPayload {
   channels: { inApp: boolean; push: boolean };
   events: {
-    workflowSubmitted:     { inApp: boolean; push: boolean };
-    workflowApproved:      { inApp: boolean; push: boolean };
-    workflowRejected:      { inApp: boolean; push: boolean };
-    workflowPublished:     { inApp: boolean; push: boolean };
-    aiStandardsGenerated:  { inApp: boolean; push: boolean };
-    aiGapAnalysisDone:     { inApp: boolean; push: boolean };
-    systemNewFramework:    { inApp: boolean; push: boolean };
+    workflowSubmitted: { inApp: boolean; push: boolean };
+    workflowApproved: { inApp: boolean; push: boolean };
+    workflowRejected: { inApp: boolean; push: boolean };
+    workflowPublished: { inApp: boolean; push: boolean };
+    aiStandardsGenerated: { inApp: boolean; push: boolean };
+    aiGapAnalysisDone: { inApp: boolean; push: boolean };
+    systemNewFramework: { inApp: boolean; push: boolean };
   };
 }
 
@@ -206,13 +208,13 @@ export interface PushSubscriptionPayload {
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefsPayload = {
   channels: { inApp: true, push: false },
   events: {
-    workflowSubmitted:    { inApp: true,  push: false },
-    workflowApproved:     { inApp: true,  push: false },
-    workflowRejected:     { inApp: true,  push: false },
-    workflowPublished:    { inApp: true,  push: false },
-    aiStandardsGenerated: { inApp: true,  push: false },
-    aiGapAnalysisDone:    { inApp: true,  push: false },
-    systemNewFramework:   { inApp: false, push: false },
+    workflowSubmitted: { inApp: true, push: false },
+    workflowApproved: { inApp: true, push: false },
+    workflowRejected: { inApp: true, push: false },
+    workflowPublished: { inApp: true, push: false },
+    aiStandardsGenerated: { inApp: true, push: false },
+    aiGapAnalysisDone: { inApp: true, push: false },
+    systemNewFramework: { inApp: false, push: false },
   },
 };
 
@@ -307,6 +309,7 @@ git commit -m "feat(shared): UserPrefsPayload types + FakeNotesStrategy settings
 ## Task 3: SupabaseNotesStrategy Settings Methods
 
 **Files:**
+
 - Modify: `apps/microservices/notes/src/app/supabase-notes.strategy.ts`
 
 - [ ] **Step 1: Add imports at top of supabase-notes.strategy.ts**
@@ -417,6 +420,7 @@ git commit -m "feat(notes-ms): SupabaseNotesStrategy settings methods — getUse
 ## Task 4: Notes MS SettingsController + app.module.ts Wire
 
 **Files:**
+
 - Create: `apps/microservices/notes/src/app/settings.controller.ts`
 - Modify: `apps/microservices/notes/src/app/app.module.ts`
 
@@ -565,6 +569,7 @@ git commit -m "feat(notes-ms): SettingsController — settings.prefs.* + setting
 ## Task 5: NotesClientService Extension
 
 **Files:**
+
 - Modify: `libs/notes-client/src/lib/notes-client.service.ts`
 
 - [ ] **Step 1: Add imports**
@@ -629,6 +634,7 @@ git commit -m "feat(notes-client): add settings methods — getUserPrefs/updateU
 ## Task 6: API Gateway SettingsModule
 
 **Files:**
+
 - Create: `apps/api/src/app/settings/settings.controller.ts`
 - Create: `apps/api/src/app/settings/settings.module.ts`
 - Modify: `apps/api/src/app/app.module.ts`
@@ -651,7 +657,7 @@ const mockNotes = {
   removePushSubscription: vi.fn().mockResolvedValue({ ok: true }),
 } as unknown as NotesClientService;
 
-const req = (uid?: string) => ({ user: uid ? { uid } : undefined } as any);
+const req = (uid?: string) => ({ user: uid ? { uid } : undefined }) as any;
 
 describe('SettingsController', () => {
   let controller: SettingsController;
@@ -815,6 +821,7 @@ git commit -m "feat(api): SettingsModule — GET/PATCH /settings/me + push subsc
 ## Task 7: Client Query Hooks
 
 **Files:**
+
 - Create: `apps/client/src/queries/settings.ts`
 
 - [ ] **Step 1: Create query file**
@@ -830,13 +837,13 @@ export type Language = 'en' | 'ru' | 'he' | 'es';
 export interface NotificationPrefsPayload {
   channels: { inApp: boolean; push: boolean };
   events: {
-    workflowSubmitted:    { inApp: boolean; push: boolean };
-    workflowApproved:     { inApp: boolean; push: boolean };
-    workflowRejected:     { inApp: boolean; push: boolean };
-    workflowPublished:    { inApp: boolean; push: boolean };
+    workflowSubmitted: { inApp: boolean; push: boolean };
+    workflowApproved: { inApp: boolean; push: boolean };
+    workflowRejected: { inApp: boolean; push: boolean };
+    workflowPublished: { inApp: boolean; push: boolean };
     aiStandardsGenerated: { inApp: boolean; push: boolean };
-    aiGapAnalysisDone:    { inApp: boolean; push: boolean };
-    systemNewFramework:   { inApp: boolean; push: boolean };
+    aiGapAnalysisDone: { inApp: boolean; push: boolean };
+    systemNewFramework: { inApp: boolean; push: boolean };
   };
 }
 
@@ -854,13 +861,13 @@ export interface PushSubscriptionPayload {
 export const DEFAULT_NOTIFICATION_PREFS: NotificationPrefsPayload = {
   channels: { inApp: true, push: false },
   events: {
-    workflowSubmitted:    { inApp: true,  push: false },
-    workflowApproved:     { inApp: true,  push: false },
-    workflowRejected:     { inApp: true,  push: false },
-    workflowPublished:    { inApp: true,  push: false },
-    aiStandardsGenerated: { inApp: true,  push: false },
-    aiGapAnalysisDone:    { inApp: true,  push: false },
-    systemNewFramework:   { inApp: false, push: false },
+    workflowSubmitted: { inApp: true, push: false },
+    workflowApproved: { inApp: true, push: false },
+    workflowRejected: { inApp: true, push: false },
+    workflowPublished: { inApp: true, push: false },
+    aiStandardsGenerated: { inApp: true, push: false },
+    aiGapAnalysisDone: { inApp: true, push: false },
+    systemNewFramework: { inApp: false, push: false },
   },
 };
 
@@ -930,6 +937,7 @@ git commit -m "feat(client): settings query hooks — useUserPrefs/useUpdatePref
 ## Task 8: Settings Route Shell with Hash Navigation
 
 **Files:**
+
 - Create: `apps/client/src/routes/_dashboard/settings.tsx`
 
 - [ ] **Step 1: Create route file**
@@ -960,15 +968,15 @@ function SettingsPage() {
   }
 
   const tabs = [
-    { id: 'appearance',  label: t('settings.tabs.appearance') },
+    { id: 'appearance', label: t('settings.tabs.appearance') },
     { id: 'notification', label: t('settings.tabs.notification') },
     ...(isAdmin
       ? [
-          { id: 'audit-log',  label: t('settings.tabs.auditLog') },
-          { id: 'export',     label: t('settings.tabs.export') },
-          { id: 'webhooks',   label: t('settings.tabs.webhooks') },
-          { id: 'retention',  label: t('settings.tabs.retention') },
-          { id: 'api-keys',   label: t('settings.tabs.apiKeys') },
+          { id: 'audit-log', label: t('settings.tabs.auditLog') },
+          { id: 'export', label: t('settings.tabs.export') },
+          { id: 'webhooks', label: t('settings.tabs.webhooks') },
+          { id: 'retention', label: t('settings.tabs.retention') },
+          { id: 'api-keys', label: t('settings.tabs.apiKeys') },
         ]
       : []),
   ];
@@ -997,7 +1005,7 @@ function SettingsPage() {
       </div>
 
       {/* Tab content — components added in Tasks 9 and 10 */}
-      {activeTab === 'appearance'   && <div />}
+      {activeTab === 'appearance' && <div />}
       {activeTab === 'notification' && <div />}
       {ADMIN_TABS.has(activeTab) && (
         <p className="text-sm text-muted-foreground">{t('common.soon')}</p>
@@ -1039,6 +1047,7 @@ git commit -m "feat(client): settings route shell with hash tab navigation"
 ## Task 9: AppearanceTab Component
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/AppearanceTab.tsx`
 - Create: `apps/client/src/components/settings/__tests__/AppearanceTab.unit.test.tsx`
 
@@ -1113,8 +1122,8 @@ import { useUserPrefs, useUpdatePrefs } from '../../queries/settings';
 import type { Theme, Language } from '../../queries/settings';
 
 const THEMES: { value: Theme; labelKey: string }[] = [
-  { value: 'light',  labelKey: 'settings.theme.light' },
-  { value: 'dark',   labelKey: 'settings.theme.dark' },
+  { value: 'light', labelKey: 'settings.theme.light' },
+  { value: 'dark', labelKey: 'settings.theme.dark' },
   { value: 'system', labelKey: 'settings.theme.system' },
 ];
 
@@ -1182,7 +1191,9 @@ export function AppearanceTab() {
 
       {/* Language */}
       <section>
-        <h2 className="mb-1 text-sm font-semibold text-foreground">{t('settings.language.title')}</h2>
+        <h2 className="mb-1 text-sm font-semibold text-foreground">
+          {t('settings.language.title')}
+        </h2>
         <p className="mb-3 text-xs text-muted-foreground">{t('settings.language.subtitle')}</p>
         <div className="flex gap-2 flex-wrap">
           {LANGUAGES.map(({ value, label }) => (
@@ -1226,7 +1237,9 @@ import { AppearanceTab } from '@/components/settings/AppearanceTab';
 Replace `{activeTab === 'appearance'   && <div />}` with:
 
 ```tsx
-      {activeTab === 'appearance' && <AppearanceTab />}
+{
+  activeTab === 'appearance' && <AppearanceTab />;
+}
 ```
 
 - [ ] **Step 6: Commit**
@@ -1243,6 +1256,7 @@ git commit -m "feat(client): AppearanceTab — theme + language settings"
 ## Task 10: NotificationTab Component
 
 **Files:**
+
 - Create: `apps/client/src/components/settings/NotificationTab.tsx`
 - Create: `apps/client/src/components/settings/__tests__/NotificationTab.unit.test.tsx`
 
@@ -1322,13 +1336,13 @@ import type { NotificationPrefsPayload } from '../../queries/settings';
 type EventKey = keyof NotificationPrefsPayload['events'];
 
 const EVENT_ROWS: { key: EventKey; labelKey: string }[] = [
-  { key: 'workflowSubmitted',    labelKey: 'settings.notifications.events.workflowSubmitted' },
-  { key: 'workflowApproved',     labelKey: 'settings.notifications.events.workflowApproved' },
-  { key: 'workflowRejected',     labelKey: 'settings.notifications.events.workflowRejected' },
-  { key: 'workflowPublished',    labelKey: 'settings.notifications.events.workflowPublished' },
+  { key: 'workflowSubmitted', labelKey: 'settings.notifications.events.workflowSubmitted' },
+  { key: 'workflowApproved', labelKey: 'settings.notifications.events.workflowApproved' },
+  { key: 'workflowRejected', labelKey: 'settings.notifications.events.workflowRejected' },
+  { key: 'workflowPublished', labelKey: 'settings.notifications.events.workflowPublished' },
   { key: 'aiStandardsGenerated', labelKey: 'settings.notifications.events.aiStandardsGenerated' },
-  { key: 'aiGapAnalysisDone',    labelKey: 'settings.notifications.events.aiGapAnalysisDone' },
-  { key: 'systemNewFramework',   labelKey: 'settings.notifications.events.systemNewFramework' },
+  { key: 'aiGapAnalysisDone', labelKey: 'settings.notifications.events.aiGapAnalysisDone' },
+  { key: 'systemNewFramework', labelKey: 'settings.notifications.events.systemNewFramework' },
 ];
 
 export function NotificationTab() {
@@ -1377,7 +1391,7 @@ export function NotificationTab() {
       endpoint: sub.endpoint,
       keys: {
         p256dh: subJson.keys?.p256dh ?? '',
-        auth:   subJson.keys?.auth   ?? '',
+        auth: subJson.keys?.auth ?? '',
       },
     });
     toggleChannel('push', true);
@@ -1413,8 +1427,12 @@ export function NotificationTab() {
           {/* In-app */}
           <div className="flex items-center justify-between rounded-md border border-border px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-foreground">{t('settings.notifications.inApp')}</p>
-              <p className="text-xs text-muted-foreground">{t('settings.notifications.inAppDesc')}</p>
+              <p className="text-sm font-medium text-foreground">
+                {t('settings.notifications.inApp')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('settings.notifications.inAppDesc')}
+              </p>
             </div>
             <button
               type="button"
@@ -1438,8 +1456,12 @@ export function NotificationTab() {
           {/* Push */}
           <div className="flex items-center justify-between rounded-md border border-border px-4 py-3">
             <div>
-              <p className="text-sm font-medium text-foreground">{t('settings.notifications.push')}</p>
-              <p className="text-xs text-muted-foreground">{t('settings.notifications.pushDesc')}</p>
+              <p className="text-sm font-medium text-foreground">
+                {t('settings.notifications.push')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t('settings.notifications.pushDesc')}
+              </p>
             </div>
             {pushEnabled ? (
               <button
@@ -1523,7 +1545,9 @@ import { NotificationTab } from '@/components/settings/NotificationTab';
 Replace `{activeTab === 'notification' && <div />}` with:
 
 ```tsx
-      {activeTab === 'notification' && <NotificationTab />}
+{
+  activeTab === 'notification' && <NotificationTab />;
+}
 ```
 
 - [ ] **Step 6: Commit**
@@ -1540,11 +1564,13 @@ git commit -m "feat(client): NotificationTab — channels toggles + events matri
 ## Task 11: Push Notification Service Worker + VAPID Setup
 
 **Files:**
+
 - Create: `apps/client/public/sw.js`
 - Modify: `apps/client/src/main.tsx`
 - Modify: `apps/client/.env`
 
 Push notification SENDING is Plan 2. This task sets up:
+
 1. The service worker that handles received push events
 2. SW registration on app boot
 3. VAPID public key env var (the private key stays server-side for Plan 2)
@@ -1557,6 +1583,7 @@ npx web-push generate-vapid-keys --universal
 ```
 
 Expected output (example — yours will differ):
+
 ```
 Public Key:
 BNbk... (88 chars)
@@ -1606,13 +1633,11 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = event.notification.data?.url ?? '/';
   event.waitUntil(
-    clients
-      .matchAll({ type: 'window', includeUncontrolled: true })
-      .then((clientList) => {
-        const existing = clientList.find((c) => c.url === url && 'focus' in c);
-        if (existing) return existing.focus();
-        return clients.openWindow(url);
-      }),
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      const existing = clientList.find((c) => c.url === url && 'focus' in c);
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    }),
   );
 });
 ```
@@ -1650,6 +1675,7 @@ git commit -m "feat(client): push notification service worker + VAPID public key
 ## Task 12: i18n Keys + Unlock Settings Nav
 
 **Files:**
+
 - Modify: `libs/template-shared/src/lib/i18n/locales/en.ts`
 - Modify: `libs/template-shared/src/lib/i18n/locales/ru.ts`
 - Modify: `libs/template-shared/src/lib/i18n/locales/he.ts`
@@ -1869,20 +1895,20 @@ Read the file, then add after `controls:` section:
 Read `apps/client/src/components/layout/LayoutSider.tsx`. Find the bottom section containing Profile and Settings links. The Settings button currently has no route — replace the `<button>` with a `<Link>` pointing to `/settings` and remove the soon badge:
 
 ```tsx
-        <Link
-          to="/settings"
-          title={collapsed ? t('nav.settings') : undefined}
-          aria-label={t('nav.settings')}
-          className={[
-            'flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors duration-150 cursor-pointer',
-            isActive('/settings')
-              ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-          ].join(' ')}
-        >
-          <Settings size={16} className="shrink-0" />
-          {!collapsed && <span className="flex-1 truncate">{t('nav.settings')}</span>}
-        </Link>
+<Link
+  to="/settings"
+  title={collapsed ? t('nav.settings') : undefined}
+  aria-label={t('nav.settings')}
+  className={[
+    'flex items-center gap-2.5 px-2 py-2 rounded-md text-sm transition-colors duration-150 cursor-pointer',
+    isActive('/settings')
+      ? 'bg-green-500/10 text-green-500 border border-green-500/20'
+      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+  ].join(' ')}
+>
+  <Settings size={16} className="shrink-0" />
+  {!collapsed && <span className="flex-1 truncate">{t('nav.settings')}</span>}
+</Link>
 ```
 
 Replace the existing `<button type="button" ... Settings ...>` block entirely with the `<Link>` above. Add `Link` to the existing `@tanstack/react-router` import at the top of the file if it's not already there.

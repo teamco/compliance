@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouterState } from '@tanstack/react-router';
 import { Bot, Send, Trash2, Sparkles, X } from 'lucide-react';
-import { useAuthStore } from '@icore/template-shared';
+import { fetchWithRefresh } from '@icore/template-shared';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -28,7 +28,6 @@ const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
 
 export function AiAssistant() {
   const { t } = useTranslation();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   const [open, setOpen] = useState(false);
@@ -108,12 +107,11 @@ export function AiAssistant() {
       const history = [...messages, userMsg]
         .slice(-MAX_TURNS)
         .map((m) => ({ role: m.role, content: m.content.slice(0, MAX_MSG_CHARS) }));
-      const res = await fetch(`${API_BASE}/ai/chat`, {
+      // fetchWithRefresh: 401 → refresh → retry once; expired tokens mid-session
+      // no longer kill the stream.
+      const res = await fetchWithRefresh(API_BASE, '/ai/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: history,
           context: { pageContext: pathname },

@@ -4,17 +4,17 @@ Enterprise GRC platform — AI-driven compliance standards generation, gap analy
 
 ## Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Monorepo | Nx + yarn |
-| Gateway | NestJS 11 + Swagger |
-| Auth | Supabase |
-| Database | Supabase |
-| Upload | Supabase |
-| AI | Anthropic (claude-opus-4-8 / claude-sonnet-4-6) |
-| UI | shadcn/ui + Tailwind + TanStack Router + Query |
-| Transport | TCP (swappable: NATS / RMQ / Kafka) |
-| i18n | i18next (en / ru / he) |
+| Layer     | Technology                                      |
+| --------- | ----------------------------------------------- |
+| Monorepo  | Nx + yarn                                       |
+| Gateway   | NestJS 11 + Swagger                             |
+| Auth      | Supabase                                        |
+| Database  | Supabase                                        |
+| Upload    | Supabase                                        |
+| AI        | Anthropic (claude-opus-4-8 / claude-sonnet-4-6) |
+| UI        | shadcn/ui + Tailwind + TanStack Router + Query  |
+| Transport | TCP (swappable: NATS / RMQ / Kafka)             |
+| i18n      | i18next (en / ru / he)                          |
 
 ## Architecture
 

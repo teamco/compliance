@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-08-03T12:07:17.773Z",
+  "projectRoot": "/home/vladimir-tkach/Projects/sec",
+  "structure": {
+    "hasPackageJson": true,
+    "hasTsConfig": false,
+    "hasClaudeConfig": true,
+    "hasClaudeFlow": true
+  },
+  "scannedAt": 1785758837773
+}

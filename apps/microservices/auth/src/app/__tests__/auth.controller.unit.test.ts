@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ConfigService } from '@nestjs/config';
-import { FakeAuthStrategy } from '@icore/shared';
+import { RpcException } from '@nestjs/microservices';
+import { AUTH_TOKEN_EXPIRED, FakeAuthStrategy, TokenExpiredError } from '@icore/shared';
 import { AuthController } from '../auth.controller';
 
 function makeConfig(env: Record<string, string | undefined>): ConfigService {
@@ -117,6 +118,25 @@ describe('AuthController', () => {
     await expect(
       controller.completeOAuth({ provider: 'google', code: 'x', state: 'wrong' }),
     ).rejects.toThrow();
+  });
+
+  it('verify wraps TokenExpiredError into RpcException with TOKEN_EXPIRED code', async () => {
+    const { strategy, controller } = fixture();
+    strategy.verifyToken = () => Promise.reject(new TokenExpiredError('token is expired'));
+    const err = await controller.verify({ token: 'stale' }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(RpcException);
+    expect((err as RpcException).getError()).toMatchObject({
+      code: AUTH_TOKEN_EXPIRED,
+      status: 401,
+    });
+  });
+
+  it('verify propagates non-expiry errors unchanged', async () => {
+    const { strategy, controller } = fixture();
+    strategy.verifyToken = () => Promise.reject(new Error('invalid token'));
+    const err = await controller.verify({ token: 'garbage' }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toBeInstanceOf(RpcException);
   });
 
   it('does not overwrite an existing role on re-signup attempts', async () => {

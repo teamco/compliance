@@ -52,7 +52,9 @@ export function RetentionTab() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h2 className="mb-1 text-sm font-semibold text-foreground">{t('settings.retention.title')}</h2>
+        <h2 className="mb-1 text-sm font-semibold text-foreground">
+          {t('settings.retention.title')}
+        </h2>
         <p className="text-xs text-muted-foreground">{t('settings.retention.subtitle')}</p>
       </div>
 

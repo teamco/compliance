@@ -43,7 +43,9 @@ export function ApiKeysTab() {
     <div className="max-w-2xl space-y-6">
       {newKey && (
         <div className="rounded-md border border-green-500/30 bg-green-500/5 px-4 py-3">
-          <p className="mb-1 text-xs font-semibold text-green-500">{t('settings.apiKeys.copyWarning')}</p>
+          <p className="mb-1 text-xs font-semibold text-green-500">
+            {t('settings.apiKeys.copyWarning')}
+          </p>
           <code className="block break-all rounded bg-background px-2 py-1.5 text-xs font-mono text-foreground border border-border">
             {newKey.fullKey}
           </code>

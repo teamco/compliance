@@ -109,7 +109,7 @@ function DocumentCard({
 
       <div className="space-y-1">
         <p className="text-xs text-muted-foreground">
-          {t('standards.controls', { count: doc.controls.length })}
+          {t('standards.count', { count: doc.standards.length })}
         </p>
         <p className="text-xs text-muted-foreground">
           {t('standards.generatedOn')} {new Date(doc.createdAt).toLocaleDateString()}

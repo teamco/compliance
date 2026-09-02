@@ -8,18 +8,44 @@ import type {
   AiUsageTimeseriesPoint,
   ApiKey,
   ApiKeyWithSecret,
+  Asset,
+  AssetInput,
+  AssetPatch,
   AuditLogFilters,
   AuditLogPage,
-  ControlPatch,
+  DocumentStandard,
+  Exception,
+  ExceptionInput,
+  ExceptionPatch,
   Framework,
   FrameworkControl,
   GapAnalysis,
   GapAnalysisResult,
+  Issue,
+  IssueInput,
+  IssuePatch,
   Organization,
   OrganizationInput,
+  Policy,
+  PolicyInput,
+  PolicyPatch,
+  PolicyTemplate,
+  PolicyControl,
+  PolicyControlInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  Risk,
+  RiskInput,
+  RiskPatch,
+  RiskAssessment,
+  RiskAssessmentInput,
+  RiskAssessmentPatch,
+  RiskAssessmentItem,
+  RiskAssessmentItemInput,
+  RiskAssessmentItemPatch,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
@@ -44,6 +70,12 @@ export class NotesClientService {
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]> {
     return firstValueFrom(
       this.client.send<FrameworkControl[]>('notes.controls.list', { frameworkId }),
+    );
+  }
+
+  listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]> {
+    return firstValueFrom(
+      this.client.send<DocumentStandard[]>('notes.standards.by-framework', { orgId, frameworkId }),
     );
   }
 
@@ -77,9 +109,9 @@ export class NotesClientService {
     );
   }
 
-  saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.save', { id, controls }),
+      this.client.send<{ ok: boolean }>('notes.standards.save', { id, standards }),
     ).then(() => undefined);
   }
 
@@ -90,15 +122,15 @@ export class NotesClientService {
   }
 
   deleteStandardsDocument(id: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.delete', { id }),
-    ).then(() => undefined);
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.standards.delete', { id })).then(
+      () => undefined,
+    );
   }
 
   resetStandardsDocument(id: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('notes.standards.reset', { id }),
-    ).then(() => undefined);
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.standards.reset', { id })).then(
+      () => undefined,
+    );
   }
 
   getStandardsDocument(id: string): Promise<StandardsDocument | null> {
@@ -117,9 +149,9 @@ export class NotesClientService {
     );
   }
 
-  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard> {
     return firstValueFrom(
-      this.client.send<StandardControl>('notes.standards.update-control', { docId, code, patch }),
+      this.client.send<DocumentStandard>('notes.standards.update-standard', { docId, code, patch }),
     );
   }
 
@@ -252,6 +284,40 @@ export class NotesClientService {
     );
   }
 
+  // ─── Report templates ────────────────────────────────────────────────────
+
+  listReportTemplates(): Promise<ReportTemplate[]> {
+    return firstValueFrom(this.client.send<ReportTemplate[]>('notes.templates.list', {}));
+  }
+
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.create', { userId, input }),
+    );
+  }
+
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.update', { id, patch }),
+    );
+  }
+
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    return firstValueFrom(this.client.send<{ ok: boolean }>('notes.templates.delete', { id }));
+  }
+
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.favorite.add', { id, orgId }),
+    );
+  }
+
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    return firstValueFrom(
+      this.client.send<ReportTemplate>('notes.templates.favorite.remove', { id, orgId }),
+    );
+  }
+
   saveGapAnalysis(
     orgId: string,
     userId: string,
@@ -286,6 +352,205 @@ export class NotesClientService {
   getAiUsageTimeseries(since: string, userId?: string): Promise<AiUsageTimeseriesPoint[]> {
     return firstValueFrom(
       this.client.send<AiUsageTimeseriesPoint[]>('admin.ai-usage.timeseries', { since, userId }),
+    );
+  }
+
+  // ─── Exceptions ──────────────────────────────────────────────────────────
+
+  listExceptions(orgId: string): Promise<Exception[]> {
+    return firstValueFrom(this.client.send<Exception[]>('notes.exceptions.list', { orgId }));
+  }
+
+  createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception> {
+    return firstValueFrom(
+      this.client.send<Exception>('notes.exceptions.create', { orgId, userId, data }),
+    );
+  }
+
+  getException(id: string): Promise<Exception | null> {
+    return firstValueFrom(this.client.send<Exception | null>('notes.exceptions.get', { id }));
+  }
+
+  updateException(id: string, patch: ExceptionPatch): Promise<Exception> {
+    return firstValueFrom(this.client.send<Exception>('notes.exceptions.update', { id, patch }));
+  }
+
+  approveException(id: string): Promise<Exception> {
+    return firstValueFrom(this.client.send<Exception>('notes.exceptions.approve', { id }));
+  }
+
+  rejectException(id: string): Promise<Exception> {
+    return firstValueFrom(this.client.send<Exception>('notes.exceptions.reject', { id }));
+  }
+
+  deleteException(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.exceptions.delete', { id }));
+  }
+
+  // ─── Issues ──────────────────────────────────────────────────────────────
+
+  listIssues(orgId: string): Promise<Issue[]> {
+    return firstValueFrom(this.client.send<Issue[]>('notes.issues.list', { orgId }));
+  }
+
+  createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue> {
+    return firstValueFrom(this.client.send<Issue>('notes.issues.create', { orgId, userId, data }));
+  }
+
+  getIssue(id: string): Promise<Issue | null> {
+    return firstValueFrom(this.client.send<Issue | null>('notes.issues.get', { id }));
+  }
+
+  updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
+    return firstValueFrom(this.client.send<Issue>('notes.issues.update', { id, patch }));
+  }
+
+  deleteIssue(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.issues.delete', { id }));
+  }
+
+  listAssets(orgId: string): Promise<Asset[]> {
+    return firstValueFrom(this.client.send<Asset[]>('notes.assets.list', { orgId }));
+  }
+  createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset> {
+    return firstValueFrom(this.client.send<Asset>('notes.assets.create', { orgId, userId, data }));
+  }
+  getAsset(id: string): Promise<Asset | null> {
+    return firstValueFrom(this.client.send<Asset | null>('notes.assets.get', { id }));
+  }
+  updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
+    return firstValueFrom(this.client.send<Asset>('notes.assets.update', { id, patch }));
+  }
+  deleteAsset(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.assets.delete', { id }));
+  }
+
+  listRisks(orgId: string): Promise<Risk[]> {
+    return firstValueFrom(this.client.send<Risk[]>('notes.risks.list', { orgId }));
+  }
+  createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    return firstValueFrom(this.client.send<Risk>('notes.risks.create', { orgId, userId, data }));
+  }
+  getRisk(id: string): Promise<Risk | null> {
+    return firstValueFrom(this.client.send<Risk | null>('notes.risks.get', { id }));
+  }
+  updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+    return firstValueFrom(this.client.send<Risk>('notes.risks.update', { id, patch }));
+  }
+  deleteRisk(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.risks.delete', { id }));
+  }
+
+  // ─── Risk Assessments ────────────────────────────────────────────────────
+
+  listAssessments(orgId: string): Promise<RiskAssessment[]> {
+    return firstValueFrom(this.client.send<RiskAssessment[]>('notes.assessments.list', { orgId }));
+  }
+
+  createAssessment(
+    orgId: string,
+    userId: string,
+    data: RiskAssessmentInput,
+  ): Promise<RiskAssessment> {
+    return firstValueFrom(
+      this.client.send<RiskAssessment>('notes.assessments.create', { orgId, userId, data }),
+    );
+  }
+
+  getAssessment(id: string): Promise<RiskAssessment | null> {
+    return firstValueFrom(this.client.send<RiskAssessment | null>('notes.assessments.get', { id }));
+  }
+
+  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
+    return firstValueFrom(
+      this.client.send<RiskAssessment>('notes.assessments.update', { id, patch }),
+    );
+  }
+
+  deleteAssessment(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.assessments.delete', { id }));
+  }
+
+  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+    return firstValueFrom(
+      this.client.send<RiskAssessmentItem[]>('notes.assessments.items.list', { assessmentId }),
+    );
+  }
+
+  addAssessmentItem(
+    assessmentId: string,
+    data: RiskAssessmentItemInput,
+  ): Promise<RiskAssessmentItem> {
+    return firstValueFrom(
+      this.client.send<RiskAssessmentItem>('notes.assessments.items.add', { assessmentId, data }),
+    );
+  }
+
+  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem> {
+    return firstValueFrom(
+      this.client.send<RiskAssessmentItem>('notes.assessments.items.update', { id, patch }),
+    );
+  }
+
+  deleteAssessmentItem(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.assessments.items.delete', { id }));
+  }
+
+  // ─── Policies ────────────────────────────────────────────────────────────
+
+  listPolicies(orgId: string): Promise<Policy[]> {
+    return firstValueFrom(this.client.send<Policy[]>('notes.policies.list', { orgId }));
+  }
+
+  createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy> {
+    return firstValueFrom(
+      this.client.send<Policy>('notes.policies.create', { orgId, userId, data }),
+    );
+  }
+
+  getPolicy(id: string): Promise<Policy | null> {
+    return firstValueFrom(this.client.send<Policy | null>('notes.policies.get', { id }));
+  }
+
+  updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
+    return firstValueFrom(this.client.send<Policy>('notes.policies.update', { id, patch }));
+  }
+
+  deletePolicy(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.policies.delete', { id }));
+  }
+
+  cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
+    return firstValueFrom(
+      this.client.send<Policy>('notes.policies.clone-template', { orgId, userId, templateId }),
+    );
+  }
+
+  listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]> {
+    return firstValueFrom(
+      this.client.send<PolicyTemplate[]>('notes.policy-templates.list', { frameworkId }),
+    );
+  }
+
+  listPolicyControls(policyId: string): Promise<PolicyControl[]> {
+    return firstValueFrom(
+      this.client.send<PolicyControl[]>('notes.policies.controls.list', { policyId }),
+    );
+  }
+
+  addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl> {
+    return firstValueFrom(
+      this.client.send<PolicyControl>('notes.policies.controls.add', { policyId, data }),
+    );
+  }
+
+  removePolicyControl(id: string): Promise<void> {
+    return firstValueFrom(this.client.send<void>('notes.policies.controls.remove', { id }));
+  }
+
+  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+    return firstValueFrom(
+      this.client.send<Policy[]>('notes.policies.for-control', { controlCode, frameworkId }),
     );
   }
 }

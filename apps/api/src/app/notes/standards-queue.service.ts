@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
-import type { OrgProfile, StandardControl, StandardsResult } from '@icore/shared';
+import type { DocumentStandard, OrgProfile, StandardsResult } from '@icore/shared';
 
 // pg-boss is ESM-only; loaded via dynamic import at runtime.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,7 +35,15 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
     try {
       this.logger.log('Connecting to pg-boss...');
       const { PgBoss } = await import('pg-boss');
-      this.boss = new PgBoss({ connectionString, max: 5 });
+
+      // Pass connectionString directly — pg's own parser handles dotted Supabase
+      // pooler usernames and special-char passwords more reliably than new URL().
+      // ssl is required by Supabase (direct host and pooler both).
+      this.boss = new PgBoss({
+        connectionString,
+        ssl: { rejectUnauthorized: false },
+        max: 5,
+      });
 
       this.boss.on('error', (err: Error) => this.logger.error(`pg-boss error: ${err.message}`));
 
@@ -87,20 +95,18 @@ export class StandardsQueueService implements OnModuleInit, OnModuleDestroy {
         frameworkIds,
       );
 
-      const controls: StandardControl[] = aiResults.flatMap((r) =>
-        r.controls.map((c) => ({
-          code: c.id,
-          title: c.title,
-          description: c.description,
-          implementation: c.implementationGuidance,
-          evidence: [],
-          frameworkMappings: [{ frameworkId: r.frameworkId, controlCode: c.id }],
-          priority: 'high' as const,
-          category: 'general',
+      const standards: DocumentStandard[] = aiResults.flatMap((r) =>
+        r.standards.map((s) => ({
+          code: s.id,
+          title: s.title,
+          objective: s.objective,
+          scope: s.scope,
+          requirements: s.requirements,
+          frameworkMappings: [{ frameworkId: r.frameworkId, standardCode: s.id }],
         })),
       );
 
-      await this.notes.saveStandardsDocument(docId, controls);
+      await this.notes.saveStandardsDocument(docId, standards);
       this.logger.log(`Standards job ${job.id} completed`);
     } catch (err) {
       this.logger.error(`Standards job ${job.id} failed: ${(err as Error).message}`);
