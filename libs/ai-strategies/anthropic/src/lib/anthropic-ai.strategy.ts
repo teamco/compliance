@@ -1,5 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
 import { Logger } from '@nestjs/common';
+import { ClaudeStrategy } from '@idevconn/llm-router/claude';
+import { withInstrumentation, type LlmStrategy } from '@idevconn/llm-router';
 import type {
   AiStrategy,
   ChatContext,
@@ -26,11 +27,23 @@ function stripJsonFences(raw: string): string {
 }
 
 export class AnthropicAiStrategy implements AiStrategy {
-  private readonly client: Anthropic;
+  private readonly llm: LlmStrategy;
   private readonly logger = new Logger(AnthropicAiStrategy.name);
 
   constructor(opts: AnthropicAiStrategyOptions) {
-    this.client = new Anthropic({ apiKey: opts.apiKey });
+    this.llm = withInstrumentation(new ClaudeStrategy({ apiKey: opts.apiKey }), {
+      onCall: (event) => {
+        if (event.error) {
+          this.logger.error(
+            `${event.model} call FAILED after ${event.latencyMs}ms — ${event.error}`,
+          );
+          return;
+        }
+        this.logger.log(
+          `${event.model} call done in ${event.latencyMs}ms — in:${event.usage.inputTokens} out:${event.usage.outputTokens}${event.truncated ? ' (truncated)' : ''}`,
+        );
+      },
+    });
   }
 
   async chat(messages: ChatMessage[], context: ChatContext): Promise<ChatResult> {
@@ -40,37 +53,21 @@ export class AnthropicAiStrategy implements AiStrategy {
     if (context.pageContext) systemParts.push(`Current page context: ${context.pageContext}`);
     if (context.frameworkId) systemParts.push(`Active framework: ${context.frameworkId}`);
 
-    const started = Date.now();
     const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0);
     this.logger.log(`chat start — ${messages.length} msg(s), ${totalChars} chars in`);
 
-    try {
-      const stream = this.client.messages.stream({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        system: systemParts.join('\n'),
-        messages: messages.map((m) => ({ role: m.role, content: m.content })),
-      });
+    const response = await this.llm.generate({
+      model: 'claude-sonnet-4-6',
+      maxTokens: 4096,
+      systemPrompt: systemParts.join('\n'),
+      messages,
+    });
 
-      const text = await stream.finalText();
-      const final = await stream.finalMessage();
-      const ms = Date.now() - started;
-      this.logger.log(
-        `chat done in ${ms}ms — in:${final.usage.input_tokens} out:${final.usage.output_tokens} text:${text.length} chars`,
-      );
-      return {
-        text,
-        inputTokens: final.usage.input_tokens,
-        outputTokens: final.usage.output_tokens,
-      };
-    } catch (err) {
-      const ms = Date.now() - started;
-      const e = err as { name?: string; status?: number; message?: string };
-      this.logger.error(
-        `chat FAILED after ${ms}ms — ${e.name ?? 'Error'}${e.status ? ` (${e.status})` : ''}: ${e.message ?? String(err)}`,
-      );
-      throw err;
-    }
+    return {
+      text: response.text,
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+    };
   }
 
   async generateStandards(
@@ -107,19 +104,14 @@ export class AnthropicAiStrategy implements AiStrategy {
       `Each standard should have 3-8 specific requirements as mandatory statements.`,
     ].join('\n');
 
-    const response = await this.client.messages.create({
+    const response = await this.llm.generate({
       model: 'claude-opus-4-8',
-      max_tokens: 16000,
-      system,
-      messages: [{ role: 'user', content: userPrompt }],
+      maxTokens: 16000,
+      systemPrompt: system,
+      prompt: userPrompt,
     });
 
-    const raw = response.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as { type: 'text'; text: string }).text)
-      .join('');
-
-    return JSON.parse(stripJsonFences(raw)) as StandardsResult[];
+    return JSON.parse(stripJsonFences(response.text)) as StandardsResult[];
   }
 
   async analyzeGap(
@@ -141,21 +133,15 @@ export class AnthropicAiStrategy implements AiStrategy {
       JSON.stringify(findings),
     ].join('\n');
 
-    const response = await this.client.messages.create({
+    const response = await this.llm.generate({
       model: 'claude-sonnet-4-6',
-      max_tokens: 8192,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      thinking: { type: 'adaptive' } as any,
-      system,
-      messages: [{ role: 'user', content: userPrompt }],
+      maxTokens: 8192,
+      thinking: { type: 'adaptive' },
+      systemPrompt: system,
+      prompt: userPrompt,
     });
 
-    const raw = response.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as { type: 'text'; text: string }).text)
-      .join('');
-
-    return JSON.parse(stripJsonFences(raw)) as GapAnalysisResult;
+    return JSON.parse(stripJsonFences(response.text)) as GapAnalysisResult;
   }
 
   async analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
@@ -174,18 +160,13 @@ export class AnthropicAiStrategy implements AiStrategy {
       `Findings (${input.findings.length}): ${JSON.stringify(input.findings)}`,
     ].join('\n');
 
-    const response = await this.client.messages.create({
+    const response = await this.llm.generate({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      system,
-      messages: [{ role: 'user', content: userPrompt }],
+      maxTokens: 4096,
+      systemPrompt: system,
+      prompt: userPrompt,
     });
 
-    const raw = response.content
-      .filter((b) => b.type === 'text')
-      .map((b) => (b as { type: 'text'; text: string }).text)
-      .join('');
-
-    return JSON.parse(stripJsonFences(raw)) as VendorPostureResult;
+    return JSON.parse(stripJsonFences(response.text)) as VendorPostureResult;
   }
 }
