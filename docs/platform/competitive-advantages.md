@@ -12,12 +12,12 @@ One control satisfies multiple framework requirements simultaneously. Instead of
 
 Generate standards calibrated to organizational maturity:
 
-| Level | Target |
-|-------|--------|
-| 1 | Startup |
-| 2 | Growth |
-| 3 | Enterprise |
-| 4 | Highly Regulated |
+| Level | Target           |
+| ----- | ---------------- |
+| 1     | Startup          |
+| 2     | Growth           |
+| 3     | Enterprise       |
+| 4     | Highly Regulated |
 
 ---
 
@@ -32,6 +32,7 @@ Pre-built context for: Healthcare, Financial Services, Manufacturing, SaaS, Gove
 Virtual representation of the organization's compliance environment.
 
 Simulate before changes occur:
+
 - New regulations
 - New frameworks
 - Acquisitions
@@ -42,6 +43,7 @@ Simulate before changes occur:
 ## 5. Auditor View™
 
 External auditors get a single navigation path:
+
 ```
 Requirement → Standard → Evidence
 ```
@@ -58,10 +60,10 @@ Connects documented standards to external reality. Shows the gap between what po
 
 ## Multi-Tenant Architecture
 
-| Concern | Implementation |
-|---------|---------------|
-| Data isolation | Separate database schema per tenant |
-| Encryption | Per-tenant encryption keys |
-| Access | Role model + data segregation |
-| Auth | SSO, SAML, Azure AD, Okta, MFA |
-| Security | Audit logs, encryption at rest + in transit |
+| Concern        | Implementation                              |
+| -------------- | ------------------------------------------- |
+| Data isolation | Separate database schema per tenant         |
+| Encryption     | Per-tenant encryption keys                  |
+| Access         | Role model + data segregation               |
+| Auth           | SSO, SAML, Azure AD, Okta, MFA              |
+| Security       | Audit logs, encryption at rest + in transit |

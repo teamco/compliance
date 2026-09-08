@@ -17,10 +17,17 @@
 ## 🚀 Mandatory Workflow
 
 - **Branch strategy**: `dev` is default. Cut `feature/<name>` or `bug/<name>` from dev. PRs only target dev. Never push directly to main.
+- **Check PR before push**: Run `gh pr list --state open --head $(git branch --show-current)` before every `git push`. If PR is merged/closed — stop, create new branch + PR.
 - **No code without approval**: Propose changes first, wait for go-ahead.
 - **RULE — no crash on missing .env**: MS factories must catch config errors, print a boxed banner with ALL missing vars, and return a Fake strategy in dev. In prod (`NODE_ENV=production`) throw the same banner. The `formatEnvBanner` + `missingEnv` helpers from `@icore/shared` handle this.
 - **Post-coding routine**: `npx prettier --write <files>` → `yarn nx lint <project>` → `yarn nx build <project>` — all green before committing.
 - **Nx generators only**: never hand-write `project.json` / tsconfig stacks. Use `yarn nx g @nx/<plugin>:<schematic>`.
+
+## 🚨 UI Work Rules (non-negotiable)
+
+- **Playwright before "done"**: Any UI change MUST be verified in browser via Playwright MCP before reporting complete. No exceptions. "I read the code and it looks correct" is not verification.
+- **Propose architecture first**: For any non-trivial decision (routing, state shape, error flow) — write 2-3 sentence proposal + tradeoffs, wait for approval. Never pick the first idea and implement it silently.
+- **No self-report without proof**: Never say "verified", "tested", "checked" without attaching Playwright screenshot or server log as evidence.
 
 ## Architecture
 
@@ -45,6 +52,23 @@ libs/
 ```
 
 ## Key patterns
+
+**Client UI overlay pattern** — enforced across all dashboard pages:
+
+| Operation | Component | When |
+|-----------|-----------|------|
+| Create    | `Dialog` (shadcn) | User starts from scratch, no background context needed |
+| Edit      | `Sheet` (shadcn, right panel) | User edits existing record, background data stays visible |
+| Delete    | `AlertDialog` (shadcn) | Destructive confirmation only |
+
+State shape:
+```tsx
+const [createOpen, setCreateOpen] = useState(false);             // Dialog
+const [editingId, setEditingId] = useState<string | null>(null); // Sheet
+const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // AlertDialog
+```
+
+Never combine create and edit into a single `modalMode` state — keep them separate so the components are independent.
 
 **Strategy swap** — provider is chosen at runtime via env. Never import a concrete strategy in app code; always inject via the factory token (`AuthStrategy`, `StorageStrategy`, `DBStrategy`, `AiStrategy`).
 

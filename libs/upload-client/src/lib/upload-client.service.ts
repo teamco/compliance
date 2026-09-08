@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { signedSend } from '@icore/shared';
 import type { StorageRef } from '@icore/shared';
 import { UPLOAD_CLIENT } from './upload-client.tokens';
 
@@ -12,27 +12,25 @@ export class UploadClientService {
     userId: string,
     file: { buffer: Buffer; filename: string; mimeType: string },
   ): Promise<StorageRef> {
-    return firstValueFrom(
-      this.client.send<StorageRef>('storage.upload', {
-        userId,
-        file: {
-          buffer: file.buffer.toString('base64'),
-          filename: file.filename,
-          mimeType: file.mimeType,
-        },
-      }),
-    );
+    return signedSend<StorageRef>(this.client, 'storage.upload', {
+      userId,
+      file: {
+        buffer: file.buffer.toString('base64'),
+        filename: file.filename,
+        mimeType: file.mimeType,
+      },
+    });
   }
 
   remove(userId: string, ref: StorageRef): Promise<void> {
-    return firstValueFrom(this.client.send<void>('storage.remove', { userId, ref }));
+    return signedSend<void>(this.client, 'storage.remove', { userId, ref });
   }
 
   signedUrl(userId: string, ref: StorageRef, ttlSec?: number): Promise<string> {
-    return firstValueFrom(this.client.send<string>('storage.signedUrl', { userId, ref, ttlSec }));
+    return signedSend<string>(this.client, 'storage.signedUrl', { userId, ref, ttlSec });
   }
 
   list(userId: string, prefix?: string): Promise<StorageRef[]> {
-    return firstValueFrom(this.client.send<StorageRef[]>('storage.list', { userId, prefix }));
+    return signedSend<StorageRef[]>(this.client, 'storage.list', { userId, prefix });
   }
 }

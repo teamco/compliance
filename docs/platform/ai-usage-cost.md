@@ -28,11 +28,11 @@ already-scoped `by_operation` data, so cost is correct for both views:
 
 ### Pricing table
 
-| Operation | Model | Input $/1M tokens | Output $/1M tokens |
-|---|---|---:|---:|
-| `chat` | claude-sonnet-4-6 | $3.00 | $15.00 |
-| `gap.analyze` | claude-sonnet-4-6 | $3.00 | $15.00 |
-| `standards.generate` | claude-opus-4-8 | $5.00 | $25.00 |
+| Operation            | Model             | Input $/1M tokens | Output $/1M tokens |
+| -------------------- | ----------------- | ----------------: | -----------------: |
+| `chat`               | claude-sonnet-4-6 |             $3.00 |             $15.00 |
+| `gap.analyze`        | claude-sonnet-4-6 |             $3.00 |             $15.00 |
+| `standards.generate` | claude-opus-4-8   |             $5.00 |             $25.00 |
 
 Prices sourced from Anthropic API docs (verified 2026-06).
 

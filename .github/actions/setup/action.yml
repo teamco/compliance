@@ -1,0 +1,40 @@
+name: "Setup Node + Yarn"
+description: "Composite action: install Node, enable Corepack (Yarn 4), restore the Yarn cache, and run a deterministic immutable install from the workspace root."
+
+inputs:
+  node-version:
+    required: false
+    description: "Node version. Matches .nvmrc."
+    default: "22"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Use Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Enable Corepack (Yarn 4)
+      shell: bash
+      run: corepack enable
+
+    - name: Print tool versions
+      shell: bash
+      run: |
+        echo "Tool | Version"
+        echo "-----|--------"
+        echo "Node | $(node -v)"
+        echo "Yarn | $(yarn -v)"
+
+    - name: Restore Yarn cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.yarn/berry/cache
+        key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+        restore-keys: |
+          yarn-${{ runner.os }}-
+
+    - name: Install workspace dependencies
+      shell: bash
+      run: yarn install --immutable

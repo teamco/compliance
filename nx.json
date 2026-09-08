@@ -17,7 +17,6 @@
       "plugin": "@nx/vite/plugin",
       "options": {
         "buildTargetName": "vite:build",
-        "testTargetName": "test",
         "serveTargetName": "serve",
         "devTargetName": "vite:dev",
         "previewTargetName": "vite:preview",
@@ -25,6 +24,12 @@
         "typecheckTargetName": "typecheck",
         "buildDepsTargetName": "build-deps",
         "watchDepsTargetName": "watch-deps"
+      }
+    },
+    {
+      "plugin": "@nx/vitest",
+      "options": {
+        "testTargetName": "test"
       }
     },
     {
@@ -63,7 +68,11 @@
       "options": {
         "targetName": "test"
       },
-      "exclude": ["apps/microservices/notes-e2e/**/*", "apps/microservices/jobs-e2e/**/*"]
+      "exclude": [
+        "apps/microservices/notes-e2e/**/*",
+        "apps/microservices/jobs-e2e/**/*",
+        "apps/microservices/vendor-risk-e2e/**/*"
+      ]
     }
   ],
   "targetDefaults": {
@@ -118,5 +127,8 @@
         "linter": "eslint"
       }
     }
+  },
+  "migrate": {
+    "agentic": true
   }
 }

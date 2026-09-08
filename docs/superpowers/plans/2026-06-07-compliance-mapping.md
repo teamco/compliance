@@ -12,20 +12,21 @@
 
 ## File Map
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Create | `apps/client/src/components/controls/ControlsTable.tsx` | Pure matrix table: controls × frameworks |
-| Create | `apps/client/src/components/controls/__tests__/ControlsTable.unit.test.tsx` | Unit tests for table rendering logic |
-| Create | `apps/client/src/routes/_dashboard/controls.tsx` | Page: doc selector, framework toggles, gaps filter, coverage badge |
-| Modify | `apps/client/src/components/layout/LayoutSider.tsx` | Remove `soon: true` from Controls nav item |
-| Modify | `apps/client/src/routes/_dashboard/standards.$id.tsx` | Add "View Mapping →" link next to WorkflowBar |
-| Auto-updated | `apps/client/src/routeTree.gen.ts` | TanStack Router regenerates on `yarn nx run client:serve` |
+| Action       | Path                                                                        | Responsibility                                                     |
+| ------------ | --------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Create       | `apps/client/src/components/controls/ControlsTable.tsx`                     | Pure matrix table: controls × frameworks                           |
+| Create       | `apps/client/src/components/controls/__tests__/ControlsTable.unit.test.tsx` | Unit tests for table rendering logic                               |
+| Create       | `apps/client/src/routes/_dashboard/controls.tsx`                            | Page: doc selector, framework toggles, gaps filter, coverage badge |
+| Modify       | `apps/client/src/components/layout/LayoutSider.tsx`                         | Remove `soon: true` from Controls nav item                         |
+| Modify       | `apps/client/src/routes/_dashboard/standards.$id.tsx`                       | Add "View Mapping →" link next to WorkflowBar                      |
+| Auto-updated | `apps/client/src/routeTree.gen.ts`                                          | TanStack Router regenerates on `yarn nx run client:serve`          |
 
 ---
 
 ## Task 1: ControlsTable component + unit tests
 
 **Files:**
+
 - Create: `apps/client/src/components/controls/ControlsTable.tsx`
 - Create: `apps/client/src/components/controls/__tests__/ControlsTable.unit.test.tsx`
 
@@ -39,17 +40,41 @@ import { describe, it, expect } from 'vitest';
 import { ControlsTable } from '../ControlsTable';
 import type { Framework, StandardControl } from '../../../queries/notes';
 
-const fw1: Framework = { id: 'fw-1', slug: 'soc2', name: 'SOC 2', description: '', version: '2017', category: 'security' };
-const fw2: Framework = { id: 'fw-2', slug: 'iso27001', name: 'ISO 27001', description: '', version: '2022', category: 'security' };
+const fw1: Framework = {
+  id: 'fw-1',
+  slug: 'soc2',
+  name: 'SOC 2',
+  description: '',
+  version: '2017',
+  category: 'security',
+};
+const fw2: Framework = {
+  id: 'fw-2',
+  slug: 'iso27001',
+  name: 'ISO 27001',
+  description: '',
+  version: '2022',
+  category: 'security',
+};
 
 const mapped: StandardControl = {
-  code: 'AC-01', title: 'Access Control Policy', description: '', implementation: '',
-  evidence: [], priority: 'critical', category: 'Access Control',
+  code: 'AC-01',
+  title: 'Access Control Policy',
+  description: '',
+  implementation: '',
+  evidence: [],
+  priority: 'critical',
+  category: 'Access Control',
   frameworkMappings: [{ frameworkId: 'fw-1', controlCode: 'CC6.1' }],
 };
 const unmapped: StandardControl = {
-  code: 'AC-02', title: 'Account Management', description: '', implementation: '',
-  evidence: [], priority: 'high', category: 'Access Control',
+  code: 'AC-02',
+  title: 'Account Management',
+  description: '',
+  implementation: '',
+  evidence: [],
+  priority: 'high',
+  category: 'Access Control',
   frameworkMappings: [],
 };
 
@@ -67,7 +92,7 @@ describe('ControlsTable', () => {
 
   it('renders a dash cell for unmapped framework', () => {
     const { container } = render(
-      <ControlsTable controls={[mapped]} frameworks={[fw2]} showGapsOnly={false} />
+      <ControlsTable controls={[mapped]} frameworks={[fw2]} showGapsOnly={false} />,
     );
     expect(container.querySelector('[data-unmapped]')).toBeTruthy();
   });
@@ -75,7 +100,9 @@ describe('ControlsTable', () => {
   it('hides fully-covered rows when showGapsOnly=true', () => {
     // mapped covers fw-1 only; with showGapsOnly and frameworks=[fw1,fw2], AC-01 is NOT fully covered → shown
     // unmapped covers nothing → shown
-    render(<ControlsTable controls={[mapped, unmapped]} frameworks={[fw1, fw2]} showGapsOnly={true} />);
+    render(
+      <ControlsTable controls={[mapped, unmapped]} frameworks={[fw1, fw2]} showGapsOnly={true} />,
+    );
     expect(screen.getByText('AC-01')).toBeTruthy();
     expect(screen.getByText('AC-02')).toBeTruthy();
   });
@@ -147,12 +174,23 @@ export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTa
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-surface">
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Code</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Title</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Priority</th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">Category</th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Code
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Title
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Priority
+            </th>
+            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
+              Category
+            </th>
             {frameworks.map((fw) => (
-              <th key={fw.id} className="px-3 py-2.5 text-center font-medium text-muted-foreground text-xs whitespace-nowrap">
+              <th
+                key={fw.id}
+                className="px-3 py-2.5 text-center font-medium text-muted-foreground text-xs whitespace-nowrap"
+              >
                 {fw.name}
               </th>
             ))}
@@ -164,14 +202,22 @@ export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTa
               key={control.code}
               className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
             >
-              <td className="px-3 py-2.5 font-mono text-xs text-foreground whitespace-nowrap">{control.code}</td>
-              <td className="px-3 py-2.5 text-foreground max-w-[260px] truncate">{control.title}</td>
+              <td className="px-3 py-2.5 font-mono text-xs text-foreground whitespace-nowrap">
+                {control.code}
+              </td>
+              <td className="px-3 py-2.5 text-foreground max-w-[260px] truncate">
+                {control.title}
+              </td>
               <td className="px-3 py-2.5">
-                <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${PRIORITY_CLASS[control.priority]}`}>
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${PRIORITY_CLASS[control.priority]}`}
+                >
                   {control.priority}
                 </span>
               </td>
-              <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">{control.category}</td>
+              <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
+                {control.category}
+              </td>
               {frameworks.map((fw) => {
                 const mapping = control.frameworkMappings.find((m) => m.frameworkId === fw.id);
                 return (
@@ -221,6 +267,7 @@ git commit -m "feat(client): ControlsTable component — compliance matrix"
 ## Task 2: ControlsPage route
 
 **Files:**
+
 - Create: `apps/client/src/routes/_dashboard/controls.tsx`
 
 - [ ] **Step 2.1: Create the page**
@@ -313,7 +360,8 @@ function ControlsPage() {
           )}
           {completedDocs.map((d) => (
             <option key={d.id} value={d.id}>
-              {new Date(d.createdAt).toLocaleDateString()} — {d.frameworkIds.length} {t('controls.frameworks')}
+              {new Date(d.createdAt).toLocaleDateString()} — {d.frameworkIds.length}{' '}
+              {t('controls.frameworks')}
             </option>
           ))}
         </select>
@@ -352,8 +400,7 @@ function ControlsPage() {
           <span className="ml-auto text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{coverageCount}</span>
             {' / '}
-            <span className="font-semibold text-foreground">{doc.controls.length}</span>
-            {' '}
+            <span className="font-semibold text-foreground">{doc.controls.length}</span>{' '}
             {t('controls.controlsMapped')}
           </span>
         )}
@@ -363,14 +410,15 @@ function ControlsPage() {
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-10 bg-surface border border-border rounded-lg animate-pulse" />
+            <div
+              key={i}
+              className="h-10 bg-surface border border-border rounded-lg animate-pulse"
+            />
           ))}
         </div>
       ) : !docId || !doc ? (
         <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-          {completedDocs.length === 0
-            ? t('controls.generateFirst')
-            : t('controls.selectDocument')}
+          {completedDocs.length === 0 ? t('controls.generateFirst') : t('controls.selectDocument')}
         </div>
       ) : (
         <ControlsTable
@@ -447,6 +495,7 @@ yarn nx run client:serve
 Wait for the dev server to start. TanStack Router auto-detects the new `controls.tsx` file and rewrites `apps/client/src/routeTree.gen.ts`. Stop the server (Ctrl+C) once you see "Route tree generated".
 
 Alternatively run just the codegen:
+
 ```bash
 cd apps/client && npx @tanstack/router-cli generate
 ```
@@ -465,6 +514,7 @@ git commit -m "feat(client): Module 6 — Controls compliance mapping page"
 ## Task 3: Sidebar activation + "View Mapping" link from standards detail
 
 **Files:**
+
 - Modify: `apps/client/src/components/layout/LayoutSider.tsx`
 - Modify: `apps/client/src/routes/_dashboard/standards.$id.tsx`
 
@@ -487,24 +537,26 @@ Change to:
 In `apps/client/src/routes/_dashboard/standards.$id.tsx`, `Link` is already imported. Find the `<WorkflowBar ... />` render line (search for `WorkflowBar status=`). It's inside the main return block. Wrap it and the new link in a flex container:
 
 Replace:
+
 ```tsx
-      <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
+<WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
 ```
 
 With:
+
 ```tsx
-      <div className="flex items-center justify-between gap-3">
-        <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
-        {doc.status === 'completed' && (
-          <Link
-            to="/controls"
-            search={{ docId: id }}
-            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-500 transition-colors whitespace-nowrap"
-          >
-            View Mapping →
-          </Link>
-        )}
-      </div>
+<div className="flex items-center justify-between gap-3">
+  <WorkflowBar status={doc.workflowStatus ?? 'draft'} docId={id} isAdmin={isAdmin} />
+  {doc.status === 'completed' && (
+    <Link
+      to="/controls"
+      search={{ docId: id }}
+      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-500 transition-colors whitespace-nowrap"
+    >
+      View Mapping →
+    </Link>
+  )}
+</div>
 ```
 
 - [ ] **Step 3.3: Verify nav.controls i18n key exists**

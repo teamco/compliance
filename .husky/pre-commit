@@ -25,7 +25,7 @@ check_command() {
 }
 
 FILES_CHANGED=$(git diff --cached --name-only | wc -l)
-NON_MD_FILES=$(git diff --cached --name-only | grep -vi '\.md$' | wc -l)
+NON_MD_FILES=$(git diff --cached --name-only | grep -vic '\.md$')
 
 if [ "$FILES_CHANGED" -gt 0 ] && [ "$NON_MD_FILES" -eq 0 ]; then
   echo_print "📝 Only Markdown files staged. Skipping lint-staged + nx checks." "\033[34m"

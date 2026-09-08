@@ -15,7 +15,10 @@ export function AIEngine() {
           />
           <div className="mt-8 space-y-4">
             {productWorkflow.map((step, index) => (
-              <div key={step.title} className="flex gap-4 rounded-2xl border border-border bg-background/50 p-4">
+              <div
+                key={step.title}
+                className="flex gap-4 rounded-2xl border border-border bg-background/50 p-4"
+              >
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-green-500/20 bg-green-500/10 text-sm font-semibold text-green-400">
                   {index + 1}
                 </div>

@@ -1,3 +1,20 @@
+/** Error code carried over RPC + HTTP when an access token is expired (vs malformed). */
+export const AUTH_TOKEN_EXPIRED = 'TOKEN_EXPIRED';
+
+/**
+ * Expired access token — a normal lifecycle event, not a server fault.
+ * Strategies throw this so transports can map it to a clean 401 without
+ * ERROR-level stack logging.
+ */
+export class TokenExpiredError extends Error {
+  readonly code = AUTH_TOKEN_EXPIRED;
+
+  constructor(message = 'token_expired') {
+    super(message);
+    this.name = 'TokenExpiredError';
+  }
+}
+
 export interface AuthSession {
   accessToken: string;
   refreshToken: string;
@@ -23,6 +40,13 @@ export type OAuthProvider = 'google' | 'github';
 export interface OAuthStartResult {
   redirectUrl: string;
   state: string;
+}
+
+export interface OrgMember {
+  userId: string;
+  displayName?: string;
+  email?: string;
+  role: string;
 }
 
 export interface AuthStrategy {
@@ -54,4 +78,5 @@ export interface AuthStrategy {
   verifyMagicLink(token: string): Promise<AuthSession>;
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
+  listOrgMembers(orgId: string): Promise<OrgMember[]>;
 }

@@ -48,14 +48,7 @@ function FrameworkCard({ fw }: { fw: Framework }) {
         </p>
       </div>
 
-      <div className="flex items-center justify-between pt-1 border-t border-border">
-        {fw.controlCount != null ? (
-          <span className="text-xs text-muted-foreground">
-            {t('frameworks.controlCount', { count: fw.controlCount })}
-          </span>
-        ) : (
-          <span />
-        )}
+      <div className="flex items-center justify-end pt-1 border-t border-border">
         <ChevronRight
           size={14}
           className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors"

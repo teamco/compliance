@@ -1,4 +1,4 @@
-# Core GRC Modules (1–12)
+# Core GRC Modules (1–13)
 
 ## Module 1: Framework Library
 
@@ -7,6 +7,7 @@ Central repository of compliance frameworks.
 **Supported frameworks:** SOC 2 Type 2, ISO 27001, ISO 27002, NIST CSF, NIST 800-53, NIST 800-171, CIS Controls, GDPR, HIPAA, PCI DSS, CMMC, COBIT, FedRAMP, Custom Frameworks
 
 **Structure:**
+
 ```
 Framework
   └── Domain
@@ -23,6 +24,7 @@ Framework
 The heart of the platform. One control maps to multiple frameworks.
 
 **Example — "Multi-Factor Authentication":**
+
 - ISO 27001
 - SOC 2
 - NIST
@@ -53,12 +55,12 @@ Input: Organization profile + selected frameworks + maturity level + business mo
 
 **Output categories:**
 
-| Category | Example Standards |
-|----------|------------------|
+| Category             | Example Standards                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------- |
 | Information Security | Access Control, Password, Asset Management, Vulnerability Mgmt, Logging, Encryption, Secure Dev, Backup |
-| IT | Endpoint Mgmt, Patch Mgmt, Change Mgmt, Infrastructure |
-| Privacy | Data Retention, Data Classification, Data Handling |
-| Governance | Risk Management, Vendor Management, Third-Party Risk |
+| IT                   | Endpoint Mgmt, Patch Mgmt, Change Mgmt, Infrastructure                                                  |
+| Privacy              | Data Retention, Data Classification, Data Handling                                                      |
+| Governance           | Risk Management, Vendor Management, Third-Party Risk                                                    |
 
 ---
 
@@ -69,6 +71,7 @@ Visual editor (like Notion + Confluence + Word combined).
 **Features:** Drag-and-drop sections, Rich text editing, Version history, Approval workflow, Comments, Change tracking
 
 **Dynamic Variables:**
+
 ```
 {{Company_Name}}  {{MFA_Tool}}  {{Password_Length}}  {{Log_Retention}}
 ```
@@ -83,12 +86,12 @@ Standards update automatically when variables change.
 
 Example — Access Control Standard maps to:
 
-| Framework | Controls |
-|-----------|----------|
-| SOC 2 | CC6.1, CC6.2 |
-| ISO | A.5.15, A.5.16 |
-| NIST | AC-2, AC-3 |
-| GDPR | Article 32 |
+| Framework | Controls       |
+| --------- | -------------- |
+| SOC 2     | CC6.1, CC6.2   |
+| ISO       | A.5.15, A.5.16 |
+| NIST      | AC-2, AC-3     |
+| GDPR      | Article 32     |
 
 Auditors can instantly trace: `Requirement → Standard → Procedure → Evidence`
 
@@ -108,6 +111,7 @@ Continuously identifies gaps between current implementation and compliance requi
 After analysis completes the app navigates directly to the detail page.
 
 **Coverage Score example:**
+
 ```
 SOC 2 Coverage:  86%
 ISO Coverage:    72%
@@ -121,6 +125,7 @@ GDPR Coverage:   91%
 Built into every page.
 
 **Example prompts:**
+
 - Generate an Encryption Standard
 - Rewrite for healthcare industry
 - Simplify language
@@ -139,12 +144,12 @@ Built into every page.
 
 **Transitions (stored in audit log):**
 
-| Transition | From | To | Who |
-|---|---|---|---|
-| `submit` | draft | in_review | any user |
-| `approve` | in_review | approved | admin |
-| `reject` | in_review | draft | admin |
-| `publish` | approved | published | admin |
+| Transition | From      | To        | Who      |
+| ---------- | --------- | --------- | -------- |
+| `submit`   | draft     | in_review | any user |
+| `approve`  | in_review | approved  | admin    |
+| `reject`   | in_review | draft     | admin    |
+| `publish`  | approved  | published | admin    |
 
 The standards detail page (`/standards/:id`) shows a stepper with per-step descriptions and a Submit / Approve / Publish button aligned to the right.
 
@@ -161,6 +166,7 @@ Tracks: What changed / Why / Who approved
 ## Module 11: Framework Update Intelligence
 
 When a framework releases new guidance:
+
 1. Platform detects changes automatically
 2. Identifies affected standards
 3. Suggests updates
@@ -169,11 +175,19 @@ When a framework releases new guidance:
 
 ## Module 12: Executive Dashboard
 
-| Metric | Example |
-|--------|---------|
-| Overall Score | 87% |
-| SOC 2 | 92% |
-| ISO 27001 | 84% |
-| GDPR | 90% |
-| Standards | Published / Draft / Missing / Under Review |
-| Risk Areas | Highlighted automatically |
+| Metric        | Example                                    |
+| ------------- | ------------------------------------------ |
+| Overall Score | 87%                                        |
+| SOC 2         | 92%                                        |
+| ISO 27001     | 84%                                        |
+| GDPR          | 90%                                        |
+| Standards     | Published / Draft / Missing / Under Review |
+| Risk Areas    | Highlighted automatically                  |
+
+## Module 13: Report Export
+
+Export gap analysis reports and standards documents as **PDF / CSV / JSON**.
+PDF layout is driven by DB-backed, admin-managed **report templates** (branding,
+accent color, section toggles) that can be favorited per organization.
+
+See [report-export.md](./report-export.md).

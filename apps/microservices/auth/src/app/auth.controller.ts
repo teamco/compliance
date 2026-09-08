@@ -1,12 +1,14 @@
 import { Controller, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MessagePattern, Payload } from '@nestjs/microservices';
-import type {
-  AuthSession,
-  AuthStrategy,
-  OAuthProvider,
-  OAuthStartResult,
-  VerifiedToken,
+import { MessagePattern, Payload, RpcException } from '@nestjs/microservices';
+import {
+  TokenExpiredError,
+  type AuthSession,
+  type AuthStrategy,
+  type OAuthProvider,
+  type OAuthStartResult,
+  type OrgMember,
+  type VerifiedToken,
 } from '@icore/shared';
 
 @Controller()
@@ -19,8 +21,18 @@ export class AuthController {
   ) {}
 
   @MessagePattern('auth.verify')
-  verify(@Payload() payload: { token: string }): Promise<VerifiedToken> {
-    return this.strategy.verifyToken(payload.token);
+  async verify(@Payload() payload: { token: string }): Promise<VerifiedToken> {
+    try {
+      return await this.strategy.verifyToken(payload.token);
+    } catch (err) {
+      // Expired token is normal session lifecycle (e.g. machine wake after sleep),
+      // not a server fault — RpcException skips the ERROR-level stack log and
+      // carries the code to the gateway.
+      if (err instanceof TokenExpiredError) {
+        throw new RpcException({ code: err.code, message: err.message, status: 401 });
+      }
+      throw err;
+    }
   }
 
   @MessagePattern('auth.login')
@@ -30,9 +42,17 @@ export class AuthController {
 
   @MessagePattern('auth.signup')
   async signup(@Payload() payload: { email: string; password: string }): Promise<AuthSession> {
-    const session = await this.strategy.signUp(payload.email, payload.password);
-    await this.assignInitialRole(session.user.id, session.user.email);
-    return session;
+    try {
+      const session = await this.strategy.signUp(payload.email, payload.password);
+      await this.assignInitialRole(session.user.id, session.user.email);
+      return session;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'email_confirmation_required') {
+        throw new RpcException({ code: 'email_confirmation_required', message: msg, status: 202 });
+      }
+      throw err;
+    }
   }
 
   @MessagePattern('auth.refresh')
@@ -113,6 +133,11 @@ export class AuthController {
     lastSignedIn?: string;
   } | null> {
     return this.strategy.getProfile(payload.uid);
+  }
+
+  @MessagePattern('auth.org.members.list')
+  listOrgMembers(@Payload() payload: { orgId: string }): Promise<OrgMember[]> {
+    return this.strategy.listOrgMembers(payload.orgId);
   }
 
   @MessagePattern('auth.profile.update')

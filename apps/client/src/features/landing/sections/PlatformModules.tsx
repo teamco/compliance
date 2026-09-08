@@ -13,7 +13,10 @@ export function PlatformModules() {
         />
         <div className="mt-14 grid gap-4 md:grid-cols-2">
           {platformModules.map((module) => (
-            <Card key={module.title} className="group overflow-hidden transition-colors hover:border-green-500/30">
+            <Card
+              key={module.title}
+              className="group overflow-hidden transition-colors hover:border-green-500/30"
+            >
               <CardContent className="p-6">
                 <div className="mb-5 flex items-center justify-between">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-green-500/20 bg-green-500/10">

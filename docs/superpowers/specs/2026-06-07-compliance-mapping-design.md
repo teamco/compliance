@@ -22,6 +22,7 @@ No new backend work required. All data is already available client-side:
 ## Page: `/controls`
 
 ### URL Parameters
+
 - `?docId=<uuid>` — pre-selects a standards document (used when navigating from `standards/$id`)
 
 ### Layout
@@ -38,20 +39,24 @@ Coverage badge: "42/58 controls mapped across selected frameworks"
 ```
 
 ### Table Columns
+
 - `code`, `title`, `priority` (colour-coded badge), `category`
 - One column per selected framework — cell shows:
   - Green checkmark + tooltip with `controlCode` (e.g. "CC6.1") if mapped
   - Grey dash if not mapped
 
 ### Filters
+
 - **Document selector** — dropdown of completed/approved/published standards docs
 - **Framework multi-select** — toggle visibility of framework columns (all on by default)
 - **Show gaps only** — hides rows where ALL selected frameworks are covered
 
 ### Coverage Badge
+
 Counts distinct controls that have ≥1 mapping to any selected framework. Format: `X/Y controls mapped`.
 
 ### Empty States
+
 - No document selected → prompt to select
 - Document has no controls (pending) → inform user
 
@@ -65,20 +70,21 @@ Button "View Mapping →" placed next to the WorkflowBar component. Navigates to
 
 ## Components
 
-| Component | Location | Responsibility |
-|-----------|----------|----------------|
-| `ControlsPage` | `routes/_dashboard/controls.tsx` | Page root, state: docId, selected frameworks, gaps filter |
-| `ControlsTable` | `components/controls/ControlsTable.tsx` | Renders matrix table, accepts controls + frameworks |
-| `FrameworkCell` | inline in ControlsTable | Green check w/ tooltip or grey dash |
-| `CoverageBadge` | inline in ControlsPage | Computes and renders "X/Y mapped" |
+| Component       | Location                                | Responsibility                                            |
+| --------------- | --------------------------------------- | --------------------------------------------------------- |
+| `ControlsPage`  | `routes/_dashboard/controls.tsx`        | Page root, state: docId, selected frameworks, gaps filter |
+| `ControlsTable` | `components/controls/ControlsTable.tsx` | Renders matrix table, accepts controls + frameworks       |
+| `FrameworkCell` | inline in ControlsTable                 | Green check w/ tooltip or grey dash                       |
+| `CoverageBadge` | inline in ControlsPage                  | Computes and renders "X/Y mapped"                         |
 
 ---
 
 ## Queries
 
 Reuse existing:
+
 - `useStandardsDocuments()` — for document selector
-- `useStandardsDocument(id)` — for controls data  
+- `useStandardsDocument(id)` — for controls data
 - `useFrameworks()` — for framework columns
 
 No new API endpoints needed.

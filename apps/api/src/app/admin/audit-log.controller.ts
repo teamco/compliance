@@ -4,7 +4,9 @@ import type { Request } from 'express';
 import { NotesClientService } from '@icore/notes-client';
 import type { AuditLogFilters, AuditLogPage, VerifiedToken } from '@icore/shared';
 
-interface AuthedRequest extends Request { user?: VerifiedToken; }
+interface AuthedRequest extends Request {
+  user?: VerifiedToken;
+}
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -25,11 +27,11 @@ export class AuditLogController {
     const uid = req.user?.uid;
     if (!uid) throw new UnauthorizedException();
     const filters: AuditLogFilters = {
-      page:   page   ? Number(page)  : 1,
-      limit:  limit  ? Number(limit) : 50,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 50,
       action: action || undefined,
-      from:   from   || undefined,
-      to:     to     || undefined,
+      from: from || undefined,
+      to: to || undefined,
     };
     return this.notes.listAuditLogs(uid, filters);
   }

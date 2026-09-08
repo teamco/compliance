@@ -14,3 +14,4 @@ export { runStorageContract } from './strategies/__tests__/storage.contract.unit
 export { runDBContract } from './strategies/__tests__/db.contract.unit.test';
 export { runAiContract } from './strategies/__tests__/ai.contract.unit.test';
 export { runNotesContract } from './strategies/__tests__/notes.contract.unit.test';
+export { runVendorRiskContract } from './strategies/__tests__/vendor-risk.harness';
