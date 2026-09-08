@@ -10,7 +10,7 @@ interface ThemeState {
 }
 
 function detectInitial(): ThemeMode {
-  if (typeof window === 'undefined') return 'dark';
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return 'dark';
   const stored = localStorage.getItem('icore-theme');
   if (stored) {
     try {

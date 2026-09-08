@@ -125,15 +125,21 @@ function GapAnalysisPage() {
 
   async function handleAnalyze() {
     if (!selectedDoc) return;
-    const controls = selectedDoc.controls.map((c) => ({
+    const controls = selectedDoc.standards.map((c) => ({
       id: c.code,
       title: c.title,
       description: c.description,
       implementationGuidance: c.implementation,
     }));
-    const findingsList: ControlFinding[] = selectedDoc.controls.map((c) => ({
+    const findingsList: ControlFinding[] = selectedDoc.standards.map((c) => ({
       controlId: c.code,
       status: findings[c.code]?.status ?? 'non-compliant',
+      evidence: findings[c.code]?.evidence || undefined,
+    }));
+    const findingsDetail = selectedDoc.standards.map((c) => ({
+      controlId: c.code,
+      title: c.title,
+      status: findings[c.code]?.status ?? ('non-compliant' as const),
       evidence: findings[c.code]?.evidence || undefined,
     }));
     analyzeGap.mutate(
@@ -141,8 +147,9 @@ function GapAnalysisPage() {
       {
         onSuccess: (data) => {
           if (activeOrgId) {
+            const result = { ...data, findings: findingsDetail };
             saveGap.mutate(
-              { orgId: activeOrgId, docId: selectedDocId || undefined, result: data },
+              { orgId: activeOrgId, docId: selectedDocId || undefined, result },
               {
                 onSuccess: (saved) => {
                   void navigate({ to: '/gap-analysis/$id', params: { id: saved.id } });
@@ -156,7 +163,7 @@ function GapAnalysisPage() {
   }
 
   const allAssessed = selectedDoc
-    ? selectedDoc.controls.every((c) => !!findings[c.code]?.status)
+    ? selectedDoc.standards.every((c) => !!findings[c.code]?.status)
     : false;
 
   const tabs = [
@@ -236,7 +243,7 @@ function GapAnalysisPage() {
                   </option>
                   {completedDocs.map((d) => (
                     <option key={d.id} value={d.id} className="bg-surface text-foreground">
-                      {t('standards.controls', { count: d.controls.length })} ·{' '}
+                      {t('standards.controls', { count: d.standards.length })} ·{' '}
                       {new Date(d.createdAt).toLocaleDateString()}
                     </option>
                   ))}
@@ -255,7 +262,7 @@ function GapAnalysisPage() {
             {selectedDoc && !allAssessed && (
               <p className="text-[10px] text-muted-foreground mt-2">
                 {t('gapAnalysis.selectStatus')} —{' '}
-                {selectedDoc.controls.filter((c) => !findings[c.code]?.status).length} remaining
+                {selectedDoc.standards.filter((c) => !findings[c.code]?.status).length} remaining
               </p>
             )}
           </div>
@@ -273,7 +280,7 @@ function GapAnalysisPage() {
               </div>
 
               <div className="grid grid-cols-1 @[600px]:grid-cols-2 gap-3">
-                {selectedDoc.controls.map((ctrl) => {
+                {selectedDoc.standards.map((ctrl) => {
                   const finding = findings[ctrl.code];
                   const status = finding?.status;
                   const statusCfg = status ? STATUS_CONFIG[status] : null;
@@ -402,7 +409,7 @@ function GapAnalysisPage() {
                 '30d': now - 30 * 86_400_000,
                 '90d': boundary90,
               };
-              return t >= cutoff[dateRange];
+              return t >= (cutoff[dateRange] ?? 0);
             });
             if (filtered.length === 0) {
               return (

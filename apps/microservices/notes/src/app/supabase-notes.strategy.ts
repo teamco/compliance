@@ -5,28 +5,58 @@ import type {
   AiUsageLogEntry,
   AiUsageSummaryRpc,
   AiUsageTimeseriesPoint,
+  Asset,
+  AssetInput,
+  AssetPatch,
   AuditLog,
   AuditLogFilters,
   AuditLogPage,
   ApiKey,
   ApiKeyWithSecret,
-  ControlPatch,
+  DocumentStandard,
+  Exception,
+  ExceptionInput,
+  ExceptionPatch,
   Framework,
   FrameworkControl,
   GapAnalysis,
   GapAnalysisResult,
+  Issue,
+  IssueInput,
+  IssuePatch,
   NotesStrategy,
   Organization,
   OrganizationInput,
   PushSubscriptionPayload,
+  ReportTemplate,
+  ReportTemplateInput,
   RetentionPrefsPayload,
-  StandardControl,
+  Risk,
+  RiskAssessment,
+  RiskAssessmentInput,
+  RiskAssessmentItem,
+  RiskAssessmentItemInput,
+  RiskAssessmentItemPatch,
+  RiskAssessmentPatch,
+  AssessmentType,
+  AssessmentStatus,
+  RiskImpact,
+  RiskInput,
+  RiskLikelihood,
+  RiskPatch,
+  StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
   UserPrefsPayload,
   Webhook,
   WebhookInput,
   WorkflowTransition,
+  Policy,
+  PolicyInput,
+  PolicyPatch,
+  PolicyTemplate,
+  PolicyControl,
+  PolicyControlInput,
 } from '@icore/shared';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
 
@@ -37,6 +67,18 @@ function ok<T>(data: T | null, error: { message: string } | null): T {
 
 export class SupabaseNotesStrategy implements NotesStrategy {
   constructor(private readonly db: SupabaseClient) {}
+
+  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
+    const L: Record<RiskLikelihood, number> = {
+      very_low: 1,
+      low: 2,
+      medium: 3,
+      high: 4,
+      very_high: 5,
+    };
+    const I: Record<RiskImpact, number> = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 };
+    return L[likelihood] * I[impact];
+  }
 
   async listFrameworks(): Promise<Framework[]> {
     const { data, error } = await this.db
@@ -124,6 +166,29 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     }));
   }
 
+  async listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]> {
+    const { data, error } = await this.db
+      .from('generated_standards')
+      .select('standards')
+      .eq('org_profile_id', orgId)
+      .eq('status', 'completed');
+    const rows = ok(data, error) as Array<{ standards: DocumentStandard[] }>;
+    const seen = new Set<string>();
+    const result: DocumentStandard[] = [];
+    for (const row of rows) {
+      for (const std of row.standards ?? []) {
+        if (
+          std.frameworkMappings?.some((m) => m.frameworkId === frameworkId) &&
+          !seen.has(std.code)
+        ) {
+          seen.add(std.code);
+          result.push(std);
+        }
+      }
+    }
+    return result;
+  }
+
   async listOrganizations(userId: string): Promise<Organization[]> {
     const { data, error } = await this.db
       .from('org_profiles')
@@ -198,7 +263,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         user_id: userId,
         org_profile_id: orgId,
         framework_ids: frameworkIds,
-        controls: [],
+        standards: [],
         status: 'pending',
         workflow_status: 'draft',
       })
@@ -208,10 +273,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return { id: r.id };
   }
 
-  async saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void> {
+  async saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void> {
     const { error } = await this.db
       .from('generated_standards')
-      .update({ controls, status: 'completed' })
+      .update({ standards, status: 'completed' })
       .eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -232,7 +297,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async resetStandardsDocument(id: string): Promise<void> {
     const { error } = await this.db
       .from('generated_standards')
-      .update({ status: 'pending', controls: [] })
+      .update({ status: 'pending', standards: [] })
       .eq('id', id);
     if (error) throw new Error(error.message);
   }
@@ -279,7 +344,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         document_id: id,
         version,
         workflow_status: to,
-        controls: doc.controls,
+        standards: doc.standards,
       });
       if (snapErr) throw new Error(snapErr.message);
     }
@@ -305,17 +370,21 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.mapSnapshot(data) : null;
   }
 
-  async updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl> {
+  async updateStandard(
+    docId: string,
+    code: string,
+    patch: StandardPatch,
+  ): Promise<DocumentStandard> {
     const doc = await this.getStandardsDocument(docId);
     if (!doc) throw new Error('doc_not_found');
-    const idx = doc.controls.findIndex((c) => c.code === code);
-    if (idx === -1) throw new Error('control_not_found');
-    const updated = { ...doc.controls[idx], ...patch } as StandardControl;
-    const controls = [...doc.controls];
-    controls[idx] = updated;
+    const idx = doc.standards.findIndex((c) => c.code === code);
+    if (idx === -1) throw new Error('standard_not_found');
+    const updated = { ...doc.standards[idx], ...patch } as DocumentStandard;
+    const standards = [...doc.standards];
+    standards[idx] = updated;
     const { error } = await this.db
       .from('generated_standards')
-      .update({ controls })
+      .update({ standards })
       .eq('id', docId);
     if (error) throw new Error(error.message);
     return updated;
@@ -620,6 +689,127 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     };
   }
 
+  // ─── Report templates ──────────────────────────────────────────────────────
+
+  async listReportTemplates(): Promise<ReportTemplate[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select()
+      .order('created_at', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.mapReportTemplate(r));
+  }
+
+  async createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .insert({
+        name: input.name,
+        scope: input.scope,
+        brand_name: input.brandName,
+        accent_color: input.accentColor,
+        include_summary: input.includeSummary,
+        include_details: input.includeDetails,
+        include_recommendations: input.includeRecommendations,
+        footer_note: input.footerNote,
+        favorite_org_ids: input.favoriteOrgIds,
+        created_by: userId,
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapReportTemplate(data);
+  }
+
+  async updateReportTemplate(
+    id: string,
+    patch: Partial<ReportTemplateInput>,
+  ): Promise<ReportTemplate> {
+    const update: Record<string, unknown> = {};
+    if (patch.name !== undefined) update['name'] = patch.name;
+    if (patch.scope !== undefined) update['scope'] = patch.scope;
+    if (patch.brandName !== undefined) update['brand_name'] = patch.brandName;
+    if (patch.accentColor !== undefined) update['accent_color'] = patch.accentColor;
+    if (patch.includeSummary !== undefined) update['include_summary'] = patch.includeSummary;
+    if (patch.includeDetails !== undefined) update['include_details'] = patch.includeDetails;
+    if (patch.includeRecommendations !== undefined)
+      update['include_recommendations'] = patch.includeRecommendations;
+    if (patch.footerNote !== undefined) update['footer_note'] = patch.footerNote;
+    if (patch.favoriteOrgIds !== undefined) update['favorite_org_ids'] = patch.favoriteOrgIds;
+
+    const { data, error } = await this.db
+      .from('report_templates')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return this.mapReportTemplate(data);
+  }
+
+  async deleteReportTemplate(id: string): Promise<{ ok: boolean }> {
+    const { error } = await this.db.from('report_templates').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  async addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    const next = current.includes(orgId) ? current : [...current, orgId];
+    return this.updateReportTemplate(id, { favoriteOrgIds: next });
+  }
+
+  async removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate> {
+    const current = await this.getTemplateFavorites(id);
+    return this.updateReportTemplate(id, {
+      favoriteOrgIds: current.filter((o) => o !== orgId),
+    });
+  }
+
+  private async getTemplateFavorites(id: string): Promise<string[]> {
+    const { data, error } = await this.db
+      .from('report_templates')
+      .select('favorite_org_ids')
+      .eq('id', id)
+      .single();
+    if (error) throw new Error(error.message);
+    return ((data as { favorite_org_ids: string[] | null })?.favorite_org_ids ?? []) as string[];
+  }
+
+  private mapReportTemplate(r: unknown): ReportTemplate {
+    const row = r as {
+      id: string;
+      name: string;
+      scope: string;
+      brand_name: string;
+      accent_color: string;
+      include_summary: boolean;
+      include_details: boolean;
+      include_recommendations: boolean;
+      footer_note: string;
+      favorite_org_ids: string[] | null;
+      created_by: string | null;
+      created_at: string;
+    };
+    return {
+      id: row.id,
+      name: row.name,
+      scope: row.scope as ReportTemplate['scope'],
+      brandName: row.brand_name,
+      accentColor: row.accent_color,
+      includeSummary: row.include_summary,
+      includeDetails: row.include_details,
+      includeRecommendations: row.include_recommendations,
+      footerNote: row.footer_note,
+      favoriteOrgIds: row.favorite_org_ids ?? [],
+      createdBy: row.created_by,
+      createdAt: row.created_at,
+    };
+  }
+
   // ─── Retention ─────────────────────────────────────────────────────────────
 
   async getRetentionPrefs(userId: string): Promise<RetentionPrefsPayload> {
@@ -730,7 +920,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       document_id: string;
       version: number;
       workflow_status: string;
-      controls: StandardControl[];
+      standards: DocumentStandard[];
       created_at: string;
       created_by?: string;
     };
@@ -739,7 +929,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       documentId: row.document_id,
       version: row.version,
       workflowStatus: row.workflow_status as StandardsSnapshot['workflowStatus'],
-      controls: row.controls ?? [],
+      standards: row.standards ?? [],
       createdAt: row.created_at,
       createdBy: row.created_by,
     };
@@ -821,7 +1011,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       user_id: string;
       org_profile_id: string;
       framework_ids: string[];
-      controls: StandardControl[];
+      standards: DocumentStandard[];
       status: string;
       workflow_status: string | null;
       created_at: string;
@@ -831,10 +1021,700 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       userId: row.user_id,
       orgId: row.org_profile_id,
       frameworkIds: row.framework_ids,
-      controls: row.controls ?? [],
+      standards: row.standards ?? [],
       status: row.status as StandardsDocument['status'],
       workflowStatus: (row.workflow_status ?? 'draft') as StandardsDocument['workflowStatus'],
       createdAt: row.created_at,
+    };
+  }
+
+  // ─── Exceptions ────────────────────────────────────────────────────────────
+
+  async listExceptions(orgId: string): Promise<Exception[]> {
+    const { data, error } = await this.db
+      .from('exceptions')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toException(row));
+  }
+
+  async createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception> {
+    const { data: row, error } = await this.db
+      .from('exceptions')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        control_code: data.controlCode,
+        standard_code: data.standardCode ?? null,
+        framework_id: data.frameworkId,
+        title: data.title,
+        statement: data.statement,
+        justification: data.justification,
+        owner_id: data.ownerId,
+        compensating_controls: data.compensatingControls ?? null,
+        expires_at: data.expiresAt ?? null,
+      })
+      .select()
+      .single();
+    return this.toException(ok(row, error));
+  }
+
+  async getException(id: string): Promise<Exception | null> {
+    const { data, error } = await this.db.from('exceptions').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toException(data) : null;
+  }
+
+  async updateException(id: string, patch: ExceptionPatch): Promise<Exception> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.statement !== undefined) update['statement'] = patch.statement;
+    if (patch.justification !== undefined) update['justification'] = patch.justification;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.compensatingControls !== undefined)
+      update['compensating_controls'] = patch.compensatingControls;
+    if ('expiresAt' in patch) update['expires_at'] = patch.expiresAt;
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
+  async approveException(id: string): Promise<Exception> {
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
+  async rejectException(id: string): Promise<Exception> {
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
+  async deleteException(id: string): Promise<void> {
+    const { error } = await this.db.from('exceptions').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toException(row: Record<string, unknown>): Exception {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      controlCode: row['control_code'] as string,
+      standardCode: row['standard_code'] as string | undefined,
+      frameworkId: row['framework_id'] as string,
+      title: row['title'] as string,
+      statement: row['statement'] as string,
+      justification: row['justification'] as string,
+      ownerId: row['owner_id'] as string,
+      compensatingControls: row['compensating_controls'] as string | undefined,
+      status: row['status'] as Exception['status'],
+      expiresAt: row['expires_at'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Issues ────────────────────────────────────────────────────────────────
+
+  async listIssues(orgId: string): Promise<Issue[]> {
+    const { data, error } = await this.db
+      .from('issues')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toIssue(row));
+  }
+
+  async createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue> {
+    const { data: row, error } = await this.db
+      .from('issues')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        title: data.title,
+        description: data.description,
+        severity: data.severity,
+        reporter_id: data.reporterId,
+        owner_id: data.ownerId,
+        affected_assets: data.affectedAssets ?? null,
+        source: data.source ?? 'manual',
+        source_id: data.sourceId ?? null,
+        due_date: data.dueDate ?? null,
+      })
+      .select()
+      .single();
+    return this.toIssue(ok(row, error));
+  }
+
+  async getIssue(id: string): Promise<Issue | null> {
+    const { data, error } = await this.db.from('issues').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toIssue(data) : null;
+  }
+
+  async updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.severity !== undefined) update['severity'] = patch.severity;
+    if (patch.reporterId !== undefined) update['reporter_id'] = patch.reporterId;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.affectedAssets !== undefined) update['affected_assets'] = patch.affectedAssets;
+    if (patch.status !== undefined) {
+      update['status'] = patch.status;
+      if (!('resolvedAt' in patch)) {
+        update['resolved_at'] = patch.status === 'resolved' ? new Date().toISOString() : null;
+      }
+    }
+    if ('resolvedAt' in patch) update['resolved_at'] = patch.resolvedAt;
+    if ('dueDate' in patch) update['due_date'] = patch.dueDate;
+    const { data, error } = await this.db
+      .from('issues')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toIssue(ok(data, error));
+  }
+
+  async deleteIssue(id: string): Promise<void> {
+    const { error } = await this.db.from('issues').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toIssue(row: Record<string, unknown>): Issue {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      severity: row['severity'] as Issue['severity'],
+      reporterId: row['reporter_id'] as string | null,
+      ownerId: row['owner_id'] as string | null,
+      affectedAssets: row['affected_assets'] as string | undefined,
+      status: row['status'] as Issue['status'],
+      source: row['source'] as Issue['source'],
+      sourceId: row['source_id'] as string | null,
+      dueDate: row['due_date'] as string | null,
+      resolvedAt: row['resolved_at'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Assets ────────────────────────────────────────────────────────────────
+
+  async listAssets(orgId: string): Promise<Asset[]> {
+    const { data, error } = await this.db
+      .from('assets')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    return ok(data, error).map((row) => this.toAsset(row));
+  }
+
+  async createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset> {
+    const { data: row, error } = await this.db
+      .from('assets')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        name: data.name,
+        type: data.type,
+        criticality: data.criticality,
+        description: data.description,
+        owner: data.owner,
+        tags: data.tags ?? [],
+      })
+      .select()
+      .single();
+    return this.toAsset(ok(row, error));
+  }
+
+  async getAsset(id: string): Promise<Asset | null> {
+    const { data, error } = await this.db.from('assets').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAsset(data) : null;
+  }
+
+  async updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.name !== undefined) update['name'] = patch.name;
+    if (patch.type !== undefined) update['type'] = patch.type;
+    if (patch.criticality !== undefined) update['criticality'] = patch.criticality;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.owner !== undefined) update['owner'] = patch.owner;
+    if (patch.tags !== undefined) update['tags'] = patch.tags;
+    const { data, error } = await this.db
+      .from('assets')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAsset(ok(data, error));
+  }
+
+  async deleteAsset(id: string): Promise<void> {
+    const { error } = await this.db.from('assets').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toAsset(row: Record<string, unknown>): Asset {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      name: row['name'] as string,
+      type: row['type'] as Asset['type'],
+      criticality: row['criticality'] as Asset['criticality'],
+      description: row['description'] as string,
+      owner: row['owner'] as string,
+      tags: row['tags'] as string[],
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Risks ─────────────────────────────────────────────────────────────────
+
+  async listRisks(orgId: string): Promise<Risk[]> {
+    const { data, error } = await this.db
+      .from('risks')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('risk_score', { ascending: false });
+    return ok(data, error).map((row) => this.toRisk(row));
+  }
+
+  async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    const riskScore = this.computeRiskScore(data.likelihood, data.impact);
+    const { data: row, error } = await this.db
+      .from('risks')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        likelihood: data.likelihood,
+        impact: data.impact,
+        risk_score: riskScore,
+        treatment: data.treatment ?? 'mitigate',
+        asset_id: data.assetId ?? null,
+      })
+      .select()
+      .single();
+    return this.toRisk(ok(row, error));
+  }
+
+  async getRisk(id: string): Promise<Risk | null> {
+    const { data, error } = await this.db.from('risks').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRisk(data) : null;
+  }
+
+  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+    const current = await this.getRisk(id);
+    if (!current) throw new Error('risk_not_found');
+    const newLikelihood = patch.likelihood ?? current.likelihood;
+    const newImpact = patch.impact ?? current.impact;
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      risk_score: this.computeRiskScore(newLikelihood, newImpact),
+    };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.category !== undefined) update['category'] = patch.category;
+    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
+    if (patch.impact !== undefined) update['impact'] = patch.impact;
+    if (patch.treatment !== undefined) update['treatment'] = patch.treatment;
+    if ('assetId' in patch) update['asset_id'] = patch.assetId;
+    const { data, error } = await this.db
+      .from('risks')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRisk(ok(data, error));
+  }
+
+  async deleteRisk(id: string): Promise<void> {
+    const { error } = await this.db.from('risks').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toRisk(row: Record<string, unknown>): Risk {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      category: row['category'] as string,
+      likelihood: row['likelihood'] as Risk['likelihood'],
+      impact: row['impact'] as Risk['impact'],
+      riskScore: row['risk_score'] as number,
+      treatment: row['treatment'] as Risk['treatment'],
+      assetId: row['asset_id'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Risk Assessments ──────────────────────────────────────────────────────
+
+  async listAssessments(orgId: string): Promise<RiskAssessment[]> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map(this.toAssessment);
+  }
+
+  async createAssessment(
+    orgId: string,
+    userId: string,
+    data: RiskAssessmentInput,
+  ): Promise<RiskAssessment> {
+    const { data: row, error } = await this.db
+      .from('risk_assessments')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        type: data.type,
+        title: data.title,
+        scope: data.scope,
+      })
+      .select()
+      .single();
+    return this.toAssessment(ok(row, error));
+  }
+
+  async getAssessment(id: string): Promise<RiskAssessment | null> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAssessment(data) : null;
+  }
+
+  async updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.scope !== undefined) update['scope'] = patch.scope;
+    if (patch.status !== undefined) update['status'] = patch.status;
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async deleteAssessment(id: string): Promise<void> {
+    const { error } = await this.db.from('risk_assessments').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('assessment_id', assessmentId)
+      .order('item_score', { ascending: false });
+    return ok(data, error).map(this.toAssessmentItem);
+  }
+
+  async addAssessmentItem(
+    assessmentId: string,
+    data: RiskAssessmentItemInput,
+  ): Promise<RiskAssessmentItem> {
+    const itemScore = this.computeRiskScore(data.likelihood, data.impact);
+    const { data: row, error } = await this.db
+      .from('risk_assessment_items')
+      .insert({
+        assessment_id: assessmentId,
+        subject: data.subject,
+        description: data.description,
+        likelihood: data.likelihood,
+        impact: data.impact,
+        item_score: itemScore,
+        mitigations: data.mitigations ?? '',
+      })
+      .select()
+      .single();
+    const item = this.toAssessmentItem(ok(row, error));
+    await this.recomputeAssessmentScore(assessmentId);
+    return item;
+  }
+
+  async updateAssessmentItem(
+    id: string,
+    patch: RiskAssessmentItemPatch,
+  ): Promise<RiskAssessmentItem> {
+    const existing = await this.db
+      .from('risk_assessment_items')
+      .select('likelihood, impact, assessment_id')
+      .eq('id', id)
+      .single();
+    if (existing.error) throw new Error(existing.error.message);
+    const newLikelihood = patch.likelihood ?? (existing.data['likelihood'] as RiskLikelihood);
+    const newImpact = patch.impact ?? (existing.data['impact'] as RiskImpact);
+    const update: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+      item_score: this.computeRiskScore(newLikelihood, newImpact),
+    };
+    if (patch.subject !== undefined) update['subject'] = patch.subject;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
+    if (patch.impact !== undefined) update['impact'] = patch.impact;
+    if (patch.mitigations !== undefined) update['mitigations'] = patch.mitigations;
+    const { data: row, error } = await this.db
+      .from('risk_assessment_items')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    const item = this.toAssessmentItem(ok(row, error));
+    await this.recomputeAssessmentScore(existing.data['assessment_id'] as string);
+    return item;
+  }
+
+  async deleteAssessmentItem(id: string): Promise<void> {
+    const { data: existing } = await this.db
+      .from('risk_assessment_items')
+      .select('assessment_id')
+      .eq('id', id)
+      .single();
+    const { error } = await this.db.from('risk_assessment_items').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+    if (existing) await this.recomputeAssessmentScore(existing['assessment_id'] as string);
+  }
+
+  private async recomputeAssessmentScore(assessmentId: string): Promise<void> {
+    const { data: items } = await this.db
+      .from('risk_assessment_items')
+      .select('item_score')
+      .eq('assessment_id', assessmentId);
+    const rows = items ?? [];
+    const riskScore =
+      rows.length > 0
+        ? Math.round(
+            rows.reduce(
+              (s: number, r: Record<string, unknown>) => s + (r['item_score'] as number),
+              0,
+            ) / rows.length,
+          )
+        : 0;
+    await this.db
+      .from('risk_assessments')
+      .update({
+        risk_score: riskScore,
+        item_count: rows.length,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', assessmentId);
+  }
+
+  private toAssessment(row: Record<string, unknown>): RiskAssessment {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      type: row['type'] as AssessmentType,
+      title: row['title'] as string,
+      scope: row['scope'] as string,
+      status: row['status'] as AssessmentStatus,
+      riskScore: row['risk_score'] as number,
+      itemCount: row['item_count'] as number,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  private toAssessmentItem(row: Record<string, unknown>): RiskAssessmentItem {
+    return {
+      id: row['id'] as string,
+      assessmentId: row['assessment_id'] as string,
+      subject: row['subject'] as string,
+      description: row['description'] as string,
+      likelihood: row['likelihood'] as RiskAssessmentItem['likelihood'],
+      impact: row['impact'] as RiskAssessmentItem['impact'],
+      itemScore: row['item_score'] as number,
+      mitigations: row['mitigations'] as string,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Policies ──────────────────────────────────────────────────────────────
+
+  async listPolicies(orgId: string): Promise<Policy[]> {
+    const { data, error } = await this.db
+      .from('policies')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map(this.toPolicy);
+  }
+
+  async createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy> {
+    const { data: row, error } = await this.db
+      .from('policies')
+      .insert({
+        org_id: orgId,
+        user_id: userId,
+        framework_id: data.frameworkId,
+        title: data.title,
+        content: data.content,
+        template_id: data.templateId ?? null,
+      })
+      .select()
+      .single();
+    return this.toPolicy(ok(row, error));
+  }
+
+  async getPolicy(id: string): Promise<Policy | null> {
+    const { data, error } = await this.db.from('policies').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toPolicy(data) : null;
+  }
+
+  async updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.status !== undefined) update['status'] = patch.status;
+    if (patch.content !== undefined) {
+      update['content'] = patch.content;
+      const cur = await this.db.from('policies').select('version').eq('id', id).single();
+      update['version'] = ((cur.data?.['version'] as number) ?? 1) + 1;
+    }
+    const { data, error } = await this.db
+      .from('policies')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toPolicy(ok(data, error));
+  }
+
+  async deletePolicy(id: string): Promise<void> {
+    const { error } = await this.db.from('policies').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
+    const { data: tmpl, error } = await this.db
+      .from('policy_templates')
+      .select('*')
+      .eq('id', templateId)
+      .single();
+    if (error || !tmpl) throw new Error('template_not_found');
+    return this.createPolicy(orgId, userId, {
+      frameworkId: tmpl['framework_id'] as string,
+      title: tmpl['title'] as string,
+      content: tmpl['content'] as string,
+      templateId,
+    });
+  }
+
+  async listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]> {
+    let q = this.db.from('policy_templates').select('*').order('title');
+    if (frameworkId) q = q.eq('framework_id', frameworkId);
+    const { data, error } = await q;
+    return ok(data, error).map((r: Record<string, unknown>) => ({
+      id: r['id'] as string,
+      frameworkId: r['framework_id'] as string,
+      title: r['title'] as string,
+      content: r['content'] as string,
+      createdAt: r['created_at'] as string,
+    }));
+  }
+
+  async listPolicyControls(policyId: string): Promise<PolicyControl[]> {
+    const { data, error } = await this.db
+      .from('policy_controls')
+      .select('*')
+      .eq('policy_id', policyId)
+      .order('created_at');
+    return ok(data, error).map(this.toPolicyControl);
+  }
+
+  async addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl> {
+    const { data: row, error } = await this.db
+      .from('policy_controls')
+      .upsert(
+        { policy_id: policyId, control_code: data.controlCode, framework_id: data.frameworkId },
+        { onConflict: 'policy_id,control_code,framework_id', ignoreDuplicates: false },
+      )
+      .select()
+      .single();
+    return this.toPolicyControl(ok(row, error));
+  }
+
+  async removePolicyControl(id: string): Promise<void> {
+    const { error } = await this.db.from('policy_controls').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+    const { data, error } = await this.db
+      .from('policy_controls')
+      .select('policy_id')
+      .eq('control_code', controlCode)
+      .eq('framework_id', frameworkId);
+    const policyIds = ok(data, error).map((r: Record<string, unknown>) => r['policy_id'] as string);
+    if (policyIds.length === 0) return [];
+    const { data: policies, error: pErr } = await this.db
+      .from('policies')
+      .select('*')
+      .in('id', policyIds);
+    return ok(policies, pErr).map(this.toPolicy);
+  }
+
+  private toPolicy(row: Record<string, unknown>): Policy {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      userId: row['user_id'] as string,
+      frameworkId: row['framework_id'] as string,
+      title: row['title'] as string,
+      content: row['content'] as string,
+      status: row['status'] as Policy['status'],
+      version: row['version'] as number,
+      templateId: row['template_id'] as string | null,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  private toPolicyControl(row: Record<string, unknown>): PolicyControl {
+    return {
+      id: row['id'] as string,
+      policyId: row['policy_id'] as string,
+      controlCode: row['control_code'] as string,
+      frameworkId: row['framework_id'] as string,
+      createdAt: row['created_at'] as string,
     };
   }
 }

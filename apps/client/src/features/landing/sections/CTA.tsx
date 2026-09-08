@@ -11,7 +11,8 @@ export function CTA() {
             Replace spreadsheet compliance with AI-assisted governance intelligence.
           </h2>
           <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted-foreground md:text-base">
-            Launch with a landing that reflects the real product: standards generation, gap analysis, control mapping and posture scoring.
+            Launch with a landing that reflects the real product: standards generation, gap
+            analysis, control mapping and posture scoring.
           </p>
           <div className="mt-9 flex justify-center gap-3">
             <Button asChild size="lg" className="h-12 px-6">

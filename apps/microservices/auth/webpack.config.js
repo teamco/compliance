@@ -9,7 +9,7 @@ module.exports = {
     new NxAppWebpackPlugin({
       target: 'node',
       tsConfig: 'apps/microservices/auth/tsconfig.app.json',
-      compiler: 'tsc',
+      compiler: 'swc',
       main: 'apps/microservices/auth/src/main.ts',
       outputHashing: 'none',
     }),

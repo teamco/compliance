@@ -41,7 +41,10 @@ describe('FakeNotesStrategy — admin', () => {
   });
 
   it('createWebhook + listWebhooks + deleteWebhook', async () => {
-    const wh = await fake.createWebhook(uid, { url: 'https://example.com/hook', events: ['workflow.approved'] });
+    const wh = await fake.createWebhook(uid, {
+      url: 'https://example.com/hook',
+      events: ['workflow.approved'],
+    });
     expect(wh.secret).toBeTruthy();
     expect(wh.active).toBe(true);
     let list = await fake.listWebhooks(uid);
@@ -52,7 +55,10 @@ describe('FakeNotesStrategy — admin', () => {
   });
 
   it('updateWebhook patches active', async () => {
-    const wh = await fake.createWebhook(uid, { url: 'https://x.com', events: ['workflow.submitted'] });
+    const wh = await fake.createWebhook(uid, {
+      url: 'https://x.com',
+      events: ['workflow.submitted'],
+    });
     await fake.updateWebhook(wh.id, uid, { active: false });
     const list = await fake.listWebhooks(uid);
     expect(list[0].active).toBe(false);

@@ -1,7 +1,6 @@
 export type FrameworkCategory = 'security' | 'privacy' | 'cloud' | 'risk';
 export type OrgSize = 'startup' | 'smb' | 'enterprise';
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
-export type StandardControlPriority = 'critical' | 'high' | 'medium' | 'low';
 
 export interface Framework {
   id: string;
@@ -39,16 +38,14 @@ export interface Organization {
 
 export type OrganizationInput = Omit<Organization, 'id' | 'userId' | 'createdAt' | 'updatedAt'>;
 
-// An AI-generated compliance control stored as part of a StandardsDocument.
-export interface StandardControl {
+// An AI-generated compliance standard stored as part of a StandardsDocument.
+export interface DocumentStandard {
   code: string;
   title: string;
-  description: string;
-  implementation: string;
-  evidence: string[];
-  frameworkMappings: { frameworkId: string; controlCode: string }[];
-  priority: StandardControlPriority;
-  category: string;
+  objective: string;
+  scope: string;
+  requirements: string[];
+  frameworkMappings: { frameworkId: string; standardCode: string }[];
 }
 
 export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
@@ -71,15 +68,15 @@ export interface StandardsDocument {
   userId: string;
   orgId: string;
   frameworkIds: string[];
-  controls: StandardControl[];
+  standards: DocumentStandard[];
   status: StandardsStatus;
   workflowStatus: WorkflowStatus;
   createdAt: string;
 }
 
-export interface ControlPatch {
-  priority?: StandardControlPriority;
-  implementation?: string;
+export interface StandardPatch {
+  objective?: string;
+  scope?: string;
 }
 
 export interface StandardsSnapshot {
@@ -87,7 +84,7 @@ export interface StandardsSnapshot {
   documentId: string;
   version: number;
   workflowStatus: WorkflowStatus;
-  controls: StandardControl[];
+  standards: DocumentStandard[];
   createdAt: string;
   createdBy?: string;
 }
@@ -97,6 +94,7 @@ export type {
   RecommendationEffort,
   GapItem,
   Recommendation,
+  GapFinding,
   GapAnalysisResult,
 } from './ai';
 import type { GapAnalysisResult } from './ai';
@@ -109,6 +107,293 @@ export interface GapAnalysis {
   result: GapAnalysisResult;
   riskScore: number;
   createdAt: string;
+}
+
+// ─── Exceptions ────────────────────────────────────────────────────────────
+
+export type ExceptionStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface Exception {
+  id: string;
+  orgId: string;
+  userId: string;
+  controlCode: string;
+  standardCode?: string;
+  frameworkId: string;
+  title: string;
+  statement: string;
+  justification: string;
+  ownerId: string;
+  compensatingControls?: string;
+  status: ExceptionStatus;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExceptionInput {
+  controlCode: string;
+  standardCode?: string;
+  frameworkId: string;
+  title: string;
+  statement: string;
+  justification: string;
+  ownerId: string;
+  compensatingControls?: string;
+  expiresAt?: string;
+}
+
+export interface ExceptionPatch {
+  title?: string;
+  statement?: string;
+  justification?: string;
+  ownerId?: string;
+  compensatingControls?: string;
+  expiresAt?: string | null;
+}
+
+// ─── Issues ────────────────────────────────────────────────────────────────
+
+export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
+export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'wont_fix';
+export type IssueSource = 'manual' | 'gap_analysis' | 'vendor_risk';
+
+export interface Issue {
+  id: string;
+  orgId: string;
+  userId: string;
+  title: string;
+  description: string;
+  severity: IssueSeverity;
+  reporterId: string | null;
+  ownerId: string | null;
+  affectedAssets?: string;
+  status: IssueStatus;
+  source: IssueSource;
+  sourceId: string | null;
+  dueDate: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IssueInput {
+  title: string;
+  description: string;
+  severity: IssueSeverity;
+  reporterId: string;
+  ownerId: string;
+  affectedAssets?: string;
+  source?: IssueSource;
+  sourceId?: string;
+  dueDate?: string;
+}
+
+export interface IssuePatch {
+  title?: string;
+  description?: string;
+  severity?: IssueSeverity;
+  reporterId?: string;
+  ownerId?: string;
+  affectedAssets?: string;
+  status?: IssueStatus;
+  dueDate?: string | null;
+  resolvedAt?: string | null;
+}
+
+// ─── Assets ────────────────────────────────────────────────────────────────
+
+export type AssetType = 'service' | 'application' | 'infrastructure' | 'data' | 'device' | 'other';
+export type AssetCriticality = 'critical' | 'high' | 'medium' | 'low';
+
+export interface Asset {
+  id: string;
+  orgId: string;
+  userId: string;
+  name: string;
+  type: AssetType;
+  criticality: AssetCriticality;
+  description: string;
+  owner: string;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AssetInput {
+  name: string;
+  type: AssetType;
+  criticality: AssetCriticality;
+  description: string;
+  owner: string;
+  tags?: string[];
+}
+
+export interface AssetPatch {
+  name?: string;
+  type?: AssetType;
+  criticality?: AssetCriticality;
+  description?: string;
+  owner?: string;
+  tags?: string[];
+}
+
+// ─── Risks ─────────────────────────────────────────────────────────────────
+
+export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
+export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
+export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
+
+export interface Risk {
+  id: string;
+  orgId: string;
+  userId: string;
+  title: string;
+  description: string;
+  category: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  riskScore: number;
+  treatment: RiskTreatment;
+  assetId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskInput {
+  title: string;
+  description: string;
+  category: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  treatment?: RiskTreatment;
+  assetId?: string;
+}
+
+export interface RiskPatch {
+  title?: string;
+  description?: string;
+  category?: string;
+  likelihood?: RiskLikelihood;
+  impact?: RiskImpact;
+  treatment?: RiskTreatment;
+  assetId?: string | null;
+}
+
+// ─── Risk Assessments ──────────────────────────────────────────────────────
+
+export type AssessmentType = 'cvra' | 'ctra';
+export type AssessmentStatus = 'draft' | 'in_review' | 'completed';
+
+export interface RiskAssessment {
+  id: string;
+  orgId: string;
+  userId: string;
+  type: AssessmentType;
+  title: string;
+  scope: string;
+  status: AssessmentStatus;
+  riskScore: number;
+  itemCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskAssessmentInput {
+  type: AssessmentType;
+  title: string;
+  scope: string;
+}
+
+export interface RiskAssessmentPatch {
+  title?: string;
+  scope?: string;
+  status?: AssessmentStatus;
+}
+
+export interface RiskAssessmentItem {
+  id: string;
+  assessmentId: string;
+  subject: string;
+  description: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  itemScore: number;
+  mitigations: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskAssessmentItemInput {
+  subject: string;
+  description: string;
+  likelihood: RiskLikelihood;
+  impact: RiskImpact;
+  mitigations?: string;
+}
+
+export interface RiskAssessmentItemPatch {
+  subject?: string;
+  description?: string;
+  likelihood?: RiskLikelihood;
+  impact?: RiskImpact;
+  mitigations?: string;
+}
+
+// ─── Policies ──────────────────────────────────────────────────────────────
+
+export type PolicyStatus = 'draft' | 'approved';
+
+export interface Policy {
+  id: string;
+  orgId: string;
+  userId: string;
+  frameworkId: string;
+  title: string;
+  content: string;
+  status: PolicyStatus;
+  version: number;
+  templateId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PolicyInput {
+  frameworkId: string;
+  title: string;
+  content: string;
+  templateId?: string;
+}
+
+export interface PolicyPatch {
+  title?: string;
+  content?: string;
+  status?: PolicyStatus;
+}
+
+// ─── Policy Templates ──────────────────────────────────────────────────────
+
+export interface PolicyTemplate {
+  id: string;
+  frameworkId: string;
+  title: string;
+  content: string;
+  createdAt: string;
+}
+
+// ─── Controls ↔ Policies mapping ───────────────────────────────────────────
+
+export interface PolicyControl {
+  id: string;
+  policyId: string;
+  controlCode: string;
+  frameworkId: string;
+  createdAt: string;
+}
+
+export interface PolicyControlInput {
+  controlCode: string;
+  frameworkId: string;
 }
 
 export interface AiUsageLogEntry {
@@ -176,6 +461,7 @@ export interface NotesStrategy {
   listFrameworks(): Promise<Framework[]>;
   getFramework(id: string): Promise<Framework | null>;
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]>;
+  listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]>;
 
   listOrganizations(userId: string): Promise<Organization[]>;
   createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
@@ -188,14 +474,14 @@ export interface NotesStrategy {
     orgId: string,
     frameworkIds: string[],
   ): Promise<{ id: string }>;
-  saveStandardsDocument(id: string, controls: StandardControl[]): Promise<void>;
+  saveStandardsDocument(id: string, standards: DocumentStandard[]): Promise<void>;
   failStandardsDocument(id: string, reason?: string): Promise<void>;
   deleteStandardsDocument(id: string): Promise<void>;
   resetStandardsDocument(id: string): Promise<void>;
   getStandardsDocument(id: string): Promise<StandardsDocument | null>;
   listStandardsDocuments(orgId: string): Promise<StandardsDocument[]>;
 
-  updateControl(docId: string, code: string, patch: ControlPatch): Promise<StandardControl>;
+  updateStandard(docId: string, code: string, patch: StandardPatch): Promise<DocumentStandard>;
 
   transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument>;
 
@@ -262,6 +548,81 @@ export interface NotesStrategy {
     userId: string,
     patch: Partial<RetentionPrefsPayload>,
   ): Promise<RetentionPrefsPayload>;
+
+  // Report templates
+  listReportTemplates(): Promise<ReportTemplate[]>;
+  createReportTemplate(userId: string, input: ReportTemplateInput): Promise<ReportTemplate>;
+  updateReportTemplate(id: string, patch: Partial<ReportTemplateInput>): Promise<ReportTemplate>;
+  deleteReportTemplate(id: string): Promise<{ ok: boolean }>;
+  addTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
+  removeTemplateFavorite(id: string, orgId: string): Promise<ReportTemplate>;
+
+  // Exceptions
+  listExceptions(orgId: string): Promise<Exception[]>;
+  createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception>;
+  getException(id: string): Promise<Exception | null>;
+  updateException(id: string, patch: ExceptionPatch): Promise<Exception>;
+  approveException(id: string): Promise<Exception>;
+  rejectException(id: string): Promise<Exception>;
+  deleteException(id: string): Promise<void>;
+
+  // Issues
+  listIssues(orgId: string): Promise<Issue[]>;
+  createIssue(orgId: string, userId: string, data: IssueInput): Promise<Issue>;
+  getIssue(id: string): Promise<Issue | null>;
+  updateIssue(id: string, patch: IssuePatch): Promise<Issue>;
+  deleteIssue(id: string): Promise<void>;
+
+  // Assets
+  listAssets(orgId: string): Promise<Asset[]>;
+  createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset>;
+  getAsset(id: string): Promise<Asset | null>;
+  updateAsset(id: string, patch: AssetPatch): Promise<Asset>;
+  deleteAsset(id: string): Promise<void>;
+
+  // Risks
+  listRisks(orgId: string): Promise<Risk[]>;
+  createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk>;
+  getRisk(id: string): Promise<Risk | null>;
+  updateRisk(id: string, patch: RiskPatch): Promise<Risk>;
+  deleteRisk(id: string): Promise<void>;
+
+  // Risk Assessments
+  listAssessments(orgId: string): Promise<RiskAssessment[]>;
+  createAssessment(
+    orgId: string,
+    userId: string,
+    data: RiskAssessmentInput,
+  ): Promise<RiskAssessment>;
+  getAssessment(id: string): Promise<RiskAssessment | null>;
+  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment>;
+  deleteAssessment(id: string): Promise<void>;
+
+  // Assessment items
+  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]>;
+  addAssessmentItem(
+    assessmentId: string,
+    data: RiskAssessmentItemInput,
+  ): Promise<RiskAssessmentItem>;
+  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem>;
+  deleteAssessmentItem(id: string): Promise<void>;
+
+  // Policies
+  listPolicies(orgId: string): Promise<Policy[]>;
+  createPolicy(orgId: string, userId: string, data: PolicyInput): Promise<Policy>;
+  getPolicy(id: string): Promise<Policy | null>;
+  updatePolicy(id: string, patch: PolicyPatch): Promise<Policy>;
+  deletePolicy(id: string): Promise<void>;
+  cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy>;
+
+  // Policy templates (platform-wide seed data)
+  listPolicyTemplates(frameworkId?: string): Promise<PolicyTemplate[]>;
+
+  // Controls ↔ Policies
+  listPolicyControls(policyId: string): Promise<PolicyControl[]>;
+  addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl>;
+  removePolicyControl(id: string): Promise<void>;
+  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
@@ -390,6 +751,39 @@ export interface Webhook {
 export interface WebhookInput {
   url: string;
   events: WebhookEvent[];
+}
+
+// ─── Report templates ──────────────────────────────────────────────────────
+
+export type ReportTemplateScope = 'gap' | 'standards' | 'all';
+
+export interface ReportTemplate {
+  id: string;
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  // Orgs that favorited (assigned) this global template — surfaced first in the
+  // export menu for the matching org.
+  favoriteOrgIds: string[];
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface ReportTemplateInput {
+  name: string;
+  scope: ReportTemplateScope;
+  brandName: string;
+  accentColor: string;
+  includeSummary: boolean;
+  includeDetails: boolean;
+  includeRecommendations: boolean;
+  footerNote: string;
+  favoriteOrgIds: string[];
 }
 
 export interface RetentionPrefsPayload {

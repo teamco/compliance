@@ -16,6 +16,12 @@ import {
   PanelLeftOpen,
   Building2,
   ScrollText,
+  ShieldAlert,
+  Bug,
+  Server,
+  AlertTriangle,
+  ClipboardList,
+  FileText,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -32,11 +38,19 @@ type NavKey =
   | 'nav.standards'
   | 'nav.controls'
   | 'nav.gapAnalysis'
+  | 'nav.vendors'
   | 'nav.aiUsage'
   | 'nav.users'
+  | 'nav.exceptions'
+  | 'nav.issues'
   | 'nav.sectionPlatform'
   | 'nav.sectionCompliance'
-  | 'nav.sectionAdmin';
+  | 'nav.sectionRisk'
+  | 'nav.sectionAdmin'
+  | 'nav.assets'
+  | 'nav.risks'
+  | 'nav.assessments'
+  | 'nav.policies';
 
 interface NavItem {
   labelKey: NavKey;
@@ -67,6 +81,18 @@ const NAV: NavSection[] = [
       { labelKey: 'nav.standards', to: '/standards', icon: ScrollText },
       { labelKey: 'nav.controls', to: '/controls', icon: Shield },
       { labelKey: 'nav.gapAnalysis', to: '/gap-analysis', icon: GitMerge },
+      { labelKey: 'nav.exceptions', to: '/exceptions', icon: ShieldAlert },
+      { labelKey: 'nav.issues', to: '/issues', icon: Bug },
+      { labelKey: 'nav.policies', to: '/policies', icon: FileText },
+    ],
+  },
+  {
+    titleKey: 'nav.sectionRisk',
+    items: [
+      { labelKey: 'nav.vendors', to: '/vendors', icon: Shield },
+      { labelKey: 'nav.assets', to: '/assets', icon: Server },
+      { labelKey: 'nav.risks', to: '/risks', icon: AlertTriangle },
+      { labelKey: 'nav.assessments', to: '/assessments', icon: ClipboardList },
     ],
   },
   {

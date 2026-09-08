@@ -59,9 +59,10 @@ function ControlsPage() {
 
   const coverageCount = useMemo(() => {
     if (!doc) return 0;
-    return doc.controls.filter((c) =>
-      selectedFrameworks.length > 0 &&
-      selectedFrameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
+    return doc.standards.filter(
+      (c) =>
+        selectedFrameworks.length > 0 &&
+        selectedFrameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
     ).length;
   }, [doc, selectedFrameworks]);
 
@@ -136,7 +137,7 @@ function ControlsPage() {
           <span className="ml-auto text-xs text-muted-foreground">
             <span className="font-semibold text-foreground">{coverageCount}</span>
             {' / '}
-            <span className="font-semibold text-foreground">{doc.controls.length}</span>{' '}
+            <span className="font-semibold text-foreground">{doc.standards.length}</span>{' '}
             {t('controls.controlsMapped')}
           </span>
         )}
@@ -158,7 +159,7 @@ function ControlsPage() {
         </div>
       ) : (
         <ControlsTable
-          controls={doc.controls}
+          controls={doc.standards}
           frameworks={selectedFrameworks}
           showGapsOnly={showGapsOnly}
         />

@@ -1,9 +1,9 @@
 import { join } from 'node:path';
-import { Module, Logger } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { SupabaseAuthStrategy } from '@icore/auth-supabase';
-import { FakeAuthStrategy, missingEnv, formatEnvBanner } from '@icore/shared';
+import { FakeAuthStrategy, buildStrategyWithFallback } from '@icore/shared';
 import type { AuthStrategy } from '@icore/shared';
 import { AuthController } from './auth.controller';
 
@@ -24,7 +24,8 @@ function makeSupabaseAuth(cfg: ConfigService): AuthStrategy {
     requireEnv(cfg, 'SUPABASE_SERVICE_ROLE_KEY'),
     { auth: { autoRefreshToken: false, persistSession: false } },
   );
-  return new SupabaseAuthStrategy({ client });
+  const siteUrl = cfg.get<string>('CLIENT_ORIGIN');
+  return new SupabaseAuthStrategy({ client, siteUrl });
 }
 
 @Module({
@@ -42,34 +43,29 @@ function makeSupabaseAuth(cfg: ConfigService): AuthStrategy {
     {
       provide: 'AuthStrategy',
       useFactory: (cfg: ConfigService): AuthStrategy => {
-        const logger = new Logger('AuthStrategy');
         const provider = cfg.get<string>('AUTH_PROVIDER')?.trim();
         const keys = provider ? REQUIRED_ENV[provider] : undefined;
-        const missing = keys ? missingEnv((k) => cfg.get<string>(k), keys) : [];
 
         // Prod: fail fast — never silently run a fake auth strategy.
         // Dev: warn with a boxed banner + fall back to the in-memory fake.
-        const fallback = (reason?: string): AuthStrategy => {
-          const banner = formatEnvBanner({
-            service: 'auth MS',
-            provider,
-            missing,
-            envPath: ENV_PATH,
-            reason,
-          });
-          if (process.env.NODE_ENV === 'production') throw new Error(banner);
-          logger.warn(banner);
-          return new FakeAuthStrategy();
-        };
-
-        if (!keys || missing.length > 0) return fallback();
-
-        try {
-          return makeSupabaseAuth(cfg);
-        } catch (err) {
-          // Vars present but invalid (e.g. placeholder URL the SDK rejects).
-          return fallback(err instanceof Error ? err.message : String(err));
-        }
+        return buildStrategyWithFallback<AuthStrategy>({
+          service: 'auth MS',
+          provider: provider ?? '',
+          requiredEnv: keys ?? [],
+          cfg: { get: (k) => cfg.get<string>(k) },
+          envPath: ENV_PATH,
+          build: () => {
+            if (!keys) {
+              throw new Error(
+                provider ? `Unknown AUTH_PROVIDER: "${provider}"` : 'Provider env var is not set.',
+              );
+            }
+            // Vars present but invalid (e.g. placeholder URL the SDK rejects)
+            // still throw here and land in the fallback via buildStrategyWithFallback.
+            return makeSupabaseAuth(cfg);
+          },
+          fake: () => new FakeAuthStrategy(),
+        });
       },
       inject: [ConfigService],
     },

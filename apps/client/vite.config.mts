@@ -4,8 +4,6 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin';
-import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin';
 import {
   apiInfoPlugin,
   commonDefines,
@@ -30,6 +28,7 @@ function depVersion(name: string): string {
 export default defineConfig(() => ({
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/client',
+  resolve: { tsconfigPaths: true },
   server: commonServer(4200),
   preview: {
     port: 4200,
@@ -47,15 +46,13 @@ export default defineConfig(() => ({
     }),
     react(),
     tailwindcss(),
-    nxViteTsPaths(),
-    nxCopyAssetsPlugin(['*.md']),
     noServerModulesPlugin(),
     apiInfoPlugin(),
     injectAppVersionPlugin(rootPackageJson),
   ],
   // Uncomment this if you are using workers.
   // worker: {
-  //   plugins: () => [ nxViteTsPaths() ],
+  //   plugins: () => [],
   // },
   build: {
     outDir: '../../dist/apps/client',
