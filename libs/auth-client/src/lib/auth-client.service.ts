@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom } from 'rxjs';
+import { signedSend } from '@icore/shared';
 import type {
   AuthSession,
   OAuthProvider,
@@ -15,23 +15,23 @@ export class AuthClientService {
   constructor(@Inject(AUTH_CLIENT) private readonly client: ClientProxy) {}
 
   verify(token: string): Promise<VerifiedToken> {
-    return firstValueFrom(this.client.send<VerifiedToken>('auth.verify', { token }));
+    return signedSend<VerifiedToken>(this.client, 'auth.verify', { token });
   }
 
   login(email: string, password: string): Promise<AuthSession> {
-    return firstValueFrom(this.client.send<AuthSession>('auth.login', { email, password }));
+    return signedSend<AuthSession>(this.client, 'auth.login', { email, password });
   }
 
   signup(email: string, password: string): Promise<AuthSession> {
-    return firstValueFrom(this.client.send<AuthSession>('auth.signup', { email, password }));
+    return signedSend<AuthSession>(this.client, 'auth.signup', { email, password });
   }
 
   refresh(refreshToken: string): Promise<AuthSession> {
-    return firstValueFrom(this.client.send<AuthSession>('auth.refresh', { refreshToken }));
+    return signedSend<AuthSession>(this.client, 'auth.refresh', { refreshToken });
   }
 
   setRole(uid: string, role: string): Promise<void> {
-    return firstValueFrom(this.client.send<{ ok: boolean }>('auth.setRole', { uid, role })).then(
+    return signedSend<{ ok: boolean }>(this.client, 'auth.setRole', { uid, role }).then(
       () => undefined,
     );
   }
@@ -42,9 +42,12 @@ export class AuthClientService {
     displayName?: string,
     avatarUrl?: string,
   ): Promise<string> {
-    return firstValueFrom(
-      this.client.send<string>('auth.ensureRole', { uid, email, displayName, avatarUrl }),
-    );
+    return signedSend<string>(this.client, 'auth.ensureRole', {
+      uid,
+      email,
+      displayName,
+      avatarUrl,
+    });
   }
 
   getProfile(uid: string): Promise<{
@@ -54,46 +57,42 @@ export class AuthClientService {
     email?: string;
     lastSignedIn?: string;
   } | null> {
-    return firstValueFrom(
-      this.client.send<{
-        displayName?: string;
-        avatarUrl?: string;
-        role?: string;
-        email?: string;
-        lastSignedIn?: string;
-      } | null>('auth.profile.get', { uid }),
-    );
+    return signedSend<{
+      displayName?: string;
+      avatarUrl?: string;
+      role?: string;
+      email?: string;
+      lastSignedIn?: string;
+    } | null>(this.client, 'auth.profile.get', { uid });
   }
 
   listOrgMembers(orgId: string): Promise<OrgMember[]> {
-    return firstValueFrom(this.client.send<OrgMember[]>('auth.org.members.list', { orgId }));
+    return signedSend<OrgMember[]>(this.client, 'auth.org.members.list', { orgId });
   }
 
   updateProfile(uid: string, displayName: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('auth.profile.update', { uid, displayName }),
-    ).then(() => undefined);
+    return signedSend<{ ok: boolean }>(this.client, 'auth.profile.update', {
+      uid,
+      displayName,
+    }).then(() => undefined);
   }
 
   sendMagicLink(email: string, callbackUrl: string): Promise<void> {
-    return firstValueFrom(
-      this.client.send<{ ok: boolean }>('auth.magicLink.send', { email, callbackUrl }),
-    ).then(() => undefined);
+    return signedSend<{ ok: boolean }>(this.client, 'auth.magicLink.send', {
+      email,
+      callbackUrl,
+    }).then(() => undefined);
   }
 
   verifyMagicLink(token: string): Promise<AuthSession> {
-    return firstValueFrom(this.client.send<AuthSession>('auth.magicLink.verify', { token }));
+    return signedSend<AuthSession>(this.client, 'auth.magicLink.verify', { token });
   }
 
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult> {
-    return firstValueFrom(
-      this.client.send<OAuthStartResult>('auth.oauth.start', { provider, callbackUrl }),
-    );
+    return signedSend<OAuthStartResult>(this.client, 'auth.oauth.start', { provider, callbackUrl });
   }
 
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession> {
-    return firstValueFrom(
-      this.client.send<AuthSession>('auth.oauth.complete', { provider, code, state }),
-    );
+    return signedSend<AuthSession>(this.client, 'auth.oauth.complete', { provider, code, state });
   }
 }
