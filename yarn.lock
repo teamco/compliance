@@ -1967,7 +1967,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@icore/ai-anthropic@workspace:libs/ai-strategies/anthropic"
   dependencies:
-    "@anthropic-ai/sdk": "npm:^0.124.0"
     "@icore/shared": "npm:*"
     "@idevconn/llm-router": "npm:^0.12.0"
     "@nestjs/common": "npm:^11.2.3"
@@ -2068,7 +2067,7 @@ __metadata:
     "@casl/react": "npm:^7.0.1"
     "@icore/shared": "npm:*"
     "@idevconn/api-client": "npm:^0.3.2"
-    "@idevconn/use-draft": "npm:^0.2.2"
+    "@idevconn/use-draft": "npm:^0.2.3"
     i18next: "npm:^26.4.2"
     react-i18next: "npm:^17.0.13"
     tslib: "npm:^2.8.1"
@@ -2146,13 +2145,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@idevconn/isubscribe-widget-react@npm:^2.5.1":
-  version: 2.5.1
-  resolution: "@idevconn/isubscribe-widget-react@npm:2.5.1"
+"@idevconn/isubscribe-widget-react@npm:^2.5.2":
+  version: 2.5.2
+  resolution: "@idevconn/isubscribe-widget-react@npm:2.5.2"
   peerDependencies:
     react: ">=18.x"
     react-dom: ">=18.x"
-  checksum: 10c0/3781cce905940c5942a394fc421b3f6d60b628badb624c06dfa62be53848795478b20ad7374ac4c587400082d6be5768f335aad53b470c1f52c2ee9a89cf67d1
+  checksum: 10c0/a5830950357a5960d1cdca00c1aadc242aa5d4e0fc74fa4313a34f5ca89f6e600effaf9df04169422c89d303fc87040067f6b3ae947084ff88bbb213d0d3738b
   languageName: node
   linkType: hard
 
@@ -2191,14 +2190,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@idevconn/use-draft@npm:^0.2.2":
-  version: 0.2.2
-  resolution: "@idevconn/use-draft@npm:0.2.2"
+"@idevconn/use-draft@npm:^0.2.3":
+  version: 0.2.3
+  resolution: "@idevconn/use-draft@npm:0.2.3"
   peerDependencies:
     "@tanstack/react-router": ">=1.100.0"
     react: ">=18.0.0"
     zustand: ">=4.0.0"
-  checksum: 10c0/2d9be7dffd7330a8a15174321a56cb0f1726bd5a83c63ddf99299f7ebe981e0870f2c669b1fe324bc4702c8a75caf08e5668382fe09145688cf2fda23126b513
+  checksum: 10c0/55798aefa4e7633eada23bd0a1f1c7c7cd1b462169aee1b685cd0c10d98fe5739a430c73bd3a51342af73ae4543a5ebd08a2f7b14e8002457927bb03df9caa18
   languageName: node
   linkType: hard
 
@@ -9665,8 +9664,8 @@ __metadata:
     "@icore/vite-plugins": "workspace:*"
     "@idevconn/ai-usage": "npm:^0.4.0"
     "@idevconn/api-client": "npm:^0.3.2"
-    "@idevconn/isubscribe-widget-react": "npm:^2.5.1"
-    "@idevconn/use-draft": "npm:^0.2.2"
+    "@idevconn/isubscribe-widget-react": "npm:^2.5.2"
+    "@idevconn/use-draft": "npm:^0.2.3"
     "@nestjs/common": "npm:^11.2.3"
     "@nestjs/config": "npm:^4.0.4"
     "@nestjs/core": "npm:^11.2.3"
@@ -9742,7 +9741,7 @@ __metadata:
     jsdom: "npm:~30.0.1"
     jsonc-eslint-parser: "npm:^3.3.0"
     lint-staged: "npm:^17.5.0"
-    lucide-react: "npm:^1.42.0"
+    lucide-react: "npm:^1.43.0"
     nx: "npm:23.2.0"
     pg-boss: "npm:^12.30.0"
     prettier: "npm:~3.9.6"
@@ -15241,12 +15240,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lucide-react@npm:^1.42.0":
-  version: 1.42.0
-  resolution: "lucide-react@npm:1.42.0"
+"lucide-react@npm:^1.43.0":
+  version: 1.43.0
+  resolution: "lucide-react@npm:1.43.0"
   peerDependencies:
     react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
-  checksum: 10c0/3d6ed3416e85937fc15fda2af926a3505bb0205038fdadf48beb43b4c6546a85f8d24fda3a4431acd78cdc1028075a8c75b86fbe495d40b46a8e812f245922d5
+  checksum: 10c0/58619588b6e0ce44d0188d7b0021b3e85e2fd473fbc1b1ef9b6de6f9519eb46b359354747137da26ce215f5efa9435f8b9d8e20c29d4d24471f17de076cb5f79
   languageName: node
   linkType: hard
 
