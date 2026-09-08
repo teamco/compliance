@@ -8,7 +8,7 @@
   "peerDependencies": {
     "tslib": "^2.3.0",
     "vite": "^8.0.0",
-    "vitest": "~4.1.0"
+    "vitest": "~5.0.0"
   },
   "peerDependenciesMeta": {
     "vite": {
