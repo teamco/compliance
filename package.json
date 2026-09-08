@@ -102,7 +102,7 @@
     "@anthropic-ai/sdk": "^0.124.0",
     "@casl/ability": "^7.0.1",
     "@casl/react": "^7.0.1",
-    "@idevconn/ai-usage": "^0.3.0",
+    "@idevconn/ai-usage": "^0.4.0",
     "@idevconn/api-client": "^0.3.2",
     "@idevconn/isubscribe-widget-react": "^2.5.1",
     "@idevconn/use-draft": "^0.2.2",
