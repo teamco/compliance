@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ClientProxy } from '@nestjs/microservices';
-import { firstValueFrom, timeout } from 'rxjs';
+import { CircuitBreaker, signedSend, type ComposeResilienceOpts } from '@icore/shared';
 import type {
   ChatContext,
   ChatMessage,
@@ -22,23 +22,47 @@ import { AI_CLIENT } from './ai-client.tokens';
 const CHAT_TIMEOUT_MS = 90_000;
 const BATCH_TIMEOUT_MS = 180_000;
 
+// Retrying an in-flight LLM call risks double-spending tokens on a request
+// that already reached Anthropic, so only network-level failures — which by
+// definition happen before the AI MS could have started the call — are
+// retried. A timeout of an already-dispatched request is never retried.
+function isTransportError(err: unknown): boolean {
+  const code = (err as { code?: string } | undefined)?.code;
+  return code === 'ECONNREFUSED' || code === 'ECONNRESET' || code === 'EPIPE';
+}
+
 @Injectable()
 export class AiClientService {
+  // Shared across all four RPC patterns below — they hit the same downstream
+  // AI MS, so failures in one operation should open the breaker for all of
+  // them rather than tracking failure counts per-pattern.
+  private readonly breaker = new CircuitBreaker({ failureThreshold: 5, resetTimeoutMs: 30_000 });
+
   constructor(@Inject(AI_CLIENT) private readonly client: ClientProxy) {}
 
+  private resilience(ms: number): ComposeResilienceOpts {
+    return {
+      timeout: { ms },
+      retry: { maxAttempts: 2, baseDelayMs: 500, isRetryable: isTransportError },
+      circuitBreaker: this.breaker,
+    };
+  }
+
   chat(messages: ChatMessage[], context: ChatContext): Promise<ChatResult> {
-    return firstValueFrom(
-      this.client
-        .send<ChatResult>('ai.chat', { messages, context })
-        .pipe(timeout({ each: CHAT_TIMEOUT_MS })),
+    return signedSend<ChatResult>(
+      this.client,
+      'ai.chat',
+      { messages, context },
+      this.resilience(CHAT_TIMEOUT_MS),
     );
   }
 
   generateStandards(orgProfile: OrgProfile, frameworkIds: string[]): Promise<StandardsResult[]> {
-    return firstValueFrom(
-      this.client
-        .send<StandardsResult[]>('ai.standards.generate', { orgProfile, frameworkIds })
-        .pipe(timeout({ each: BATCH_TIMEOUT_MS })),
+    return signedSend<StandardsResult[]>(
+      this.client,
+      'ai.standards.generate',
+      { orgProfile, frameworkIds },
+      this.resilience(BATCH_TIMEOUT_MS),
     );
   }
 
@@ -46,18 +70,20 @@ export class AiClientService {
     standards: GeneratedStandard[],
     findings: ControlFinding[],
   ): Promise<GapAnalysisResult> {
-    return firstValueFrom(
-      this.client
-        .send<GapAnalysisResult>('ai.gap.analyze', { standards, findings })
-        .pipe(timeout({ each: BATCH_TIMEOUT_MS })),
+    return signedSend<GapAnalysisResult>(
+      this.client,
+      'ai.gap.analyze',
+      { standards, findings },
+      this.resilience(BATCH_TIMEOUT_MS),
     );
   }
 
   analyzeVendorPosture(input: VendorPostureInput): Promise<VendorPostureResult> {
-    return firstValueFrom(
-      this.client
-        .send<VendorPostureResult>('vendor.posture.analyze', input)
-        .pipe(timeout({ each: BATCH_TIMEOUT_MS })),
+    return signedSend<VendorPostureResult>(
+      this.client,
+      'vendor.posture.analyze',
+      input,
+      this.resilience(BATCH_TIMEOUT_MS),
     );
   }
 }
