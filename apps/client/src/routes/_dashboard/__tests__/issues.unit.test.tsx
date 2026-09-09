@@ -55,7 +55,7 @@ describe('IssuesPage — New Issue dialog', () => {
   });
 
   it('renders all 6 fields in order when the dialog opens', async () => {
-    const { IssuesPage } = await import('../issues');
+    const { IssuesPage } = await import('../-issues.page');
     render(wrap(<IssuesPage />));
     fireEvent.click(screen.getByText('New Issue'));
 
@@ -73,7 +73,7 @@ describe('IssuesPage — New Issue dialog', () => {
   });
 
   it('does not submit without a Reporter and Owner selected', async () => {
-    const { IssuesPage } = await import('../issues');
+    const { IssuesPage } = await import('../-issues.page');
     render(wrap(<IssuesPage />));
     fireEvent.click(screen.getByText('New Issue'));
 
