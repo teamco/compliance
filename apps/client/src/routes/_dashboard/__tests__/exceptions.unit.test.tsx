@@ -113,7 +113,7 @@ describe('ExceptionsPage — New Exception dialog', () => {
   });
 
   it('renders all 8 fields in order when the dialog opens', async () => {
-    const { ExceptionsPage } = await import('../exceptions');
+    const { ExceptionsPage } = await import('../-exceptions.page');
     render(wrap(<ExceptionsPage />));
     fireEvent.click(screen.getByText('New Exception'));
 
@@ -133,7 +133,7 @@ describe('ExceptionsPage — New Exception dialog', () => {
   });
 
   it('resets Standard and Control code comboboxes when Framework changes', async () => {
-    const { ExceptionsPage } = await import('../exceptions');
+    const { ExceptionsPage } = await import('../-exceptions.page');
     render(wrap(<ExceptionsPage />));
     fireEvent.click(screen.getByText('New Exception'));
 

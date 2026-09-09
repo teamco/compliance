@@ -54,7 +54,7 @@ describe('VendorsPage — Add Vendor dialog', () => {
   });
 
   it('shows a Contract Owner combobox after the Name/Domain inputs', async () => {
-    const { VendorsPage } = await import('../vendors');
+    const { VendorsPage } = await import('../-vendors.page');
     render(wrap(<VendorsPage />));
     fireEvent.click(screen.getByText('Add Vendor'));
 
@@ -64,7 +64,7 @@ describe('VendorsPage — Add Vendor dialog', () => {
   });
 
   it('does not submit without a Contract Owner selected', async () => {
-    const { VendorsPage } = await import('../vendors');
+    const { VendorsPage } = await import('../-vendors.page');
     render(wrap(<VendorsPage />));
     fireEvent.click(screen.getByText('Add Vendor'));
 
