@@ -1,4 +1,4 @@
-name: "Pipeline"
+name: 'Pipeline'
 
 on:
   push:
@@ -19,7 +19,7 @@ jobs:
   # 0. DETECT AFFECTED — which Nx projects changed
   # ---------------------------------------------------------
   detect-affected:
-    name: "Detect Affected Projects"
+    name: 'Detect Affected Projects'
     runs-on: ubuntu-latest
     outputs:
       projects: ${{ steps.affected.outputs.projects }}
@@ -56,14 +56,14 @@ jobs:
   # 1. CHECK — lint, test, format:check (all projects, incl. client)
   # ---------------------------------------------------------
   check:
-    name: "Check ${{ matrix.task }}"
+    name: 'Check ${{ matrix.task }}'
     needs: [detect-affected]
     if: needs.detect-affected.outputs.has-affected == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, test, "format:check"]
+        task: [lint, test, 'format:check']
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
@@ -74,7 +74,7 @@ jobs:
   # 2. BUILD — compile each buildable app
   # ---------------------------------------------------------
   build:
-    name: "Build ${{ matrix.project }}"
+    name: 'Build ${{ matrix.project }}'
     needs: [check, detect-affected]
     if: |
       always() && !cancelled() &&
@@ -107,7 +107,7 @@ jobs:
   #     Make THIS the only required check in branch rulesets.
   # ---------------------------------------------------------
   required-checks:
-    name: "Required CI checks"
+    name: 'Required CI checks'
     needs: [check, build]
     if: always()
     runs-on: ubuntu-latest
@@ -129,7 +129,7 @@ jobs:
   #    No-op when local migrations already match remote.
   # ---------------------------------------------------------
   db-migrate:
-    name: "Supabase db push"
+    name: 'Supabase db push'
     needs: [build]
     if: |
       always() && !cancelled() &&
@@ -142,7 +142,7 @@ jobs:
           fetch-depth: 1
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.117.0
       - name: Link to Supabase project
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -160,13 +160,16 @@ jobs:
   #    Push to main only, after build passes.
   # ---------------------------------------------------------
   release:
-    name: "Release"
+    name: 'Release'
     needs: [build]
     if: |
       always() && !cancelled() &&
       github.event_name == 'push' && github.ref == 'refs/heads/main' &&
       needs.build.result != 'failure'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     outputs:
       tag: ${{ steps.release_management.outputs.tag }}
       bump_type: ${{ steps.release_management.outputs.bump_type }}
