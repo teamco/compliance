@@ -112,7 +112,8 @@ export const ru = {
   },
   frameworks: {
     title: 'Фреймворки соответствия',
-    subtitle: 'Авторитетная библиотека стандартов регуляторов и фреймворков управления контролями',
+    subtitle:
+      'Управление фреймворками соответствия, требованиями, маппингами и организационным охватом',
     all: 'Все категории',
     controlCount: '{{count}} контролей',
     loading: 'Загрузка фреймворков…',
@@ -147,9 +148,19 @@ export const ru = {
     tabEvidence: 'Свидетельства',
     tabDocuments: 'Документы',
     tabActivity: 'Активность',
+    crossFrameworkTitle: 'Гармонизация требований между фреймворками',
+    crossFrameworkDesc:
+      'Прямой маппинг между стандартами обеспечивает единую реализацию и сквозной аудит.',
+    internalControlsCoverage: 'Единая система контролей (Охват внутренних контролей)',
+    internalControlsCoverageDesc:
+      'Внутренние контроли закрывают требования сразу нескольких фреймворков (напр. NIST, ISO, SOC 2 / AICPA TSC), исключая дублирование проверок.',
+    coverageBenefitBadge:
+      'Внедрение {{code}} повышает охват сразу в {{frameworkCount}} фреймворках и {{requirementCount}} требованиях',
+    mappedRequirementsTitle: 'Связанные требования стандартов',
     category: {
       security: 'Безопасность',
       privacy: 'Конфиденциальность',
+      regulatory: 'Регуляторный',
       cloud: 'Облако',
       risk: 'Риск',
     },

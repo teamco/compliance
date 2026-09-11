@@ -286,6 +286,56 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
     expect(screen.getByText('FIND-2026-0042')).toBeDefined();
   });
 
+  it('renders cross-framework mapped external requirements and control coverage benefits', () => {
+    const reqWithMappings: FrameworkRequirement = {
+      ...mockReq,
+      crossFrameworkMappings: [
+        {
+          targetFrameworkId: 'iso-id',
+          targetFrameworkName: 'ISO/IEC 27001:2022',
+          targetRequirementCode: 'A.5.15',
+          targetRequirementTitle: 'Access Control',
+          mappingType: 'equivalent',
+        },
+      ],
+    };
+
+    const controlsWithBenefit = [
+      {
+        ...mockControls[0],
+        coverageBenefit:
+          'Implementing POL-001 improves coverage across 3 frameworks and 3 requirements.',
+      },
+    ];
+
+    render(
+      wrap(
+        <RequirementDrawer
+          framework={mockFramework}
+          requirement={reqWithMappings}
+          internalControls={controlsWithBenefit}
+          evidenceList={mockEvidence}
+          assessmentsList={mockAssessments}
+          orgId="org1"
+          open={true}
+          onOpenChange={vi.fn()}
+        />,
+      ),
+    );
+
+    // Verify mapped external requirement in tab 1
+    expect(screen.getByText('Mapped External Requirements')).toBeDefined();
+    expect(screen.getByText(/A\.5\.15/)).toBeDefined();
+
+    // Verify control coverage benefit in tab 4
+    fireEvent.click(screen.getByText('4. Mapped Controls'));
+    expect(
+      screen.getByText(
+        'Implementing POL-001 improves coverage across 3 frameworks and 3 requirements.',
+      ),
+    ).toBeDefined();
+  });
+
   it('requires mandatory justification when Not Applicable is selected', () => {
     render(
       wrap(
@@ -404,5 +454,25 @@ describe('FrameworksPage (Add Framework Modal & Close Buttons)', () => {
       }),
       expect.any(Object),
     );
+  });
+
+  it('navigates to framework details when a framework card is clicked', () => {
+    render(wrap(<FrameworksPage />));
+
+    const card = screen.getByText('NIST CSF 2.0').closest('[role="button"]')!;
+    fireEvent.click(card);
+
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: '/frameworks/$id',
+      params: { id: '00000000-0000-0000-0000-000000000003' },
+    });
+  });
+
+  it('filters frameworks by category including regulatory', () => {
+    render(wrap(<FrameworksPage />));
+
+    // Verify Regulatory category tab exists
+    expect(screen.getByRole('button', { name: /Regulatory/i })).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: /Regulatory/i }));
   });
 });
