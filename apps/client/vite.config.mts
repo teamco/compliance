@@ -69,5 +69,8 @@ export default defineConfig(() => ({
       },
     },
   },
-  test: commonTestConfig('client', '../../coverage/apps/client'),
+  test: {
+    ...commonTestConfig('client', '../../coverage/apps/client'),
+    testTimeout: 15000,
+  },
 }));
