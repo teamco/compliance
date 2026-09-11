@@ -120,7 +120,7 @@ export const en = {
   },
   frameworks: {
     title: 'Compliance Frameworks',
-    subtitle: 'Authoritative library of regulatory standards and governance control frameworks',
+    subtitle: 'Manage compliance frameworks, requirements, mappings and organizational coverage',
     all: 'All Categories',
     controlCount: '{{count}} controls',
     loading: 'Loading frameworks…',
@@ -154,9 +154,19 @@ export const en = {
     tabEvidence: 'Evidence',
     tabDocuments: 'Documents',
     tabActivity: 'Activity',
+    crossFrameworkTitle: 'Cross-Framework Requirement Harmonization',
+    crossFrameworkDesc:
+      'Direct mappings between standards allow single-point implementation and unified compliance audits.',
+    internalControlsCoverage: 'Common Control Framework (Internal Controls Coverage)',
+    internalControlsCoverageDesc:
+      'Internal controls satisfy requirements across multiple frameworks simultaneously (e.g. NIST, ISO, SOC 2 / AICPA TSC), eliminating duplicate control testing.',
+    coverageBenefitBadge:
+      'Implementing {{code}} improves coverage across {{frameworkCount}} frameworks and {{requirementCount}} requirements',
+    mappedRequirementsTitle: 'Mapped Requirements across Frameworks',
     category: {
       security: 'Security',
       privacy: 'Privacy',
+      regulatory: 'Regulatory',
       cloud: 'Cloud',
       risk: 'Risk',
     },
