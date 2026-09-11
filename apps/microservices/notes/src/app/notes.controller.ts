@@ -10,6 +10,14 @@ import type {
   ExceptionPatch,
   Framework,
   FrameworkControl,
+  FrameworkRequirement,
+  FrameworkRequirementPatch,
+  InternalControl,
+  RequirementEvidence,
+  RequirementAssessment,
+  FrameworkActivity,
+  FrameworkInput,
+  FrameworkPatch,
   GapAnalysis,
   GapAnalysisResult,
   Issue,
@@ -46,13 +54,126 @@ export class NotesController {
   constructor(@Inject('NotesStrategy') private readonly strategy: NotesStrategy) {}
 
   @MessagePattern('notes.frameworks.list')
-  listFrameworks(): Promise<Framework[]> {
-    return this.strategy.listFrameworks();
+  listFrameworks(@Payload() payload?: { orgId?: string }): Promise<Framework[]> {
+    return this.strategy.listFrameworks(payload?.orgId);
   }
 
   @MessagePattern('notes.frameworks.get')
-  getFramework(@Payload() payload: { id: string }): Promise<Framework | null> {
-    return this.strategy.getFramework(payload.id);
+  getFramework(@Payload() payload: { id: string; orgId?: string }): Promise<Framework | null> {
+    return this.strategy.getFramework(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.create')
+  createFramework(
+    @Payload() payload: { orgId: string; input: FrameworkInput },
+  ): Promise<Framework> {
+    return this.strategy.createFramework(payload.orgId, payload.input);
+  }
+
+  @MessagePattern('notes.frameworks.update')
+  updateFramework(
+    @Payload() payload: { id: string; orgId: string; patch: FrameworkPatch },
+  ): Promise<Framework> {
+    return this.strategy.updateFramework(payload.id, payload.orgId, payload.patch);
+  }
+
+  @MessagePattern('notes.frameworks.delete')
+  deleteFramework(@Payload() payload: { id: string; orgId: string }): Promise<void> {
+    return this.strategy.deleteFramework(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.requirements.list')
+  listRequirements(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<FrameworkRequirement[]> {
+    return this.strategy.listRequirements(payload.frameworkId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.requirements.get')
+  getRequirement(
+    @Payload() payload: { frameworkId: string; reqId: string; orgId?: string },
+  ): Promise<FrameworkRequirement | null> {
+    return this.strategy.getRequirement(payload.frameworkId, payload.reqId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.requirements.update')
+  updateRequirement(
+    @Payload()
+    payload: {
+      frameworkId: string;
+      reqId: string;
+      orgId: string;
+      patch: FrameworkRequirementPatch;
+    },
+  ): Promise<FrameworkRequirement> {
+    return this.strategy.updateRequirement(
+      payload.frameworkId,
+      payload.reqId,
+      payload.orgId,
+      payload.patch,
+    );
+  }
+
+  @MessagePattern('notes.frameworks.internal-controls.list')
+  listInternalControls(
+    @Payload() payload?: { orgId?: string; frameworkId?: string },
+  ): Promise<InternalControl[]> {
+    return this.strategy.listInternalControls(payload?.orgId, payload?.frameworkId);
+  }
+
+  @MessagePattern('notes.frameworks.internal-controls.create')
+  createInternalControl(
+    @Payload() payload: { orgId: string; data: Omit<InternalControl, 'id'> },
+  ): Promise<InternalControl> {
+    return this.strategy.createInternalControl(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.frameworks.evidence.list')
+  listFrameworkEvidence(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<RequirementEvidence[]> {
+    return this.strategy.listFrameworkEvidence(payload.frameworkId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.evidence.create')
+  createFrameworkEvidence(
+    @Payload() payload: { orgId: string; data: Omit<RequirementEvidence, 'id'> },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createFrameworkEvidence(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.frameworks.assessments.list')
+  listFrameworkAssessments(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<RequirementAssessment[]> {
+    return this.strategy.listFrameworkAssessments(payload.frameworkId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.assessments.finding')
+  createAssessmentFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      assessmentId: string;
+      findingData: {
+        title: string;
+        severity: 'critical' | 'high' | 'medium' | 'low';
+        description: string;
+      };
+    },
+  ): Promise<{ findingId: string }> {
+    return this.strategy.createAssessmentFinding(
+      payload.orgId,
+      payload.assessmentId,
+      payload.findingData,
+    );
+  }
+
+  @MessagePattern('notes.frameworks.activities.list')
+  listFrameworkActivities(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<FrameworkActivity[]> {
+    return this.strategy.listFrameworkActivities(payload.frameworkId, payload.orgId);
   }
 
   @MessagePattern('notes.controls.list')

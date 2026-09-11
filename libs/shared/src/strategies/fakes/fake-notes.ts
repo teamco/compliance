@@ -11,6 +11,15 @@ import type {
   StandardPatch,
   Framework,
   FrameworkControl,
+  FrameworkRequirement,
+  FrameworkRequirementPatch,
+  InternalControl,
+  RequirementEvidence,
+  RequirementAssessment,
+  FrameworkActivity,
+  FrameworkInput,
+  FrameworkPatch,
+  FrameworkStatus,
   GapAnalysis,
   GapAnalysisResult,
   NotesStrategy,
@@ -59,6 +68,13 @@ import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } fro
 export class FakeNotesStrategy implements NotesStrategy {
   private frameworks = new Map<string, Framework>();
   private controls = new Map<string, FrameworkControl>();
+  private requirements = new Map<string, FrameworkRequirement[]>(); // key = frameworkId
+  private orgRequirementOverrides = new Map<string, Partial<FrameworkRequirement>>(); // key = `${orgId}:${frameworkId}:${reqCode}`
+  private frameworkOrgStatus = new Map<string, FrameworkStatus>(); // key = `${orgId}:${frameworkId}`
+  private internalControls: InternalControl[] = [];
+  private evidence: RequirementEvidence[] = [];
+  private assessmentsList: RequirementAssessment[] = [];
+  private activities: FrameworkActivity[] = [];
   private orgs = new Map<string, Organization>(); // key = orgId
   private gapAnalyses: GapAnalysis[] = [];
   private docs = new Map<string, StandardsDocument>(); // key = id
@@ -74,6 +90,1047 @@ export class FakeNotesStrategy implements NotesStrategy {
   private exceptions = new Map<string, Exception>();
   private issues = new Map<string, Issue>();
 
+  constructor() {
+    this.initDefaultSeedData();
+  }
+
+  private initDefaultSeedData(): void {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const isoId = '00000000-0000-0000-0000-000000000002';
+    const soc2Id = '00000000-0000-0000-0000-000000000001';
+    const gdprId = '00000000-0000-0000-0000-000000000004';
+    const pciId = '00000000-0000-0000-0000-000000000005';
+    const cisId = '00000000-0000-0000-0000-000000000006';
+
+    const defaultFrameworks: Framework[] = [
+      {
+        id: nistId,
+        slug: 'nist-csf',
+        name: 'NIST CSF 2.0',
+        description:
+          'NIST Cybersecurity Framework 2.0 — Govern, Identify, Protect, Detect, Respond, Recover',
+        version: '2.0',
+        category: 'security',
+        status: 'enabled',
+        lastUpdated: '2024',
+        controlCount: 106,
+        functionsCount: 6,
+        categoriesCount: 22,
+        requirementsCount: 106,
+        applicableCount: 89,
+        notApplicableCount: 12,
+        notReviewedCount: 5,
+      },
+      {
+        id: isoId,
+        slug: 'iso27001',
+        name: 'ISO/IEC 27001:2022',
+        description: 'International standard for information security management systems (ISMS)',
+        version: '2022',
+        category: 'security',
+        status: 'configured',
+        lastUpdated: '2022',
+        controlCount: 93,
+        functionsCount: 4,
+        categoriesCount: 14,
+        requirementsCount: 93,
+        applicableCount: 74,
+        notApplicableCount: 19,
+        notReviewedCount: 0,
+      },
+      {
+        id: soc2Id,
+        slug: 'soc2',
+        name: 'SOC 2 Type II',
+        description:
+          'AICPA Trust Services Criteria for security, availability, processing integrity, confidentiality, and privacy',
+        version: '2017',
+        category: 'security',
+        status: 'in_assessment',
+        lastUpdated: '2023',
+        controlCount: 64,
+        functionsCount: 5,
+        categoriesCount: 9,
+        requirementsCount: 64,
+        applicableCount: 58,
+        notApplicableCount: 6,
+        notReviewedCount: 0,
+      },
+      {
+        id: gdprId,
+        slug: 'gdpr',
+        name: 'GDPR',
+        description: 'General Data Protection Regulation — EU data protection and privacy law',
+        version: '2018',
+        category: 'privacy',
+        status: 'available',
+        lastUpdated: '2018',
+        controlCount: 99,
+        functionsCount: 7,
+        categoriesCount: 11,
+        requirementsCount: 99,
+        applicableCount: 0,
+        notApplicableCount: 0,
+        notReviewedCount: 99,
+      },
+      {
+        id: pciId,
+        slug: 'pci-dss',
+        name: 'PCI DSS v4.0',
+        description: 'Payment Card Industry Data Security Standard for protecting cardholder data',
+        version: '4.0',
+        category: 'security',
+        status: 'available',
+        lastUpdated: '2024',
+        controlCount: 250,
+        functionsCount: 6,
+        categoriesCount: 12,
+        requirementsCount: 250,
+        applicableCount: 0,
+        notApplicableCount: 0,
+        notReviewedCount: 250,
+      },
+      {
+        id: cisId,
+        slug: 'cis-v8',
+        name: 'CIS Controls v8',
+        description:
+          'Center for Internet Security Critical Security Controls for Effective Cyber Defense',
+        version: '8.0',
+        category: 'security',
+        status: 'available',
+        lastUpdated: '2023',
+        controlCount: 153,
+        functionsCount: 3,
+        categoriesCount: 18,
+        requirementsCount: 153,
+        applicableCount: 0,
+        notApplicableCount: 0,
+        notReviewedCount: 153,
+      },
+    ];
+
+    for (const fw of defaultFrameworks) {
+      this.frameworks.set(fw.id, fw);
+    }
+
+    // NIST CSF 2.0 full hierarchy requirements
+    const nistReqs: FrameworkRequirement[] = [
+      // GOVERN (GV)
+      {
+        id: 'nist-gv-oc-01',
+        frameworkId: nistId,
+        code: 'GV.OC-01',
+        title: 'Organizational Context & Mission Understanding',
+        description:
+          'The organizational context, mission, and stakeholder expectations regarding cybersecurity are understood and integrated.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.OC',
+        categoryName: 'Organizational Context',
+        guidance:
+          'Document the organization mission, external obligations, and internal dependencies. Review periodically.',
+        references: ['NIST SP 800-53 Rev. 5: PM-11', 'ISO/IEC 27001:2022: 4.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Essential for defining enterprise cybersecurity priorities.',
+        scopeBusinessUnits: ['Enterprise IT', 'Corporate Security', 'Executive Office'],
+        scopeSystems: ['Corporate Intranet', 'ERP System'],
+        scopeLocations: ['US-East', 'EU-Central'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Corporate security charter and annual mission context alignment review conducted in Q1.',
+        controlOwner: 'Security Governance',
+        controlOperator: 'CISO Office',
+        reviewFrequency: 'Annual',
+        lastAssessed: '2026-08-15',
+        nextAssessment: '2027-02-15',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-gv-oc-02',
+        frameworkId: nistId,
+        code: 'GV.OC-02',
+        title: 'Legal, Regulatory, and Contractual Requirements',
+        description:
+          'Legal, regulatory, and contractual requirements regarding cybersecurity, including privacy obligations, are understood and managed.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.OC',
+        categoryName: 'Organizational Context',
+        guidance:
+          'Maintain a compliance registry of all applicable laws, regulations, and industry contracts.',
+        references: ['NIST SP 800-53 Rev. 5: PM-1', 'ISO/IEC 27001:2022: A.5.31'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Subject to SEC cyber disclosure, GDPR, and SOC 2 requirements.',
+        scopeBusinessUnits: ['Legal & Compliance', 'Corporate Security'],
+        scopeSystems: ['Compliance Portal'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['Acme Global Inc.', 'Acme EU Ltd.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Centralized regulatory matrix maintained with quarterly legal counsel sync.',
+        controlOwner: 'Legal & Compliance',
+        controlOperator: 'Compliance Officer',
+        reviewFrequency: 'Quarterly',
+        lastAssessed: '2026-07-20',
+        nextAssessment: '2026-10-20',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-gv-rm-01',
+        frameworkId: nistId,
+        code: 'GV.RM-01',
+        title: 'Risk Management Strategy & Objectives',
+        description:
+          'Risk management objectives are established and agreed to by organizational stakeholders.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.RM',
+        categoryName: 'Risk Management Strategy',
+        guidance:
+          'Formulate risk appetite and tolerance thresholds approved by the Risk Committee.',
+        references: ['NIST SP 800-53 Rev. 5: PM-9', 'ISO/IEC 27001:2022: 6.1.2'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Foundational for all risk-based decision making across systems.',
+        scopeBusinessUnits: ['All Business Units'],
+        scopeSystems: ['All Systems'],
+        scopeLocations: ['All Locations'],
+        scopeLegalEntities: ['All Legal Entities'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Enterprise risk management framework defined with 5x5 likelihood-impact matrix.',
+        controlOwner: 'Enterprise Risk Management',
+        controlOperator: 'Risk Committee',
+        reviewFrequency: 'Annual',
+        lastAssessed: '2026-06-10',
+        nextAssessment: '2027-06-10',
+        evidenceCount: 3,
+        mappedControlsCount: 3,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-gv-rr-01',
+        frameworkId: nistId,
+        code: 'GV.RR-01',
+        title: 'Roles, Responsibilities, and Authorities',
+        description:
+          'Executive leadership is responsible and accountable for cybersecurity risk, and roles across the organization are defined and communicated.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.RR',
+        categoryName: 'Roles, Responsibilities and Authorities',
+        guidance:
+          'Establish RACI charts for security processes and ensure board oversight of cybersecurity.',
+        references: ['NIST SP 800-53 Rev. 5: PL-4', 'ISO/IEC 27001:2022: 5.3'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Executive oversight required for governance structure.',
+        scopeBusinessUnits: ['Executive Board', 'Corporate Security'],
+        scopeSystems: ['HR Information System'],
+        scopeLocations: ['Headquarters'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'CISO reports quarterly to Audit Committee; job descriptions include security duties.',
+        controlOwner: 'Security Governance',
+        controlOperator: 'CISO Office',
+        reviewFrequency: 'Annual',
+        lastAssessed: '2026-05-14',
+        nextAssessment: '2027-05-14',
+        evidenceCount: 1,
+        mappedControlsCount: 1,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-gv-po-01',
+        frameworkId: nistId,
+        code: 'GV.PO-01',
+        title: 'Policy Establishment, Communication, and Enforcement',
+        description:
+          'Policy for managing cybersecurity risks is established based on organizational context, cybersecurity strategy, and priorities and is communicated and enforced.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.PO',
+        categoryName: 'Policy',
+        guidance:
+          'Policies must be approved by management, reviewed at planned intervals, published in an accessible policy library, and backed by automated or manual enforcement mechanisms.',
+        references: [
+          'NIST SP 800-53 Rev. 5: PM-1, PL-1, PS-1',
+          'ISO/IEC 27001:2022: A.5.1',
+          'COBIT 2019: EDM01.01',
+          'CIS Controls v8: 1.1',
+        ],
+        applicability: 'applicable',
+        applicabilityRationale:
+          'Mandatory for all corporate, cloud, and third-party security governance.',
+        scopeBusinessUnits: [
+          'Enterprise IT',
+          'Corporate Security',
+          'Cloud Engineering',
+          'Finance',
+          'HR',
+        ],
+        scopeSystems: ['AWS Production', 'Entra ID', 'GitHub Enterprise', 'Salesforce'],
+        scopeLocations: ['US-East (Virginia)', 'EU-Central (Frankfurt)', 'Global Remote'],
+        scopeLegalEntities: ['Acme Global Inc.', 'Acme EU Ltd.'],
+        implementationStatus: 'partially_implemented',
+        implementationDescription:
+          'Core security policies are published on intranet with annual employee attestation. Automated policy-as-code enforcement in CI/CD pipeline is currently underway.',
+        controlOwner: 'Security Governance',
+        controlOperator: 'SecOps Team',
+        reviewFrequency: 'Annual',
+        lastAssessed: '2026-09-08',
+        nextAssessment: '2027-03-08',
+        evidenceCount: 3,
+        mappedControlsCount: 4,
+        openFindingsCount: 1,
+      },
+      {
+        id: 'nist-gv-po-02',
+        frameworkId: nistId,
+        code: 'GV.PO-02',
+        title: 'Policy Review and Maintenance',
+        description:
+          'Policies are reviewed, updated, and approved following changes to organizational context, risks, or technologies.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.PO',
+        categoryName: 'Policy',
+        guidance:
+          'Establish a formal annual review schedule and trigger reviews upon major incidents or tech transitions.',
+        references: ['NIST SP 800-53 Rev. 5: PL-1', 'ISO/IEC 27001:2022: A.5.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Required to ensure policies remain aligned with emerging threats.',
+        scopeBusinessUnits: ['Corporate Security'],
+        scopeSystems: ['Policy Management Portal'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['All Legal Entities'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Annual policy refresh workflow executed with version history tracking.',
+        controlOwner: 'Security Governance',
+        controlOperator: 'Compliance Team',
+        reviewFrequency: 'Annual',
+        lastAssessed: '2026-08-01',
+        nextAssessment: '2027-08-01',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-gv-ov-01',
+        frameworkId: nistId,
+        code: 'GV.OV-01',
+        title: 'Cybersecurity Risk Oversight & Metrics',
+        description:
+          'Cybersecurity risk management strategy outcomes are reviewed to inform and adjust the strategy and priorities.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.OV',
+        categoryName: 'Oversight',
+        guidance:
+          'Report quarterly Key Risk Indicators (KRIs) and Key Performance Indicators (KPIs) to leadership.',
+        references: ['NIST SP 800-53 Rev. 5: PM-6', 'ISO/IEC 27001:2022: 9.3'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Ensures executive team has visibility into residual risk.',
+        scopeBusinessUnits: ['Executive Board', 'Corporate Security'],
+        scopeSystems: ['Executive Dashboard'],
+        scopeLocations: ['Headquarters'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Monthly metrics package and quarterly board decks prepared and reviewed.',
+        controlOwner: 'Security Governance',
+        controlOperator: 'CISO Office',
+        reviewFrequency: 'Quarterly',
+        lastAssessed: '2026-07-15',
+        nextAssessment: '2026-10-15',
+        evidenceCount: 1,
+        mappedControlsCount: 1,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-gv-sc-01',
+        frameworkId: nistId,
+        code: 'GV.SC-01',
+        title: 'Supply Chain Risk Management Strategy',
+        description:
+          'A cybersecurity supply chain risk management program, strategy, objectives, policies, and processes are established and integrated.',
+        functionCode: 'GV',
+        functionName: 'GOVERN',
+        categoryCode: 'GV.SC',
+        categoryName: 'Cybersecurity Supply Chain Risk Management',
+        guidance:
+          'Classify suppliers by critical tiering and conduct pre-contract security assessments.',
+        references: ['NIST SP 800-53 Rev. 5: SR-1', 'ISO/IEC 27001:2022: A.5.19'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Third-party SaaS and cloud vendors process customer data.',
+        scopeBusinessUnits: ['Procurement', 'Vendor Risk Management', 'Cloud SecOps'],
+        scopeSystems: ['Vendor Assessment Portal'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'partially_implemented',
+        implementationDescription:
+          'Vendor onboarding questionnaires are required; annual reassessments are currently being automated.',
+        controlOwner: 'Vendor Risk Management',
+        controlOperator: 'Procurement & Security',
+        reviewFrequency: 'Annual',
+        lastAssessed: '2026-06-01',
+        nextAssessment: '2026-12-01',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+
+      // IDENTIFY (ID)
+      {
+        id: 'nist-id-am-01',
+        frameworkId: nistId,
+        code: 'ID.AM-01',
+        title: 'Hardware Asset Inventory',
+        description:
+          'Inventories of hardware managed by the organization are maintained and kept up to date.',
+        functionCode: 'ID',
+        functionName: 'IDENTIFY',
+        categoryCode: 'ID.AM',
+        categoryName: 'Asset Management',
+        guidance:
+          'Maintain an automated CMDB discovery mechanism for laptops, servers, and network devices.',
+        references: ['NIST SP 800-53 Rev. 5: CM-8', 'ISO/IEC 27001:2022: A.8.1'],
+        applicability: 'applicable',
+        applicabilityRationale:
+          'Required for hardware vulnerability tracking and endpoint defense.',
+        scopeBusinessUnits: ['Enterprise IT', 'SecOps'],
+        scopeSystems: ['MDM / Intune', 'CMDB'],
+        scopeLocations: ['All Offices', 'Data Centers'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Automated endpoint discovery via Microsoft Intune and AWS Systems Manager.',
+        controlOwner: 'IT Infrastructure',
+        controlOperator: 'Endpoint Admin',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-08-30',
+        nextAssessment: '2026-11-30',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-id-am-02',
+        frameworkId: nistId,
+        code: 'ID.AM-02',
+        title: 'Software, Services, and Systems Inventory',
+        description:
+          'Inventories of software, services, and systems managed by the organization are maintained.',
+        functionCode: 'ID',
+        functionName: 'IDENTIFY',
+        categoryCode: 'ID.AM',
+        categoryName: 'Asset Management',
+        guidance:
+          'Track approved software catalogs, container images, and external SaaS subscriptions.',
+        references: ['NIST SP 800-53 Rev. 5: CM-8', 'ISO/IEC 27001:2022: A.8.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Required to prevent shadow IT and vulnerable dependencies.',
+        scopeBusinessUnits: ['Software Engineering', 'Enterprise IT'],
+        scopeSystems: ['GitHub Enterprise', 'AWS CloudFormation'],
+        scopeLocations: ['Cloud Regions'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'GitHub Dependabot, Snyk, and AWS Config automated asset inventory tracking.',
+        controlOwner: 'DevOps & Reliability',
+        controlOperator: 'Cloud SecOps',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-08-25',
+        nextAssessment: '2026-11-25',
+        evidenceCount: 2,
+        mappedControlsCount: 3,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-id-ra-01',
+        frameworkId: nistId,
+        code: 'ID.RA-01',
+        title: 'Vulnerability Identification & Management',
+        description:
+          'Vulnerabilities in assets are identified, validated, and recorded across infrastructure and applications.',
+        functionCode: 'ID',
+        functionName: 'IDENTIFY',
+        categoryCode: 'ID.RA',
+        categoryName: 'Risk Assessment',
+        guidance:
+          'Conduct continuous SAST/DAST scans, weekly infrastructure vulnerability scans, and external penetration tests.',
+        references: ['NIST SP 800-53 Rev. 5: RA-5', 'ISO/IEC 27001:2022: A.12.6.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Critical for proactive exposure management.',
+        scopeBusinessUnits: ['Cloud Engineering', 'SecOps'],
+        scopeSystems: ['AWS Production', 'Kubernetes Clusters'],
+        scopeLocations: ['US-East', 'EU-Central'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Automated Qualys & AWS Inspector daily scans with SLA enforcement: Critical within 7d, High within 30d.',
+        controlOwner: 'Cloud Security',
+        controlOperator: 'SecOps Team',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-09-01',
+        nextAssessment: '2026-12-01',
+        evidenceCount: 3,
+        mappedControlsCount: 3,
+        openFindingsCount: 0,
+      },
+
+      // PROTECT (PR)
+      {
+        id: 'nist-pr-aa-01',
+        frameworkId: nistId,
+        code: 'PR.AA-01',
+        title: 'Identity Management & Authentication',
+        description:
+          'Identities and credentials for authorized users, services, and hardware are managed and authenticated.',
+        functionCode: 'PR',
+        functionName: 'PROTECT',
+        categoryCode: 'PR.AA',
+        categoryName: 'Identity Management, Authentication, and Access Control',
+        guidance:
+          'Enforce multi-factor authentication (MFA) for all users and automated identity lifecycle provisioning.',
+        references: ['NIST SP 800-53 Rev. 5: AC-2, IA-2', 'ISO/IEC 27001:2022: A.9.4.2'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Primary defense against unauthorized access and account takeover.',
+        scopeBusinessUnits: ['All Business Units'],
+        scopeSystems: ['Entra ID', 'AWS IAM', 'Okta SSO', 'GitHub Enterprise'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['All Legal Entities'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Hardware-backed FIDO2 / WebAuthn MFA enforced via Entra ID Conditional Access across all SaaS and cloud environments.',
+        controlOwner: 'Identity & Access Team',
+        controlOperator: 'Identity Admin',
+        reviewFrequency: 'Quarterly',
+        lastAssessed: '2026-09-05',
+        nextAssessment: '2026-12-05',
+        evidenceCount: 4,
+        mappedControlsCount: 4,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-pr-aa-02',
+        frameworkId: nistId,
+        code: 'PR.AA-02',
+        title: 'Access Permissions & Principle of Least Privilege',
+        description:
+          'Access permissions, entitlements, and authorizations are managed incorporating the principle of least privilege.',
+        functionCode: 'PR',
+        functionName: 'PROTECT',
+        categoryCode: 'PR.AA',
+        categoryName: 'Identity Management, Authentication, and Access Control',
+        guidance:
+          'Conduct quarterly user access reviews and utilize role-based access control (RBAC).',
+        references: ['NIST SP 800-53 Rev. 5: AC-6', 'ISO/IEC 27001:2022: A.9.2.3'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Limits blast radius of credential compromise.',
+        scopeBusinessUnits: ['Enterprise IT', 'Cloud Engineering'],
+        scopeSystems: ['AWS IAM', 'Entra ID', 'Database Clusters'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'partially_implemented',
+        implementationDescription:
+          'RBAC implemented across all cloud roles; quarterly access reviews completed for production systems.',
+        controlOwner: 'Identity & Access Team',
+        controlOperator: 'SecOps Team',
+        reviewFrequency: 'Quarterly',
+        lastAssessed: '2026-09-08',
+        nextAssessment: '2026-12-08',
+        evidenceCount: 2,
+        mappedControlsCount: 3,
+        openFindingsCount: 1,
+      },
+      {
+        id: 'nist-pr-ds-01',
+        frameworkId: nistId,
+        code: 'PR.DS-01',
+        title: 'Data-at-Rest Protection',
+        description:
+          'The confidentiality, integrity, and availability of data-at-rest are protected using encryption.',
+        functionCode: 'PR',
+        functionName: 'PROTECT',
+        categoryCode: 'PR.DS',
+        categoryName: 'Data Security',
+        guidance: 'Enforce AES-256 encryption across all databases, object storage, and backups.',
+        references: ['NIST SP 800-53 Rev. 5: SC-28', 'ISO/IEC 27001:2022: A.10.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Mandatory for cardholder, health, and personal customer data.',
+        scopeBusinessUnits: ['Cloud Engineering', 'DevOps'],
+        scopeSystems: ['PostgreSQL DB', 'AWS S3 Buckets', 'EBS Volumes'],
+        scopeLocations: ['US-East', 'EU-Central'],
+        scopeLegalEntities: ['Acme Global Inc.', 'Acme EU Ltd.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'AWS KMS customer-managed keys (CMK) with annual rotation applied to all RDS and S3 buckets.',
+        controlOwner: 'Cloud Security',
+        controlOperator: 'DevOps & Reliability',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-08-10',
+        nextAssessment: '2026-11-10',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-pr-ds-02',
+        frameworkId: nistId,
+        code: 'PR.DS-02',
+        title: 'Data-in-Transit Protection',
+        description:
+          'The confidentiality, integrity, and availability of data-in-transit are protected using modern cryptographic protocols.',
+        functionCode: 'PR',
+        functionName: 'PROTECT',
+        categoryCode: 'PR.DS',
+        categoryName: 'Data Security',
+        guidance: 'Enforce TLS 1.3 across all public and internal service-to-service endpoints.',
+        references: ['NIST SP 800-53 Rev. 5: SC-8', 'ISO/IEC 27001:2022: A.10.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Protects communication from interception and spoofing.',
+        scopeBusinessUnits: ['Cloud Engineering'],
+        scopeSystems: ['API Gateway', 'Load Balancers', 'mTLS Mesh'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Strict TLS 1.3 enforced on Cloudflare Edge and Linkerd service mesh in Kubernetes.',
+        controlOwner: 'Cloud Security',
+        controlOperator: 'DevOps & Reliability',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-08-12',
+        nextAssessment: '2026-11-12',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+
+      // DETECT (DE)
+      {
+        id: 'nist-de-ae-02',
+        frameworkId: nistId,
+        code: 'DE.AE-02',
+        title: 'Adverse Event & Anomalies Analysis',
+        description:
+          'Potential cybersecurity events and anomalies are analyzed to understand attack targets and methods.',
+        functionCode: 'DE',
+        functionName: 'DETECT',
+        categoryCode: 'DE.AE',
+        categoryName: 'Adverse Event Analysis',
+        guidance:
+          'Implement automated SIEM correlations with threat intelligence feeds and alert triaging.',
+        references: ['NIST SP 800-53 Rev. 5: SI-4', 'ISO/IEC 27001:2022: A.12.4.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Enables rapid containment before incidents escalate.',
+        scopeBusinessUnits: ['Corporate Security', 'SecOps'],
+        scopeSystems: ['Datadog SIEM', 'AWS CloudTrail', 'GuardDuty'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Centralized Datadog Security Monitoring with 24/7 on-call alerting for high/critical security signals.',
+        controlOwner: 'SecOps & Infrastructure',
+        controlOperator: 'SOC Team',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-09-02',
+        nextAssessment: '2026-12-02',
+        evidenceCount: 3,
+        mappedControlsCount: 3,
+        openFindingsCount: 0,
+      },
+      {
+        id: 'nist-de-cm-01',
+        frameworkId: nistId,
+        code: 'DE.CM-01',
+        title: 'Continuous Security Monitoring',
+        description:
+          'Networks, computing environments, and personnel activities are monitored to detect potential cybersecurity events.',
+        functionCode: 'DE',
+        functionName: 'DETECT',
+        categoryCode: 'DE.CM',
+        categoryName: 'Continuous Monitoring',
+        guidance:
+          'Ensure 100% telemetry coverage across endpoints, network perimeters, and cloud control planes.',
+        references: ['NIST SP 800-53 Rev. 5: CA-7', 'ISO/IEC 27001:2022: A.12.4.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Required for real-time threat detection.',
+        scopeBusinessUnits: ['SecOps', 'Cloud Engineering'],
+        scopeSystems: ['CrowdStrike Falcon', 'AWS VPC Flow Logs'],
+        scopeLocations: ['All Workstations', 'Cloud Regions'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'CrowdStrike EDR installed on 100% of managed workstations and production nodes.',
+        controlOwner: 'SecOps & Infrastructure',
+        controlOperator: 'SecOps Team',
+        reviewFrequency: 'Continuous',
+        lastAssessed: '2026-09-03',
+        nextAssessment: '2026-12-03',
+        evidenceCount: 3,
+        mappedControlsCount: 3,
+        openFindingsCount: 0,
+      },
+
+      // RESPOND (RS)
+      {
+        id: 'nist-rs-ma-01',
+        frameworkId: nistId,
+        code: 'RS.MA-01',
+        title: 'Incident Management Plan Execution',
+        description:
+          'Incident management processes are established, tested, and executed when an incident is detected.',
+        functionCode: 'RS',
+        functionName: 'RESPOND',
+        categoryCode: 'RS.MA',
+        categoryName: 'Incident Management',
+        guidance:
+          'Maintain tested playbooks for ransomware, data exfiltration, and credential leaks.',
+        references: ['NIST SP 800-53 Rev. 5: IR-4', 'ISO/IEC 27001:2022: A.16.1.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Ensures structured, compliant handling of cybersecurity events.',
+        scopeBusinessUnits: ['Corporate Security', 'Legal', 'Communications'],
+        scopeSystems: ['Incident Commander Tool', 'PagerDuty'],
+        scopeLocations: ['Global'],
+        scopeLegalEntities: ['Acme Global Inc.', 'Acme EU Ltd.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Incident response runbook updated semi-annually with tabletop exercises completed in May 2026.',
+        controlOwner: 'Corporate Security',
+        controlOperator: 'Incident Commander Team',
+        reviewFrequency: 'Semi-Annual',
+        lastAssessed: '2026-05-20',
+        nextAssessment: '2026-11-20',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+
+      // RECOVER (RC)
+      {
+        id: 'nist-rc-rp-01',
+        frameworkId: nistId,
+        code: 'RC.RP-01',
+        title: 'Incident Recovery Plan Execution',
+        description:
+          'Recovery plan is executed during or after a cybersecurity incident to restore systems and data integrity.',
+        functionCode: 'RC',
+        functionName: 'RECOVER',
+        categoryCode: 'RC.RP',
+        categoryName: 'Incident Recovery Plan Execution',
+        guidance:
+          'Maintain automated immutable backups and conduct annual disaster recovery failover tests.',
+        references: ['NIST SP 800-53 Rev. 5: CP-2', 'ISO/IEC 27001:2022: A.17.1.1'],
+        applicability: 'applicable',
+        applicabilityRationale: 'Protects business continuity and satisfies RPO/RTO SLAs.',
+        scopeBusinessUnits: ['DevOps & Reliability', 'IT Operations'],
+        scopeSystems: ['AWS Backup Vault', 'Database Replicas'],
+        scopeLocations: ['US-East', 'US-West'],
+        scopeLegalEntities: ['Acme Global Inc.'],
+        implementationStatus: 'implemented',
+        implementationDescription:
+          'Cross-region automated daily snapshot replication with 30-day retention and tested quarterly restore drills.',
+        controlOwner: 'DevOps & Reliability',
+        controlOperator: 'Site Reliability Team',
+        reviewFrequency: 'Quarterly',
+        lastAssessed: '2026-08-18',
+        nextAssessment: '2026-11-18',
+        evidenceCount: 2,
+        mappedControlsCount: 2,
+        openFindingsCount: 0,
+      },
+    ];
+
+    this.requirements.set(nistId, nistReqs);
+
+    // Common Internal Controls (Unified Control Framework)
+    this.internalControls = [
+      {
+        id: 'ctrl-ac-001',
+        code: 'AC-001',
+        title: 'MFA required for privileged and remote access',
+        description:
+          'Enforce phishing-resistant multi-factor authentication (MFA) across all identity providers, SSH gateways, and cloud console portals.',
+        owner: 'Identity & Access Team',
+        category: 'Access Control',
+        frameworkMappings: [
+          {
+            frameworkId: nistId,
+            frameworkName: 'NIST CSF 2.0',
+            requirementCode: 'PR.AA-01',
+          },
+          {
+            frameworkId: isoId,
+            frameworkName: 'ISO/IEC 27001:2022',
+            requirementCode: 'A.9.4.2',
+          },
+          {
+            frameworkId: soc2Id,
+            frameworkName: 'SOC 2 Type II',
+            requirementCode: 'CC6.1',
+          },
+          {
+            frameworkId: pciId,
+            frameworkName: 'PCI DSS v4.0',
+            requirementCode: '8.3',
+          },
+          {
+            frameworkId: cisId,
+            frameworkName: 'CIS Controls v8',
+            requirementCode: '6.5',
+          },
+        ],
+      },
+      {
+        id: 'ctrl-pol-001',
+        code: 'POL-001',
+        title: 'Information Security Policy Governance & Review',
+        description:
+          'Maintain, review annually, and disseminate core information security and risk governance policies.',
+        owner: 'Security Governance',
+        category: 'Governance',
+        frameworkMappings: [
+          {
+            frameworkId: nistId,
+            frameworkName: 'NIST CSF 2.0',
+            requirementCode: 'GV.PO-01',
+          },
+          {
+            frameworkId: isoId,
+            frameworkName: 'ISO/IEC 27001:2022',
+            requirementCode: 'A.5.1',
+          },
+          {
+            frameworkId: soc2Id,
+            frameworkName: 'SOC 2 Type II',
+            requirementCode: 'CC1.1',
+          },
+        ],
+      },
+      {
+        id: 'ctrl-log-002',
+        code: 'LOG-002',
+        title: 'Centralized SIEM Log Collection & 365-Day Retention',
+        description:
+          'Ingest and correlate authentication, audit, network, and system event logs into centralized SIEM with tamper-proof storage.',
+        owner: 'SecOps & Infrastructure',
+        category: 'Monitoring',
+        frameworkMappings: [
+          {
+            frameworkId: nistId,
+            frameworkName: 'NIST CSF 2.0',
+            requirementCode: 'DE.AE-02',
+          },
+          {
+            frameworkId: isoId,
+            frameworkName: 'ISO/IEC 27001:2022',
+            requirementCode: 'A.12.4.1',
+          },
+          {
+            frameworkId: soc2Id,
+            frameworkName: 'SOC 2 Type II',
+            requirementCode: 'CC7.2',
+          },
+          {
+            frameworkId: pciId,
+            frameworkName: 'PCI DSS v4.0',
+            requirementCode: '10.5',
+          },
+        ],
+      },
+      {
+        id: 'ctrl-vuln-001',
+        code: 'VULN-001',
+        title: 'Quarterly Vulnerability Scanning & Remediation SLA',
+        description:
+          'Execute automated vulnerability scanning across all cloud and on-prem assets with strict remediation deadlines.',
+        owner: 'Cloud Security',
+        category: 'Vulnerability Management',
+        frameworkMappings: [
+          {
+            frameworkId: nistId,
+            frameworkName: 'NIST CSF 2.0',
+            requirementCode: 'ID.RA-01',
+          },
+          {
+            frameworkId: isoId,
+            frameworkName: 'ISO/IEC 27001:2022',
+            requirementCode: 'A.12.6.1',
+          },
+          {
+            frameworkId: soc2Id,
+            frameworkName: 'SOC 2 Type II',
+            requirementCode: 'CC7.1',
+          },
+        ],
+      },
+      {
+        id: 'ctrl-bcp-001',
+        code: 'BCP-001',
+        title: 'Disaster Recovery & Business Continuity Testing',
+        description:
+          'Perform annual simulated disaster recovery failovers to validate RTO (<4h) and RPO (<15m) recovery capabilities.',
+        owner: 'DevOps & Reliability',
+        category: 'Resilience',
+        frameworkMappings: [
+          {
+            frameworkId: nistId,
+            frameworkName: 'NIST CSF 2.0',
+            requirementCode: 'RC.RP-01',
+          },
+          {
+            frameworkId: isoId,
+            frameworkName: 'ISO/IEC 27001:2022',
+            requirementCode: 'A.17.1.1',
+          },
+          {
+            frameworkId: soc2Id,
+            frameworkName: 'SOC 2 Type II',
+            requirementCode: 'CC9.1',
+          },
+        ],
+      },
+    ];
+
+    // Seed Evidence
+    this.evidence = [
+      {
+        id: 'ev-1',
+        frameworkId: nistId,
+        requirementId: 'nist-gv-po-01',
+        title: 'Information Security Policy.pdf',
+        owner: 'CISO Office',
+        evidenceType: 'Policy Document',
+        source: 'Manual Upload',
+        collectionDate: '2026-01-15',
+        periodCovered: '2026-Q1 - 2026-Q4',
+        expirationDate: '2027-01-15',
+        verificationStatus: 'verified',
+        url: 'https://docs.acme.corp/sec-policy-2026.pdf',
+        linkedControls: ['POL-001', 'AC-001'],
+        linkedRequirements: ['GV.PO-01', 'GV.PO-02'],
+      },
+      {
+        id: 'ev-2',
+        frameworkId: nistId,
+        requirementId: 'nist-pr-aa-01',
+        title: 'MFA Configuration Export',
+        owner: 'SecOps Team',
+        evidenceType: 'Config Export',
+        source: 'Entra ID',
+        collectionDate: '2026-07-01',
+        periodCovered: '2026-Q3',
+        expirationDate: '2026-12-31',
+        verificationStatus: 'verified',
+        url: 'https://entra.microsoft.com/policies/mfa-export-2026q3.json',
+        linkedControls: ['AC-001'],
+        linkedRequirements: ['PR.AA-01'],
+      },
+      {
+        id: 'ev-3',
+        frameworkId: nistId,
+        requirementId: 'nist-pr-aa-01',
+        title: 'Entra ID Conditional Access Screenshot',
+        owner: 'Identity Admin',
+        evidenceType: 'Screenshot',
+        source: 'Azure Portal',
+        collectionDate: '2026-08-10',
+        periodCovered: '2026-Q3',
+        expirationDate: '2026-12-31',
+        verificationStatus: 'verified',
+        linkedControls: ['AC-001'],
+        linkedRequirements: ['PR.AA-01'],
+      },
+      {
+        id: 'ev-4',
+        frameworkId: nistId,
+        requirementId: 'nist-pr-aa-02',
+        title: 'Quarterly Access Review.xlsx',
+        owner: 'IT Compliance',
+        evidenceType: 'Spreadsheet',
+        source: 'Okta / Jira',
+        collectionDate: '2026-06-30',
+        periodCovered: '2026-Q2',
+        expirationDate: '2026-10-01',
+        verificationStatus: 'verified',
+        url: 'https://jira.acme.corp/browse/COMP-402',
+        linkedControls: ['AC-001'],
+        linkedRequirements: ['PR.AA-02'],
+      },
+      {
+        id: 'ev-5',
+        frameworkId: nistId,
+        requirementId: 'nist-gv-po-01',
+        title: 'ServiceNow Change Record CHG001234',
+        owner: 'Release Manager',
+        evidenceType: 'Ticket',
+        source: 'ServiceNow',
+        collectionDate: '2026-08-01',
+        periodCovered: '2026-Q3',
+        expirationDate: '2027-01-01',
+        verificationStatus: 'verified',
+        url: 'https://servicenow.acme.corp/nav_to.do?uri=change_request.do?sys_id=CHG001234',
+        linkedControls: ['POL-001'],
+        linkedRequirements: ['GV.PO-01'],
+      },
+    ];
+
+    // Seed Assessments
+    this.assessmentsList = [
+      {
+        id: 'asm-nist-2026',
+        frameworkId: nistId,
+        requirementId: 'nist-gv-po-01',
+        cycleName: '2026 NIST CSF Assessment',
+        status: 'completed',
+        implementationStatus: 'partially_implemented',
+        designEffectiveness: 'effective',
+        operatingEffectiveness: 'partially_effective',
+        assessor: 'John Smith',
+        assessmentDate: '2026-09-08',
+        observation: 'Quarterly review evidence was unavailable for Q2 access re-certifications.',
+        findingId: 'FIND-2026-0042',
+        findingTitle: 'Missing Q2 Access Review Evidence',
+        findingSeverity: 'high',
+      },
+    ];
+
+    // Seed Activities
+    this.activities = [
+      {
+        id: 'act-1',
+        frameworkId: nistId,
+        action: 'Assessment Cycle Completed',
+        details: '2026 NIST CSF Assessment completed with 1 finding recorded.',
+        actor: 'John Smith',
+        timestamp: '2026-09-08T14:30:00Z',
+      },
+      {
+        id: 'act-2',
+        frameworkId: nistId,
+        action: 'Evidence Linked',
+        details: 'ServiceNow Change Record CHG001234 linked to GV.PO-01.',
+        actor: 'Sarah Jenkins',
+        timestamp: '2026-08-01T09:15:00Z',
+      },
+      {
+        id: 'act-3',
+        frameworkId: nistId,
+        action: 'Requirement Updated',
+        details: 'PR.AA-01 implementation status updated to Implemented.',
+        actor: 'David Miller',
+        timestamp: '2026-07-02T11:00:00Z',
+      },
+    ];
+  }
+
   seedFramework(fw: Framework): void {
     this.frameworks.set(fw.id, fw);
   }
@@ -82,12 +1139,267 @@ export class FakeNotesStrategy implements NotesStrategy {
     this.controls.set(c.id, c);
   }
 
-  async listFrameworks(): Promise<Framework[]> {
-    return [...this.frameworks.values()];
+  async listFrameworks(orgId?: string): Promise<Framework[]> {
+    const list = [...this.frameworks.values()];
+    if (!orgId) return list;
+    return list.map((fw) => {
+      const statusOverride = this.frameworkOrgStatus.get(`${orgId}:${fw.id}`);
+      return statusOverride ? { ...fw, status: statusOverride } : fw;
+    });
   }
 
-  async getFramework(id: string): Promise<Framework | null> {
-    return this.frameworks.get(id) ?? null;
+  async getFramework(id: string, orgId?: string): Promise<Framework | null> {
+    const fw = this.frameworks.get(id) ?? null;
+    if (!fw) return null;
+    if (orgId) {
+      const statusOverride = this.frameworkOrgStatus.get(`${orgId}:${fw.id}`);
+      if (statusOverride) return { ...fw, status: statusOverride };
+    }
+    return fw;
+  }
+
+  async createFramework(orgId: string, input: FrameworkInput): Promise<Framework> {
+    const id = globalThis.crypto.randomUUID();
+    const now = new Date().toISOString();
+    const reqsInput = input.requirements ?? [];
+    const createdReqs: FrameworkRequirement[] = reqsInput.map((r, i) => ({
+      id: `${id}-req-${i + 1}`,
+      frameworkId: id,
+      code: r.code,
+      title: r.title,
+      description: r.description,
+      functionCode: r.functionCode ?? 'GEN',
+      functionName: r.functionName ?? 'General',
+      categoryCode: r.categoryCode ?? r.code.split('-')[0] ?? 'GEN',
+      categoryName: r.categoryName ?? 'General Controls',
+      guidance: r.guidance ?? '',
+      references: r.references ?? [],
+      applicability: 'applicable',
+      implementationStatus: 'not_implemented',
+      evidenceCount: 0,
+      mappedControlsCount: 0,
+      openFindingsCount: 0,
+    }));
+
+    const fw: Framework = {
+      id,
+      slug: input.slug,
+      name: input.name,
+      description: input.description,
+      version: input.version,
+      category: input.category,
+      status: input.status ?? 'enabled',
+      lastUpdated: new Date().getFullYear().toString(),
+      controlCount: createdReqs.length,
+      functionsCount: new Set(createdReqs.map((r) => r.functionCode)).size || 1,
+      categoriesCount: new Set(createdReqs.map((r) => r.categoryCode)).size || 1,
+      requirementsCount: createdReqs.length,
+      applicableCount: createdReqs.length,
+      notApplicableCount: 0,
+      notReviewedCount: 0,
+      isCustom: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.frameworks.set(id, fw);
+    if (createdReqs.length > 0) {
+      this.requirements.set(id, createdReqs);
+    }
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      frameworkId: id,
+      action: 'Framework Added',
+      details: `Framework ${fw.name} (${fw.version}) was added to the organization library.`,
+      actor: 'Current User',
+      timestamp: now,
+    });
+    return fw;
+  }
+
+  async updateFramework(id: string, orgId: string, patch: FrameworkPatch): Promise<Framework> {
+    const fw = this.frameworks.get(id);
+    if (!fw) throw new Error(`framework_not_found: ${id}`);
+    if (patch.status) {
+      this.frameworkOrgStatus.set(`${orgId}:${id}`, patch.status);
+    }
+    const updated: Framework = {
+      ...fw,
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    this.frameworks.set(id, updated);
+    return updated;
+  }
+
+  async deleteFramework(id: string, orgId: string): Promise<void> {
+    if (!this.frameworks.has(id)) throw new Error(`framework_not_found: ${id}`);
+    this.frameworks.delete(id);
+    this.requirements.delete(id);
+    this.frameworkOrgStatus.delete(`${orgId}:${id}`);
+  }
+
+  async listRequirements(frameworkId: string, orgId?: string): Promise<FrameworkRequirement[]> {
+    let reqs = this.requirements.get(frameworkId);
+    if (!reqs) {
+      const controls = await this.listControlsByFramework(frameworkId);
+      reqs = controls.map((c) => ({
+        id: c.id,
+        frameworkId,
+        code: c.code,
+        title: c.title,
+        description: c.description,
+        categoryCode: c.code.split('.')[0] ?? c.code,
+        categoryName: c.category,
+        applicability: 'applicable',
+        implementationStatus: 'not_implemented',
+        evidenceCount: 0,
+        mappedControlsCount: 0,
+        openFindingsCount: 0,
+      }));
+      this.requirements.set(frameworkId, reqs);
+    }
+
+    if (!orgId) return reqs;
+
+    return reqs.map((r) => {
+      const override = this.orgRequirementOverrides.get(`${orgId}:${frameworkId}:${r.code}`);
+      return override ? { ...r, ...override } : r;
+    });
+  }
+
+  async getRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId?: string,
+  ): Promise<FrameworkRequirement | null> {
+    const reqs = await this.listRequirements(frameworkId, orgId);
+    return reqs.find((r) => r.id === reqId || r.code === reqId) ?? null;
+  }
+
+  async updateRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId: string,
+    patch: FrameworkRequirementPatch,
+  ): Promise<FrameworkRequirement> {
+    const reqs = await this.listRequirements(frameworkId, orgId);
+    const target = reqs.find((r) => r.id === reqId || r.code === reqId);
+    if (!target) throw new Error(`requirement_not_found: ${reqId}`);
+
+    const existingOverride =
+      this.orgRequirementOverrides.get(`${orgId}:${frameworkId}:${target.code}`) ?? {};
+    const updatedOverride = { ...existingOverride, ...patch };
+    this.orgRequirementOverrides.set(`${orgId}:${frameworkId}:${target.code}`, updatedOverride);
+
+    // Record activity
+    const now = new Date().toISOString();
+    let changeDetails = `Updated requirement ${target.code}`;
+    if (patch.applicability) changeDetails += ` applicability to ${patch.applicability}`;
+    if (patch.implementationStatus)
+      changeDetails += ` implementation to ${patch.implementationStatus}`;
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      frameworkId,
+      action: 'Requirement Updated',
+      details: changeDetails,
+      actor: 'Current User',
+      timestamp: now,
+    });
+
+    return { ...target, ...updatedOverride };
+  }
+
+  async listInternalControls(_orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
+    if (!frameworkId) return [...this.internalControls];
+    return this.internalControls.filter((c) =>
+      c.frameworkMappings.some((m) => m.frameworkId === frameworkId),
+    );
+  }
+
+  async createInternalControl(
+    orgId: string,
+    data: Omit<InternalControl, 'id'>,
+  ): Promise<InternalControl> {
+    const control: InternalControl = {
+      id: `ctrl-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      ...data,
+    };
+    this.internalControls.push(control);
+    return control;
+  }
+
+  async listFrameworkEvidence(
+    frameworkId: string,
+    _orgId?: string,
+  ): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.frameworkId === frameworkId);
+  }
+
+  async createFrameworkEvidence(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Promise<RequirementEvidence> {
+    const ev: RequirementEvidence = {
+      id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      ...data,
+    };
+    this.evidence.unshift(ev);
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      frameworkId: data.frameworkId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+      timestamp: new Date().toISOString(),
+    });
+    return ev;
+  }
+
+  async listFrameworkAssessments(
+    frameworkId: string,
+    _orgId?: string,
+  ): Promise<RequirementAssessment[]> {
+    return this.assessmentsList.filter((a) => a.frameworkId === frameworkId);
+  }
+
+  async createAssessmentFinding(
+    orgId: string,
+    assessmentId: string,
+    findingData: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ): Promise<{ findingId: string }> {
+    const findingNum = Math.floor(1000 + Math.random() * 9000);
+    const findingId = `FIND-${new Date().getFullYear()}-${findingNum}`;
+
+    await this.createIssue(orgId, 'system', {
+      title: findingData.title,
+      description: findingData.description,
+      severity: findingData.severity,
+      reporterId: 'system',
+      ownerId: 'system',
+    });
+
+    const asm = this.assessmentsList.find((a) => a.id === assessmentId);
+    if (asm) {
+      asm.findingId = findingId;
+      asm.findingTitle = findingData.title;
+      asm.findingSeverity = findingData.severity;
+    }
+
+    return { findingId };
+  }
+
+  async listFrameworkActivities(
+    frameworkId: string,
+    _orgId?: string,
+  ): Promise<FrameworkActivity[]> {
+    return this.activities.filter((a) => a.frameworkId === frameworkId);
   }
 
   async listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]> {

@@ -544,3 +544,145 @@ describe('listStandardsByFramework', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('framework workspace & GRC hierarchy', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('lists default frameworks with rich hierarchy counts', async () => {
+    const fws = await s.listFrameworks('org1');
+    expect(fws.length).toBeGreaterThanOrEqual(4);
+    const nist = fws.find((f) => f.slug === 'nist-csf');
+    expect(nist).toBeDefined();
+    expect(nist?.status).toBe('enabled');
+    expect(nist?.requirementsCount).toBe(106);
+    expect(nist?.functionsCount).toBe(6);
+    expect(nist?.categoriesCount).toBe(22);
+  });
+
+  it('creates custom framework and initializes hierarchy', async () => {
+    const created = await s.createFramework('org1', {
+      slug: 'custom-sec',
+      name: 'Custom Security Standard',
+      description: 'Internal baseline',
+      version: '1.0',
+      category: 'security',
+      requirements: [
+        { code: 'AC-1', title: 'Access Control', description: 'MFA enforced' },
+        { code: 'LOG-1', title: 'Log Management', description: 'Logs stored 365d' },
+      ],
+    });
+
+    expect(created.id).toBeDefined();
+    expect(created.isCustom).toBe(true);
+    expect(created.requirementsCount).toBe(2);
+
+    const reqs = await s.listRequirements(created.id, 'org1');
+    expect(reqs).toHaveLength(2);
+    expect(reqs[0].code).toBe('AC-1');
+  });
+
+  it('updates framework status', async () => {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const updated = await s.updateFramework(nistId, 'org1', { status: 'in_assessment' });
+    expect(updated.status).toBe('in_assessment');
+
+    const fetched = await s.getFramework(nistId, 'org1');
+    expect(fetched?.status).toBe('in_assessment');
+  });
+
+  it('lists requirements for NIST CSF with functions and categories', async () => {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const reqs = await s.listRequirements(nistId, 'org1');
+    expect(reqs.length).toBeGreaterThanOrEqual(6);
+
+    const gvPo01 = reqs.find((r) => r.code === 'GV.PO-01');
+    expect(gvPo01).toBeDefined();
+    expect(gvPo01?.functionCode).toBe('GV');
+    expect(gvPo01?.functionName).toBe('GOVERN');
+    expect(gvPo01?.categoryCode).toBe('GV.PO');
+    expect(gvPo01?.categoryName).toBe('Policy');
+    expect(gvPo01?.evidenceCount).toBe(3);
+    expect(gvPo01?.mappedControlsCount).toBe(4);
+    expect(gvPo01?.openFindingsCount).toBe(1);
+  });
+
+  it('updates requirement applicability, implementation, and mandatory NA justification', async () => {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const updated = await s.updateRequirement(nistId, 'GV.PO-01', 'org1', {
+      applicability: 'not_applicable',
+      notApplicableReason: 'Third party manages all policy documentation exclusively',
+      implementationStatus: 'not_applicable',
+    });
+
+    expect(updated.applicability).toBe('not_applicable');
+    expect(updated.notApplicableReason).toBe(
+      'Third party manages all policy documentation exclusively',
+    );
+    expect(updated.implementationStatus).toBe('not_applicable');
+
+    // Scoped retrieval
+    const fetched = await s.getRequirement(nistId, 'GV.PO-01', 'org1');
+    expect(fetched?.applicability).toBe('not_applicable');
+  });
+
+  it('lists common internal controls and mappings to multiple frameworks', async () => {
+    const controls = await s.listInternalControls('org1');
+    expect(controls.length).toBeGreaterThanOrEqual(3);
+
+    const mfaCtrl = controls.find((c) => c.code === 'AC-001');
+    expect(mfaCtrl).toBeDefined();
+    expect(mfaCtrl?.title).toContain('MFA');
+    expect(mfaCtrl?.frameworkMappings.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('manages framework evidence and links to requirements', async () => {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const evList = await s.listFrameworkEvidence(nistId, 'org1');
+    expect(evList.length).toBeGreaterThanOrEqual(3);
+
+    const created = await s.createFrameworkEvidence('org1', {
+      frameworkId: nistId,
+      requirementId: 'nist-gv-po-01',
+      title: 'Quarterly Risk Assessment Signoff.pdf',
+      owner: 'Risk Officer',
+      evidenceType: 'Policy Document',
+      source: 'Jira',
+      collectionDate: '2026-09-01',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01',
+      verificationStatus: 'verified',
+    });
+
+    expect(created.id).toBeDefined();
+    const updatedEvList = await s.listFrameworkEvidence(nistId, 'org1');
+    expect(updatedEvList.some((e) => e.title === 'Quarterly Risk Assessment Signoff.pdf')).toBe(
+      true,
+    );
+  });
+
+  it('logs assessment findings connecting requirement to issues', async () => {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const assessments = await s.listFrameworkAssessments(nistId, 'org1');
+    expect(assessments.length).toBeGreaterThanOrEqual(1);
+
+    const finding = await s.createAssessmentFinding('org1', assessments[0].id, {
+      title: 'Missing DR tabletop exercise minutes',
+      severity: 'high',
+      description: 'DR test conducted without recorded minutes',
+    });
+
+    expect(finding.findingId).toMatch(/^FIND-\d{4}-\d+/);
+
+    const issues = await s.listIssues('org1');
+    expect(issues.some((i) => i.title === 'Missing DR tabletop exercise minutes')).toBe(true);
+  });
+
+  it('tracks framework audit activities', async () => {
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    const activities = await s.listFrameworkActivities(nistId, 'org1');
+    expect(activities.length).toBeGreaterThanOrEqual(2);
+  });
+});
