@@ -405,6 +405,37 @@ export function RequirementDrawer({
                 </div>
               )}
 
+              {currentReq.crossFrameworkMappings &&
+                currentReq.crossFrameworkMappings.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1.5">
+                      <Layers size={13} className="text-purple-400" />
+                      Mapped External Requirements
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {currentReq.crossFrameworkMappings.map((m, i) => (
+                        <div
+                          key={i}
+                          className="p-3 rounded-lg bg-surface border border-border flex flex-col gap-1"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-semibold text-purple-400 uppercase">
+                              {m.targetFrameworkName}
+                            </span>
+                            <span className="text-[9px] font-mono bg-muted px-1.5 py-0.2 rounded text-muted-foreground capitalize">
+                              {m.mappingType || 'equivalent'}
+                            </span>
+                          </div>
+                          <div className="text-xs font-semibold text-foreground font-mono">
+                            {m.targetRequirementCode}
+                            {m.targetRequirementTitle ? ` — ${m.targetRequirementTitle}` : ''}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
                 <div className="p-3 rounded-lg bg-surface border border-border">
                   <span className="text-[10px] text-muted-foreground uppercase font-semibold block">
@@ -740,6 +771,11 @@ export function RequirementDrawer({
                         <p className="text-xs text-muted-foreground leading-relaxed">
                           {ctrl.description}
                         </p>
+                        {ctrl.coverageBenefit && (
+                          <div className="text-[11px] font-semibold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-md border border-purple-500/20">
+                            {ctrl.coverageBenefit}
+                          </div>
+                        )}
                         <div className="pt-2 border-t border-border flex items-center justify-between flex-wrap gap-2 text-[11px] text-muted-foreground">
                           <span>
                             Owner: <strong className="text-foreground">{ctrl.owner}</strong>

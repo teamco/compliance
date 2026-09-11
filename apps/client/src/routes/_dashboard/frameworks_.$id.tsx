@@ -487,6 +487,21 @@ function FrameworkWorkspacePage() {
             </div>
           </div>
 
+          {/* Unified Cross-Framework Leverage Banner */}
+          <div className="p-4 rounded-xl bg-gradient-to-r from-purple-500/10 via-green-500/10 to-blue-500/10 border border-purple-500/20 flex items-start gap-3">
+            <Sparkles size={18} className="text-purple-400 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold text-foreground">
+                Unified Cross-Framework Leverage
+              </h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Implementing unified internal controls (e.g. IAM-004, AC-001) satisfies an average
+                of 4.2 external requirements across your active frameworks simultaneously, reducing
+                redundant audits and compliance testing overhead.
+              </p>
+            </div>
+          </div>
+
           {/* Function Progress Cards */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Function Coverage Breakdown</h3>
@@ -713,45 +728,72 @@ function FrameworkWorkspacePage() {
                                   </div>
 
                                   {/* Row Metrics & Badges */}
-                                  <div className="flex items-center justify-between flex-wrap gap-2 pt-2 border-t border-border/60 text-[11px]">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <span
-                                        className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wider ${APPLICABILITY_BADGES[req.applicability]}`}
-                                      >
-                                        {req.applicability.replace('_', ' ')}
-                                      </span>
-                                      <span
-                                        className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wider ${IMPLEMENTATION_BADGES[req.implementationStatus]}`}
-                                      >
-                                        {req.implementationStatus.replace('_', ' ')}
-                                      </span>
-                                      {req.controlOwner && (
-                                        <span className="text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
-                                          Owner:{' '}
-                                          <strong className="text-foreground">
-                                            {req.controlOwner}
-                                          </strong>
-                                        </span>
+                                  <div className="space-y-2 pt-2 border-t border-border/60 text-[11px]">
+                                    {req.crossFrameworkMappings &&
+                                      req.crossFrameworkMappings.length > 0 && (
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="text-[10px] font-semibold text-purple-400">
+                                            Mapped:
+                                          </span>
+                                          {req.crossFrameworkMappings.slice(0, 5).map((m, idx) => (
+                                            <span
+                                              key={idx}
+                                              className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20"
+                                            >
+                                              {m.targetFrameworkName.split(' ')[0]}:{' '}
+                                              {m.targetRequirementCode}
+                                            </span>
+                                          ))}
+                                          {req.crossFrameworkMappings.length > 5 && (
+                                            <span className="text-[10px] text-muted-foreground">
+                                              +{req.crossFrameworkMappings.length - 5} more
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
-                                    </div>
 
-                                    <div className="flex items-center gap-3 text-muted-foreground">
-                                      <span>
-                                        Evidence: <strong>{req.evidenceCount ?? 3}</strong>
-                                      </span>
-                                      <span>·</span>
-                                      <span>
-                                        Mapped controls:{' '}
-                                        <strong>{req.mappedControlsCount ?? 4}</strong>
-                                      </span>
-                                      <span>·</span>
-                                      <span
-                                        className={
-                                          req.openFindingsCount ? 'text-red-400 font-semibold' : ''
-                                        }
-                                      >
-                                        Open findings: {req.openFindingsCount ?? 0}
-                                      </span>
+                                    <div className="flex items-center justify-between flex-wrap gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span
+                                          className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wider ${APPLICABILITY_BADGES[req.applicability]}`}
+                                        >
+                                          {req.applicability.replace('_', ' ')}
+                                        </span>
+                                        <span
+                                          className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wider ${IMPLEMENTATION_BADGES[req.implementationStatus]}`}
+                                        >
+                                          {req.implementationStatus.replace('_', ' ')}
+                                        </span>
+                                        {req.controlOwner && (
+                                          <span className="text-muted-foreground bg-muted/60 px-2 py-0.5 rounded">
+                                            Owner:{' '}
+                                            <strong className="text-foreground">
+                                              {req.controlOwner}
+                                            </strong>
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center gap-3 text-muted-foreground">
+                                        <span>
+                                          Evidence: <strong>{req.evidenceCount ?? 3}</strong>
+                                        </span>
+                                        <span>·</span>
+                                        <span>
+                                          Mapped controls:{' '}
+                                          <strong>{req.mappedControlsCount ?? 4}</strong>
+                                        </span>
+                                        <span>·</span>
+                                        <span
+                                          className={
+                                            req.openFindingsCount
+                                              ? 'text-red-400 font-semibold'
+                                              : ''
+                                          }
+                                        >
+                                          Open findings: {req.openFindingsCount ?? 0}
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -769,20 +811,26 @@ function FrameworkWorkspacePage() {
         </div>
       )}
 
-      {/* TAB 3: MAPPING (COMMON CONTROL FRAMEWORK) */}
+      {/* TAB 3: MAPPING (COMMON CONTROL FRAMEWORK & HARMONIZATION) */}
       {activeTab === 'mapping' && (
         <div className="space-y-6">
           <div className="p-4 rounded-xl bg-purple-500/5 border border-purple-500/20 space-y-1">
             <h3 className="text-sm font-semibold text-purple-300">
-              Common Control Framework Matrix
+              {t(
+                'frameworks.internalControlsCoverage',
+                'Common Control Framework (Internal Controls Coverage)',
+              )}
             </h3>
             <p className="text-xs text-purple-200 leading-relaxed">
-              Internal controls satisfy requirements across multiple regulatory frameworks
-              simultaneously, eliminating redundant auditing.
+              {t(
+                'frameworks.internalControlsCoverageDesc',
+                'Internal controls satisfy requirements across multiple frameworks simultaneously (e.g. NIST, ISO, SOC 2 / AICPA TSC), eliminating duplicate control testing.',
+              )}
             </p>
           </div>
 
-          <div className="space-y-3">
+          {/* Internal Controls Cards */}
+          <div className="space-y-4">
             {internalControls.map((ctrl) => (
               <div
                 key={ctrl.id}
@@ -790,7 +838,7 @@ function FrameworkWorkspacePage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    <span className="font-mono text-xs font-bold px-2.5 py-1 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">
                       {ctrl.code}
                     </span>
                     <h4 className="text-sm font-semibold text-foreground">{ctrl.title}</h4>
@@ -799,13 +847,26 @@ function FrameworkWorkspacePage() {
                     {ctrl.category}
                   </span>
                 </div>
+
                 <p className="text-xs text-muted-foreground leading-relaxed">{ctrl.description}</p>
+
+                {/* Multi-framework coverage leverage banner */}
+                <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-xs font-semibold text-purple-300 flex items-center gap-2">
+                  <Sparkles size={14} className="text-purple-400 shrink-0" />
+                  <span>
+                    {ctrl.coverageBenefit ||
+                      `Implementing ${ctrl.code} improves coverage across ${
+                        new Set(ctrl.frameworkMappings.map((m) => m.frameworkId)).size
+                      } frameworks and ${ctrl.frameworkMappings.length} requirements.`}
+                  </span>
+                </div>
+
                 <div className="pt-2 border-t border-border flex items-center justify-between flex-wrap gap-2 text-xs text-muted-foreground">
                   <span>
                     Owner: <strong className="text-foreground">{ctrl.owner}</strong>
                   </span>
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] text-muted-foreground">Framework Mappings:</span>
+                    <span className="text-[10px] text-muted-foreground">Satisfies:</span>
                     {ctrl.frameworkMappings.map((m, idx) => (
                       <span
                         key={idx}
@@ -819,12 +880,103 @@ function FrameworkWorkspacePage() {
               </div>
             ))}
           </div>
+
+          {/* Cross-Framework Requirement Harmonization Matrix */}
+          <div className="space-y-3 pt-4 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  {t('frameworks.crossFrameworkTitle', 'Cross-Framework Requirement Harmonization')}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'frameworks.crossFrameworkDesc',
+                    'Direct mappings between standards allow single-point implementation and unified compliance audits.',
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-surface overflow-hidden">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-muted/40 border-b border-border text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  <tr>
+                    <th className="p-3.5">Source Requirement</th>
+                    <th className="p-3.5">Target Framework</th>
+                    <th className="p-3.5">Target Requirement</th>
+                    <th className="p-3.5">Alignment</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {requirements
+                    .filter((r) => r.crossFrameworkMappings && r.crossFrameworkMappings.length > 0)
+                    .flatMap((r) =>
+                      (r.crossFrameworkMappings ?? []).map((m, mIdx) => ({
+                        key: `${r.id}-${mIdx}`,
+                        sourceCode: r.code,
+                        sourceTitle: r.title,
+                        targetFramework: m.targetFrameworkName,
+                        targetCode: m.targetRequirementCode,
+                        targetTitle: m.targetRequirementTitle,
+                        mappingType: m.mappingType || 'equivalent',
+                      })),
+                    )
+                    .map((row) => (
+                      <tr key={row.key} className="hover:bg-muted/20 transition-colors">
+                        <td className="p-3.5">
+                          <span className="font-mono font-bold text-foreground block">
+                            {row.sourceCode}
+                          </span>
+                          <span className="text-[11px] text-muted-foreground line-clamp-1">
+                            {row.sourceTitle}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-foreground font-medium">{row.targetFramework}</td>
+                        <td className="p-3.5">
+                          <span className="font-mono font-bold text-purple-400 block">
+                            {row.targetCode}
+                          </span>
+                          {row.targetTitle && (
+                            <span className="text-[11px] text-muted-foreground line-clamp-1">
+                              {row.targetTitle}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-muted text-foreground">
+                            {row.mappingType}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
       {/* TAB 4: ASSESSMENTS */}
       {activeTab === 'assessments' && (
         <div className="space-y-6">
+          {/* SOC 2 / Audit Program Architecture Clarification Banner */}
+          {(framework.slug === 'aicpa-tsc' ||
+            framework.slug === 'soc2' ||
+            framework.name.includes('Trust Services Criteria') ||
+            framework.name.includes('SOC 2')) && (
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 space-y-1">
+              <h4 className="text-xs font-bold text-blue-300">
+                Audit & Examination Programs: SOC 2 Type I & Type II
+              </h4>
+              <p className="text-xs text-blue-200 leading-relaxed">
+                The AICPA Trust Services Criteria (TSC) serves as the authoritative criteria
+                baseline. Organizations conduct <strong>SOC 2 Type I</strong> (point-in-time design
+                suitability) and <strong>SOC 2 Type II</strong> (period-of-time operating
+                effectiveness) examinations against these criteria.
+              </p>
+            </div>
+          )}
+
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold text-foreground">Assessment Cycles</h3>

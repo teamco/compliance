@@ -7,6 +7,7 @@ import {
   Lock,
   Cloud,
   AlertTriangle,
+  Scale,
   Plus,
   Search,
   ArrowRight,
@@ -36,6 +37,7 @@ import {
 const CATEGORY_COLORS: Record<string, string> = {
   security: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   privacy: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  regulatory: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
   cloud: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
   risk: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
 };
@@ -43,6 +45,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
   security: Shield,
   privacy: Lock,
+  regulatory: Scale,
   cloud: Cloud,
   risk: AlertTriangle,
 };
@@ -77,35 +80,15 @@ const PREDEFINED_CATALOGUE = [
     categoriesCount: 14,
   },
   {
-    slug: 'soc2',
-    name: 'SOC 2 Type II',
+    slug: 'aicpa-tsc',
+    name: 'AICPA Trust Services Criteria (TSC)',
     version: '2017',
-    category: 'security' as const,
+    category: 'regulatory' as const,
     description:
-      'AICPA Trust Services Criteria for security, availability, processing integrity, confidentiality, and privacy',
+      'AICPA Trust Services Criteria for Security, Availability, Processing Integrity, Confidentiality, and Privacy (baseline for SOC 1 and SOC 2 examinations)',
     requirementsCount: 64,
     functionsCount: 5,
     categoriesCount: 9,
-  },
-  {
-    slug: 'gdpr',
-    name: 'GDPR',
-    version: '2018',
-    category: 'privacy' as const,
-    description: 'General Data Protection Regulation — EU data protection and privacy law',
-    requirementsCount: 99,
-    functionsCount: 7,
-    categoriesCount: 11,
-  },
-  {
-    slug: 'pci-dss',
-    name: 'PCI DSS v4.0',
-    version: '4.0',
-    category: 'security' as const,
-    description: 'Payment Card Industry Data Security Standard for protecting cardholder data',
-    requirementsCount: 250,
-    functionsCount: 6,
-    categoriesCount: 12,
   },
   {
     slug: 'cis-v8',
@@ -119,15 +102,123 @@ const PREDEFINED_CATALOGUE = [
     categoriesCount: 18,
   },
   {
-    slug: 'hipaa-security',
-    name: 'HIPAA Security Rule',
-    version: '2013',
+    slug: 'nist-800-53',
+    name: 'NIST SP 800-53 Rev. 5',
+    version: 'Rev. 5',
+    category: 'security' as const,
+    description: 'Security and Privacy Controls for Information Systems and Organizations',
+    requirementsCount: 1007,
+    functionsCount: 20,
+    categoriesCount: 20,
+  },
+  {
+    slug: 'pci-dss',
+    name: 'PCI DSS v4.0.1',
+    version: '4.0.1',
+    category: 'security' as const,
+    description:
+      'Payment Card Industry Data Security Standard for protecting cardholder and authentication data',
+    requirementsCount: 250,
+    functionsCount: 6,
+    categoriesCount: 12,
+  },
+  {
+    slug: 'gdpr',
+    name: 'GDPR',
+    version: '2018',
     category: 'privacy' as const,
+    description: 'General Data Protection Regulation — EU data protection and privacy law',
+    requirementsCount: 99,
+    functionsCount: 7,
+    categoriesCount: 11,
+  },
+  {
+    slug: 'iso27701',
+    name: 'ISO/IEC 27701:2019',
+    version: '2019',
+    category: 'privacy' as const,
+    description:
+      'Privacy Information Management System (PIMS) extension to ISO/IEC 27001 and ISO/IEC 27002',
+    requirementsCount: 31,
+    functionsCount: 4,
+    categoriesCount: 8,
+  },
+  {
+    slug: 'pipeda',
+    name: 'PIPEDA',
+    version: '2000/2024',
+    category: 'privacy' as const,
+    description:
+      'Personal Information Protection and Electronic Documents Act (Canada federal private-sector privacy law)',
+    requirementsCount: 10,
+    functionsCount: 1,
+    categoriesCount: 10,
+  },
+  {
+    slug: 'iso31000',
+    name: 'ISO 31000:2018',
+    version: '2018',
+    category: 'risk' as const,
+    description:
+      'Risk management guidelines — Principles, framework, and process for enterprise risk governance',
+    requirementsCount: 24,
+    functionsCount: 3,
+    categoriesCount: 6,
+  },
+  {
+    slug: 'nist-rmf',
+    name: 'NIST RMF (SP 800-37 Rev. 2)',
+    version: 'Rev. 2',
+    category: 'risk' as const,
+    description:
+      'Risk Management Framework for Information Systems and Organizations: A System Life Cycle Approach',
+    requirementsCount: 7,
+    functionsCount: 7,
+    categoriesCount: 7,
+  },
+  {
+    slug: 'coso-erm',
+    name: 'COSO Enterprise Risk Management',
+    version: '2017',
+    category: 'risk' as const,
+    description:
+      'Enterprise Risk Management — Integrating with Strategy and Performance (20 Principles)',
+    requirementsCount: 20,
+    functionsCount: 5,
+    categoriesCount: 5,
+  },
+  {
+    slug: 'csa-ccm',
+    name: 'CSA Cloud Controls Matrix (CCM v4)',
+    version: 'v4.0',
+    category: 'cloud' as const,
+    description:
+      'Cloud Security Alliance cybersecurity control framework for cloud computing across 17 domains',
+    requirementsCount: 197,
+    functionsCount: 17,
+    categoriesCount: 17,
+  },
+  {
+    slug: 'iso27017',
+    name: 'ISO/IEC 27017:2015',
+    version: '2015',
+    category: 'cloud' as const,
+    description:
+      'Code of practice for information security controls based on ISO/IEC 27002 for cloud services',
+    requirementsCount: 37,
+    functionsCount: 7,
+    categoriesCount: 7,
+  },
+  {
+    slug: 'hipaa',
+    name: 'HIPAA Security & Privacy Rule',
+    version: '2013',
+    category: 'regulatory' as const,
     description:
       'Health Insurance Portability and Accountability Act standards for protecting ePHI',
     requirementsCount: 74,
-    functionsCount: 3,
-    categoriesCount: 18,
+    functionsCount: 4,
+    categoriesCount: 8,
   },
 ];
 
@@ -139,6 +230,7 @@ function FrameworkCard({
   onStatusChange: (id: string, newStatus: FrameworkStatus) => void;
 }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const Icon = CATEGORY_ICONS[fw.category] ?? BookOpen;
   const colorClass = CATEGORY_COLORS[fw.category] ?? 'bg-muted text-muted-foreground border-border';
   const status = fw.status || 'available';
@@ -150,7 +242,20 @@ function FrameworkCard({
   const notReviewed = fw.notReviewedCount ?? Math.max(0, totalReqs - applicable - notApplicable);
 
   return (
-    <div className="group relative bg-surface border border-border rounded-xl p-5 flex flex-col justify-between gap-4 hover:border-muted-foreground/40 transition-colors shadow-xs">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => {
+        void navigate({ to: '/frameworks/$id', params: { id: fw.id } });
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          void navigate({ to: '/frameworks/$id', params: { id: fw.id } });
+        }
+      }}
+      className="group relative bg-surface border border-border rounded-xl p-5 flex flex-col justify-between gap-4 hover:border-muted-foreground/40 transition-colors shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-500/40"
+    >
       {/* Top Header */}
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
@@ -166,7 +271,10 @@ function FrameworkCard({
             <select
               value={status}
               onClick={(e) => e.stopPropagation()}
-              onChange={(e) => onStatusChange(fw.id, e.target.value as FrameworkStatus)}
+              onChange={(e) => {
+                e.stopPropagation();
+                onStatusChange(fw.id, e.target.value as FrameworkStatus);
+              }}
               className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border cursor-pointer focus:outline-none ${statusClass}`}
             >
               <option value="available">Available</option>
@@ -180,7 +288,9 @@ function FrameworkCard({
         {/* Title & Description */}
         <div className="space-y-1">
           <div className="flex items-baseline gap-2 flex-wrap">
-            <h3 className="text-sm font-semibold text-foreground leading-snug">{fw.name}</h3>
+            <h3 className="text-sm font-semibold text-foreground leading-snug group-hover:text-green-400 transition-colors">
+              {fw.name}
+            </h3>
             <span className="text-[10px] font-medium text-muted-foreground/60 bg-muted px-1.5 py-0.5 rounded">
               v{fw.version}
             </span>
@@ -223,6 +333,7 @@ function FrameworkCard({
           <Link
             to="/frameworks/$id"
             params={{ id: fw.id }}
+            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1 text-xs font-medium text-green-500 hover:text-green-400 transition-colors"
           >
             {t('frameworks.viewFramework', 'View Framework')}
@@ -257,13 +368,13 @@ export function FrameworksPage() {
   const [customName, setCustomName] = useState('');
   const [customSlug, setCustomSlug] = useState('');
   const [customVersion, setCustomVersion] = useState('1.0');
-  const [customCategory, setCustomCategory] = useState<'security' | 'privacy' | 'cloud' | 'risk'>(
-    'security',
-  );
+  const [customCategory, setCustomCategory] = useState<
+    'security' | 'privacy' | 'regulatory' | 'cloud' | 'risk'
+  >('security');
   const [customDescription, setCustomDescription] = useState('');
   const [customReqsText, setCustomReqsText] = useState('');
 
-  const categories = ['all', 'security', 'privacy', 'cloud', 'risk'] as const;
+  const categories = ['all', 'security', 'privacy', 'regulatory', 'cloud', 'risk'] as const;
   const statuses = ['all', 'enabled', 'configured', 'in_assessment', 'available'] as const;
 
   const filtered = frameworks.filter((f) => {
@@ -638,7 +749,8 @@ export function FrameworksPage() {
                       value={customCategory}
                       onChange={(e) =>
                         setCustomCategory(
-                          e.target.value as 'security' | 'privacy' | 'cloud' | 'risk',
+                          e.target.value as
+                            'security' | 'privacy' | 'regulatory' | 'cloud' | 'risk',
                         )
                       }
                       className="w-full h-8 rounded-lg border border-border bg-background px-3 text-xs text-foreground focus:outline-none"
@@ -647,6 +759,9 @@ export function FrameworksPage() {
                         {t('frameworks.category.security', 'Security')}
                       </option>
                       <option value="privacy">{t('frameworks.category.privacy', 'Privacy')}</option>
+                      <option value="regulatory">
+                        {t('frameworks.category.regulatory', 'Regulatory')}
+                      </option>
                       <option value="cloud">{t('frameworks.category.cloud', 'Cloud')}</option>
                       <option value="risk">{t('frameworks.category.risk', 'Risk')}</option>
                     </select>

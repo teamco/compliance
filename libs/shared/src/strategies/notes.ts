@@ -1,4 +1,4 @@
-export type FrameworkCategory = 'security' | 'privacy' | 'cloud' | 'risk';
+export type FrameworkCategory = 'security' | 'privacy' | 'regulatory' | 'cloud' | 'risk';
 export type OrgSize = 'startup' | 'smb' | 'enterprise';
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
 
@@ -8,6 +8,48 @@ export type ImplementationStatus =
   'not_implemented' | 'planned' | 'partially_implemented' | 'implemented' | 'not_applicable';
 export type EffectivenessStatus =
   'effective' | 'partially_effective' | 'ineffective' | 'not_tested';
+
+export interface FrameworkVersion {
+  id: string;
+  frameworkId: string;
+  version: string;
+  releaseDate?: string;
+  status?: 'active' | 'deprecated' | 'draft';
+  isCurrent?: boolean;
+}
+
+export interface FrameworkSection {
+  id: string;
+  frameworkId: string;
+  code: string;
+  title: string;
+  description?: string;
+  parentSectionId?: string;
+  orderIndex?: number;
+}
+
+export interface RequirementMapping {
+  id?: string;
+  sourceRequirementId?: string;
+  sourceFrameworkId?: string;
+  sourceRequirementCode?: string;
+  targetFrameworkId: string;
+  targetFrameworkName: string;
+  targetRequirementCode: string;
+  targetRequirementTitle?: string;
+  mappingType?: 'identical' | 'superset' | 'subset' | 'equivalent' | 'related';
+  notes?: string;
+}
+
+export interface ControlImplementation {
+  id: string;
+  orgId?: string;
+  controlId: string;
+  implementationStatus: ImplementationStatus;
+  description?: string;
+  owner?: string;
+  lastAssessed?: string;
+}
 
 export interface Framework {
   id: string;
@@ -26,6 +68,8 @@ export interface Framework {
   notApplicableCount?: number;
   notReviewedCount?: number;
   isCustom?: boolean;
+  versions?: FrameworkVersion[];
+  sections?: FrameworkSection[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -69,6 +113,7 @@ export interface FrameworkRequirement {
   evidenceCount?: number;
   mappedControlsCount?: number;
   openFindingsCount?: number;
+  crossFrameworkMappings?: RequirementMapping[];
 }
 
 export interface FrameworkRequirementPatch {
@@ -100,7 +145,11 @@ export interface InternalControl {
     frameworkId: string;
     frameworkName: string;
     requirementCode: string;
+    requirementTitle?: string;
   }>;
+  coverageBenefit?: string;
+  frameworkCount?: number;
+  requirementCount?: number;
 }
 
 export interface RequirementEvidence {
