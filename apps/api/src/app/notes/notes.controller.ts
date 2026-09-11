@@ -45,6 +45,11 @@ import type {
   RiskAssessmentPatch,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  FrameworkInput,
+  FrameworkPatch,
+  FrameworkRequirementPatch,
+  InternalControl,
+  RequirementEvidence,
 } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
 import { StandardsQueueService } from './standards-queue.service';
@@ -62,8 +67,168 @@ export class NotesController {
 
   @Get('frameworks')
   @ApiOperation({ summary: 'List all compliance frameworks' })
-  listFrameworks() {
-    return this.notes.listFrameworks();
+  listFrameworks(@Query('orgId') orgId?: string) {
+    return this.notes.listFrameworks(orgId);
+  }
+
+  @Get('frameworks/:id')
+  @ApiOperation({ summary: 'Get compliance framework by id' })
+  async getFramework(@Param('id') id: string, @Query('orgId') orgId?: string) {
+    const fw = await this.notes.getFramework(id, orgId);
+    if (!fw) throw new NotFoundException('Framework not found');
+    return fw;
+  }
+
+  @Post('frameworks')
+  @ApiOperation({ summary: 'Create or import a compliance framework' })
+  async createFramework(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: FrameworkInput,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createFramework(orgId, body);
+  }
+
+  @Patch('frameworks/:id')
+  @ApiOperation({ summary: 'Update framework status or details' })
+  async updateFramework(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId: string,
+    @Body() body: FrameworkPatch,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.updateFramework(id, orgId, body);
+  }
+
+  @Delete('frameworks/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete custom framework' })
+  async deleteFramework(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
+    await this.notes.deleteFramework(id, orgId);
+  }
+
+  @Get('frameworks/:id/requirements')
+  @ApiOperation({ summary: 'List requirements for a framework' })
+  listRequirements(@Param('id') id: string, @Query('orgId') orgId?: string) {
+    return this.notes.listRequirements(id, orgId);
+  }
+
+  @Get('frameworks/:id/requirements/:reqId')
+  @ApiOperation({ summary: 'Get specific requirement details' })
+  async getRequirement(
+    @Param('id') id: string,
+    @Param('reqId') reqId: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    const req = await this.notes.getRequirement(id, reqId, orgId);
+    if (!req) throw new NotFoundException('Requirement not found');
+    return req;
+  }
+
+  @Patch('frameworks/:id/requirements/:reqId')
+  @ApiOperation({ summary: 'Update requirement applicability and implementation' })
+  async updateRequirement(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Param('reqId') reqId: string,
+    @Query('orgId') orgId: string,
+    @Body() body: FrameworkRequirementPatch,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.updateRequirement(id, reqId, orgId, body);
+  }
+
+  @Get('internal-controls')
+  @ApiOperation({ summary: 'List internal controls' })
+  listInternalControls(@Query('orgId') orgId?: string, @Query('frameworkId') frameworkId?: string) {
+    return this.notes.listInternalControls(orgId, frameworkId);
+  }
+
+  @Post('internal-controls')
+  @ApiOperation({ summary: 'Create internal control' })
+  async createInternalControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: Omit<InternalControl, 'id'>,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createInternalControl(orgId, body);
+  }
+
+  @Get('frameworks/:id/evidence')
+  @ApiOperation({ summary: 'List evidence for a framework' })
+  listFrameworkEvidence(@Param('id') id: string, @Query('orgId') orgId?: string) {
+    return this.notes.listFrameworkEvidence(id, orgId);
+  }
+
+  @Post('frameworks/:id/evidence')
+  @ApiOperation({ summary: 'Add evidence for a framework' })
+  async createFrameworkEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId: string,
+    @Body() body: Omit<RequirementEvidence, 'id'>,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createFrameworkEvidence(orgId, { ...body, frameworkId: id });
+  }
+
+  @Get('frameworks/:id/assessments')
+  @ApiOperation({ summary: 'List assessment history for a framework' })
+  listFrameworkAssessments(@Param('id') id: string, @Query('orgId') orgId?: string) {
+    return this.notes.listFrameworkAssessments(id, orgId);
+  }
+
+  @Post('frameworks/:id/assessments/:assessmentId/findings')
+  @ApiOperation({ summary: 'Create finding from assessment' })
+  async createAssessmentFinding(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') _id: string,
+    @Param('assessmentId') assessmentId: string,
+    @Query('orgId') orgId: string,
+    @Body()
+    body: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createAssessmentFinding(orgId, assessmentId, body);
+  }
+
+  @Get('frameworks/:id/activities')
+  @ApiOperation({ summary: 'List activities for a framework' })
+  listFrameworkActivities(@Param('id') id: string, @Query('orgId') orgId?: string) {
+    return this.notes.listFrameworkActivities(id, orgId);
   }
 
   @Get('frameworks/:id/controls')

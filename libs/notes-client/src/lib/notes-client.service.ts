@@ -19,6 +19,14 @@ import type {
   ExceptionPatch,
   Framework,
   FrameworkControl,
+  FrameworkRequirement,
+  FrameworkRequirementPatch,
+  InternalControl,
+  RequirementEvidence,
+  RequirementAssessment,
+  FrameworkActivity,
+  FrameworkInput,
+  FrameworkPatch,
   GapAnalysis,
   GapAnalysisResult,
   Issue,
@@ -59,12 +67,125 @@ import { NOTES_CLIENT } from './notes-client.tokens';
 export class NotesClientService {
   constructor(@Inject(NOTES_CLIENT) private readonly client: ClientProxy) {}
 
-  listFrameworks(): Promise<Framework[]> {
-    return signedSend<Framework[]>(this.client, 'notes.frameworks.list', {});
+  listFrameworks(orgId?: string): Promise<Framework[]> {
+    return signedSend<Framework[]>(this.client, 'notes.frameworks.list', { orgId });
   }
 
-  getFramework(id: string): Promise<Framework | null> {
-    return signedSend<Framework | null>(this.client, 'notes.frameworks.get', { id });
+  getFramework(id: string, orgId?: string): Promise<Framework | null> {
+    return signedSend<Framework | null>(this.client, 'notes.frameworks.get', { id, orgId });
+  }
+
+  createFramework(orgId: string, input: FrameworkInput): Promise<Framework> {
+    return signedSend<Framework>(this.client, 'notes.frameworks.create', { orgId, input });
+  }
+
+  updateFramework(id: string, orgId: string, patch: FrameworkPatch): Promise<Framework> {
+    return signedSend<Framework>(this.client, 'notes.frameworks.update', { id, orgId, patch });
+  }
+
+  deleteFramework(id: string, orgId: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.frameworks.delete', { id, orgId });
+  }
+
+  listRequirements(frameworkId: string, orgId?: string): Promise<FrameworkRequirement[]> {
+    return signedSend<FrameworkRequirement[]>(this.client, 'notes.frameworks.requirements.list', {
+      frameworkId,
+      orgId,
+    });
+  }
+
+  getRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId?: string,
+  ): Promise<FrameworkRequirement | null> {
+    return signedSend<FrameworkRequirement | null>(
+      this.client,
+      'notes.frameworks.requirements.get',
+      {
+        frameworkId,
+        reqId,
+        orgId,
+      },
+    );
+  }
+
+  updateRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId: string,
+    patch: FrameworkRequirementPatch,
+  ): Promise<FrameworkRequirement> {
+    return signedSend<FrameworkRequirement>(this.client, 'notes.frameworks.requirements.update', {
+      frameworkId,
+      reqId,
+      orgId,
+      patch,
+    });
+  }
+
+  listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
+    return signedSend<InternalControl[]>(this.client, 'notes.frameworks.internal-controls.list', {
+      orgId,
+      frameworkId,
+    });
+  }
+
+  createInternalControl(
+    orgId: string,
+    data: Omit<InternalControl, 'id'>,
+  ): Promise<InternalControl> {
+    return signedSend<InternalControl>(this.client, 'notes.frameworks.internal-controls.create', {
+      orgId,
+      data,
+    });
+  }
+
+  listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]> {
+    return signedSend<RequirementEvidence[]>(this.client, 'notes.frameworks.evidence.list', {
+      frameworkId,
+      orgId,
+    });
+  }
+
+  createFrameworkEvidence(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.frameworks.evidence.create', {
+      orgId,
+      data,
+    });
+  }
+
+  listFrameworkAssessments(frameworkId: string, orgId?: string): Promise<RequirementAssessment[]> {
+    return signedSend<RequirementAssessment[]>(this.client, 'notes.frameworks.assessments.list', {
+      frameworkId,
+      orgId,
+    });
+  }
+
+  createAssessmentFinding(
+    orgId: string,
+    assessmentId: string,
+    findingData: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ): Promise<{ findingId: string }> {
+    return signedSend<{ findingId: string }>(this.client, 'notes.frameworks.assessments.finding', {
+      orgId,
+      assessmentId,
+      findingData,
+    });
+  }
+
+  listFrameworkActivities(frameworkId: string, orgId?: string): Promise<FrameworkActivity[]> {
+    return signedSend<FrameworkActivity[]>(this.client, 'notes.frameworks.activities.list', {
+      frameworkId,
+      orgId,
+    });
   }
 
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]> {
