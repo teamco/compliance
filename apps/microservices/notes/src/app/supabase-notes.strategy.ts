@@ -1404,11 +1404,31 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .insert({
         org_id: orgId,
         user_id: userId,
+        code: data.code,
         name: data.name,
         type: data.type,
         criticality: data.criticality,
         description: data.description,
-        owner: data.owner,
+        owner: data.owner || data.businessOwner || '',
+        business_owner: data.businessOwner,
+        technical_owner: data.technicalOwner,
+        department: data.department,
+        status: data.status ?? 'active',
+        data_classification: data.dataClassification,
+        data_types: data.dataTypes ?? [],
+        cia_confidentiality: data.ciaConfidentiality,
+        cia_integrity: data.ciaIntegrity,
+        cia_availability: data.ciaAvailability,
+        hosting_type: data.hostingType,
+        environment: data.environment,
+        location: data.location,
+        internet_facing: data.internetFacing,
+        is_production: data.isProduction,
+        vendor_id: data.vendorId,
+        vendor_name: data.vendorName,
+        vendor_ids: data.vendorIds ?? (data.vendorId ? [data.vendorId] : []),
+        related_asset_ids: data.relatedAssetIds ?? [],
+        compliance_scope: data.complianceScope ?? [],
         tags: data.tags ?? [],
       })
       .select()
@@ -1424,11 +1444,33 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
   async updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.code !== undefined) update['code'] = patch.code;
     if (patch.name !== undefined) update['name'] = patch.name;
     if (patch.type !== undefined) update['type'] = patch.type;
     if (patch.criticality !== undefined) update['criticality'] = patch.criticality;
     if (patch.description !== undefined) update['description'] = patch.description;
     if (patch.owner !== undefined) update['owner'] = patch.owner;
+    if (patch.businessOwner !== undefined) update['business_owner'] = patch.businessOwner;
+    if (patch.technicalOwner !== undefined) update['technical_owner'] = patch.technicalOwner;
+    if (patch.department !== undefined) update['department'] = patch.department;
+    if (patch.status !== undefined) update['status'] = patch.status;
+    if (patch.dataClassification !== undefined)
+      update['data_classification'] = patch.dataClassification;
+    if (patch.dataTypes !== undefined) update['data_types'] = patch.dataTypes;
+    if (patch.ciaConfidentiality !== undefined)
+      update['cia_confidentiality'] = patch.ciaConfidentiality;
+    if (patch.ciaIntegrity !== undefined) update['cia_integrity'] = patch.ciaIntegrity;
+    if (patch.ciaAvailability !== undefined) update['cia_availability'] = patch.ciaAvailability;
+    if (patch.hostingType !== undefined) update['hosting_type'] = patch.hostingType;
+    if (patch.environment !== undefined) update['environment'] = patch.environment;
+    if (patch.location !== undefined) update['location'] = patch.location;
+    if (patch.internetFacing !== undefined) update['internet_facing'] = patch.internetFacing;
+    if (patch.isProduction !== undefined) update['is_production'] = patch.isProduction;
+    if (patch.vendorId !== undefined) update['vendor_id'] = patch.vendorId;
+    if (patch.vendorName !== undefined) update['vendor_name'] = patch.vendorName;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.relatedAssetIds !== undefined) update['related_asset_ids'] = patch.relatedAssetIds;
+    if (patch.complianceScope !== undefined) update['compliance_scope'] = patch.complianceScope;
     if (patch.tags !== undefined) update['tags'] = patch.tags;
     const { data, error } = await this.db
       .from('assets')
@@ -1449,12 +1491,32 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       id: row['id'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
+      code: row['code'] as string | undefined,
       name: row['name'] as string,
       type: row['type'] as Asset['type'],
       criticality: row['criticality'] as Asset['criticality'],
-      description: row['description'] as string,
-      owner: row['owner'] as string,
-      tags: row['tags'] as string[],
+      description: (row['description'] as string) || '',
+      owner: (row['owner'] as string) || (row['business_owner'] as string) || '',
+      businessOwner: row['business_owner'] as string | undefined,
+      technicalOwner: row['technical_owner'] as string | undefined,
+      department: row['department'] as string | undefined,
+      status: (row['status'] as Asset['status']) || 'active',
+      dataClassification: row['data_classification'] as Asset['dataClassification'],
+      dataTypes: (row['data_types'] as string[]) || [],
+      ciaConfidentiality: row['cia_confidentiality'] as Asset['ciaConfidentiality'],
+      ciaIntegrity: row['cia_integrity'] as Asset['ciaIntegrity'],
+      ciaAvailability: row['cia_availability'] as Asset['ciaAvailability'],
+      hostingType: row['hosting_type'] as string | undefined,
+      environment: (row['environment'] as string) || 'production',
+      location: row['location'] as string | undefined,
+      internetFacing: Boolean(row['internet_facing']),
+      isProduction: row['is_production'] !== undefined ? Boolean(row['is_production']) : true,
+      vendorId: (row['vendor_id'] as string) || null,
+      vendorName: row['vendor_name'] as string | undefined,
+      vendorIds: (row['vendor_ids'] as string[]) || [],
+      relatedAssetIds: (row['related_asset_ids'] as string[]) || [],
+      complianceScope: (row['compliance_scope'] as string[]) || [],
+      tags: (row['tags'] as string[]) || [],
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
