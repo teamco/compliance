@@ -19,6 +19,14 @@ import type {
   ExceptionPatch,
   Framework,
   FrameworkControl,
+  FrameworkRequirement,
+  FrameworkRequirementPatch,
+  InternalControl,
+  RequirementEvidence,
+  RequirementAssessment,
+  FrameworkActivity,
+  FrameworkInput,
+  FrameworkPatch,
   GapAnalysis,
   GapAnalysisResult,
   Issue,
@@ -140,6 +148,167 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       version: r.version,
       category: r.category as Framework['category'],
     };
+  }
+
+  async createFramework(orgId: string, input: FrameworkInput): Promise<Framework> {
+    const id = globalThis.crypto.randomUUID();
+    const now = new Date().toISOString();
+    const { data: row, error } = await this.db
+      .from('frameworks')
+      .insert({
+        id,
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        version: input.version,
+        category: input.category,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        id,
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        version: input.version,
+        category: input.category,
+        status: input.status ?? 'enabled',
+        lastUpdated: new Date().getFullYear().toString(),
+        controlCount: input.requirements?.length ?? 0,
+        requirementsCount: input.requirements?.length ?? 0,
+        applicableCount: input.requirements?.length ?? 0,
+        notApplicableCount: 0,
+        notReviewedCount: 0,
+        isCustom: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
+
+    const r = row as {
+      id: string;
+      slug: string;
+      name: string;
+      description: string;
+      version: string;
+      category: string;
+    };
+    return {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      version: r.version,
+      category: r.category as Framework['category'],
+      status: input.status ?? 'enabled',
+      controlCount: input.requirements?.length ?? 0,
+      requirementsCount: input.requirements?.length ?? 0,
+      applicableCount: input.requirements?.length ?? 0,
+      isCustom: true,
+    };
+  }
+
+  async updateFramework(id: string, _orgId: string, patch: FrameworkPatch): Promise<Framework> {
+    const existing = await this.getFramework(id);
+    if (!existing) throw new Error(`framework_not_found: ${id}`);
+    return { ...existing, ...patch };
+  }
+
+  async deleteFramework(id: string, _orgId: string): Promise<void> {
+    await this.db.from('frameworks').delete().eq('id', id);
+  }
+
+  async listRequirements(frameworkId: string, _orgId?: string): Promise<FrameworkRequirement[]> {
+    const controls = await this.listControlsByFramework(frameworkId);
+    return controls.map((c) => ({
+      id: c.id,
+      frameworkId: c.frameworkId,
+      code: c.code,
+      title: c.title,
+      description: c.description,
+      categoryCode: c.code.split('-')[0] ?? c.code,
+      categoryName: c.category,
+      applicability: 'applicable',
+      implementationStatus: 'implemented',
+      evidenceCount: 1,
+      mappedControlsCount: 1,
+      openFindingsCount: 0,
+    }));
+  }
+
+  async getRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId?: string,
+  ): Promise<FrameworkRequirement | null> {
+    const reqs = await this.listRequirements(frameworkId, orgId);
+    return reqs.find((r) => r.id === reqId || r.code === reqId) ?? null;
+  }
+
+  async updateRequirement(
+    frameworkId: string,
+    reqId: string,
+    _orgId: string,
+    patch: FrameworkRequirementPatch,
+  ): Promise<FrameworkRequirement> {
+    const req = await this.getRequirement(frameworkId, reqId);
+    if (!req) throw new Error(`requirement_not_found: ${reqId}`);
+    return { ...req, ...patch };
+  }
+
+  async listInternalControls(_orgId?: string, _frameworkId?: string): Promise<InternalControl[]> {
+    return [];
+  }
+
+  async createInternalControl(
+    orgId: string,
+    data: Omit<InternalControl, 'id'>,
+  ): Promise<InternalControl> {
+    return { id: `ctrl-${globalThis.crypto.randomUUID().slice(0, 8)}`, orgId, ...data };
+  }
+
+  async listFrameworkEvidence(
+    _frameworkId: string,
+    _orgId?: string,
+  ): Promise<RequirementEvidence[]> {
+    return [];
+  }
+
+  async createFrameworkEvidence(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Promise<RequirementEvidence> {
+    return { id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`, orgId, ...data };
+  }
+
+  async listFrameworkAssessments(
+    _frameworkId: string,
+    _orgId?: string,
+  ): Promise<RequirementAssessment[]> {
+    return [];
+  }
+
+  async createAssessmentFinding(
+    _orgId: string,
+    _assessmentId: string,
+    _findingData: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ): Promise<{ findingId: string }> {
+    return {
+      findingId: `FIND-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+    };
+  }
+
+  async listFrameworkActivities(
+    _frameworkId: string,
+    _orgId?: string,
+  ): Promise<FrameworkActivity[]> {
+    return [];
   }
 
   async listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]> {

@@ -2,6 +2,13 @@ export type FrameworkCategory = 'security' | 'privacy' | 'cloud' | 'risk';
 export type OrgSize = 'startup' | 'smb' | 'enterprise';
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
 
+export type FrameworkStatus = 'available' | 'enabled' | 'configured' | 'in_assessment';
+export type FrameworkApplicabilityStatus = 'applicable' | 'not_applicable' | 'not_determined';
+export type ImplementationStatus =
+  'not_implemented' | 'planned' | 'partially_implemented' | 'implemented' | 'not_applicable';
+export type EffectivenessStatus =
+  'effective' | 'partially_effective' | 'ineffective' | 'not_tested';
+
 export interface Framework {
   id: string;
   slug: string;
@@ -9,7 +16,18 @@ export interface Framework {
   description: string;
   version: string;
   category: FrameworkCategory;
+  status?: FrameworkStatus;
+  lastUpdated?: string;
   controlCount?: number;
+  functionsCount?: number;
+  categoriesCount?: number;
+  requirementsCount?: number;
+  applicableCount?: number;
+  notApplicableCount?: number;
+  notReviewedCount?: number;
+  isCustom?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // A framework control (seed data — not AI-generated).
@@ -20,6 +38,140 @@ export interface FrameworkControl {
   title: string;
   description: string;
   category: string;
+}
+
+export interface FrameworkRequirement {
+  id: string;
+  frameworkId: string;
+  code: string;
+  title: string;
+  description: string;
+  functionCode?: string;
+  functionName?: string;
+  categoryCode?: string;
+  categoryName?: string;
+  guidance?: string;
+  references?: string[];
+  applicability: FrameworkApplicabilityStatus;
+  applicabilityRationale?: string;
+  notApplicableReason?: string;
+  scopeBusinessUnits?: string[];
+  scopeSystems?: string[];
+  scopeLocations?: string[];
+  scopeLegalEntities?: string[];
+  implementationStatus: ImplementationStatus;
+  implementationDescription?: string;
+  controlOwner?: string;
+  controlOperator?: string;
+  reviewFrequency?: string;
+  lastAssessed?: string;
+  nextAssessment?: string;
+  evidenceCount?: number;
+  mappedControlsCount?: number;
+  openFindingsCount?: number;
+}
+
+export interface FrameworkRequirementPatch {
+  applicability?: FrameworkApplicabilityStatus;
+  applicabilityRationale?: string;
+  notApplicableReason?: string;
+  scopeBusinessUnits?: string[];
+  scopeSystems?: string[];
+  scopeLocations?: string[];
+  scopeLegalEntities?: string[];
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+  controlOwner?: string;
+  controlOperator?: string;
+  reviewFrequency?: string;
+  lastAssessed?: string;
+  nextAssessment?: string;
+}
+
+export interface InternalControl {
+  id: string;
+  orgId?: string;
+  code: string;
+  title: string;
+  description: string;
+  owner: string;
+  category: string;
+  frameworkMappings: Array<{
+    frameworkId: string;
+    frameworkName: string;
+    requirementCode: string;
+  }>;
+}
+
+export interface RequirementEvidence {
+  id: string;
+  orgId?: string;
+  frameworkId: string;
+  requirementId: string;
+  title: string;
+  owner: string;
+  evidenceType: string;
+  source: string;
+  collectionDate: string;
+  periodCovered: string;
+  expirationDate: string;
+  verificationStatus: 'verified' | 'pending_review' | 'rejected' | 'expired';
+  url?: string;
+  linkedControls?: string[];
+  linkedRequirements?: string[];
+}
+
+export interface RequirementAssessment {
+  id: string;
+  orgId?: string;
+  frameworkId: string;
+  requirementId?: string;
+  cycleName: string;
+  status: 'completed' | 'in_progress' | 'scheduled';
+  implementationStatus: ImplementationStatus;
+  designEffectiveness: EffectivenessStatus;
+  operatingEffectiveness: EffectivenessStatus;
+  assessor: string;
+  assessmentDate: string;
+  observation: string;
+  findingId?: string;
+  findingTitle?: string;
+  findingSeverity?: 'critical' | 'high' | 'medium' | 'low';
+}
+
+export interface FrameworkActivity {
+  id: string;
+  frameworkId: string;
+  action: string;
+  details: string;
+  actor: string;
+  timestamp: string;
+}
+
+export interface FrameworkInput {
+  slug: string;
+  name: string;
+  description: string;
+  version: string;
+  category: FrameworkCategory;
+  status?: FrameworkStatus;
+  requirements?: Array<{
+    code: string;
+    title: string;
+    description: string;
+    functionCode?: string;
+    functionName?: string;
+    categoryCode?: string;
+    categoryName?: string;
+    guidance?: string;
+    references?: string[];
+  }>;
+}
+
+export interface FrameworkPatch {
+  status?: FrameworkStatus;
+  description?: string;
+  name?: string;
 }
 
 // An organization stored in the notes DB.
@@ -458,10 +610,45 @@ export interface AiUsageTimeseriesPoint {
 }
 
 export interface NotesStrategy {
-  listFrameworks(): Promise<Framework[]>;
-  getFramework(id: string): Promise<Framework | null>;
+  listFrameworks(orgId?: string): Promise<Framework[]>;
+  getFramework(id: string, orgId?: string): Promise<Framework | null>;
+  createFramework(orgId: string, input: FrameworkInput): Promise<Framework>;
+  updateFramework(id: string, orgId: string, patch: FrameworkPatch): Promise<Framework>;
+  deleteFramework(id: string, orgId: string): Promise<void>;
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]>;
   listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]>;
+
+  // Framework Workspace & GRC methods
+  listRequirements(frameworkId: string, orgId?: string): Promise<FrameworkRequirement[]>;
+  getRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId?: string,
+  ): Promise<FrameworkRequirement | null>;
+  updateRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId: string,
+    patch: FrameworkRequirementPatch,
+  ): Promise<FrameworkRequirement>;
+  listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]>;
+  createInternalControl(orgId: string, data: Omit<InternalControl, 'id'>): Promise<InternalControl>;
+  listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]>;
+  createFrameworkEvidence(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Promise<RequirementEvidence>;
+  listFrameworkAssessments(frameworkId: string, orgId?: string): Promise<RequirementAssessment[]>;
+  createAssessmentFinding(
+    orgId: string,
+    assessmentId: string,
+    findingData: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ): Promise<{ findingId: string }>;
+  listFrameworkActivities(frameworkId: string, orgId?: string): Promise<FrameworkActivity[]>;
 
   listOrganizations(userId: string): Promise<Organization[]>;
   createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
