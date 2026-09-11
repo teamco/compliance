@@ -2250,6 +2250,133 @@ export class FakeNotesStrategy implements NotesStrategy {
         timestamp: '2026-07-02T11:00:00Z',
       },
     ];
+
+    // Seed Default Assets
+    const defaultOrgId = '00000000-0000-0000-0000-000000000001';
+    this.assets = [
+      {
+        id: '00000000-0000-0000-0000-00000000a001',
+        orgId: defaultOrgId,
+        userId: 'seed-user-id',
+        code: 'AST-000101',
+        name: 'Customer Payment API',
+        type: 'api',
+        criticality: 'critical',
+        description:
+          'Core microservice handling credit card transactions, tokenization, and checkout gateways.',
+        owner: 'Digital Banking',
+        businessOwner: 'Digital Banking',
+        technicalOwner: 'Platform Engineering',
+        department: 'Engineering',
+        status: 'active',
+        dataClassification: 'restricted',
+        dataTypes: ['pii', 'pci', 'financial'],
+        ciaConfidentiality: 'critical',
+        ciaIntegrity: 'critical',
+        ciaAvailability: 'critical',
+        hostingType: 'cloud',
+        environment: 'production',
+        location: 'AWS us-east-1',
+        internetFacing: true,
+        isProduction: true,
+        vendorName: 'Stripe / AWS',
+        complianceScope: ['PCI DSS', 'SOC 2', 'NIST CSF 2.0'],
+        tags: ['payments', 'tier-1', 'public-facing'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '00000000-0000-0000-0000-00000000a002',
+        orgId: defaultOrgId,
+        userId: 'seed-user-id',
+        code: 'AST-000102',
+        name: 'Customer Database Cluster',
+        type: 'database',
+        criticality: 'critical',
+        description:
+          'PostgreSQL primary cluster storing accounts, customer profiles, and transaction records.',
+        owner: 'Data Platform',
+        businessOwner: 'Core Banking',
+        technicalOwner: 'DBA Team',
+        department: 'Data Infrastructure',
+        status: 'active',
+        dataClassification: 'restricted',
+        dataTypes: ['pii', 'customer_data', 'financial'],
+        ciaConfidentiality: 'critical',
+        ciaIntegrity: 'critical',
+        ciaAvailability: 'high',
+        hostingType: 'cloud',
+        environment: 'production',
+        location: 'AWS us-east-1 RDS',
+        internetFacing: false,
+        isProduction: true,
+        relatedAssetIds: ['00000000-0000-0000-0000-00000000a001'],
+        complianceScope: ['PCI DSS', 'SOC 2', 'GDPR', 'ISO 27001'],
+        tags: ['database', 'rds', 'pii-store'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '00000000-0000-0000-0000-00000000a003',
+        orgId: defaultOrgId,
+        userId: 'seed-user-id',
+        code: 'AST-000103',
+        name: 'Microsoft 365 Enterprise',
+        type: 'cloud_service',
+        criticality: 'high',
+        description:
+          'Corporate productivity suite including Exchange email, Teams, SharePoint, and OneDrive.',
+        owner: 'IT Operations',
+        businessOwner: 'Corporate Operations',
+        technicalOwner: 'IT Helpdesk',
+        department: 'Information Technology',
+        status: 'active',
+        dataClassification: 'confidential',
+        dataTypes: ['employee_data', 'customer_data'],
+        ciaConfidentiality: 'high',
+        ciaIntegrity: 'high',
+        ciaAvailability: 'high',
+        hostingType: 'saas',
+        environment: 'production',
+        location: 'Global SaaS',
+        internetFacing: true,
+        isProduction: true,
+        vendorName: 'Microsoft Corporation',
+        complianceScope: ['SOC 2', 'ISO 27001', 'GDPR'],
+        tags: ['saas', 'collaboration', 'email'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: '00000000-0000-0000-0000-00000000a004',
+        orgId: defaultOrgId,
+        userId: 'seed-user-id',
+        code: 'AST-000104',
+        name: 'Corporate Web Application',
+        type: 'web_app',
+        criticality: 'medium',
+        description: 'Public marketing website and customer onboarding web portal.',
+        owner: 'Marketing Team',
+        businessOwner: 'Marketing',
+        technicalOwner: 'Frontend Team',
+        department: 'Growth & Marketing',
+        status: 'active',
+        dataClassification: 'public',
+        dataTypes: ['customer_data'],
+        ciaConfidentiality: 'low',
+        ciaIntegrity: 'high',
+        ciaAvailability: 'high',
+        hostingType: 'cloud',
+        environment: 'production',
+        location: 'Vercel Edge / AWS CloudFront',
+        internetFacing: true,
+        isProduction: true,
+        complianceScope: ['SOC 2'],
+        tags: ['web', 'frontend', 'marketing'],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
   }
 
   seedFramework(fw: Framework): void {
@@ -3108,15 +3235,37 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   async createAsset(orgId: string, userId: string, data: AssetInput): Promise<Asset> {
+    const orgAssets = this.assets.filter((a) => a.orgId === orgId);
+    const code = data.code || `AST-${String(orgAssets.length + 101).padStart(6, '0')}`;
     const asset: Asset = {
       id: globalThis.crypto.randomUUID(),
       orgId,
       userId,
+      code,
       name: data.name,
       type: data.type,
       criticality: data.criticality,
-      description: data.description,
-      owner: data.owner,
+      description: data.description || '',
+      owner: data.owner || data.businessOwner || '',
+      businessOwner: data.businessOwner || data.owner || '',
+      technicalOwner: data.technicalOwner || '',
+      department: data.department || '',
+      status: data.status ?? 'active',
+      dataClassification: data.dataClassification ?? 'internal',
+      dataTypes: data.dataTypes ?? [],
+      ciaConfidentiality: data.ciaConfidentiality ?? 'moderate',
+      ciaIntegrity: data.ciaIntegrity ?? 'moderate',
+      ciaAvailability: data.ciaAvailability ?? 'moderate',
+      hostingType: data.hostingType || 'cloud',
+      environment: data.environment || 'production',
+      location: data.location || '',
+      internetFacing: data.internetFacing ?? false,
+      isProduction: data.isProduction ?? true,
+      vendorId: data.vendorId ?? null,
+      vendorName: data.vendorName || '',
+      vendorIds: data.vendorIds ?? (data.vendorId ? [data.vendorId] : []),
+      relatedAssetIds: data.relatedAssetIds ?? [],
+      complianceScope: data.complianceScope ?? [],
       tags: data.tags ?? [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -3132,7 +3281,24 @@ export class FakeNotesStrategy implements NotesStrategy {
   async updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
     const idx = this.assets.findIndex((a) => a.id === id);
     if (idx === -1) throw new Error('asset_not_found');
-    const updated: Asset = { ...this.assets[idx]!, ...patch, updatedAt: new Date().toISOString() };
+    const existing = this.assets[idx]!;
+    const updated: Asset = {
+      ...existing,
+      ...patch,
+      owner:
+        patch.owner !== undefined
+          ? patch.owner
+          : patch.businessOwner !== undefined
+            ? patch.businessOwner
+            : existing.owner,
+      businessOwner:
+        patch.businessOwner !== undefined
+          ? patch.businessOwner
+          : patch.owner !== undefined
+            ? patch.owner
+            : existing.businessOwner,
+      updatedAt: new Date().toISOString(),
+    };
     this.assets[idx] = updated;
     return updated;
   }

@@ -404,38 +404,118 @@ export interface IssuePatch {
 
 // ─── Assets ────────────────────────────────────────────────────────────────
 
-export type AssetType = 'service' | 'application' | 'infrastructure' | 'data' | 'device' | 'other';
+export type AssetType =
+  | 'service'
+  | 'application'
+  | 'infrastructure'
+  | 'server'
+  | 'database'
+  | 'cloud_service'
+  | 'cloud_resource'
+  | 'network'
+  | 'endpoint'
+  | 'api'
+  | 'web_app'
+  | 'data_asset'
+  | 'facility'
+  | 'data'
+  | 'device'
+  | 'other';
+
 export type AssetCriticality = 'critical' | 'high' | 'medium' | 'low';
+export type AssetStatus = 'planned' | 'active' | 'maintenance' | 'retiring' | 'retired';
+export type DataClassification = 'public' | 'internal' | 'confidential' | 'restricted';
+export type CiaImpact = 'low' | 'moderate' | 'high' | 'critical';
 
 export interface Asset {
   id: string;
   orgId: string;
   userId: string;
+  code?: string;
   name: string;
   type: AssetType;
   criticality: AssetCriticality;
   description: string;
   owner: string;
+  businessOwner?: string;
+  technicalOwner?: string;
+  department?: string;
+  status: AssetStatus;
+  dataClassification?: DataClassification;
+  dataTypes?: string[];
+  ciaConfidentiality?: CiaImpact;
+  ciaIntegrity?: CiaImpact;
+  ciaAvailability?: CiaImpact;
+  hostingType?: string;
+  environment?: string;
+  location?: string;
+  internetFacing?: boolean;
+  isProduction?: boolean;
+  vendorId?: string | null;
+  vendorName?: string;
+  vendorIds?: string[];
+  relatedAssetIds?: string[];
+  complianceScope?: string[];
   tags: string[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AssetInput {
+  code?: string;
   name: string;
   type: AssetType;
   criticality: AssetCriticality;
   description: string;
   owner: string;
+  businessOwner?: string;
+  technicalOwner?: string;
+  department?: string;
+  status?: AssetStatus;
+  dataClassification?: DataClassification;
+  dataTypes?: string[];
+  ciaConfidentiality?: CiaImpact;
+  ciaIntegrity?: CiaImpact;
+  ciaAvailability?: CiaImpact;
+  hostingType?: string;
+  environment?: string;
+  location?: string;
+  internetFacing?: boolean;
+  isProduction?: boolean;
+  vendorId?: string | null;
+  vendorName?: string;
+  vendorIds?: string[];
+  relatedAssetIds?: string[];
+  complianceScope?: string[];
   tags?: string[];
 }
 
 export interface AssetPatch {
+  code?: string;
   name?: string;
   type?: AssetType;
   criticality?: AssetCriticality;
   description?: string;
   owner?: string;
+  businessOwner?: string;
+  technicalOwner?: string;
+  department?: string;
+  status?: AssetStatus;
+  dataClassification?: DataClassification;
+  dataTypes?: string[];
+  ciaConfidentiality?: CiaImpact;
+  ciaIntegrity?: CiaImpact;
+  ciaAvailability?: CiaImpact;
+  hostingType?: string;
+  environment?: string;
+  location?: string;
+  internetFacing?: boolean;
+  isProduction?: boolean;
+  vendorId?: string | null;
+  vendorName?: string;
+  vendorIds?: string[];
+  relatedAssetIds?: string[];
+  complianceScope?: string[];
   tags?: string[];
 }
 
