@@ -119,7 +119,7 @@ export const es = {
   },
   frameworks: {
     title: 'Marcos de cumplimiento',
-    subtitle: 'Biblioteca autorizada de estándares regulatorios y marcos de control de gobernanza',
+    subtitle: 'Gestionar marcos de cumplimiento, requisitos, mapeos y cobertura organizacional',
     all: 'Todas las categorías',
     controlCount: '{{count}} controles',
     loading: 'Cargando marcos…',
@@ -153,9 +153,19 @@ export const es = {
     tabEvidence: 'Evidencia',
     tabDocuments: 'Documentos',
     tabActivity: 'Actividad',
+    crossFrameworkTitle: 'Armonización de requisitos entre marcos',
+    crossFrameworkDesc:
+      'Los mapeos directos entre estándares permiten una implementación unificada y auditorías integradas.',
+    internalControlsCoverage: 'Marco de control común (Cobertura de controles internos)',
+    internalControlsCoverageDesc:
+      'Los controles internos satisfacen requisitos en múltiples marcos simultáneamente (ej. NIST, ISO, SOC 2 / AICPA TSC), evitando pruebas duplicadas.',
+    coverageBenefitBadge:
+      'Implementar {{code}} mejora la cobertura en {{frameworkCount}} marcos y {{requirementCount}} requisitos',
+    mappedRequirementsTitle: 'Requisitos mapeados entre marcos',
     category: {
       security: 'Seguridad',
       privacy: 'Privacidad',
+      regulatory: 'Regulatorio',
       cloud: 'Nube',
       risk: 'Riesgo',
     },

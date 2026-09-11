@@ -110,7 +110,7 @@ export const he = {
   },
   frameworks: {
     title: 'מסגרות תאימות',
-    subtitle: 'ספרייה סמכותית של תקנים רגולטוריים ומסגרות בקרת ממשל',
+    subtitle: 'ניהול מסגרות תאימות, דרישות, מיפויים וכיסוי ארגוני',
     all: 'כל הקטגוריות',
     controlCount: '{{count}} בקרות',
     loading: 'טוען מסגרות…',
@@ -143,9 +143,18 @@ export const he = {
     tabEvidence: 'ראיות',
     tabDocuments: 'מסמכים',
     tabActivity: 'פעילות',
+    crossFrameworkTitle: 'הרמוניזציית דרישות בין מסגרות',
+    crossFrameworkDesc: 'מיפוי ישיר בין תקנים מאפשר יישום אחיד וביקורות תאימות משולבות.',
+    internalControlsCoverage: 'מסגרת בקרות משותפת (כיסוי בקרות פנימיות)',
+    internalControlsCoverageDesc:
+      'בקרות פנימיות עונות על דרישות במספר מסגרות בו-זמנית (למשל NIST, ISO, SOC 2 / AICPA TSC), מה שמונע בדיקות כפולות.',
+    coverageBenefitBadge:
+      'יישום {{code}} משפר את הכיסוי ב-{{frameworkCount}} מסגרות וב-{{requirementCount}} דרישות',
+    mappedRequirementsTitle: 'דרישות ממופות בין מסגרות',
     category: {
       security: 'אבטחה',
       privacy: 'פרטיות',
+      regulatory: 'רגולטורי',
       cloud: 'ענן',
       risk: 'סיכון',
     },
