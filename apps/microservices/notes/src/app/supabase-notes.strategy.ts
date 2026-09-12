@@ -64,7 +64,12 @@ import type {
   RiskImpact,
   RiskInput,
   RiskLikelihood,
+  RiskMethodology,
+  RiskMethodologyInput,
   RiskPatch,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskThresholdBand,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -2046,6 +2051,152 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       assetId: row['asset_id'] as string | null,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Risk Methodology ──────────────────────────────────────────────────────
+
+  async getRiskMethodology(orgId: string): Promise<RiskMethodology | null> {
+    const { data, error } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data) return this.toRiskMethodology(data);
+
+    const seeded = {
+      org_id: orgId,
+      scale_size: 5,
+      likelihood_labels: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost Certain'],
+      impact_labels: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+      thresholds: [
+        { maxScore: 4, label: 'low' },
+        { maxScore: 9, label: 'medium' },
+        { maxScore: 16, label: 'high' },
+        { maxScore: 25, label: 'critical' },
+      ],
+      appetite_threshold: 9,
+    };
+    const { data: row, error: insertError } = await this.db
+      .from('risk_methodologies')
+      .insert(seeded)
+      .select()
+      .single();
+    return this.toRiskMethodology(ok(row, insertError));
+  }
+
+  async upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
+    const current = await this.getRiskMethodology(orgId);
+    const nextVersion = (current?.version ?? 0) + 1;
+    if (current) {
+      await this.db.from('risk_methodologies').update({ is_active: false }).eq('id', current.id);
+    }
+    const { data: row, error } = await this.db
+      .from('risk_methodologies')
+      .insert({
+        org_id: orgId,
+        version: nextVersion,
+        is_active: true,
+        scale_size: data.scaleSize,
+        likelihood_labels: data.likelihoodLabels,
+        impact_labels: data.impactLabels,
+        thresholds: data.thresholds,
+        appetite_threshold: data.appetiteThreshold,
+      })
+      .select()
+      .single();
+    return this.toRiskMethodology(ok(row, error));
+  }
+
+  private toRiskMethodology(row: Record<string, unknown>): RiskMethodology {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      version: row['version'] as number,
+      isActive: row['is_active'] as boolean,
+      scaleSize: row['scale_size'] as 3 | 4 | 5,
+      likelihoodLabels: row['likelihood_labels'] as string[],
+      impactLabels: row['impact_labels'] as string[],
+      thresholds: row['thresholds'] as RiskThresholdBand[],
+      appetiteThreshold: row['appetite_threshold'] as number,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk Taxonomy ─────────────────────────────────────────────────────────
+
+  async listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    const rows = ok(data, error);
+    if (rows.length > 0) return rows.map((r) => this.toRiskTaxonomyCategory(r));
+
+    const defaults = [
+      'Identity & Access',
+      'Vulnerability Management',
+      'Network Security',
+      'Application Security',
+      'Data Security',
+      'Security Operations',
+      'Incident Response',
+      'Availability',
+      'Infrastructure',
+      'Architecture',
+      'Change',
+      'Cloud',
+      'Technical Debt',
+      'Supplier Security',
+      'Concentration',
+      'Supply Chain',
+      'Outsourcing',
+      'Privacy',
+      'Compliance / Regulatory',
+      'Operational',
+      'Business Continuity / Resilience',
+      'Strategic',
+      'Financial',
+    ];
+    const { data: inserted, error: insertError } = await this.db
+      .from('risk_taxonomy_categories')
+      .insert(defaults.map((name) => ({ org_id: orgId, name })))
+      .select();
+    return ok(inserted, insertError).map((r) => this.toRiskTaxonomyCategory(r));
+  }
+
+  async createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory> {
+    const { data: row, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .insert({ org_id: orgId, name: data.name })
+      .select()
+      .single();
+    return this.toRiskTaxonomyCategory(ok(row, error));
+  }
+
+  async archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .update({ archived: true })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskTaxonomyCategory(ok(data, error));
+  }
+
+  private toRiskTaxonomyCategory(row: Record<string, unknown>): RiskTaxonomyCategory {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      name: row['name'] as string,
+      archived: row['archived'] as boolean,
+      createdAt: row['created_at'] as string,
     };
   }
 
