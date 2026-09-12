@@ -105,29 +105,29 @@ export interface InternalControl {
   code: string;
   title: string;
   description: string;
-  domain: string;
+  domain?: string;
   owner: string;
   operator?: string;
-  criticality: ControlCriticality;
-  controlType: ControlType;
-  execution: ControlExecution;
-  frequency: ControlFrequency;
-  nature: ControlNature;
-  keyControl: boolean;
+  criticality?: ControlCriticality;
+  controlType?: ControlType;
+  execution?: ControlExecution;
+  frequency?: ControlFrequency;
+  nature?: ControlNature;
+  keyControl?: boolean;
   parentControlId?: string | null;
   category: string;
-  implementationStatus: ImplementationStatus;
+  implementationStatus?: ImplementationStatus;
   implementationDescription?: string;
-  designEffectiveness: EffectivenessStatus;
-  operatingEffectiveness: EffectivenessStatus;
-  frameworkMappings: Array<{
+  designEffectiveness?: EffectivenessStatus;
+  operatingEffectiveness?: EffectivenessStatus;
+  frameworkMappings?: Array<{
     id?: string;
     frameworkId: string;
     frameworkName: string;
     requirementCode: string;
     requirementTitle?: string;
-    mappingType: FrameworkMappingType;
-    validation: MappingValidation;
+    mappingType?: FrameworkMappingType;
+    validation?: MappingValidation;
   }>;
   coverageBenefit?: string;
   frameworkCount?: number;
@@ -185,6 +185,8 @@ export interface ControlFrameworkMappingInput {
   validation: MappingValidation;
 }
 ```
+
+Note the asymmetry: `domain`/`criticality`/`controlType`/`execution`/`frequency`/`nature`/`keyControl`/`implementationStatus`/`designEffectiveness`/`operatingEffectiveness`/`frameworkMappings`/`mappingType`/`validation` are all optional on the readback `InternalControl` type, but required (where shown above) on `InternalControlInput`/`ControlFrameworkMappingInput` (the creation payloads). `fake-notes.ts` already seeds several `InternalControl` records (e.g. `ctrl-dpa-001`) that predate this task and only set the original, pre-plan field set (`id`/`code`/`title`/`description`/`owner`/`category`/`frameworkMappings` without the new sub-fields) — making the new fields required on the readback type breaks `yarn nx build shared` on code this task is not scoped to touch. Every control or mapping created going forward via `createInternalControl`/`addControlFrameworkMapping` (Tasks 4/7) still gets real values for all of these — the optionality only tolerates pre-existing legacy seed data, it does not weaken what new writes provide.
 
 - [ ] **Step 2: Widen `RequirementEvidence` (currently `notes.ts:155-171`) so evidence can be owned by a control instead of a requirement**
 
@@ -353,7 +355,6 @@ git commit -m "feat(shared): extend InternalControl/Evidence/Assessment types an
 create table public.internal_controls (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.org_profiles(id) on delete cascade,
-  user_id uuid not null,
   code text not null,
   title text not null,
   description text not null default '',
@@ -392,10 +393,14 @@ create index internal_controls_parent_idx on public.internal_controls(parent_con
 alter table public.internal_controls enable row level security;
 
 create policy "org members read internal_controls"
-  on public.internal_controls for select using (true);
+  on public.internal_controls for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own internal_controls"
-  on public.internal_controls for all using (auth.uid() = user_id);
+  on public.internal_controls for all using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 -- Many-to-many: one internal control maps to many framework requirements.
 create table public.internal_control_framework_mappings (
@@ -418,13 +423,20 @@ create index icfm_framework_idx on public.internal_control_framework_mappings(fr
 alter table public.internal_control_framework_mappings enable row level security;
 
 create policy "org members read control mappings"
-  on public.internal_control_framework_mappings for select using (true);
+  on public.internal_control_framework_mappings for select using (
+    exists (
+      select 1 from public.internal_controls c
+      join public.org_profiles o on o.id = c.org_id
+      where c.id = control_id and o.user_id = auth.uid()
+    )
+  );
 
 create policy "users manage own control mappings"
   on public.internal_control_framework_mappings for all using (
     exists (
       select 1 from public.internal_controls c
-      where c.id = control_id and c.user_id = auth.uid()
+      join public.org_profiles o on o.id = c.org_id
+      where c.id = control_id and o.user_id = auth.uid()
     )
   );
 
@@ -456,11 +468,17 @@ create index requirement_evidence_framework_idx on public.requirement_evidence(f
 alter table public.requirement_evidence enable row level security;
 
 create policy "org members read evidence"
-  on public.requirement_evidence for select using (true);
+  on public.requirement_evidence for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own evidence"
   on public.requirement_evidence for all using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (control_id is null or exists (
+      select 1 from public.internal_controls c
+      where c.id = control_id and c.org_id = requirement_evidence.org_id
+    ))
   );
 
 -- Assessments: control-centric or requirement-centric testing cycles.
@@ -490,15 +508,22 @@ create table public.requirement_assessments (
 
 create index requirement_assessments_org_idx on public.requirement_assessments(org_id);
 create index requirement_assessments_control_idx on public.requirement_assessments(control_id);
+create index requirement_assessments_framework_idx on public.requirement_assessments(framework_id);
 
 alter table public.requirement_assessments enable row level security;
 
 create policy "org members read assessments"
-  on public.requirement_assessments for select using (true);
+  on public.requirement_assessments for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own assessments"
   on public.requirement_assessments for all using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (control_id is null or exists (
+      select 1 from public.internal_controls c
+      where c.id = control_id and c.org_id = requirement_assessments.org_id
+    ))
   );
 
 -- Findings: created by an assessment, may bridge into Issue/Exception/Risk.
@@ -527,11 +552,20 @@ create index findings_control_idx on public.findings(control_id);
 alter table public.findings enable row level security;
 
 create policy "org members read findings"
-  on public.findings for select using (true);
+  on public.findings for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own findings"
   on public.findings for all using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and exists (
+      select 1 from public.internal_controls c where c.id = control_id and c.org_id = findings.org_id
+    )
+    and exists (
+      select 1 from public.requirement_assessments a
+      where a.id = assessment_id and a.org_id = findings.org_id
+    )
   );
 
 -- Activity log: reused for both framework-level and control-level history tabs.
@@ -551,13 +585,29 @@ create index framework_activities_control_idx on public.framework_activities(con
 
 alter table public.framework_activities enable row level security;
 
-create policy "org members read activities"
-  on public.framework_activities for select using (true);
+create policy "read own control activity or global framework activity"
+  on public.framework_activities for select using (
+    control_id is null
+    or exists (
+      select 1 from public.internal_controls c
+      join public.org_profiles o on o.id = c.org_id
+      where c.id = control_id and o.user_id = auth.uid()
+    )
+  );
 
-create policy "authenticated users insert activities"
-  on public.framework_activities for insert using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+create policy "users insert own control activity or global framework activity"
+  on public.framework_activities for insert
+  with check (
+    (control_id is null and framework_id is not null and auth.role() = 'authenticated')
+    or (control_id is not null and exists (
+      select 1 from public.internal_controls c
+      join public.org_profiles o on o.id = c.org_id
+      where c.id = control_id and o.user_id = auth.uid()
+    ))
+  );
 ```
+
+Every `select`/write policy above is org-scoped through `org_profiles.user_id = auth.uid()` (directly via `org_id`, or via a join through `internal_controls`/`requirement_assessments` for tables that reference a control or assessment instead of carrying `org_id` themselves) — this replaces an earlier draft that copied the `using (true)` permissive-read pattern from the genuinely-global `frameworks`/`controls` seed-catalog tables onto these org-owned tables, which would have let any authenticated user read every org's controls, evidence, assessments, and findings. The one deliberate exception: `framework_activities` rows with `control_id is null` (framework-level activity log entries, not control-level) stay readable/insertable by any authenticated user, because `framework_activities` has no `org_id` column and frameworks themselves are shared platform catalog data — matching the existing `frameworks`/`controls` tables' own `using (auth.role() = 'authenticated')` policy. `findings`' write policy additionally verifies `control_id` and `assessment_id` both belong to the same `org_id` as the finding row, so a caller can't forge a finding in their own org that points at another org's control or assessment; `requirement_evidence`/`requirement_assessments` get the same `control_id`-ownership check where a `control_id` is present.
 
 - [ ] **Step 2: Apply locally and verify**
 
@@ -998,7 +1048,7 @@ git commit -m "test(shared): cover InternalControl lifecycle, findings bridge, e
     const { data, error } = await query;
     const controls = await Promise.all(ok(data, error).map((row) => this.toInternalControl(row)));
     if (!frameworkId) return controls;
-    return controls.filter((c) => c.frameworkMappings.some((m) => m.frameworkId === frameworkId));
+    return controls.filter((c) => c.frameworkMappings?.some((m) => m.frameworkId === frameworkId));
   }
 
   async getInternalControl(id: string, _orgId?: string): Promise<InternalControl | null> {
@@ -1016,7 +1066,6 @@ git commit -m "test(shared): cover InternalControl lifecycle, findings bridge, e
       .from('internal_controls')
       .insert({
         org_id: orgId,
-        user_id: orgId,
         code: data.code,
         title: data.title,
         description: data.description,
@@ -2203,7 +2252,7 @@ export function ControlsTable({ controls, showGapsOnly }: ControlsTableProps) {
       </thead>
       <tbody>
         {rows.map((c) => {
-          const fwNames = [...new Set(c.frameworkMappings.map((m) => m.frameworkName))];
+          const fwNames = [...new Set((c.frameworkMappings ?? []).map((m) => m.frameworkName))];
           return (
             <tr
               key={c.id}
@@ -2292,7 +2341,10 @@ function ControlsPage() {
 
   const filtered = useMemo(() => {
     return controls.filter((c) => {
-      if (selectedFwIds.size > 0 && !c.frameworkMappings.some((m) => selectedFwIds.has(m.frameworkId)))
+      if (
+        selectedFwIds.size > 0 &&
+        !(c.frameworkMappings ?? []).some((m) => selectedFwIds.has(m.frameworkId))
+      )
         return false;
       if (domainFilter && c.domain !== domainFilter) return false;
       if (ownerFilter && c.owner !== ownerFilter) return false;
@@ -2572,7 +2624,7 @@ function ControlDetailPage() {
               </tr>
             </thead>
             <tbody>
-              {control.frameworkMappings.map((m) => (
+              {(control.frameworkMappings ?? []).map((m) => (
                 <tr key={m.id} className="border-b border-border">
                   <td className="py-2 px-3">{m.frameworkName}</td>
                   <td className="py-2 px-3">
@@ -2589,7 +2641,7 @@ function ControlDetailPage() {
               ))}
             </tbody>
           </table>
-          {control.frameworkMappings.length === 0 && (
+          {(control.frameworkMappings ?? []).length === 0 && (
             <div className="py-8 text-center text-muted-foreground">{t('controls.noMappings')}</div>
           )}
         </div>
