@@ -138,7 +138,7 @@ function ControlsPage() {
             <span className="font-semibold text-foreground">{coverageCount}</span>
             {' / '}
             <span className="font-semibold text-foreground">{doc.standards.length}</span>{' '}
-            {t('controls.controlsMapped')}
+            {t('controls.standardsMapped')}
           </span>
         )}
       </div>
