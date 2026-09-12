@@ -1979,7 +1979,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('risks')
       .select('*')
       .eq('org_id', orgId)
-      .order('risk_score', { ascending: false });
+      .order('inherent_score', { ascending: false });
     return ok(data, error).map((row) => this.toRisk(row));
   }
 
