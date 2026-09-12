@@ -48,8 +48,11 @@ import type {
   FrameworkInput,
   FrameworkPatch,
   FrameworkRequirementPatch,
-  InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
   RequirementEvidence,
+  RequirementAssessment,
+  ControlFrameworkMappingInput,
 } from '@icore/shared';
 import { AbilityFactory } from '../abilities/ability.factory';
 import { StandardsQueueService } from './standards-queue.service';
@@ -158,8 +161,14 @@ export class NotesController {
   }
 
   @Get('internal-controls')
-  @ApiOperation({ summary: 'List internal controls' })
-  listInternalControls(@Query('orgId') orgId?: string, @Query('frameworkId') frameworkId?: string) {
+  @ApiOperation({ summary: 'List internal controls for org' })
+  listInternalControls(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId?: string,
+    @Query('frameworkId') frameworkId?: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
     return this.notes.listInternalControls(orgId, frameworkId);
   }
 
@@ -168,13 +177,153 @@ export class NotesController {
   async createInternalControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
-    @Body() body: Omit<InternalControl, 'id'>,
+    @Body() body: InternalControlInput,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
     return this.notes.createInternalControl(orgId, body);
+  }
+
+  @Get('internal-controls/:id')
+  @ApiOperation({ summary: 'Get internal control' })
+  async getInternalControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control) throw new NotFoundException();
+    return control;
+  }
+
+  @Patch('internal-controls/:id')
+  @ApiOperation({ summary: 'Update internal control' })
+  updateInternalControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: InternalControlPatch,
+  ) {
+    this.uid(req);
+    return this.notes.updateInternalControl(id, patch);
+  }
+
+  @Delete('internal-controls/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete internal control' })
+  deleteInternalControl(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.deleteInternalControl(id);
+  }
+
+  @Post('internal-controls/:id/mappings')
+  @ApiOperation({ summary: 'Add a framework mapping to an internal control' })
+  addControlFrameworkMapping(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: ControlFrameworkMappingInput,
+  ) {
+    this.uid(req);
+    return this.notes.addControlFrameworkMapping(id, body);
+  }
+
+  @Delete('internal-controls/:id/mappings/:mappingId')
+  @ApiOperation({ summary: 'Remove a framework mapping from an internal control' })
+  removeControlFrameworkMapping(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Param('mappingId') mappingId: string,
+  ) {
+    this.uid(req);
+    return this.notes.removeControlFrameworkMapping(id, mappingId);
+  }
+
+  @Get('internal-controls/:id/evidence')
+  @ApiOperation({ summary: 'List evidence attached to an internal control' })
+  listControlEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listControlEvidence(id);
+  }
+
+  @Post('internal-controls/:id/evidence')
+  @ApiOperation({ summary: 'Attach evidence to an internal control' })
+  createControlEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createControlEvidence(orgId, id, body);
+  }
+
+  @Get('internal-controls/:id/assessments')
+  @ApiOperation({ summary: 'List assessments for an internal control' })
+  listControlAssessments(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listControlAssessments(id);
+  }
+
+  @Post('internal-controls/:id/assessments')
+  @ApiOperation({ summary: 'Record a control assessment (may generate a Finding)' })
+  createControlAssessment(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createControlAssessment(orgId, id, body);
+  }
+
+  @Get('internal-controls/:id/findings')
+  @ApiOperation({ summary: 'List findings for an internal control' })
+  listControlFindings(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listControlFindings(id);
+  }
+
+  @Post('findings/:id/link-risk')
+  @ApiOperation({ summary: 'Link a finding to a risk register entry' })
+  linkFindingToRisk(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { riskId: string },
+  ) {
+    this.uid(req);
+    return this.notes.linkFindingToRisk(id, body.riskId);
+  }
+
+  @Post('findings/:id/link-issue')
+  @ApiOperation({ summary: 'Link a finding to an issue' })
+  linkFindingToIssue(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { issueId: string },
+  ) {
+    this.uid(req);
+    return this.notes.linkFindingToIssue(id, body.issueId);
+  }
+
+  @Post('findings/:id/resolve-via-exception')
+  @ApiOperation({ summary: 'Resolve a finding by attaching an approved exception' })
+  resolveFindingViaException(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { exceptionId: string },
+  ) {
+    this.uid(req);
+    return this.notes.resolveFindingViaException(id, body.exceptionId);
+  }
+
+  @Get('internal-controls/:id/activity')
+  @ApiOperation({ summary: 'List activity log for an internal control' })
+  listControlActivity(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listControlActivity(id);
   }
 
   @Get('frameworks/:id/evidence')
