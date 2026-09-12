@@ -1,6 +1,6 @@
 import type { ExecutionContext } from '@nestjs/common';
 import type { ClientProxy } from '@nestjs/microservices';
-import { of } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HmacGuard, signedSend } from '../hmac';
 
@@ -42,6 +42,14 @@ describe('signedSend', () => {
     expect(body.payload).toEqual({ a: 1 });
     expect(typeof body.signature).toBe('string');
     expect(body.signature.length).toBeGreaterThan(0);
+  });
+
+  it('resolves to undefined for a void RPC whose Observable completes with no emissions', async () => {
+    const send = vi
+      .fn()
+      .mockReturnValue(new Observable<unknown>((subscriber) => subscriber.complete()));
+    const result = await signedSend(makeClient(send), 'x.pattern', { a: 1 });
+    expect(result).toBeUndefined();
   });
 
   it('refuses to send unsigned in production when MS_HMAC_SECRET is missing', async () => {
