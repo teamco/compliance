@@ -48,7 +48,6 @@ import type {
   FrameworkInput,
   FrameworkPatch,
   FrameworkRequirementPatch,
-  InternalControl,
   InternalControlInput,
   InternalControlPatch,
   RequirementEvidence,
