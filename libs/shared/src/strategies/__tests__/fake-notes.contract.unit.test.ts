@@ -818,3 +818,141 @@ describe('InternalControl lifecycle', () => {
     expect(activity.some((a) => a.action === 'Evidence Uploaded')).toBe(true);
   });
 });
+
+describe('Risk Register lifecycle', () => {
+  it('seeds a default methodology and taxonomy on first access', async () => {
+    const strategy = new FakeNotesStrategy();
+    const methodology = await strategy.getRiskMethodology('org-1');
+    expect(methodology?.scaleSize).toBe(5);
+    expect(methodology?.thresholds).toHaveLength(4);
+
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    expect(taxonomy.length).toBeGreaterThan(0);
+    expect(taxonomy.every((c) => c.orgId === 'org-1')).toBe(true);
+  });
+
+  it('creates a risk with an auto-generated ID and a methodology-based inherent score', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Unauthorized Access to Customer Data',
+      riskStatement: 'Due to weak access controls, unauthorized access may occur.',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 4,
+      inherentImpact: 5,
+    });
+    expect(risk.riskId).toMatch(/^RSK-\d{6}$/);
+    expect(risk.inherentScore).toBe(20);
+    expect(risk.inherentLabel).toBe('critical');
+    expect(risk.status).toBe('open');
+  });
+
+  it('writes a snapshot before applying a residual-score update, and computes above-appetite', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Cloud Service Outage',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 4,
+      inherentImpact: 5,
+    });
+
+    const updated = await strategy.updateRisk(
+      risk.id,
+      { residualLikelihood: 2, residualImpact: 5 },
+      'user-1',
+      'MFA deployed',
+    );
+    expect(updated.residualScore).toBe(10);
+    expect(updated.residualLabel).toBe('high');
+    expect(updated.aboveAppetite).toBe(true); // 10 > default appetite threshold 9
+
+    const snapshots = await strategy.listRiskSnapshots(risk.id);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]?.inherentScore).toBe(20);
+    expect(snapshots[0]?.reason).toBe('MFA deployed');
+  });
+
+  it('maps a risk to a control directly, independent of findings', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+
+    const mapping = await strategy.addRiskControlMapping(risk.id, {
+      controlId: 'ctrl-1',
+      controlCode: 'IAM-001',
+      controlTitle: 'Privileged Access MFA',
+      effectivenessNote: 'Effective',
+    });
+    expect((await strategy.listRiskControlMappings(risk.id))).toHaveLength(1);
+
+    await strategy.removeRiskControlMapping(mapping.id);
+    expect((await strategy.listRiskControlMappings(risk.id))).toHaveLength(0);
+  });
+
+  it('runs a risk acceptance through requested -> approved, and supersedes on a new request', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    expect(acceptance.status).toBe('requested');
+
+    await strategy.reviewRiskAcceptance(acceptance.id, 'ciso-1', 'Looks reasonable');
+    const approved = await strategy.approveRiskAcceptance(acceptance.id);
+    expect(approved.status).toBe('approved');
+    expect(approved.approvedAt).toBeTruthy();
+
+    const active = await strategy.getActiveRiskAcceptance(risk.id);
+    expect(active?.id).toBe(acceptance.id);
+  });
+
+  it('attaches evidence to a risk', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+
+    await strategy.createRiskEvidence('org-1', risk.id, {
+      title: 'Risk acceptance memo',
+      owner: 'user-1',
+      evidenceType: 'document',
+      source: 'internal',
+      collectionDate: new Date().toISOString(),
+      periodCovered: '2026',
+      expirationDate: new Date().toISOString(),
+      verificationStatus: 'verified',
+    });
+
+    expect((await strategy.listRiskEvidence(risk.id))).toHaveLength(1);
+  });
+});
