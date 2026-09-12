@@ -3829,30 +3829,6 @@ export class FakeNotesStrategy implements NotesStrategy {
     return acceptance;
   }
 
-  // ─── Task 8: Risk Evidence (stubs for now) ───────────────────────────────
-  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
-    return this.riskSnapshots.filter((s) => s.riskId === riskId);
-  }
-
-  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
-    // TODO: Task 8 implementation
-    return [];
-  }
-
-  async createRiskEvidence(
-    orgId: string,
-    riskId: string,
-    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
-  ): Promise<RequirementEvidence> {
-    // TODO: Task 8 implementation
-    const evidence: RequirementEvidence = {
-      id: globalThis.crypto.randomUUID(),
-      riskId,
-      ...data,
-    };
-    return evidence;
-  }
-
   async deleteRisk(id: string): Promise<void> {
     this.risks = this.risks.filter((r) => r.id !== id);
   }
