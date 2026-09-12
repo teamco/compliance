@@ -806,6 +806,25 @@ export class NotesController {
     return this.notes.createRisk(orgId, userId, body);
   }
 
+  @Get('risks/methodology')
+  @ApiOperation({ summary: 'Get the org active risk methodology' })
+  getRiskMethodology(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.getRiskMethodology(orgId);
+  }
+
+  @Get('risks/taxonomy')
+  @ApiOperation({ summary: 'List the org risk taxonomy categories' })
+  listRiskTaxonomy(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listRiskTaxonomy(orgId);
+  }
+
   @Get('risks/:id')
   @ApiOperation({ summary: 'Get risk' })
   async getRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
@@ -837,17 +856,6 @@ export class NotesController {
 
   // ─── Risk Register ───────────────────────────────────────────────────────
 
-  @Get('risks/methodology')
-  @ApiOperation({ summary: 'Get the org active risk methodology' })
-  getRiskMethodology(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Query('orgId') orgId: string,
-  ) {
-    this.uid(req);
-    if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.getRiskMethodology(orgId);
-  }
-
   @Post('risks/methodology')
   @ApiOperation({ summary: 'Update the org risk methodology (creates a new version)' })
   upsertRiskMethodology(
@@ -858,14 +866,6 @@ export class NotesController {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
     return this.notes.upsertRiskMethodology(orgId, body);
-  }
-
-  @Get('risks/taxonomy')
-  @ApiOperation({ summary: 'List the org risk taxonomy categories' })
-  listRiskTaxonomy(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
-    this.uid(req);
-    if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.listRiskTaxonomy(orgId);
   }
 
   @Post('risks/taxonomy')
