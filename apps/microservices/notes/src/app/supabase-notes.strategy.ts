@@ -73,6 +73,7 @@ import type {
   RiskMethodologyInput,
   RiskPatch,
   RiskScoreLabel,
+  RiskSnapshot,
   RiskSource,
   RiskStatus,
   RiskTaxonomyCategory,
@@ -540,6 +541,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       controlId: row['control_id'] as string | undefined,
       frameworkId: row['framework_id'] as string | undefined,
       requirementId: row['requirement_id'] as string | undefined,
+      riskId: row['risk_id'] as string | undefined,
       title: row['title'] as string,
       owner: row['owner'] as string,
       evidenceType: row['evidence_type'] as string,
@@ -2518,6 +2520,53 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
+  }
+
+  // ─── Risk history and risk-scoped evidence ──────────────────────────────────
+
+  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    const { data, error } = await this.db
+      .from('risk_snapshots')
+      .select('*')
+      .eq('risk_id', riskId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((r) => this.toRiskSnapshot(r));
+  }
+
+  private toRiskSnapshot(row: Record<string, unknown>): RiskSnapshot {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      treatmentStrategy: row['treatment_strategy'] as RiskTreatmentStrategy | undefined,
+      changedBy: row['changed_by'] as string,
+      reason: row['reason'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('risk_id', riskId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), risk_id: riskId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
   }
 
   // ─── Policies ──────────────────────────────────────────────────────────────
