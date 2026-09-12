@@ -1,10 +1,12 @@
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { Trash2 } from 'lucide-react';
 import type { InternalControl } from '@icore/shared';
 
 interface ControlsTableProps {
   controls: InternalControl[];
   showGapsOnly: boolean;
+  onDeleteClick?: (id: string) => void;
 }
 
 const EFFECTIVENESS_DOT: Record<string, string> = {
@@ -14,7 +16,7 @@ const EFFECTIVENESS_DOT: Record<string, string> = {
   not_tested: '⚪',
 };
 
-export function ControlsTable({ controls, showGapsOnly }: ControlsTableProps) {
+export function ControlsTable({ controls, showGapsOnly, onDeleteClick }: ControlsTableProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
 
@@ -48,6 +50,7 @@ export function ControlsTable({ controls, showGapsOnly }: ControlsTableProps) {
           <th className="py-2 px-3">{t('controls.colFrameworks')}</th>
           <th className="py-2 px-3">{t('controls.colEvidence')}</th>
           <th className="py-2 px-3">{t('controls.colFindings')}</th>
+          {onDeleteClick ? <th className="py-2 px-3" /> : null}
         </tr>
       </thead>
       <tbody>
@@ -74,6 +77,21 @@ export function ControlsTable({ controls, showGapsOnly }: ControlsTableProps) {
               </td>
               <td className="py-2 px-3 text-center">{c.evidenceCount ?? 0}</td>
               <td className="py-2 px-3 text-center">{c.findingsCount ?? 0}</td>
+              {onDeleteClick ? (
+                <td className="py-2 px-3 text-center">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteClick(c.id);
+                    }}
+                    className="text-muted-foreground hover:text-destructive cursor-pointer"
+                    aria-label={t('common.delete')}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </td>
+              ) : null}
             </tr>
           );
         })}

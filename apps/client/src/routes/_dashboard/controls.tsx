@@ -2,10 +2,30 @@ import { useMemo, useState } from 'react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useFrameworks } from '@/queries/notes';
-import { useInternalControlsList } from '@/queries/controls';
+import { useInternalControlsList, useCreateControl, useDeleteControl } from '@/queries/controls';
 import { ControlsTable } from '@/components/controls/ControlsTable';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export const Route = createFileRoute('/_dashboard/controls')({
   component: ControlsPage,
@@ -23,6 +43,10 @@ function ControlsPage() {
   const [domainFilter, setDomainFilter] = useState('');
   const [ownerFilter, setOwnerFilter] = useState('');
   const [criticalityFilter, setCriticalityFilter] = useState('');
+  const [createOpen, setCreateOpen] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const createControl = useCreateControl(activeOrgId ?? '');
+  const deleteControl = useDeleteControl();
 
   const domains = useMemo(
     () => [...new Set(controls.map((c) => c.domain).filter((d): d is string => !!d))].sort(),
@@ -161,6 +185,10 @@ function ControlsPage() {
           />
           <span className="text-xs text-muted-foreground">{t('controls.showGapsOnly')}</span>
         </label>
+
+        <Button size="sm" className="ml-auto" onClick={() => setCreateOpen(true)}>
+          {t('controls.addControl')}
+        </Button>
       </div>
 
       {isPending ? (
@@ -173,8 +201,94 @@ function ControlsPage() {
           ))}
         </div>
       ) : (
-        <ControlsTable controls={filtered} showGapsOnly={showGapsOnly} />
+        <ControlsTable
+          controls={filtered}
+          showGapsOnly={showGapsOnly}
+          onDeleteClick={setConfirmDeleteId}
+        />
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('controls.addControl')}</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const form = new FormData(e.currentTarget);
+              createControl.mutate(
+                {
+                  code: String(form.get('code')),
+                  title: String(form.get('title')),
+                  description: String(form.get('description')),
+                  domain: String(form.get('domain')),
+                  owner: String(form.get('owner')),
+                  category: String(form.get('domain')),
+                  criticality: 'medium',
+                  controlType: 'preventive',
+                  execution: 'manual',
+                  frequency: 'quarterly',
+                  nature: 'technical',
+                },
+                { onSuccess: () => setCreateOpen(false) },
+              );
+            }}
+          >
+            <div>
+              <Label htmlFor="code">{t('controls.colCode')}</Label>
+              <Input id="code" name="code" required placeholder="IAM-001" />
+            </div>
+            <div>
+              <Label htmlFor="title">{t('controls.colTitle')}</Label>
+              <Input id="title" name="title" required />
+            </div>
+            <div>
+              <Label htmlFor="description">{t('controls.fieldDescription')}</Label>
+              <Input id="description" name="description" required />
+            </div>
+            <div>
+              <Label htmlFor="domain">{t('controls.colDomain')}</Label>
+              <Input id="domain" name="domain" required />
+            </div>
+            <div>
+              <Label htmlFor="owner">{t('controls.colOwner')}</Label>
+              <Input id="owner" name="owner" required />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={createControl.isPending}>
+                {t('controls.addControl')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(open) => !open && setConfirmDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('controls.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('controls.deleteConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteId) deleteControl.mutate(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }

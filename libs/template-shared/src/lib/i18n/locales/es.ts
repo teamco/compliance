@@ -385,6 +385,11 @@ export const es = {
     filterAllDomains: 'Todos los dominios',
     filterAllOwners: 'Todos los propietarios',
     filterAllCriticality: 'Toda criticidad',
+    addControl: 'Agregar control',
+    fieldDescription: 'Descripción',
+    deleteConfirmTitle: '¿Eliminar control?',
+    deleteConfirmDescription:
+      'Esta acción no se puede deshacer. Esto eliminará permanentemente el control.',
   },
   settings: {
     title: 'Configuración',

@@ -396,6 +396,10 @@ export const ru = {
     filterAllDomains: 'Все домены',
     filterAllOwners: 'Все владельцы',
     filterAllCriticality: 'Вся критичность',
+    addControl: 'Добавить контроль',
+    fieldDescription: 'Описание',
+    deleteConfirmTitle: 'Удалить контроль?',
+    deleteConfirmDescription: 'Это действие нельзя отменить. Контроль будет удалён навсегда.',
   },
   settings: {
     title: 'Настройки',
