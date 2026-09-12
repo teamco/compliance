@@ -22,6 +22,18 @@ import type {
   FrameworkRequirement,
   FrameworkRequirementPatch,
   InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
+  ControlFrameworkMappingInput,
+  ControlCriticality,
+  ControlType,
+  ControlExecution,
+  ControlFrequency,
+  ControlNature,
+  FrameworkMappingType,
+  MappingValidation,
+  ImplementationStatus,
+  EffectivenessStatus,
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
@@ -258,15 +270,181 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return { ...req, ...patch };
   }
 
-  async listInternalControls(_orgId?: string, _frameworkId?: string): Promise<InternalControl[]> {
-    return [];
+  async listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
+    let query = this.db
+      .from('internal_controls')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (orgId) query = query.eq('org_id', orgId);
+    const { data, error } = await query;
+    const controls = await Promise.all(ok(data, error).map((row) => this.toInternalControl(row)));
+    if (!frameworkId) return controls;
+    return controls.filter((c) => c.frameworkMappings?.some((m) => m.frameworkId === frameworkId));
   }
 
-  async createInternalControl(
-    orgId: string,
-    data: Omit<InternalControl, 'id'>,
+  async getInternalControl(id: string, _orgId?: string): Promise<InternalControl | null> {
+    const { data, error } = await this.db
+      .from('internal_controls')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toInternalControl(data) : null;
+  }
+
+  async createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl> {
+    const { data: row, error } = await this.db
+      .from('internal_controls')
+      .insert({
+        org_id: orgId,
+        code: data.code,
+        title: data.title,
+        description: data.description,
+        domain: data.domain,
+        owner: data.owner,
+        operator: data.operator ?? '',
+        criticality: data.criticality,
+        control_type: data.controlType,
+        execution: data.execution,
+        frequency: data.frequency,
+        nature: data.nature,
+        key_control: data.keyControl ?? false,
+        parent_control_id: data.parentControlId ?? null,
+        category: data.category,
+        implementation_status: data.implementationStatus ?? 'not_implemented',
+        implementation_description: data.implementationDescription ?? '',
+      })
+      .select()
+      .single();
+    return this.toInternalControl(ok(row, error));
+  }
+
+  async updateInternalControl(id: string, patch: InternalControlPatch): Promise<InternalControl> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.domain !== undefined) update['domain'] = patch.domain;
+    if (patch.owner !== undefined) update['owner'] = patch.owner;
+    if (patch.operator !== undefined) update['operator'] = patch.operator;
+    if (patch.criticality !== undefined) update['criticality'] = patch.criticality;
+    if (patch.controlType !== undefined) update['control_type'] = patch.controlType;
+    if (patch.execution !== undefined) update['execution'] = patch.execution;
+    if (patch.frequency !== undefined) update['frequency'] = patch.frequency;
+    if (patch.nature !== undefined) update['nature'] = patch.nature;
+    if (patch.keyControl !== undefined) update['key_control'] = patch.keyControl;
+    if ('parentControlId' in patch) update['parent_control_id'] = patch.parentControlId;
+    if (patch.implementationStatus !== undefined)
+      update['implementation_status'] = patch.implementationStatus;
+    if (patch.implementationDescription !== undefined)
+      update['implementation_description'] = patch.implementationDescription;
+    if (patch.designEffectiveness !== undefined)
+      update['design_effectiveness'] = patch.designEffectiveness;
+    if (patch.operatingEffectiveness !== undefined)
+      update['operating_effectiveness'] = patch.operatingEffectiveness;
+
+    const { data, error } = await this.db
+      .from('internal_controls')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toInternalControl(ok(data, error));
+  }
+
+  async deleteInternalControl(id: string): Promise<void> {
+    const { error } = await this.db.from('internal_controls').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
   ): Promise<InternalControl> {
-    return { id: `ctrl-${globalThis.crypto.randomUUID().slice(0, 8)}`, orgId, ...data };
+    const { error } = await this.db.from('internal_control_framework_mappings').insert({
+      control_id: controlId,
+      framework_id: data.frameworkId,
+      requirement_code: data.requirementCode,
+      requirement_title: data.requirementTitle ?? null,
+      mapping_type: data.mappingType,
+      validation: data.validation,
+    });
+    if (error) throw new Error(error.message);
+    const control = await this.getInternalControl(controlId);
+    if (!control) throw new Error(`internal_control_not_found: ${controlId}`);
+    return control;
+  }
+
+  async removeControlFrameworkMapping(
+    controlId: string,
+    mappingId: string,
+  ): Promise<InternalControl> {
+    const { error } = await this.db
+      .from('internal_control_framework_mappings')
+      .delete()
+      .eq('id', mappingId);
+    if (error) throw new Error(error.message);
+    const control = await this.getInternalControl(controlId);
+    if (!control) throw new Error(`internal_control_not_found: ${controlId}`);
+    return control;
+  }
+
+  private async toInternalControl(row: Record<string, unknown>): Promise<InternalControl> {
+    const { data: mappingRows, error } = await this.db
+      .from('internal_control_framework_mappings')
+      .select(
+        'id, framework_id, requirement_code, requirement_title, mapping_type, validation, frameworks(name)',
+      )
+      .eq('control_id', row['id'] as string);
+    if (error) throw new Error(error.message);
+    const frameworkMappings = (mappingRows ?? []).map((m: Record<string, unknown>) => ({
+      id: m['id'] as string,
+      frameworkId: m['framework_id'] as string,
+      frameworkName:
+        ((m['frameworks'] as Record<string, unknown> | null)?.['name'] as string) ?? '',
+      requirementCode: m['requirement_code'] as string,
+      requirementTitle: m['requirement_title'] as string | undefined,
+      mappingType: m['mapping_type'] as FrameworkMappingType,
+      validation: m['validation'] as MappingValidation,
+    }));
+
+    const { count: evidenceCount } = await this.db
+      .from('requirement_evidence')
+      .select('id', { count: 'exact', head: true })
+      .eq('control_id', row['id'] as string);
+    const { count: findingsCount } = await this.db
+      .from('findings')
+      .select('id', { count: 'exact', head: true })
+      .eq('control_id', row['id'] as string);
+
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      code: row['code'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      domain: row['domain'] as string,
+      owner: row['owner'] as string,
+      operator: row['operator'] as string,
+      criticality: row['criticality'] as ControlCriticality,
+      controlType: row['control_type'] as ControlType,
+      execution: row['execution'] as ControlExecution,
+      frequency: row['frequency'] as ControlFrequency,
+      nature: row['nature'] as ControlNature,
+      keyControl: row['key_control'] as boolean,
+      parentControlId: row['parent_control_id'] as string | null,
+      category: row['category'] as string,
+      implementationStatus: row['implementation_status'] as ImplementationStatus,
+      implementationDescription: row['implementation_description'] as string,
+      designEffectiveness: row['design_effectiveness'] as EffectivenessStatus,
+      operatingEffectiveness: row['operating_effectiveness'] as EffectivenessStatus,
+      frameworkMappings,
+      frameworkCount: new Set(frameworkMappings.map((m) => m.frameworkId)).size,
+      requirementCount: frameworkMappings.length,
+      evidenceCount: evidenceCount ?? 0,
+      findingsCount: findingsCount ?? 0,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
   }
 
   async listFrameworkEvidence(
