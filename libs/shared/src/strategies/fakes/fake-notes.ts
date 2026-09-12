@@ -58,6 +58,10 @@ import type {
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  RiskMethodology,
+  RiskMethodologyInput,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
   Policy,
   PolicyInput,
   PolicyPatch,
@@ -3490,6 +3494,109 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   // ─── Risks ───────────────────────────────────────────────────────────────
   private risks: Risk[] = [];
+  private riskMethodologies: RiskMethodology[] = [];
+  private riskTaxonomy: RiskTaxonomyCategory[] = [];
+
+  async getRiskMethodology(orgId: string): Promise<RiskMethodology | null> {
+    const existing = this.riskMethodologies.find((m) => m.orgId === orgId && m.isActive);
+    if (existing) return existing;
+    const seeded: RiskMethodology = {
+      id: `meth-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      version: 1,
+      isActive: true,
+      scaleSize: 5,
+      likelihoodLabels: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost Certain'],
+      impactLabels: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+      thresholds: [
+        { maxScore: 4, label: 'low' },
+        { maxScore: 9, label: 'medium' },
+        { maxScore: 16, label: 'high' },
+        { maxScore: 25, label: 'critical' },
+      ],
+      appetiteThreshold: 9,
+      createdAt: new Date().toISOString(),
+    };
+    this.riskMethodologies.push(seeded);
+    return seeded;
+  }
+
+  async upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
+    const current = await this.getRiskMethodology(orgId);
+    const nextVersion = (current?.version ?? 0) + 1;
+    if (current) current.isActive = false;
+    const updated: RiskMethodology = {
+      id: `meth-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      version: nextVersion,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      ...data,
+    };
+    this.riskMethodologies.push(updated);
+    return updated;
+  }
+
+  async listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]> {
+    const existing = this.riskTaxonomy.filter((c) => c.orgId === orgId);
+    if (existing.length > 0) return existing;
+    const defaults = [
+      'Identity & Access',
+      'Vulnerability Management',
+      'Network Security',
+      'Application Security',
+      'Data Security',
+      'Security Operations',
+      'Incident Response',
+      'Availability',
+      'Infrastructure',
+      'Architecture',
+      'Change',
+      'Cloud',
+      'Technical Debt',
+      'Supplier Security',
+      'Concentration',
+      'Supply Chain',
+      'Outsourcing',
+      'Privacy',
+      'Compliance / Regulatory',
+      'Operational',
+      'Business Continuity / Resilience',
+      'Strategic',
+      'Financial',
+    ];
+    const seeded = defaults.map((name) => ({
+      id: `rtc-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    }));
+    this.riskTaxonomy.push(...seeded);
+    return seeded;
+  }
+
+  async createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory> {
+    const category: RiskTaxonomyCategory = {
+      id: `rtc-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name: data.name,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.riskTaxonomy.push(category);
+    return category;
+  }
+
+  async archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory> {
+    const category = this.riskTaxonomy.find((c) => c.id === id);
+    if (!category) throw new Error(`risk_taxonomy_category_not_found: ${id}`);
+    category.archived = true;
+    return category;
+  }
 
   private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
     const L: Record<RiskLikelihood, number> = {
