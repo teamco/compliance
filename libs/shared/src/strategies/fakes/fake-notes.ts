@@ -62,6 +62,8 @@ import type {
   RiskMethodologyInput,
   RiskTaxonomyCategory,
   RiskTaxonomyCategoryInput,
+  RiskSnapshot,
+  RiskScoreLabel,
   Policy,
   PolicyInput,
   PolicyPatch,
@@ -3494,6 +3496,7 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   // ─── Risks ───────────────────────────────────────────────────────────────
   private risks: Risk[] = [];
+  private riskSnapshots: RiskSnapshot[] = [];
   private riskMethodologies: RiskMethodology[] = [];
   private riskTaxonomy: RiskTaxonomyCategory[] = [];
 
@@ -3621,18 +3624,34 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const orgRiskCount = this.risks.filter((r) => r.orgId === orgId).length;
     const risk: Risk = {
       id: globalThis.crypto.randomUUID(),
+      riskId: `RSK-${String(orgRiskCount + 101).padStart(6, '0')}`,
       orgId,
       userId,
       title: data.title,
-      description: data.description,
-      category: data.category,
-      likelihood: data.likelihood,
-      impact: data.impact,
-      riskScore: this.computeRiskScore(data.likelihood, data.impact),
-      treatment: data.treatment ?? 'mitigate',
-      assetId: data.assetId ?? null,
+      riskStatement: data.riskStatement,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: data.ownerId,
+      businessUnit: data.businessUnit,
+      source: data.source ?? 'manual',
+      sourceRef: data.sourceRef,
+      assetIds: data.assetIds ?? [],
+      vendorIds: data.vendorIds ?? [],
+      methodologyId: methodology.id,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      inherentScore: score,
+      inherentLabel: label,
+      status: 'open',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3640,19 +3659,82 @@ export class FakeNotesStrategy implements NotesStrategy {
     return risk;
   }
 
+  private scoreRisk(
+    methodology: RiskMethodology,
+    likelihood: number,
+    impact: number,
+  ): { score: number; label: RiskScoreLabel } {
+    const score = likelihood * impact;
+    const band = methodology.thresholds.find((t) => score <= t.maxScore);
+    return { score, label: band?.label ?? 'critical' };
+  }
+
   async getRisk(id: string): Promise<Risk | null> {
     return this.risks.find((r) => r.id === id) ?? null;
   }
 
-  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
-    const idx = this.risks.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error('risk_not_found');
-    const merged: Risk = { ...this.risks[idx]!, ...patch, updatedAt: new Date().toISOString() };
-    if (patch.likelihood !== undefined || patch.impact !== undefined) {
-      merged.riskScore = this.computeRiskScore(merged.likelihood, merged.impact);
+  async updateRisk(
+    id: string,
+    patch: RiskPatch,
+    changedBy: string,
+    reason?: string,
+  ): Promise<Risk> {
+    const risk = this.risks.find((r) => r.id === id);
+    if (!risk) throw new Error(`risk_not_found: ${id}`);
+
+    const scoreFieldsChanging =
+      patch.inherentLikelihood !== undefined ||
+      patch.inherentImpact !== undefined ||
+      patch.residualLikelihood !== undefined ||
+      patch.residualImpact !== undefined ||
+      patch.treatmentStrategy !== undefined;
+
+    if (scoreFieldsChanging) {
+      this.riskSnapshots.unshift({
+        id: globalThis.crypto.randomUUID(),
+        riskId: id,
+        inherentScore: risk.inherentScore,
+        inherentLabel: risk.inherentLabel,
+        residualScore: risk.residualScore,
+        residualLabel: risk.residualLabel,
+        treatmentStrategy: risk.treatmentStrategy,
+        changedBy,
+        reason,
+        createdAt: new Date().toISOString(),
+      });
     }
-    this.risks[idx] = merged;
-    return merged;
+
+    Object.assign(risk, patch);
+
+    const methodology = this.riskMethodologies.find((m) => m.id === risk.methodologyId);
+    if (methodology) {
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          risk.inherentLikelihood,
+          risk.inherentImpact,
+        );
+        risk.inherentScore = score;
+        risk.inherentLabel = label;
+      }
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        risk.residualLikelihood !== undefined &&
+        risk.residualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          risk.residualLikelihood,
+          risk.residualImpact,
+        );
+        risk.residualScore = score;
+        risk.residualLabel = label;
+        risk.aboveAppetite = score > methodology.appetiteThreshold;
+      }
+    }
+
+    risk.updatedAt = new Date().toISOString();
+    return risk;
   }
 
   async deleteRisk(id: string): Promise<void> {
