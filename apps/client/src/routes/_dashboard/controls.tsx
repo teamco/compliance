@@ -1,109 +1,84 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
+import { useMemo, useState } from 'react';
+import { createFileRoute } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useFrameworks, useStandardsDocuments, useStandardsDocument } from '@/queries/notes';
+import { useFrameworks } from '@/queries/notes';
+import { useInternalControlsList } from '@/queries/controls';
 import { ControlsTable } from '@/components/controls/ControlsTable';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 
 export const Route = createFileRoute('/_dashboard/controls')({
-  validateSearch: (s: Record<string, unknown>) => ({
-    docId: typeof s['docId'] === 'string' ? s['docId'] : undefined,
-  }),
   component: ControlsPage,
 });
 
 function ControlsPage() {
   const { t } = useTranslation();
-  const { docId: searchDocId } = Route.useSearch();
   const { activeOrgId } = useActiveOrgStore();
 
-  const { data: frameworks = [], isPending: fwLoading } = useFrameworks();
-  const { data: documents = [], isPending: docsLoading } = useStandardsDocuments(activeOrgId ?? '');
-
-  const completedDocs = useMemo(
-    () => documents.filter((d) => d.status === 'completed'),
-    [documents],
-  );
+  const { data: frameworks = [] } = useFrameworks();
+  const { data: controls = [], isPending } = useInternalControlsList(activeOrgId ?? undefined);
 
   const [selectedFwIds, setSelectedFwIds] = useState<Set<string>>(new Set());
   const [showGapsOnly, setShowGapsOnly] = useState(false);
-  const fwInitialized = useRef(false);
+  const [domainFilter, setDomainFilter] = useState('');
+  const [ownerFilter, setOwnerFilter] = useState('');
+  const [criticalityFilter, setCriticalityFilter] = useState('');
 
-  const navigate = useNavigate();
+  const domains = useMemo(() => [...new Set(controls.map((c) => c.domain))].sort(), [controls]);
+  const owners = useMemo(() => [...new Set(controls.map((c) => c.owner))].sort(), [controls]);
 
-  const docId = searchDocId ?? '';
+  const filtered = useMemo(() => {
+    return controls.filter((c) => {
+      if (
+        selectedFwIds.size > 0 &&
+        !(c.frameworkMappings ?? []).some((m) => selectedFwIds.has(m.frameworkId))
+      )
+        return false;
+      if (domainFilter && c.domain !== domainFilter) return false;
+      if (ownerFilter && c.owner !== ownerFilter) return false;
+      if (criticalityFilter && c.criticality !== criticalityFilter) return false;
+      return true;
+    });
+  }, [controls, selectedFwIds, domainFilter, ownerFilter, criticalityFilter]);
 
-  // Pre-select all frameworks on first load only
-  useEffect(() => {
-    if (!fwInitialized.current && frameworks.length > 0) {
-      fwInitialized.current = true;
-      setSelectedFwIds(new Set(frameworks.map((f) => f.id)));
-    }
-  }, [frameworks]);
-
-  // Auto-navigate to first completed doc if none selected
-  useEffect(() => {
-    if (!searchDocId && completedDocs.length > 0) {
-      const first = completedDocs[0];
-      if (first) void navigate({ to: '/controls', search: { docId: first.id }, replace: true });
-    }
-  }, [completedDocs, searchDocId, navigate]);
-
-  const { data: doc, isPending: docLoading } = useStandardsDocument(docId);
-
-  const selectedFrameworks = useMemo(
-    () => frameworks.filter((f) => selectedFwIds.has(f.id)),
-    [frameworks, selectedFwIds],
-  );
-
-  const coverageCount = useMemo(() => {
-    if (!doc) return 0;
-    return doc.standards.filter(
-      (c) =>
-        selectedFrameworks.length > 0 &&
-        selectedFrameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
+  const summary = useMemo(() => {
+    const total = filtered.length;
+    const implemented = filtered.filter((c) => c.implementationStatus === 'implemented').length;
+    const partial = filtered.filter(
+      (c) => c.implementationStatus === 'partially_implemented',
     ).length;
-  }, [doc, selectedFrameworks]);
+    const gaps = filtered.filter(
+      (c) =>
+        c.implementationStatus === 'not_implemented' || c.operatingEffectiveness === 'ineffective',
+    ).length;
+    const totalRequirements = filtered.reduce((sum, c) => sum + (c.requirementCount ?? 0), 0);
+    const coveragePct = total === 0 ? 0 : Math.round((totalRequirements / (total * 4)) * 100);
+    return { total, implemented, partial, gaps, coveragePct };
+  }, [filtered]);
 
   function toggleFramework(id: string) {
     setSelectedFwIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
 
-  const isLoading = fwLoading || docsLoading || (!!docId && docLoading);
-
   return (
     <PageLayout title={t('nav.controls')}>
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        {/* Document selector */}
-        <select
-          value={docId}
-          onChange={(e) => void navigate({ to: '/controls', search: { docId: e.target.value } })}
-          className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40"
-        >
-          {completedDocs.length === 0 && (
-            <option value="" disabled>
-              {t('controls.noDocuments')}
-            </option>
-          )}
-          {completedDocs.map((d) => (
-            <option key={d.id} value={d.id}>
-              {new Date(d.createdAt).toLocaleDateString()} — {d.frameworkIds.length}{' '}
-              {t('controls.frameworks')}
-            </option>
-          ))}
-        </select>
+      <div className="mb-4 flex items-center gap-4 text-sm">
+        <span className="font-semibold text-foreground">
+          {summary.total} {t('controls.summaryTotal')} · {summary.implemented}{' '}
+          {t('controls.summaryImplemented')} · {summary.partial} {t('controls.summaryPartial')} ·{' '}
+          {summary.gaps} {t('controls.summaryGaps')}
+        </span>
+        <span className="text-muted-foreground">
+          {summary.coveragePct}% {t('controls.summaryCoverage')}
+        </span>
+      </div>
 
-        {/* Framework toggles */}
+      <div className="flex flex-wrap items-center gap-3 mb-3">
         <div className="flex items-center gap-1.5">
           {frameworks.map((fw) => (
             <button
@@ -121,7 +96,45 @@ function ControlsPage() {
           ))}
         </div>
 
-        {/* Show gaps only */}
+        <select
+          value={domainFilter}
+          onChange={(e) => setDomainFilter(e.target.value)}
+          className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-foreground"
+        >
+          <option value="">{t('controls.filterAllDomains')}</option>
+          {domains.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={ownerFilter}
+          onChange={(e) => setOwnerFilter(e.target.value)}
+          className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-foreground"
+        >
+          <option value="">{t('controls.filterAllOwners')}</option>
+          {owners.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+
+        <select
+          value={criticalityFilter}
+          onChange={(e) => setCriticalityFilter(e.target.value)}
+          className="h-8 rounded-md border border-border bg-surface px-2 text-xs text-foreground"
+        >
+          <option value="">{t('controls.filterAllCriticality')}</option>
+          {['critical', 'high', 'medium', 'low'].map((lvl) => (
+            <option key={lvl} value={lvl}>
+              {lvl}
+            </option>
+          ))}
+        </select>
+
         <label className="flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -131,20 +144,9 @@ function ControlsPage() {
           />
           <span className="text-xs text-muted-foreground">{t('controls.showGapsOnly')}</span>
         </label>
-
-        {/* Coverage badge */}
-        {doc && (
-          <span className="ml-auto text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{coverageCount}</span>
-            {' / '}
-            <span className="font-semibold text-foreground">{doc.standards.length}</span>{' '}
-            {t('controls.standardsMapped')}
-          </span>
-        )}
       </div>
 
-      {/* Table */}
-      {isLoading ? (
+      {isPending ? (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <div
@@ -153,16 +155,8 @@ function ControlsPage() {
             />
           ))}
         </div>
-      ) : !docId || !doc ? (
-        <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-          {completedDocs.length === 0 ? t('controls.generateFirst') : t('controls.selectDocument')}
-        </div>
       ) : (
-        <ControlsTable
-          controls={doc.standards}
-          frameworks={selectedFrameworks}
-          showGapsOnly={showGapsOnly}
-        />
+        <ControlsTable controls={filtered} showGapsOnly={showGapsOnly} />
       )}
     </PageLayout>
   );
