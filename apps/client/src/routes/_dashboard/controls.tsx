@@ -54,10 +54,24 @@ function ControlsPage() {
       (c) =>
         c.implementationStatus === 'not_implemented' || c.operatingEffectiveness === 'ineffective',
     ).length;
-    const totalRequirements = filtered.reduce((sum, c) => sum + (c.requirementCount ?? 0), 0);
-    const coveragePct = total === 0 ? 0 : Math.round((totalRequirements / (total * 4)) * 100);
+    const totalFrameworkRequirements = frameworks.reduce(
+      (sum, fw) => sum + (fw.requirementsCount ?? 0),
+      0,
+    );
+    const coveredRequirementKeys = new Set(
+      filtered.flatMap((c) =>
+        (c.frameworkMappings ?? []).map((m) => `${m.frameworkId}:${m.requirementCode}`),
+      ),
+    );
+    const coveragePct =
+      totalFrameworkRequirements === 0
+        ? 0
+        : Math.min(
+            100,
+            Math.round((coveredRequirementKeys.size / totalFrameworkRequirements) * 100),
+          );
     return { total, implemented, partial, gaps, coveragePct };
-  }, [filtered]);
+  }, [filtered, frameworks]);
 
   function toggleFramework(id: string) {
     setSelectedFwIds((prev) => {
