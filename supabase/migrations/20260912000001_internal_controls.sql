@@ -42,7 +42,9 @@ create index internal_controls_parent_idx on public.internal_controls(parent_con
 alter table public.internal_controls enable row level security;
 
 create policy "org members read internal_controls"
-  on public.internal_controls for select using (true);
+  on public.internal_controls for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own internal_controls"
   on public.internal_controls for all using (
@@ -70,7 +72,13 @@ create index icfm_framework_idx on public.internal_control_framework_mappings(fr
 alter table public.internal_control_framework_mappings enable row level security;
 
 create policy "org members read control mappings"
-  on public.internal_control_framework_mappings for select using (true);
+  on public.internal_control_framework_mappings for select using (
+    exists (
+      select 1 from public.internal_controls c
+      join public.org_profiles o on o.id = c.org_id
+      where c.id = control_id and o.user_id = auth.uid()
+    )
+  );
 
 create policy "users manage own control mappings"
   on public.internal_control_framework_mappings for all using (
@@ -109,11 +117,24 @@ create index requirement_evidence_framework_idx on public.requirement_evidence(f
 alter table public.requirement_evidence enable row level security;
 
 create policy "org members read evidence"
-  on public.requirement_evidence for select using (true);
+  on public.requirement_evidence for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own evidence"
-  on public.requirement_evidence for all using (
+  on public.requirement_evidence for all
+  using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (
+      control_id is null
+      or exists (
+        select 1 from public.internal_controls c
+        where c.id = control_id and c.org_id = requirement_evidence.org_id
+      )
+    )
   );
 
 -- Assessments: control-centric or requirement-centric testing cycles.
@@ -143,15 +164,29 @@ create table public.requirement_assessments (
 
 create index requirement_assessments_org_idx on public.requirement_assessments(org_id);
 create index requirement_assessments_control_idx on public.requirement_assessments(control_id);
+create index requirement_assessments_framework_idx on public.requirement_assessments(framework_id);
 
 alter table public.requirement_assessments enable row level security;
 
 create policy "org members read assessments"
-  on public.requirement_assessments for select using (true);
+  on public.requirement_assessments for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own assessments"
-  on public.requirement_assessments for all using (
+  on public.requirement_assessments for all
+  using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (
+      control_id is null
+      or exists (
+        select 1 from public.internal_controls c
+        where c.id = control_id and c.org_id = requirement_assessments.org_id
+      )
+    )
   );
 
 -- Findings: created by an assessment, may bridge into Issue/Exception/Risk.
@@ -180,11 +215,25 @@ create index findings_control_idx on public.findings(control_id);
 alter table public.findings enable row level security;
 
 create policy "org members read findings"
-  on public.findings for select using (true);
+  on public.findings for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "users manage own findings"
-  on public.findings for all using (
+  on public.findings for all
+  using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and exists (
+      select 1 from public.internal_controls c
+      where c.id = control_id and c.org_id = findings.org_id
+    )
+    and exists (
+      select 1 from public.requirement_assessments a
+      where a.id = assessment_id and a.org_id = findings.org_id
+    )
   );
 
 -- Activity log: reused for both framework-level and control-level history tabs.
@@ -205,8 +254,25 @@ create index framework_activities_control_idx on public.framework_activities(con
 alter table public.framework_activities enable row level security;
 
 create policy "org members read activities"
-  on public.framework_activities for select using (true);
+  on public.framework_activities for select using (
+    control_id is null
+    or exists (
+      select 1 from public.internal_controls c
+      join public.org_profiles o on o.id = c.org_id
+      where c.id = control_id and o.user_id = auth.uid()
+    )
+  );
 
 create policy "authenticated users insert activities"
-  on public.framework_activities for insert using (auth.role() = 'authenticated')
-  with check (auth.role() = 'authenticated');
+  on public.framework_activities for insert
+  with check (
+    auth.role() = 'authenticated'
+    and (
+      control_id is null
+      or exists (
+        select 1 from public.internal_controls c
+        join public.org_profiles o on o.id = c.org_id
+        where c.id = control_id and o.user_id = auth.uid()
+      )
+    )
+  );
