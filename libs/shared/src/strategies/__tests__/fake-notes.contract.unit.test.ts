@@ -686,3 +686,126 @@ describe('framework workspace & GRC hierarchy', () => {
     expect(activities.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('InternalControl lifecycle', () => {
+  it('creates, mutates, and maps a control end-to-end', async () => {
+    const strategy = new FakeNotesStrategy();
+    const control = await strategy.createInternalControl('org-1', {
+      code: 'IAM-001',
+      title: 'Privileged Access MFA',
+      description: 'Privileged accounts must use MFA.',
+      domain: 'Identity & Access Management',
+      owner: 'Director, Cybersecurity',
+      criticality: 'high',
+      controlType: 'preventive',
+      execution: 'hybrid',
+      frequency: 'continuous',
+      nature: 'technical',
+      category: 'access-control',
+      implementationStatus: 'not_implemented',
+    });
+    expect(control.id).toBeTruthy();
+    expect(control.implementationStatus).toBe('not_implemented');
+
+    const mapped = await strategy.addControlFrameworkMapping(control.id, {
+      frameworkId: 'fw-nist',
+      frameworkName: 'NIST CSF 2.0',
+      requirementCode: 'PR.AA-03',
+      mappingType: 'direct',
+      validation: 'human_validated',
+    });
+    expect(mapped.frameworkMappings).toHaveLength(1);
+    expect(mapped.frameworkCount).toBe(1);
+
+    const patched = await strategy.updateInternalControl(control.id, {
+      implementationStatus: 'implemented',
+    });
+    expect(patched.implementationStatus).toBe('implemented');
+
+    const fetched = await strategy.getInternalControl(control.id);
+    expect(fetched?.id).toBe(control.id);
+
+    await strategy.deleteInternalControl(control.id);
+    expect(await strategy.getInternalControl(control.id)).toBeNull();
+  });
+
+  it('creates a Finding when an assessment records ineffective operating effectiveness', async () => {
+    const strategy = new FakeNotesStrategy();
+    const control = await strategy.createInternalControl('org-1', {
+      code: 'BCM-003',
+      title: 'Backup Restoration Testing',
+      description: 'Quarterly restoration test of production backups.',
+      domain: 'Resilience',
+      owner: 'Infrastructure',
+      criticality: 'high',
+      controlType: 'corrective',
+      execution: 'manual',
+      frequency: 'quarterly',
+      nature: 'technical',
+      category: 'resilience',
+    });
+
+    const assessment = await strategy.createControlAssessment('org-1', control.id, {
+      cycleName: 'Q3 2026',
+      status: 'completed',
+      implementationStatus: 'partially_implemented',
+      designEffectiveness: 'effective',
+      operatingEffectiveness: 'ineffective',
+      assessor: 'Jane Auditor',
+      assessmentDate: new Date().toISOString(),
+      observation: '2 of 5 sampled backups failed restoration.',
+    });
+    expect(assessment.findingId).toBeTruthy();
+
+    const findings = await strategy.listControlFindings(control.id);
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.status).toBe('open');
+
+    const linked = await strategy.linkFindingToRisk(findings[0]!.id, 'risk-42');
+    expect(linked.linkedRiskId).toBe('risk-42');
+
+    const linkedIssue = await strategy.linkFindingToIssue(findings[0]!.id, 'issue-7');
+    expect(linkedIssue.linkedIssueId).toBe('issue-7');
+
+    const resolved = await strategy.resolveFindingViaException(findings[0]!.id, 'exc-9');
+    expect(resolved.status).toBe('accepted');
+    expect(resolved.linkedExceptionId).toBe('exc-9');
+  });
+
+  it('attaches evidence to a control and increments its evidence count', async () => {
+    const strategy = new FakeNotesStrategy();
+    const control = await strategy.createInternalControl('org-1', {
+      code: 'VM-001',
+      title: 'Vulnerability Scanning',
+      description: 'Weekly authenticated vulnerability scans.',
+      domain: 'Vulnerability Management',
+      owner: 'Security Ops',
+      criticality: 'medium',
+      controlType: 'detective',
+      execution: 'automated',
+      frequency: 'weekly',
+      nature: 'technical',
+      category: 'vuln-mgmt',
+    });
+
+    await strategy.createControlEvidence('org-1', control.id, {
+      title: 'Weekly scan report — 2026-09-08',
+      owner: 'Security Ops',
+      evidenceType: 'report',
+      source: 'Qualys',
+      collectionDate: new Date().toISOString(),
+      periodCovered: '2026-09-01/2026-09-08',
+      expirationDate: new Date().toISOString(),
+      verificationStatus: 'verified',
+    });
+
+    const evidence = await strategy.listControlEvidence(control.id);
+    expect(evidence).toHaveLength(1);
+
+    const updated = await strategy.getInternalControl(control.id);
+    expect(updated?.evidenceCount).toBe(1);
+
+    const activity = await strategy.listControlActivity(control.id);
+    expect(activity.some((a) => a.action === 'Evidence Uploaded')).toBe(true);
+  });
+});
