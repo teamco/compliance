@@ -25,6 +25,8 @@ export const he = {
     leave: 'צא',
     yes: 'כן',
     no: 'לא',
+    scrollLeft: 'גלול שמאלה',
+    scrollRight: 'גלול ימינה',
   },
   auth: {
     signIn: 'כניסה',

@@ -26,6 +26,8 @@ export const en = {
     closeDialog: 'Close dialog',
     yes: 'Yes',
     no: 'No',
+    scrollLeft: 'Scroll left',
+    scrollRight: 'Scroll right',
   },
   export: {
     export: 'Export',
