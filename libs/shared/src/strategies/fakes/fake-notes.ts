@@ -14,6 +14,8 @@ import type {
   FrameworkRequirement,
   FrameworkRequirementPatch,
   InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
@@ -62,6 +64,8 @@ import type {
   PolicyTemplate,
   PolicyControl,
   PolicyControlInput,
+  ControlFrameworkMappingInput,
+  Finding,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -2567,13 +2571,13 @@ export class FakeNotesStrategy implements NotesStrategy {
   async listInternalControls(_orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
     if (!frameworkId) return [...this.internalControls];
     return this.internalControls.filter((c) =>
-      c.frameworkMappings.some((m) => m.frameworkId === frameworkId),
+      c.frameworkMappings?.some((m) => m.frameworkId === frameworkId),
     );
   }
 
   async createInternalControl(
     orgId: string,
-    data: Omit<InternalControl, 'id'>,
+    data: InternalControlInput,
   ): Promise<InternalControl> {
     const control: InternalControl = {
       id: `ctrl-${globalThis.crypto.randomUUID().slice(0, 8)}`,
@@ -2582,6 +2586,114 @@ export class FakeNotesStrategy implements NotesStrategy {
     };
     this.internalControls.push(control);
     return control;
+  }
+
+  async getInternalControl(id: string, _orgId?: string): Promise<InternalControl | null> {
+    return this.internalControls.find((c) => c.id === id) || null;
+  }
+
+  async updateInternalControl(
+    id: string,
+    patch: InternalControlPatch,
+  ): Promise<InternalControl> {
+    const control = this.internalControls.find((c) => c.id === id);
+    if (!control) throw new Error(`Control ${id} not found`);
+    Object.assign(control, patch);
+    return control;
+  }
+
+  async deleteInternalControl(id: string): Promise<void> {
+    const index = this.internalControls.findIndex((c) => c.id === id);
+    if (index >= 0) {
+      this.internalControls.splice(index, 1);
+    }
+  }
+
+  async addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
+  ): Promise<InternalControl> {
+    const control = this.internalControls.find((c) => c.id === controlId);
+    if (!control) throw new Error(`Control ${controlId} not found`);
+    if (!control.frameworkMappings) {
+      control.frameworkMappings = [];
+    }
+    control.frameworkMappings.push({
+      id: globalThis.crypto.randomUUID(),
+      ...data,
+    });
+    return control;
+  }
+
+  async removeControlFrameworkMapping(
+    controlId: string,
+    mappingId: string,
+  ): Promise<InternalControl> {
+    const control = this.internalControls.find((c) => c.id === controlId);
+    if (!control) throw new Error(`Control ${controlId} not found`);
+    if (control.frameworkMappings) {
+      control.frameworkMappings = control.frameworkMappings.filter((m) => m.id !== mappingId);
+    }
+    return control;
+  }
+
+  async listControlEvidence(controlId: string): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.controlId === controlId);
+  }
+
+  async createControlEvidence(
+    _orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence> {
+    const evidence: RequirementEvidence = {
+      id: globalThis.crypto.randomUUID(),
+      controlId,
+      ...data,
+    };
+    this.evidence.push(evidence);
+    return evidence;
+  }
+
+  async listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
+    return this.assessmentsList.filter((a) => a.controlId === controlId);
+  }
+
+  async createControlAssessment(
+    _orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment> {
+    const assessment: RequirementAssessment = {
+      id: globalThis.crypto.randomUUID(),
+      controlId,
+      ...data,
+    };
+    this.assessmentsList.push(assessment);
+    return assessment;
+  }
+
+  async listControlFindings(_controlId: string): Promise<Finding[]> {
+    return [];
+  }
+
+  async linkFindingToRisk(_findingId: string, _riskId: string): Promise<Finding> {
+    throw new Error('Not implemented');
+  }
+
+  async linkFindingToIssue(_findingId: string, _issueId: string): Promise<Finding> {
+    throw new Error('Not implemented');
+  }
+
+  async resolveFindingViaException(
+    _findingId: string,
+    _exceptionId: string,
+  ): Promise<Finding> {
+    throw new Error('Not implemented');
+  }
+
+  async listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
+    return this.activities.filter((a) => a.controlId === controlId);
   }
 
   async listFrameworkEvidence(

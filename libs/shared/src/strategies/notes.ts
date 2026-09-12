@@ -133,30 +133,107 @@ export interface FrameworkRequirementPatch {
   nextAssessment?: string;
 }
 
+export type ControlCriticality = 'critical' | 'high' | 'medium' | 'low';
+export type ControlType = 'preventive' | 'detective' | 'corrective';
+export type ControlExecution = 'manual' | 'automated' | 'hybrid';
+export type ControlFrequency =
+  | 'continuous' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'event_driven';
+export type ControlNature = 'technical' | 'administrative' | 'physical';
+export type FrameworkMappingType = 'direct' | 'partial' | 'supporting';
+export type MappingValidation = 'ai_suggested' | 'human_validated';
+
 export interface InternalControl {
   id: string;
   orgId?: string;
   code: string;
   title: string;
   description: string;
+  domain?: string;
   owner: string;
+  operator?: string;
+  criticality?: ControlCriticality;
+  controlType?: ControlType;
+  execution?: ControlExecution;
+  frequency?: ControlFrequency;
+  nature?: ControlNature;
+  keyControl?: boolean;
+  parentControlId?: string | null;
   category: string;
-  frameworkMappings: Array<{
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+  designEffectiveness?: EffectivenessStatus;
+  operatingEffectiveness?: EffectivenessStatus;
+  frameworkMappings?: Array<{
+    id?: string;
     frameworkId: string;
     frameworkName: string;
     requirementCode: string;
     requirementTitle?: string;
+    mappingType?: FrameworkMappingType;
+    validation?: MappingValidation;
   }>;
   coverageBenefit?: string;
   frameworkCount?: number;
   requirementCount?: number;
+  evidenceCount?: number;
+  findingsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface InternalControlInput {
+  code: string;
+  title: string;
+  description: string;
+  domain: string;
+  owner: string;
+  operator?: string;
+  criticality: ControlCriticality;
+  controlType: ControlType;
+  execution: ControlExecution;
+  frequency: ControlFrequency;
+  nature: ControlNature;
+  keyControl?: boolean;
+  parentControlId?: string | null;
+  category: string;
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+}
+
+export interface InternalControlPatch {
+  title?: string;
+  description?: string;
+  domain?: string;
+  owner?: string;
+  operator?: string;
+  criticality?: ControlCriticality;
+  controlType?: ControlType;
+  execution?: ControlExecution;
+  frequency?: ControlFrequency;
+  nature?: ControlNature;
+  keyControl?: boolean;
+  parentControlId?: string | null;
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+  designEffectiveness?: EffectivenessStatus;
+  operatingEffectiveness?: EffectivenessStatus;
+}
+
+export interface ControlFrameworkMappingInput {
+  frameworkId: string;
+  frameworkName: string;
+  requirementCode: string;
+  requirementTitle?: string;
+  mappingType: FrameworkMappingType;
+  validation: MappingValidation;
 }
 
 export interface RequirementEvidence {
   id: string;
   orgId?: string;
-  frameworkId: string;
-  requirementId: string;
+  controlId?: string;
+  frameworkId?: string;
+  requirementId?: string;
   title: string;
   owner: string;
   evidenceType: string;
@@ -173,7 +250,8 @@ export interface RequirementEvidence {
 export interface RequirementAssessment {
   id: string;
   orgId?: string;
-  frameworkId: string;
+  controlId?: string;
+  frameworkId?: string;
   requirementId?: string;
   cycleName: string;
   status: 'completed' | 'in_progress' | 'scheduled';
@@ -190,11 +268,41 @@ export interface RequirementAssessment {
 
 export interface FrameworkActivity {
   id: string;
-  frameworkId: string;
+  frameworkId?: string;
+  controlId?: string;
   action: string;
   details: string;
   actor: string;
   timestamp: string;
+}
+
+// ─── Findings ──────────────────────────────────────────────────────────────
+
+export type FindingStatus = 'open' | 'remediated' | 'accepted';
+
+export interface Finding {
+  id: string;
+  orgId?: string;
+  code: string;
+  controlId: string;
+  assessmentId: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: FindingStatus;
+  linkedIssueId?: string;
+  linkedExceptionId?: string;
+  linkedRiskId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FindingInput {
+  controlId: string;
+  assessmentId: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
 }
 
 export interface FrameworkInput {
@@ -761,7 +869,36 @@ export interface NotesStrategy {
     patch: FrameworkRequirementPatch,
   ): Promise<FrameworkRequirement>;
   listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]>;
-  createInternalControl(orgId: string, data: Omit<InternalControl, 'id'>): Promise<InternalControl>;
+  getInternalControl(id: string, orgId?: string): Promise<InternalControl | null>;
+  createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl>;
+  updateInternalControl(id: string, patch: InternalControlPatch): Promise<InternalControl>;
+  deleteInternalControl(id: string): Promise<void>;
+  addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
+  ): Promise<InternalControl>;
+  removeControlFrameworkMapping(controlId: string, mappingId: string): Promise<InternalControl>;
+
+  listControlEvidence(controlId: string): Promise<RequirementEvidence[]>;
+  createControlEvidence(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence>;
+
+  listControlAssessments(controlId: string): Promise<RequirementAssessment[]>;
+  createControlAssessment(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment>;
+
+  listControlFindings(controlId: string): Promise<Finding[]>;
+  linkFindingToRisk(findingId: string, riskId: string): Promise<Finding>;
+  linkFindingToIssue(findingId: string, issueId: string): Promise<Finding>;
+  resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding>;
+
+  listControlActivity(controlId: string): Promise<FrameworkActivity[]>;
   listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]>;
   createFrameworkEvidence(
     orgId: string,
