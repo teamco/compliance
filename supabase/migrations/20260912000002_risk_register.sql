@@ -259,3 +259,58 @@ alter table public.requirement_evidence
   check (control_id is not null or framework_id is not null or risk_id is not null);
 
 create index requirement_evidence_risk_idx on public.requirement_evidence(risk_id);
+
+-- RLS fix: the pre-existing "users manage own evidence" write check validated
+-- control_id's org but had no branch for the new risk_id column, letting a
+-- user attach evidence to another org's risk. Recreate with a risk_id branch.
+drop policy "users manage own evidence" on public.requirement_evidence;
+
+create policy "users manage own evidence"
+  on public.requirement_evidence for all
+  using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (
+      control_id is null
+      or exists (
+        select 1 from public.internal_controls c
+        where c.id = control_id and c.org_id = requirement_evidence.org_id
+      )
+    )
+    and (
+      risk_id is null
+      or exists (
+        select 1 from public.risks r
+        where r.id = risk_id and r.org_id = requirement_evidence.org_id
+      )
+    )
+  );
+
+-- RLS fix: the pre-existing "users manage own risks" policy only checked
+-- auth.uid() = user_id, with no ownership check on the new taxonomy_category_id
+-- / methodology_id FKs, letting a user point a risk at another org's taxonomy
+-- category or methodology. Recreate with a with-check clause covering both.
+drop policy "users manage own risks" on public.risks;
+
+create policy "users manage own risks"
+  on public.risks for all
+  using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and (
+      taxonomy_category_id is null
+      or exists (
+        select 1 from public.risk_taxonomy_categories tc
+        where tc.id = taxonomy_category_id and tc.org_id = risks.org_id
+      )
+    )
+    and (
+      methodology_id is null
+      or exists (
+        select 1 from public.risk_methodologies m
+        where m.id = methodology_id and m.org_id = risks.org_id
+      )
+    )
+  );
