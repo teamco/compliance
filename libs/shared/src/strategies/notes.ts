@@ -633,6 +633,50 @@ export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high
 export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
 export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
 
+// ─── Risk Methodology ──────────────────────────────────────────────────────
+
+export type RiskScoreLabel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface RiskThresholdBand {
+  maxScore: number;
+  label: RiskScoreLabel;
+}
+
+export interface RiskMethodology {
+  id: string;
+  orgId: string;
+  version: number;
+  isActive: boolean;
+  scaleSize: 3 | 4 | 5;
+  likelihoodLabels: string[];
+  impactLabels: string[];
+  thresholds: RiskThresholdBand[];
+  appetiteThreshold: number;
+  createdAt: string;
+}
+
+export interface RiskMethodologyInput {
+  scaleSize: 3 | 4 | 5;
+  likelihoodLabels: string[];
+  impactLabels: string[];
+  thresholds: RiskThresholdBand[];
+  appetiteThreshold: number;
+}
+
+// ─── Risk Taxonomy ─────────────────────────────────────────────────────────
+
+export interface RiskTaxonomyCategory {
+  id: string;
+  orgId: string;
+  name: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface RiskTaxonomyCategoryInput {
+  name: string;
+}
+
 export interface Risk {
   id: string;
   orgId: string;
@@ -1032,6 +1076,18 @@ export interface NotesStrategy {
   getAsset(id: string): Promise<Asset | null>;
   updateAsset(id: string, patch: AssetPatch): Promise<Asset>;
   deleteAsset(id: string): Promise<void>;
+
+  // Risk Methodology
+  getRiskMethodology(orgId: string): Promise<RiskMethodology | null>;
+  upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology>;
+
+  // Risk Taxonomy
+  listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]>;
+  createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory>;
+  archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory>;
 
   // Risks
   listRisks(orgId: string): Promise<Risk[]>;
