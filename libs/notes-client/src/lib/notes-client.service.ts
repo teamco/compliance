@@ -13,15 +13,19 @@ import type {
   AssetPatch,
   AuditLogFilters,
   AuditLogPage,
+  ControlFrameworkMappingInput,
   DocumentStandard,
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  Finding,
   Framework,
   FrameworkControl,
   FrameworkRequirement,
   FrameworkRequirementPatch,
   InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
@@ -125,19 +129,123 @@ export class NotesClientService {
   }
 
   listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
-    return signedSend<InternalControl[]>(this.client, 'notes.frameworks.internal-controls.list', {
+    return signedSend<InternalControl[]>(this.client, 'notes.internal-controls.list', {
       orgId,
       frameworkId,
     });
   }
 
-  createInternalControl(
-    orgId: string,
-    data: Omit<InternalControl, 'id'>,
-  ): Promise<InternalControl> {
-    return signedSend<InternalControl>(this.client, 'notes.frameworks.internal-controls.create', {
+  createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl> {
+    return signedSend<InternalControl>(this.client, 'notes.internal-controls.create', {
       orgId,
       data,
+    });
+  }
+
+  getInternalControl(id: string, orgId?: string): Promise<InternalControl | null> {
+    return signedSend<InternalControl | null>(this.client, 'notes.internal-controls.get', {
+      id,
+      orgId,
+    });
+  }
+
+  updateInternalControl(id: string, patch: InternalControlPatch): Promise<InternalControl> {
+    return signedSend<InternalControl>(this.client, 'notes.internal-controls.update', {
+      id,
+      patch,
+    });
+  }
+
+  deleteInternalControl(id: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.internal-controls.delete', { id });
+  }
+
+  addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
+  ): Promise<InternalControl> {
+    return signedSend<InternalControl>(this.client, 'notes.internal-controls.mappings.add', {
+      controlId,
+      data,
+    });
+  }
+
+  removeControlFrameworkMapping(controlId: string, mappingId: string): Promise<InternalControl> {
+    return signedSend<InternalControl>(this.client, 'notes.internal-controls.mappings.remove', {
+      controlId,
+      mappingId,
+    });
+  }
+
+  listControlEvidence(controlId: string): Promise<RequirementEvidence[]> {
+    return signedSend<RequirementEvidence[]>(this.client, 'notes.internal-controls.evidence.list', {
+      controlId,
+    });
+  }
+
+  createControlEvidence(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.internal-controls.evidence.create', {
+      orgId,
+      controlId,
+      data,
+    });
+  }
+
+  listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
+    return signedSend<RequirementAssessment[]>(
+      this.client,
+      'notes.internal-controls.assessments.list',
+      { controlId },
+    );
+  }
+
+  createControlAssessment(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment> {
+    return signedSend<RequirementAssessment>(
+      this.client,
+      'notes.internal-controls.assessments.create',
+      { orgId, controlId, data },
+    );
+  }
+
+  listControlFindings(controlId: string): Promise<Finding[]> {
+    return signedSend<Finding[]>(this.client, 'notes.internal-controls.findings.list', {
+      controlId,
+    });
+  }
+
+  linkFindingToRisk(findingId: string, riskId: string): Promise<Finding> {
+    return signedSend<Finding>(this.client, 'notes.internal-controls.findings.link-risk', {
+      findingId,
+      riskId,
+    });
+  }
+
+  linkFindingToIssue(findingId: string, issueId: string): Promise<Finding> {
+    return signedSend<Finding>(this.client, 'notes.internal-controls.findings.link-issue', {
+      findingId,
+      issueId,
+    });
+  }
+
+  resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding> {
+    return signedSend<Finding>(
+      this.client,
+      'notes.internal-controls.findings.resolve-via-exception',
+      { findingId, exceptionId },
+    );
+  }
+
+  listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
+    return signedSend<FrameworkActivity[]>(this.client, 'notes.internal-controls.activity.list', {
+      controlId,
     });
   }
 
