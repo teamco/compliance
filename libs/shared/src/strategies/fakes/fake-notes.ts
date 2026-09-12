@@ -14,6 +14,8 @@ import type {
   FrameworkRequirement,
   FrameworkRequirementPatch,
   InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
@@ -62,6 +64,8 @@ import type {
   PolicyTemplate,
   PolicyControl,
   PolicyControlInput,
+  ControlFrameworkMappingInput,
+  Finding,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -72,6 +76,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   private orgRequirementOverrides = new Map<string, Partial<FrameworkRequirement>>(); // key = `${orgId}:${frameworkId}:${reqCode}`
   private frameworkOrgStatus = new Map<string, FrameworkStatus>(); // key = `${orgId}:${frameworkId}`
   private internalControls: InternalControl[] = [];
+  private findings: Finding[] = [];
   private evidence: RequirementEvidence[] = [];
   private assessmentsList: RequirementAssessment[] = [];
   private activities: FrameworkActivity[] = [];
@@ -2567,21 +2572,197 @@ export class FakeNotesStrategy implements NotesStrategy {
   async listInternalControls(_orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
     if (!frameworkId) return [...this.internalControls];
     return this.internalControls.filter((c) =>
-      c.frameworkMappings.some((m) => m.frameworkId === frameworkId),
+      c.frameworkMappings?.some((m) => m.frameworkId === frameworkId),
     );
   }
 
-  async createInternalControl(
-    orgId: string,
-    data: Omit<InternalControl, 'id'>,
-  ): Promise<InternalControl> {
+  async createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl> {
     const control: InternalControl = {
       id: `ctrl-${globalThis.crypto.randomUUID().slice(0, 8)}`,
       orgId,
+      operator: '',
+      keyControl: false,
+      parentControlId: null,
+      implementationStatus: 'not_implemented',
+      implementationDescription: '',
+      designEffectiveness: 'not_tested',
+      operatingEffectiveness: 'not_tested',
+      frameworkMappings: [],
+      evidenceCount: 0,
+      findingsCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       ...data,
     };
     this.internalControls.push(control);
     return control;
+  }
+
+  async getInternalControl(id: string, _orgId?: string): Promise<InternalControl | null> {
+    return this.internalControls.find((c) => c.id === id) ?? null;
+  }
+
+  async updateInternalControl(id: string, patch: InternalControlPatch): Promise<InternalControl> {
+    const control = this.internalControls.find((c) => c.id === id);
+    if (!control) throw new Error(`internal_control_not_found: ${id}`);
+    Object.assign(control, patch, { updatedAt: new Date().toISOString() });
+    return control;
+  }
+
+  async deleteInternalControl(id: string): Promise<void> {
+    this.internalControls = this.internalControls.filter((c) => c.id !== id);
+  }
+
+  async addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
+  ): Promise<InternalControl> {
+    const control = this.internalControls.find((c) => c.id === controlId);
+    if (!control) throw new Error(`internal_control_not_found: ${controlId}`);
+    if (!control.frameworkMappings) {
+      control.frameworkMappings = [];
+    }
+    control.frameworkMappings.push({ id: globalThis.crypto.randomUUID(), ...data });
+    control.frameworkCount = new Set(control.frameworkMappings.map((m) => m.frameworkId)).size;
+    control.requirementCount = control.frameworkMappings.length;
+    control.updatedAt = new Date().toISOString();
+    return control;
+  }
+
+  async removeControlFrameworkMapping(
+    controlId: string,
+    mappingId: string,
+  ): Promise<InternalControl> {
+    const control = this.internalControls.find((c) => c.id === controlId);
+    if (!control) throw new Error(`internal_control_not_found: ${controlId}`);
+    control.frameworkMappings = (control.frameworkMappings ?? []).filter((m) => m.id !== mappingId);
+    control.frameworkCount = new Set(control.frameworkMappings.map((m) => m.frameworkId)).size;
+    control.requirementCount = control.frameworkMappings.length;
+    control.updatedAt = new Date().toISOString();
+    return control;
+  }
+
+  async listControlEvidence(controlId: string): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.controlId === controlId);
+  }
+
+  async createControlEvidence(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence> {
+    const ev: RequirementEvidence = {
+      id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      controlId,
+      ...data,
+    };
+    this.evidence.unshift(ev);
+    const control = this.internalControls.find((c) => c.id === controlId);
+    if (control) control.evidenceCount = (control.evidenceCount ?? 0) + 1;
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      controlId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+      timestamp: new Date().toISOString(),
+    });
+    return ev;
+  }
+
+  async listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
+    return this.assessmentsList.filter((a) => a.controlId === controlId);
+  }
+
+  async createControlAssessment(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment> {
+    const assessment: RequirementAssessment = {
+      id: `asm-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      controlId,
+      ...data,
+    };
+    this.assessmentsList.unshift(assessment);
+
+    const control = this.internalControls.find((c) => c.id === controlId);
+    if (control) {
+      control.designEffectiveness = assessment.designEffectiveness;
+      control.operatingEffectiveness = assessment.operatingEffectiveness;
+      control.updatedAt = new Date().toISOString();
+    }
+
+    if (
+      assessment.operatingEffectiveness === 'ineffective' ||
+      assessment.operatingEffectiveness === 'partially_effective'
+    ) {
+      const findingNum = Math.floor(1000 + Math.random() * 9000);
+      const finding: Finding = {
+        id: globalThis.crypto.randomUUID(),
+        orgId,
+        code: `FIND-${new Date().getFullYear()}-${findingNum}`,
+        controlId,
+        assessmentId: assessment.id,
+        title: `${control?.title ?? 'Control'} — ${assessment.operatingEffectiveness.replace('_', ' ')}`,
+        description: assessment.observation,
+        severity: assessment.operatingEffectiveness === 'ineffective' ? 'high' : 'medium',
+        status: 'open',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      this.findings.unshift(finding);
+      assessment.findingId = finding.id;
+      assessment.findingTitle = finding.title;
+      assessment.findingSeverity = finding.severity;
+      if (control) control.findingsCount = (control.findingsCount ?? 0) + 1;
+    }
+
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      controlId,
+      action: 'Assessment Completed',
+      details: `Cycle "${assessment.cycleName}" — operating effectiveness: ${assessment.operatingEffectiveness}.`,
+      actor: assessment.assessor,
+      timestamp: new Date().toISOString(),
+    });
+
+    return assessment;
+  }
+
+  async listControlFindings(controlId: string): Promise<Finding[]> {
+    return this.findings.filter((f) => f.controlId === controlId);
+  }
+
+  async linkFindingToRisk(findingId: string, riskId: string): Promise<Finding> {
+    const finding = this.findings.find((f) => f.id === findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    finding.linkedRiskId = riskId;
+    finding.updatedAt = new Date().toISOString();
+    return finding;
+  }
+
+  async linkFindingToIssue(findingId: string, issueId: string): Promise<Finding> {
+    const finding = this.findings.find((f) => f.id === findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    finding.linkedIssueId = issueId;
+    finding.updatedAt = new Date().toISOString();
+    return finding;
+  }
+
+  async resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding> {
+    const finding = this.findings.find((f) => f.id === findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    finding.linkedExceptionId = exceptionId;
+    finding.status = 'accepted';
+    finding.updatedAt = new Date().toISOString();
+    return finding;
+  }
+
+  async listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
+    return this.activities.filter((a) => a.controlId === controlId);
   }
 
   async listFrameworkEvidence(

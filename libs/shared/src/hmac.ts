@@ -65,7 +65,10 @@ export async function signedSend<T>(
     ? ({ payload: data, signature: signHmac(data, secret) } satisfies SignedEnvelope)
     : data;
 
-  return composeResilience(() => firstValueFrom(client.send<T>(pattern, body)), opts);
+  return composeResilience(
+    () => firstValueFrom(client.send<T>(pattern, body), { defaultValue: undefined as T }),
+    opts,
+  );
 }
 
 /**

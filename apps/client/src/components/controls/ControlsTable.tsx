@@ -1,114 +1,101 @@
+import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import type { Framework, StandardControl, StandardControlPriority } from '../../queries/notes';
-
-const PRIORITY_CLASS: Record<StandardControlPriority, string> = {
-  critical: 'bg-red-500/10 text-red-400 border-red-500/20',
-  high: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
-  medium: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
-  low: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-};
+import { Trash2 } from 'lucide-react';
+import type { InternalControl } from '@icore/shared';
 
 interface ControlsTableProps {
-  controls: StandardControl[];
-  frameworks: Framework[];
+  controls: InternalControl[];
   showGapsOnly: boolean;
+  onDeleteClick?: (id: string) => void;
 }
 
-export function ControlsTable({ controls, frameworks, showGapsOnly }: ControlsTableProps) {
-  const { t } = useTranslation();
-  const visible =
-    showGapsOnly && frameworks.length > 0
-      ? controls.filter(
-          (c) =>
-            !frameworks.every((fw) => c.frameworkMappings.some((m) => m.frameworkId === fw.id)),
-        )
-      : controls;
+const EFFECTIVENESS_DOT: Record<string, string> = {
+  effective: '🟢',
+  partially_effective: '🟠',
+  ineffective: '🔴',
+  not_tested: '⚪',
+};
 
-  if (visible.length === 0) {
-    const message =
-      frameworks.length === 0
-        ? t('controls.selectFramework')
-        : showGapsOnly
-          ? t('controls.noGaps')
-          : t('controls.noControls');
+export function ControlsTable({ controls, showGapsOnly, onDeleteClick }: ControlsTableProps) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+
+  const rows = showGapsOnly
+    ? controls.filter(
+        (c) =>
+          c.operatingEffectiveness === 'ineffective' ||
+          c.operatingEffectiveness === 'partially_effective' ||
+          c.implementationStatus === 'not_implemented',
+      )
+    : controls;
+
+  if (rows.length === 0) {
     return (
       <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
-        {message}
+        {t('controls.noControls')}
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-border">
+    <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border bg-surface">
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              {t('controls.colCode')}
-            </th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              {t('controls.colTitle')}
-            </th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              {t('controls.colPriority')}
-            </th>
-            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground text-xs">
-              {t('controls.colCategory')}
-            </th>
-            {frameworks.map((fw) => (
-              <th
-                key={fw.id}
-                className="px-3 py-2.5 text-center font-medium text-muted-foreground text-xs whitespace-nowrap"
-              >
-                {fw.name}
-              </th>
-            ))}
+          <tr className="text-left text-xs text-muted-foreground border-b border-border">
+            <th className="py-2 px-3">{t('controls.colCode')}</th>
+            <th className="py-2 px-3">{t('controls.colTitle')}</th>
+            <th className="py-2 px-3">{t('controls.colDomain')}</th>
+            <th className="py-2 px-3">{t('controls.colOwner')}</th>
+            <th className="py-2 px-3">{t('controls.colStatus')}</th>
+            <th className="py-2 px-3">{t('controls.colEffectiveness')}</th>
+            <th className="py-2 px-3">{t('controls.colFrameworks')}</th>
+            <th className="py-2 px-3">{t('controls.colEvidence')}</th>
+            <th className="py-2 px-3">{t('controls.colFindings')}</th>
+            {onDeleteClick ? <th className="py-2 px-3" /> : null}
           </tr>
         </thead>
         <tbody>
-          {visible.map((control, i) => (
-            <tr
-              key={control.code}
-              className={`border-b border-border last:border-0 hover:bg-muted/30 transition-colors ${i % 2 === 0 ? '' : 'bg-muted/10'}`}
-            >
-              <td className="px-3 py-2.5 font-mono text-xs text-foreground whitespace-nowrap">
-                {control.code}
-              </td>
-              <td className="px-3 py-2.5 text-foreground max-w-[260px] truncate">
-                {control.title}
-              </td>
-              <td className="px-3 py-2.5">
-                <span
-                  className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${PRIORITY_CLASS[control.priority]}`}
-                >
-                  {control.priority}
-                </span>
-              </td>
-              <td className="px-3 py-2.5 text-muted-foreground text-xs whitespace-nowrap">
-                {control.category}
-              </td>
-              {frameworks.map((fw) => {
-                const mapping = control.frameworkMappings.find((m) => m.frameworkId === fw.id);
-                return (
-                  <td key={fw.id} className="px-3 py-2.5 text-center">
-                    {mapping ? (
-                      <span
-                        title={mapping.controlCode}
-                        className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-500/10 border border-green-500/20 text-green-500 text-[10px] font-bold cursor-default"
-                      >
-                        ✓
-                      </span>
-                    ) : (
-                      <span
-                        data-unmapped="true"
-                        className="inline-block w-4 h-px bg-muted-foreground/20"
-                      />
-                    )}
+          {rows.map((c) => {
+            const fwNames = [...new Set((c.frameworkMappings ?? []).map((m) => m.frameworkName))];
+            return (
+              <tr
+                key={c.id}
+                onClick={() => void navigate({ to: '/controls/$id', params: { id: c.id } })}
+                className="border-b border-border hover:bg-surface cursor-pointer"
+              >
+                <td className="py-2 px-3 font-mono text-xs">{c.code}</td>
+                <td className="py-2 px-3">{c.title}</td>
+                <td className="py-2 px-3 text-muted-foreground">{c.domain}</td>
+                <td className="py-2 px-3 text-muted-foreground">{c.owner}</td>
+                <td className="py-2 px-3">{c.implementationStatus?.replace('_', ' ')}</td>
+                <td className="py-2 px-3">
+                  {c.operatingEffectiveness ? EFFECTIVENESS_DOT[c.operatingEffectiveness] : ''}{' '}
+                  {c.operatingEffectiveness?.replace('_', ' ')}
+                </td>
+                <td className="py-2 px-3 text-xs text-muted-foreground">
+                  {fwNames.slice(0, 2).join(', ')}
+                  {fwNames.length > 2 ? ` +${fwNames.length - 2}` : ''}
+                </td>
+                <td className="py-2 px-3 text-center">{c.evidenceCount ?? 0}</td>
+                <td className="py-2 px-3 text-center">{c.findingsCount ?? 0}</td>
+                {onDeleteClick ? (
+                  <td className="py-2 px-3 text-center">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteClick(c.id);
+                      }}
+                      className="text-muted-foreground hover:text-destructive cursor-pointer"
+                      aria-label={t('common.delete')}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
                   </td>
-                );
-              })}
-            </tr>
-          ))}
+                ) : null}
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

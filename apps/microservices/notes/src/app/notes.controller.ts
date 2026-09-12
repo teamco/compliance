@@ -8,11 +8,15 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ControlFrameworkMappingInput,
+  Finding,
   Framework,
   FrameworkControl,
   FrameworkRequirement,
   FrameworkRequirementPatch,
   InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
@@ -114,18 +118,114 @@ export class NotesController {
     );
   }
 
-  @MessagePattern('notes.frameworks.internal-controls.list')
+  @MessagePattern('notes.internal-controls.list')
   listInternalControls(
-    @Payload() payload?: { orgId?: string; frameworkId?: string },
+    @Payload() payload: { orgId?: string; frameworkId?: string },
   ): Promise<InternalControl[]> {
     return this.strategy.listInternalControls(payload?.orgId, payload?.frameworkId);
   }
 
-  @MessagePattern('notes.frameworks.internal-controls.create')
+  @MessagePattern('notes.internal-controls.create')
   createInternalControl(
-    @Payload() payload: { orgId: string; data: Omit<InternalControl, 'id'> },
+    @Payload() payload: { orgId: string; data: InternalControlInput },
   ): Promise<InternalControl> {
     return this.strategy.createInternalControl(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.get')
+  getInternalControl(
+    @Payload() payload: { id: string; orgId?: string },
+  ): Promise<InternalControl | null> {
+    return this.strategy.getInternalControl(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.internal-controls.update')
+  updateInternalControl(
+    @Payload() payload: { id: string; patch: InternalControlPatch },
+  ): Promise<InternalControl> {
+    return this.strategy.updateInternalControl(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.internal-controls.delete')
+  deleteInternalControl(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteInternalControl(payload.id);
+  }
+
+  @MessagePattern('notes.internal-controls.mappings.add')
+  addControlFrameworkMapping(
+    @Payload() payload: { controlId: string; data: ControlFrameworkMappingInput },
+  ): Promise<InternalControl> {
+    return this.strategy.addControlFrameworkMapping(payload.controlId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.mappings.remove')
+  removeControlFrameworkMapping(
+    @Payload() payload: { controlId: string; mappingId: string },
+  ): Promise<InternalControl> {
+    return this.strategy.removeControlFrameworkMapping(payload.controlId, payload.mappingId);
+  }
+
+  @MessagePattern('notes.internal-controls.evidence.list')
+  listControlEvidence(@Payload() payload: { controlId: string }): Promise<RequirementEvidence[]> {
+    return this.strategy.listControlEvidence(payload.controlId);
+  }
+
+  @MessagePattern('notes.internal-controls.evidence.create')
+  createControlEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      controlId: string;
+      data: Omit<RequirementEvidence, 'id' | 'controlId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createControlEvidence(payload.orgId, payload.controlId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.assessments.list')
+  listControlAssessments(
+    @Payload() payload: { controlId: string },
+  ): Promise<RequirementAssessment[]> {
+    return this.strategy.listControlAssessments(payload.controlId);
+  }
+
+  @MessagePattern('notes.internal-controls.assessments.create')
+  createControlAssessment(
+    @Payload()
+    payload: {
+      orgId: string;
+      controlId: string;
+      data: Omit<RequirementAssessment, 'id' | 'controlId'>;
+    },
+  ): Promise<RequirementAssessment> {
+    return this.strategy.createControlAssessment(payload.orgId, payload.controlId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.list')
+  listControlFindings(@Payload() payload: { controlId: string }): Promise<Finding[]> {
+    return this.strategy.listControlFindings(payload.controlId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.link-risk')
+  linkFindingToRisk(@Payload() payload: { findingId: string; riskId: string }): Promise<Finding> {
+    return this.strategy.linkFindingToRisk(payload.findingId, payload.riskId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.link-issue')
+  linkFindingToIssue(@Payload() payload: { findingId: string; issueId: string }): Promise<Finding> {
+    return this.strategy.linkFindingToIssue(payload.findingId, payload.issueId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.resolve-via-exception')
+  resolveFindingViaException(
+    @Payload() payload: { findingId: string; exceptionId: string },
+  ): Promise<Finding> {
+    return this.strategy.resolveFindingViaException(payload.findingId, payload.exceptionId);
+  }
+
+  @MessagePattern('notes.internal-controls.activity.list')
+  listControlActivity(@Payload() payload: { controlId: string }): Promise<FrameworkActivity[]> {
+    return this.strategy.listControlActivity(payload.controlId);
   }
 
   @MessagePattern('notes.frameworks.evidence.list')
