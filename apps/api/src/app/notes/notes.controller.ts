@@ -161,8 +161,14 @@ export class NotesController {
   }
 
   @Get('internal-controls')
-  @ApiOperation({ summary: 'List internal controls' })
-  listInternalControls(@Query('orgId') orgId?: string, @Query('frameworkId') frameworkId?: string) {
+  @ApiOperation({ summary: 'List internal controls for org' })
+  listInternalControls(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId?: string,
+    @Query('frameworkId') frameworkId?: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
     return this.notes.listInternalControls(orgId, frameworkId);
   }
 
@@ -182,7 +188,10 @@ export class NotesController {
 
   @Get('internal-controls/:id')
   @ApiOperation({ summary: 'Get internal control' })
-  async getInternalControl(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async getInternalControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
     const control = await this.notes.getInternalControl(id);
     if (!control) throw new NotFoundException();
