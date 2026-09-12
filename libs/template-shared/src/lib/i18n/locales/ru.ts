@@ -25,6 +25,8 @@ export const ru = {
     leave: 'Уйти',
     yes: 'Да',
     no: 'Нет',
+    scrollLeft: 'Прокрутить влево',
+    scrollRight: 'Прокрутить вправо',
   },
   auth: {
     signIn: 'Войти',

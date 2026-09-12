@@ -25,6 +25,8 @@ export const es = {
     leave: 'Salir',
     yes: 'Sí',
     no: 'No',
+    scrollLeft: 'Desplazar a la izquierda',
+    scrollRight: 'Desplazar a la derecha',
   },
   export: {
     export: 'Exportar',
