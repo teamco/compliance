@@ -67,9 +67,13 @@ import type {
   RiskMethodology,
   RiskMethodologyInput,
   RiskPatch,
+  RiskScoreLabel,
+  RiskSource,
+  RiskStatus,
   RiskTaxonomyCategory,
   RiskTaxonomyCategoryInput,
   RiskThresholdBand,
+  RiskTreatmentStrategy,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -1980,24 +1984,62 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   }
 
   async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
-    const riskScore = this.computeRiskScore(data.likelihood, data.impact);
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const { count } = await this.db
+      .from('risks')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId);
+    const riskId = `RSK-${String((count ?? 0) + 101).padStart(6, '0')}`;
+
     const { data: row, error } = await this.db
       .from('risks')
       .insert({
         org_id: orgId,
         user_id: userId,
+        risk_id: riskId,
         title: data.title,
-        description: data.description,
-        category: data.category,
-        likelihood: data.likelihood,
-        impact: data.impact,
-        risk_score: riskScore,
-        treatment: data.treatment ?? 'mitigate',
-        asset_id: data.assetId ?? null,
+        risk_statement: data.riskStatement,
+        taxonomy_category_id: data.taxonomyCategoryId,
+        owner_id: data.ownerId,
+        business_unit: data.businessUnit ?? null,
+        source: data.source ?? 'manual',
+        source_ref: data.sourceRef ?? null,
+        asset_ids: data.assetIds ?? [],
+        vendor_ids: data.vendorIds ?? [],
+        methodology_id: methodology.id,
+        inherent_likelihood: data.inherentLikelihood,
+        inherent_impact: data.inherentImpact,
+        inherent_score: score,
+        inherent_label: label,
+        status: 'open',
+        // legacy columns kept populated for backward compatibility with any
+        // code path still reading the pre-rebuild columns directly:
+        description: data.riskStatement,
+        category: data.taxonomyCategoryId,
+        likelihood: 'medium',
+        impact: 'medium',
+        risk_score: score,
+        treatment: 'mitigate',
       })
       .select()
       .single();
     return this.toRisk(ok(row, error));
+  }
+
+  private scoreRisk(
+    methodology: RiskMethodology,
+    likelihood: number,
+    impact: number,
+  ): { score: number; label: RiskScoreLabel } {
+    const score = likelihood * impact;
+    const band = methodology.thresholds.find((t) => score <= t.maxScore);
+    return { score, label: band?.label ?? 'critical' };
   }
 
   async getRisk(id: string): Promise<Risk | null> {
@@ -2006,22 +2048,87 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.toRisk(data) : null;
   }
 
-  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+  async updateRisk(
+    id: string,
+    patch: RiskPatch,
+    changedBy: string,
+    reason?: string,
+  ): Promise<Risk> {
     const current = await this.getRisk(id);
     if (!current) throw new Error('risk_not_found');
-    const newLikelihood = patch.likelihood ?? current.likelihood;
-    const newImpact = patch.impact ?? current.impact;
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      risk_score: this.computeRiskScore(newLikelihood, newImpact),
-    };
+
+    const scoreFieldsChanging =
+      patch.inherentLikelihood !== undefined ||
+      patch.inherentImpact !== undefined ||
+      patch.residualLikelihood !== undefined ||
+      patch.residualImpact !== undefined ||
+      patch.treatmentStrategy !== undefined;
+
+    if (scoreFieldsChanging) {
+      await this.db.from('risk_snapshots').insert({
+        risk_id: id,
+        inherent_score: current.inherentScore,
+        inherent_label: current.inherentLabel,
+        residual_score: current.residualScore ?? null,
+        residual_label: current.residualLabel ?? null,
+        treatment_strategy: current.treatmentStrategy ?? null,
+        changed_by: changedBy,
+        reason: reason ?? null,
+      });
+    }
+
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.description !== undefined) update['description'] = patch.description;
-    if (patch.category !== undefined) update['category'] = patch.category;
-    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
-    if (patch.impact !== undefined) update['impact'] = patch.impact;
-    if (patch.treatment !== undefined) update['treatment'] = patch.treatment;
-    if ('assetId' in patch) update['asset_id'] = patch.assetId;
+    if (patch.riskStatement !== undefined) update['risk_statement'] = patch.riskStatement;
+    if (patch.taxonomyCategoryId !== undefined)
+      update['taxonomy_category_id'] = patch.taxonomyCategoryId;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
+    if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.treatmentStrategy !== undefined)
+      update['treatment_strategy'] = patch.treatmentStrategy;
+    if (patch.treatmentOwner !== undefined) update['treatment_owner'] = patch.treatmentOwner;
+    if (patch.treatmentPlan !== undefined) update['treatment_plan'] = patch.treatmentPlan;
+    if (patch.targetScore !== undefined) update['target_score'] = patch.targetScore;
+    if (patch.targetDate !== undefined) update['target_date'] = patch.targetDate;
+    if (patch.status !== undefined) update['status'] = patch.status;
+
+    const methodology = await this.getRiskMethodology(current.orgId);
+    if (methodology) {
+      const newInherentLikelihood = patch.inherentLikelihood ?? current.inherentLikelihood;
+      const newInherentImpact = patch.inherentImpact ?? current.inherentImpact;
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          newInherentLikelihood,
+          newInherentImpact,
+        );
+        update['inherent_likelihood'] = newInherentLikelihood;
+        update['inherent_impact'] = newInherentImpact;
+        update['inherent_score'] = score;
+        update['inherent_label'] = label;
+      }
+      const newResidualLikelihood = patch.residualLikelihood ?? current.residualLikelihood;
+      const newResidualImpact = patch.residualImpact ?? current.residualImpact;
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        newResidualLikelihood !== undefined &&
+        newResidualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          newResidualLikelihood,
+          newResidualImpact,
+        );
+        update['residual_likelihood'] = newResidualLikelihood;
+        update['residual_impact'] = newResidualImpact;
+        update['residual_score'] = score;
+        update['residual_label'] = label;
+        update['above_appetite'] = score > methodology.appetiteThreshold;
+      }
+    }
+
     const { data, error } = await this.db
       .from('risks')
       .update(update)
@@ -2039,16 +2146,34 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   private toRisk(row: Record<string, unknown>): Risk {
     return {
       id: row['id'] as string,
+      riskId: row['risk_id'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
       title: row['title'] as string,
-      description: row['description'] as string,
-      category: row['category'] as string,
-      likelihood: row['likelihood'] as Risk['likelihood'],
-      impact: row['impact'] as Risk['impact'],
-      riskScore: row['risk_score'] as number,
-      treatment: row['treatment'] as Risk['treatment'],
-      assetId: row['asset_id'] as string | null,
+      riskStatement: row['risk_statement'] as string,
+      taxonomyCategoryId: row['taxonomy_category_id'] as string,
+      ownerId: row['owner_id'] as string,
+      businessUnit: row['business_unit'] as string | undefined,
+      source: row['source'] as RiskSource,
+      sourceRef: row['source_ref'] as string | undefined,
+      assetIds: (row['asset_ids'] as string[]) ?? [],
+      vendorIds: (row['vendor_ids'] as string[]) ?? [],
+      methodologyId: row['methodology_id'] as string,
+      inherentLikelihood: row['inherent_likelihood'] as number,
+      inherentImpact: row['inherent_impact'] as number,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualLikelihood: row['residual_likelihood'] as number | undefined,
+      residualImpact: row['residual_impact'] as number | undefined,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      aboveAppetite: row['above_appetite'] as boolean | undefined,
+      treatmentStrategy: row['treatment_strategy'] as RiskTreatmentStrategy | undefined,
+      treatmentOwner: row['treatment_owner'] as string | undefined,
+      treatmentPlan: row['treatment_plan'] as string | undefined,
+      targetScore: row['target_score'] as number | undefined,
+      targetDate: row['target_date'] as string | undefined,
+      status: row['status'] as RiskStatus,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
