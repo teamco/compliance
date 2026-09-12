@@ -61,6 +61,11 @@ import type {
   RiskAssessmentPatch,
   AssessmentType,
   AssessmentStatus,
+  RiskAcceptance,
+  RiskAcceptanceInput,
+  RiskAcceptanceStatus,
+  RiskControlMapping,
+  RiskControlMappingInput,
   RiskImpact,
   RiskInput,
   RiskLikelihood,
@@ -2663,6 +2668,153 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       controlCode: row['control_code'] as string,
       frameworkId: row['framework_id'] as string,
       createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk ↔ Control mapping ─────────────────────────────────────────────────
+
+  async listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]> {
+    const { data, error } = await this.db
+      .from('risk_control_mappings')
+      .select('*')
+      .eq('risk_id', riskId);
+    return ok(data, error).map((r) => this.toRiskControlMapping(r));
+  }
+
+  async addRiskControlMapping(
+    riskId: string,
+    data: RiskControlMappingInput,
+  ): Promise<RiskControlMapping> {
+    const { data: row, error } = await this.db
+      .from('risk_control_mappings')
+      .insert({
+        risk_id: riskId,
+        control_id: data.controlId,
+        control_code: data.controlCode,
+        control_title: data.controlTitle,
+        effectiveness_note: data.effectivenessNote ?? null,
+      })
+      .select()
+      .single();
+    return this.toRiskControlMapping(ok(row, error));
+  }
+
+  async removeRiskControlMapping(id: string): Promise<void> {
+    const { error } = await this.db.from('risk_control_mappings').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toRiskControlMapping(row: Record<string, unknown>): RiskControlMapping {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      controlId: row['control_id'] as string,
+      controlCode: row['control_code'] as string,
+      controlTitle: row['control_title'] as string,
+      effectivenessNote: row['effectiveness_note'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk Acceptance ────────────────────────────────────────────────────────
+
+  async createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance> {
+    const { data: row, error } = await this.db
+      .from('risk_acceptances')
+      .insert({
+        risk_id: riskId,
+        org_id: orgId,
+        requested_by: requestedBy,
+        justification: data.justification,
+        compensating_controls: data.compensatingControls,
+        expires_at: data.expiresAt,
+        approver_id: data.approverId,
+      })
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(row, error));
+  }
+
+  async getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('risk_id', riskId)
+      .neq('status', 'rejected')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskAcceptance(data) : null;
+  }
+
+  async reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({
+        status: 'reviewed',
+        reviewed_by: reviewedBy,
+        reviewed_at: new Date().toISOString(),
+        review_notes: reviewNotes ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  async approveRiskAcceptance(id: string): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  async rejectRiskAcceptance(id: string): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private toRiskAcceptance(row: Record<string, unknown>): RiskAcceptance {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      justification: row['justification'] as string,
+      compensatingControls: row['compensating_controls'] as string,
+      expiresAt: row['expires_at'] as string,
+      approverId: row['approver_id'] as string,
+      status: row['status'] as RiskAcceptanceStatus,
+      reviewedBy: row['reviewed_by'] as string | undefined,
+      reviewedAt: row['reviewed_at'] as string | undefined,
+      reviewNotes: row['review_notes'] as string | undefined,
+      approvedAt: row['approved_at'] as string | undefined,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
     };
   }
 }
