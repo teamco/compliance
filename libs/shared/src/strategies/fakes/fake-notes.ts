@@ -64,6 +64,10 @@ import type {
   RiskTaxonomyCategoryInput,
   RiskSnapshot,
   RiskScoreLabel,
+  RiskControlMapping,
+  RiskControlMappingInput,
+  RiskAcceptance,
+  RiskAcceptanceInput,
   Policy,
   PolicyInput,
   PolicyPatch,
@@ -3497,6 +3501,8 @@ export class FakeNotesStrategy implements NotesStrategy {
   // ─── Risks ───────────────────────────────────────────────────────────────
   private risks: Risk[] = [];
   private riskSnapshots: RiskSnapshot[] = [];
+  private riskControlMappings: RiskControlMapping[] = [];
+  private riskAcceptances: RiskAcceptance[] = [];
   private riskMethodologies: RiskMethodology[] = [];
   private riskTaxonomy: RiskTaxonomyCategory[] = [];
 
@@ -3735,6 +3741,116 @@ export class FakeNotesStrategy implements NotesStrategy {
 
     risk.updatedAt = new Date().toISOString();
     return risk;
+  }
+
+  async listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]> {
+    return this.riskControlMappings.filter((m) => m.riskId === riskId);
+  }
+
+  async addRiskControlMapping(
+    riskId: string,
+    data: RiskControlMappingInput,
+  ): Promise<RiskControlMapping> {
+    const mapping: RiskControlMapping = {
+      id: globalThis.crypto.randomUUID(),
+      riskId,
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+    this.riskControlMappings.push(mapping);
+    return mapping;
+  }
+
+  async removeRiskControlMapping(id: string): Promise<void> {
+    this.riskControlMappings = this.riskControlMappings.filter((m) => m.id !== id);
+  }
+
+  async createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance> {
+    const acceptance: RiskAcceptance = {
+      id: globalThis.crypto.randomUUID(),
+      riskId,
+      orgId,
+      requestedBy,
+      justification: data.justification,
+      compensatingControls: data.compensatingControls,
+      expiresAt: data.expiresAt,
+      approverId: data.approverId,
+      status: 'requested',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.riskAcceptances.unshift(acceptance);
+    return acceptance;
+  }
+
+  async getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null> {
+    const now = new Date().toISOString();
+    return (
+      this.riskAcceptances.find(
+        (a) => a.riskId === riskId && a.status !== 'rejected' && a.expiresAt > now,
+      ) ?? null
+    );
+  }
+
+  async reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    acceptance.status = 'reviewed';
+    acceptance.reviewedBy = reviewedBy;
+    acceptance.reviewedAt = new Date().toISOString();
+    acceptance.reviewNotes = reviewNotes;
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
+  async approveRiskAcceptance(id: string): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    acceptance.status = 'approved';
+    acceptance.approvedAt = new Date().toISOString();
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
+  async rejectRiskAcceptance(id: string): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    acceptance.status = 'rejected';
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
+  // ─── Task 8: Risk Evidence (stubs for now) ───────────────────────────────
+  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    return this.riskSnapshots.filter((s) => s.riskId === riskId);
+  }
+
+  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    // TODO: Task 8 implementation
+    return [];
+  }
+
+  async createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    // TODO: Task 8 implementation
+    const evidence: RequirementEvidence = {
+      id: globalThis.crypto.randomUUID(),
+      riskId,
+      ...data,
+    };
+    return evidence;
   }
 
   async deleteRisk(id: string): Promise<void> {
