@@ -1543,21 +1543,16 @@ git commit -m "feat(notes): persist control evidence, assessments, findings and 
 **Files:**
 - Modify: `apps/microservices/notes/src/app/notes.controller.ts`
 
-- [ ] **Step 1: Add handlers next to the existing `notes.internal-controls.*` ones (find them by searching `listInternalControls` in this file)**
+- [ ] **Step 1: Replace the two existing `notes.frameworks.internal-controls.*` handlers, then add the rest**
+
+This file already has `listInternalControls`/`createInternalControl` methods (search for `notes.frameworks.internal-controls` — they were built earlier for the Frameworks module's "Mapped Controls" tab, predating this plan). `createInternalControl`'s payload still uses the pre-Task-2 type `Omit<InternalControl, 'id'>`, which no longer matches `NotesStrategy.createInternalControl`'s real signature (`InternalControlInput`) — replace both existing methods entirely (same method names, new pattern strings and the fixed type) rather than adding new methods with the same names, which would be a duplicate-method-name compile error:
 
 ```typescript
   @MessagePattern('notes.internal-controls.list')
   listInternalControls(
     @Payload() payload: { orgId?: string; frameworkId?: string },
   ): Promise<InternalControl[]> {
-    return this.strategy.listInternalControls(payload.orgId, payload.frameworkId);
-  }
-
-  @MessagePattern('notes.internal-controls.get')
-  getInternalControl(
-    @Payload() payload: { id: string; orgId?: string },
-  ): Promise<InternalControl | null> {
-    return this.strategy.getInternalControl(payload.id, payload.orgId);
+    return this.strategy.listInternalControls(payload?.orgId, payload?.frameworkId);
   }
 
   @MessagePattern('notes.internal-controls.create')
@@ -1565,6 +1560,17 @@ git commit -m "feat(notes): persist control evidence, assessments, findings and 
     @Payload() payload: { orgId: string; data: InternalControlInput },
   ): Promise<InternalControl> {
     return this.strategy.createInternalControl(payload.orgId, payload.data);
+  }
+```
+
+Then add these as genuinely new handlers (no naming conflicts — these methods don't exist yet):
+
+```typescript
+  @MessagePattern('notes.internal-controls.get')
+  getInternalControl(
+    @Payload() payload: { id: string; orgId?: string },
+  ): Promise<InternalControl | null> {
+    return this.strategy.getInternalControl(payload.id, payload.orgId);
   }
 
   @MessagePattern('notes.internal-controls.update')
@@ -1682,7 +1688,9 @@ git commit -m "feat(notes): add TCP message handlers for internal controls modul
 **Files:**
 - Modify: `libs/notes-client/src/lib/notes-client.service.ts`
 
-- [ ] **Step 1: Add proxy methods matching the message patterns from Task 9**
+- [ ] **Step 1: Update the two existing proxy methods, then add the rest**
+
+This file already has `listInternalControls`/`createInternalControl` methods calling the old `notes.frameworks.internal-controls.list`/`.create` patterns with the old `Omit<InternalControl, 'id'>` payload type (search for `notes.frameworks.internal-controls`). Since Task 9 replaced the MS handlers' pattern strings and fixed `createInternalControl`'s type, update both existing methods in place to match — same method names (adding new ones with these names would be a duplicate-method compile error), new pattern strings, fixed type:
 
 ```typescript
   listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
@@ -1692,17 +1700,21 @@ git commit -m "feat(notes): add TCP message handlers for internal controls modul
     });
   }
 
-  getInternalControl(id: string, orgId?: string): Promise<InternalControl | null> {
-    return signedSend<InternalControl | null>(this.client, 'notes.internal-controls.get', {
-      id,
-      orgId,
-    });
-  }
-
   createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl> {
     return signedSend<InternalControl>(this.client, 'notes.internal-controls.create', {
       orgId,
       data,
+    });
+  }
+```
+
+Then add these as genuinely new proxy methods (no naming conflicts):
+
+```typescript
+  getInternalControl(id: string, orgId?: string): Promise<InternalControl | null> {
+    return signedSend<InternalControl | null>(this.client, 'notes.internal-controls.get', {
+      id,
+      orgId,
     });
   }
 
@@ -1828,31 +1840,11 @@ git commit -m "feat(notes-client): proxy internal controls module over TCP"
 **Files:**
 - Modify: `apps/api/src/app/notes/notes.controller.ts`
 
-- [ ] **Step 1: Add endpoints following the `// ─── Exceptions ───` section style**
+- [ ] **Step 1: Update the two existing endpoints' body type, then add the rest**
+
+This file already has `@Get('internal-controls')`/`@Post('internal-controls')` handlers (search for `listInternalControls`/`createInternalControl` — they predate this plan, built for the Frameworks module). `listInternalControls` needs no change. `createInternalControl`'s `@Body()` type is still the pre-Task-2 `Omit<InternalControl, 'id'>`, which no longer matches the strategy's real signature — update it in place to `InternalControlInput` (do not add a second method with this name, which would be a duplicate-method compile error):
 
 ```typescript
-  // ─── Internal Controls ─────────────────────────────────────────────────
-
-  @Get('internal-controls')
-  @ApiOperation({ summary: 'List internal controls for org' })
-  listInternalControls(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Query('orgId') orgId: string,
-    @Query('frameworkId') frameworkId?: string,
-  ) {
-    this.uid(req);
-    return this.notes.listInternalControls(orgId, frameworkId);
-  }
-
-  @Get('internal-controls/:id')
-  @ApiOperation({ summary: 'Get internal control' })
-  async getInternalControl(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
-    const control = await this.notes.getInternalControl(id);
-    if (!control) throw new NotFoundException();
-    return control;
-  }
-
   @Post('internal-controls')
   @ApiOperation({ summary: 'Create internal control' })
   createInternalControl(
@@ -1863,6 +1855,19 @@ git commit -m "feat(notes-client): proxy internal controls module over TCP"
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
     return this.notes.createInternalControl(orgId, body);
+  }
+```
+
+Then add these as genuinely new endpoints (no naming conflicts — none of these exist yet), following the `// ─── Exceptions ───` section style:
+
+```typescript
+  @Get('internal-controls/:id')
+  @ApiOperation({ summary: 'Get internal control' })
+  async getInternalControl(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control) throw new NotFoundException();
+    return control;
   }
 
   @Patch('internal-controls/:id')
