@@ -10,6 +10,7 @@ import {
   useControlActivity,
 } from '@/queries/controls';
 import { PageLayout } from '@/components/PageLayout';
+import { ScrollableRow } from '@/components/ui/scrollable-row';
 
 export const Route = createFileRoute('/_dashboard/controls_/$id')({
   component: ControlDetailPage,
@@ -49,21 +50,23 @@ function ControlDetailPage() {
 
   return (
     <PageLayout title={`${control.code} — ${control.title}`}>
-      <div className="flex items-center gap-1 border-b border-border mb-4">
-        {tabs.map((tKey) => (
-          <button
-            key={tKey}
-            type="button"
-            onClick={() => setTab(tKey)}
-            className={`px-3 py-2 text-sm border-b-2 -mb-px cursor-pointer ${
-              tab === tKey
-                ? 'border-green-500 text-foreground font-medium'
-                : 'border-transparent text-muted-foreground'
-            }`}
-          >
-            {t(`controls.tab.${tKey}`)}
-          </button>
-        ))}
+      <div className="border-b border-border mb-4">
+        <ScrollableRow className="gap-1">
+          {tabs.map((tKey) => (
+            <button
+              key={tKey}
+              type="button"
+              onClick={() => setTab(tKey)}
+              className={`px-3 py-2 text-sm border-b-2 -mb-px cursor-pointer shrink-0 ${
+                tab === tKey
+                  ? 'border-green-500 text-foreground font-medium'
+                  : 'border-transparent text-muted-foreground'
+              }`}
+            >
+              {t(`controls.tab.${tKey}`)}
+            </button>
+          ))}
+        </ScrollableRow>
       </div>
 
       {tab === 'overview' && (

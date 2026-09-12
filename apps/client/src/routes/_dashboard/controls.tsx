@@ -5,6 +5,7 @@ import { useFrameworks } from '@/queries/notes';
 import { useInternalControlsList, useCreateControl, useDeleteControl } from '@/queries/controls';
 import { ControlsTable } from '@/components/controls/ControlsTable';
 import { PageLayout } from '@/components/PageLayout';
+import { ScrollableRow } from '@/components/ui/scrollable-row';
 import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -120,13 +121,13 @@ function ControlsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mb-3">
-        <div className="flex items-center gap-1.5">
+        <ScrollableRow className="gap-1.5">
           {frameworks.map((fw) => (
             <button
               key={fw.id}
               type="button"
               onClick={() => toggleFramework(fw.id)}
-              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors cursor-pointer ${
+              className={`px-2 py-1 rounded text-[11px] font-medium border transition-colors cursor-pointer shrink-0 ${
                 selectedFwIds.has(fw.id)
                   ? 'bg-green-500/10 border-green-500/20 text-green-500'
                   : 'bg-surface border-border text-muted-foreground/50'
@@ -135,7 +136,7 @@ function ControlsPage() {
               {fw.slug.toUpperCase()}
             </button>
           ))}
-        </div>
+        </ScrollableRow>
 
         <select
           value={domainFilter}
