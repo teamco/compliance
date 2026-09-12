@@ -72,10 +72,12 @@ export function ControlsPage() {
     ).length;
     const gaps = filtered.filter(
       (c) =>
-        c.implementationStatus === 'not_implemented' || c.operatingEffectiveness === 'ineffective',
+        c.implementationStatus === 'not_implemented' ||
+        c.operatingEffectiveness === 'ineffective' ||
+        c.operatingEffectiveness === 'partially_effective',
     ).length;
     const totalFrameworkRequirements = frameworks.reduce(
-      (sum, fw) => sum + (fw.requirementsCount ?? 0),
+      (sum, fw) => sum + (fw.requirementsCount || fw.controlCount || 0),
       0,
     );
     const coveredRequirementKeys = new Set(

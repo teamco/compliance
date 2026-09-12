@@ -138,11 +138,11 @@ describe('ControlsPage', () => {
   it('renders the KPI summary line with correct counts', async () => {
     await renderControlsPage();
 
-    // 3 total, 1 implemented, 1 partial, 1 gap (NET-001: not_implemented + ineffective)
+    // 3 total, 1 implemented, 1 partial, 2 gaps (IAM-002: partially_effective; NET-001: not_implemented + ineffective)
     expect(screen.getByText(/3 Controls/)).toBeDefined();
     expect(screen.getByText(/1 Implemented/)).toBeDefined();
     expect(screen.getByText(/1 Partial/)).toBeDefined();
-    expect(screen.getByText(/1 Gaps/)).toBeDefined();
+    expect(screen.getByText(/2 Gaps/)).toBeDefined();
     // coverage = 2 mapped requirement keys / 15 total framework requirements = 13%
     expect(screen.getByText(/13% Framework Requirement Coverage/)).toBeDefined();
   });
