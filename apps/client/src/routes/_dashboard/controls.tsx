@@ -24,7 +24,10 @@ function ControlsPage() {
   const [ownerFilter, setOwnerFilter] = useState('');
   const [criticalityFilter, setCriticalityFilter] = useState('');
 
-  const domains = useMemo(() => [...new Set(controls.map((c) => c.domain))].sort(), [controls]);
+  const domains = useMemo(
+    () => [...new Set(controls.map((c) => c.domain).filter((d): d is string => !!d))].sort(),
+    [controls],
+  );
   const owners = useMemo(() => [...new Set(controls.map((c) => c.owner))].sort(), [controls]);
 
   const filtered = useMemo(() => {
