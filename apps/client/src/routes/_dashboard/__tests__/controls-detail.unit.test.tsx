@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -243,8 +243,9 @@ describe('ControlDetailPage', () => {
     expect(screen.getByText('FIND-001 — Missing quarterly review')).toBeDefined();
     expect(screen.getByText(/linked to risk RISK-042/)).toBeDefined();
 
-    expect(screen.getByText('FIND-002 — Stale documentation')).toBeDefined();
-    expect(screen.queryByText(/linked to risk RISK-042.*FIND-002/)).toBeNull();
+    const find002Title = screen.getByText('FIND-002 — Stale documentation');
+    const find002Container = find002Title.parentElement as HTMLElement;
+    expect(within(find002Container).queryByText(/linked to risk/i)).toBeNull();
   });
 
   it('renders activity fixture in order on the History tab', async () => {
