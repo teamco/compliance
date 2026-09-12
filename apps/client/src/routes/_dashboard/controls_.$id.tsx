@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useInternalControl, useUpdateControl } from '@/queries/controls';
+import {
+  useInternalControl,
+  useUpdateControl,
+  useControlEvidence,
+  useControlAssessments,
+  useControlFindings,
+  useControlActivity,
+} from '@/queries/controls';
 import { PageLayout } from '@/components/PageLayout';
 
 export const Route = createFileRoute('/_dashboard/controls_/$id')({
@@ -16,6 +23,10 @@ function ControlDetailPage() {
   const { id } = useParams({ from: '/_dashboard/controls_/$id' });
   const { data: control, isPending } = useInternalControl(id);
   const updateControl = useUpdateControl(id);
+  const { data: evidence = [] } = useControlEvidence(id);
+  const { data: assessments = [] } = useControlAssessments(id);
+  const { data: findings = [] } = useControlFindings(id);
+  const { data: activity = [] } = useControlActivity(id);
   const [tab, setTab] = useState<Tab>('overview');
 
   if (isPending || !control) {
@@ -147,6 +158,82 @@ function ControlDetailPage() {
           </table>
           {(control.frameworkMappings ?? []).length === 0 && (
             <div className="py-8 text-center text-muted-foreground">{t('controls.noMappings')}</div>
+          )}
+        </div>
+      )}
+
+      {tab === 'evidence' && (
+        <div className="space-y-2 text-sm">
+          {evidence.map((e) => (
+            <div key={e.id} className="border border-border rounded-lg p-3">
+              <div className="font-medium">{e.title}</div>
+              <div className="text-xs text-muted-foreground">
+                {e.owner} · {e.evidenceType} ·{' '}
+                {t(`controls.evidenceStatus.${e.verificationStatus}`)}
+              </div>
+            </div>
+          ))}
+          {evidence.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground">{t('controls.noEvidence')}</div>
+          )}
+        </div>
+      )}
+
+      {tab === 'assessments' && (
+        <div className="space-y-2 text-sm">
+          {assessments.map((a) => (
+            <div key={a.id} className="border border-border rounded-lg p-3">
+              <div className="font-medium">{a.cycleName}</div>
+              <div className="text-xs text-muted-foreground">
+                {t('controls.fieldDesignEffectiveness')}: {a.designEffectiveness} ·{' '}
+                {t('controls.fieldOperatingEffectiveness')}: {a.operatingEffectiveness}
+              </div>
+              <div className="text-xs text-muted-foreground">{a.observation}</div>
+            </div>
+          ))}
+          {assessments.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground">
+              {t('controls.noAssessments')}
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === 'findings' && (
+        <div className="space-y-2 text-sm">
+          {findings.map((f) => (
+            <div key={f.id} className="border border-border rounded-lg p-3">
+              <div className="font-medium">
+                {f.code} — {f.title}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {f.severity} · {f.status}
+                {f.linkedRiskId ? ` · ${t('controls.linkedToRisk')} ${f.linkedRiskId}` : ''}
+                {f.linkedExceptionId
+                  ? ` · ${t('controls.linkedToException')} ${f.linkedExceptionId}`
+                  : ''}
+              </div>
+            </div>
+          ))}
+          {findings.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground">{t('controls.noFindings')}</div>
+          )}
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <div className="space-y-2 text-sm">
+          {activity.map((a) => (
+            <div key={a.id} className="flex items-baseline gap-2 border-b border-border py-1.5">
+              <span className="text-xs text-muted-foreground w-32 shrink-0">
+                {new Date(a.timestamp).toLocaleString()}
+              </span>
+              <span className="font-medium">{a.action}</span>
+              <span className="text-muted-foreground">{a.details}</span>
+            </div>
+          ))}
+          {activity.length === 0 && (
+            <div className="py-8 text-center text-muted-foreground">{t('controls.noActivity')}</div>
           )}
         </div>
       )}
