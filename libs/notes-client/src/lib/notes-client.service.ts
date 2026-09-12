@@ -57,6 +57,15 @@ import type {
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  RiskMethodology,
+  RiskMethodologyInput,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskControlMapping,
+  RiskControlMappingInput,
+  RiskAcceptance,
+  RiskAcceptanceInput,
+  RiskSnapshot,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -642,11 +651,120 @@ export class NotesClientService {
   getRisk(id: string): Promise<Risk | null> {
     return signedSend<Risk | null>(this.client, 'notes.risks.get', { id });
   }
-  updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
-    return signedSend<Risk>(this.client, 'notes.risks.update', { id, patch });
+  updateRisk(id: string, patch: RiskPatch, changedBy: string, reason?: string): Promise<Risk> {
+    return signedSend<Risk>(this.client, 'notes.risks.update', { id, patch, changedBy, reason });
   }
   deleteRisk(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.risks.delete', { id });
+  }
+
+  getRiskMethodology(orgId: string): Promise<RiskMethodology | null> {
+    return signedSend<RiskMethodology | null>(this.client, 'notes.risks.methodology.get', {
+      orgId,
+    });
+  }
+
+  upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
+    return signedSend<RiskMethodology>(this.client, 'notes.risks.methodology.upsert', {
+      orgId,
+      data,
+    });
+  }
+
+  listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]> {
+    return signedSend<RiskTaxonomyCategory[]>(this.client, 'notes.risks.taxonomy.list', { orgId });
+  }
+
+  createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory> {
+    return signedSend<RiskTaxonomyCategory>(this.client, 'notes.risks.taxonomy.create', {
+      orgId,
+      data,
+    });
+  }
+
+  archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory> {
+    return signedSend<RiskTaxonomyCategory>(this.client, 'notes.risks.taxonomy.archive', { id });
+  }
+
+  listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]> {
+    return signedSend<RiskControlMapping[]>(this.client, 'notes.risks.mappings.list', { riskId });
+  }
+
+  addRiskControlMapping(
+    riskId: string,
+    data: RiskControlMappingInput,
+  ): Promise<RiskControlMapping> {
+    return signedSend<RiskControlMapping>(this.client, 'notes.risks.mappings.add', {
+      riskId,
+      data,
+    });
+  }
+
+  removeRiskControlMapping(id: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.risks.mappings.remove', { id });
+  }
+
+  createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.create', {
+      orgId,
+      riskId,
+      requestedBy,
+      data,
+    });
+  }
+
+  getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null> {
+    return signedSend<RiskAcceptance | null>(this.client, 'notes.risks.acceptance.active', {
+      riskId,
+    });
+  }
+
+  reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.review', {
+      id,
+      reviewedBy,
+      reviewNotes,
+    });
+  }
+
+  approveRiskAcceptance(id: string): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.approve', { id });
+  }
+
+  rejectRiskAcceptance(id: string): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reject', { id });
+  }
+
+  listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    return signedSend<RiskSnapshot[]>(this.client, 'notes.risks.snapshots.list', { riskId });
+  }
+
+  listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    return signedSend<RequirementEvidence[]>(this.client, 'notes.risks.evidence.list', { riskId });
+  }
+
+  createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.risks.evidence.create', {
+      orgId,
+      riskId,
+      data,
+    });
   }
 
   // ─── Risk Assessments ────────────────────────────────────────────────────
