@@ -406,6 +406,11 @@ export const en = {
     filterAllDomains: 'All domains',
     filterAllOwners: 'All owners',
     filterAllCriticality: 'All criticality',
+    addControl: 'Add Control',
+    fieldDescription: 'Description',
+    deleteConfirmTitle: 'Delete control?',
+    deleteConfirmDescription:
+      'This action cannot be undone. This will permanently delete the control.',
   },
   settings: {
     title: 'Settings',

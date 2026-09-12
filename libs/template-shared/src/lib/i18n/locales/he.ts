@@ -386,6 +386,10 @@ export const he = {
     filterAllDomains: 'כל התחומים',
     filterAllOwners: 'כל הבעלים',
     filterAllCriticality: 'כל רמות הקריטיות',
+    addControl: 'הוסף בקרה',
+    fieldDescription: 'תיאור',
+    deleteConfirmTitle: 'למחוק את הבקרה?',
+    deleteConfirmDescription: 'לא ניתן לבטל פעולה זו. הבקרה תימחק לצמיתות.',
   },
   settings: {
     title: 'הגדרות',
