@@ -3953,6 +3953,29 @@ export class FakeNotesStrategy implements NotesStrategy {
     };
   }
 
+  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    return this.riskSnapshots.filter((s) => s.riskId === riskId);
+  }
+
+  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.riskId === riskId);
+  }
+
+  async createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    const ev: RequirementEvidence = {
+      id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      riskId,
+      ...data,
+    };
+    this.evidence.unshift(ev);
+    return ev;
+  }
+
   // ─── Policies ────────────────────────────────────────────────────────────
   private policies: Policy[] = [];
   private policyTemplates: PolicyTemplate[] = [
