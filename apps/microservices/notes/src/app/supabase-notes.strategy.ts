@@ -37,6 +37,7 @@ import type {
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
+  Finding,
   FrameworkInput,
   FrameworkPatch,
   GapAnalysis,
@@ -448,24 +449,104 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   }
 
   async listFrameworkEvidence(
-    _frameworkId: string,
+    frameworkId: string,
     _orgId?: string,
   ): Promise<RequirementEvidence[]> {
-    return [];
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('framework_id', frameworkId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
   }
 
   async createFrameworkEvidence(
     orgId: string,
     data: Omit<RequirementEvidence, 'id'>,
   ): Promise<RequirementEvidence> {
-    return { id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`, orgId, ...data };
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert(this.evidenceInsertPayload(orgId, data))
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listControlEvidence(controlId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('control_id', controlId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createControlEvidence(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), control_id: controlId })
+      .select()
+      .single();
+    const evidence = this.toRequirementEvidence(ok(row, error));
+    await this.db.from('framework_activities').insert({
+      control_id: controlId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+    });
+    return evidence;
+  }
+
+  private evidenceInsertPayload(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Record<string, unknown> {
+    return {
+      org_id: orgId,
+      framework_id: data.frameworkId ?? null,
+      requirement_id: data.requirementId ?? null,
+      title: data.title,
+      owner: data.owner,
+      evidence_type: data.evidenceType,
+      source: data.source,
+      collection_date: data.collectionDate,
+      period_covered: data.periodCovered,
+      expiration_date: data.expirationDate,
+      verification_status: data.verificationStatus,
+      url: data.url ?? null,
+    };
+  }
+
+  private toRequirementEvidence(row: Record<string, unknown>): RequirementEvidence {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      controlId: row['control_id'] as string | undefined,
+      frameworkId: row['framework_id'] as string | undefined,
+      requirementId: row['requirement_id'] as string | undefined,
+      title: row['title'] as string,
+      owner: row['owner'] as string,
+      evidenceType: row['evidence_type'] as string,
+      source: row['source'] as string,
+      collectionDate: row['collection_date'] as string,
+      periodCovered: row['period_covered'] as string,
+      expirationDate: row['expiration_date'] as string,
+      verificationStatus: row['verification_status'] as RequirementEvidence['verificationStatus'],
+      url: row['url'] as string | undefined,
+    };
   }
 
   async listFrameworkAssessments(
-    _frameworkId: string,
+    frameworkId: string,
     _orgId?: string,
   ): Promise<RequirementAssessment[]> {
-    return [];
+    const { data, error } = await this.db
+      .from('requirement_assessments')
+      .select('*')
+      .eq('framework_id', frameworkId);
+    return ok(data, error).map((row) => this.toRequirementAssessment(row));
   }
 
   async createAssessmentFinding(
@@ -482,11 +563,193 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     };
   }
 
+  async listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
+    const { data, error } = await this.db
+      .from('requirement_assessments')
+      .select('*')
+      .eq('control_id', controlId);
+    return ok(data, error).map((row) => this.toRequirementAssessment(row));
+  }
+
+  async createControlAssessment(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment> {
+    const { data: row, error } = await this.db
+      .from('requirement_assessments')
+      .insert({
+        org_id: orgId,
+        control_id: controlId,
+        cycle_name: data.cycleName,
+        status: data.status,
+        implementation_status: data.implementationStatus,
+        design_effectiveness: data.designEffectiveness,
+        operating_effectiveness: data.operatingEffectiveness,
+        assessor: data.assessor,
+        assessment_date: data.assessmentDate,
+        observation: data.observation,
+      })
+      .select()
+      .single();
+    const assessment = this.toRequirementAssessment(ok(row, error));
+
+    await this.db
+      .from('internal_controls')
+      .update({
+        design_effectiveness: data.designEffectiveness,
+        operating_effectiveness: data.operatingEffectiveness,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', controlId);
+
+    if (
+      data.operatingEffectiveness === 'ineffective' ||
+      data.operatingEffectiveness === 'partially_effective'
+    ) {
+      const control = await this.getInternalControl(controlId);
+      const findingNum = Math.floor(1000 + Math.random() * 9000);
+      const { data: findingRow, error: findingError } = await this.db
+        .from('findings')
+        .insert({
+          org_id: orgId,
+          code: `FIND-${new Date().getFullYear()}-${findingNum}`,
+          control_id: controlId,
+          assessment_id: assessment.id,
+          title: `${control?.title ?? 'Control'} — ${data.operatingEffectiveness.replace('_', ' ')}`,
+          description: data.observation,
+          severity: data.operatingEffectiveness === 'ineffective' ? 'high' : 'medium',
+        })
+        .select()
+        .single();
+      const finding = ok(findingRow, findingError);
+      await this.db
+        .from('requirement_assessments')
+        .update({ finding_id: finding['id'] })
+        .eq('id', assessment.id);
+      assessment.findingId = finding['id'] as string;
+      assessment.findingTitle = finding['title'] as string;
+      assessment.findingSeverity = finding['severity'] as RequirementAssessment['findingSeverity'];
+    }
+
+    await this.db.from('framework_activities').insert({
+      control_id: controlId,
+      action: 'Assessment Completed',
+      details: `Cycle "${data.cycleName}" — operating effectiveness: ${data.operatingEffectiveness}.`,
+      actor: data.assessor,
+    });
+
+    return assessment;
+  }
+
+  private toRequirementAssessment(row: Record<string, unknown>): RequirementAssessment {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      controlId: row['control_id'] as string | undefined,
+      frameworkId: row['framework_id'] as string | undefined,
+      requirementId: row['requirement_id'] as string | undefined,
+      cycleName: row['cycle_name'] as string,
+      status: row['status'] as RequirementAssessment['status'],
+      implementationStatus: row['implementation_status'] as ImplementationStatus,
+      designEffectiveness: row['design_effectiveness'] as EffectivenessStatus,
+      operatingEffectiveness: row['operating_effectiveness'] as EffectivenessStatus,
+      assessor: row['assessor'] as string,
+      assessmentDate: row['assessment_date'] as string,
+      observation: row['observation'] as string,
+      findingId: row['finding_id'] as string | undefined,
+    };
+  }
+
+  async listControlFindings(controlId: string): Promise<Finding[]> {
+    const { data, error } = await this.db.from('findings').select('*').eq('control_id', controlId);
+    return ok(data, error).map((row) => this.toFinding(row));
+  }
+
+  async linkFindingToRisk(findingId: string, riskId: string): Promise<Finding> {
+    const { data, error } = await this.db
+      .from('findings')
+      .update({ linked_risk_id: riskId, updated_at: new Date().toISOString() })
+      .eq('id', findingId)
+      .select()
+      .single();
+    return this.toFinding(ok(data, error));
+  }
+
+  async linkFindingToIssue(findingId: string, issueId: string): Promise<Finding> {
+    const { data, error } = await this.db
+      .from('findings')
+      .update({ linked_issue_id: issueId, updated_at: new Date().toISOString() })
+      .eq('id', findingId)
+      .select()
+      .single();
+    return this.toFinding(ok(data, error));
+  }
+
+  async resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding> {
+    const { data, error } = await this.db
+      .from('findings')
+      .update({
+        linked_exception_id: exceptionId,
+        status: 'accepted',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', findingId)
+      .select()
+      .single();
+    return this.toFinding(ok(data, error));
+  }
+
+  private toFinding(row: Record<string, unknown>): Finding {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      code: row['code'] as string,
+      controlId: row['control_id'] as string,
+      assessmentId: row['assessment_id'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      severity: row['severity'] as Finding['severity'],
+      status: row['status'] as Finding['status'],
+      linkedIssueId: row['linked_issue_id'] as string | undefined,
+      linkedExceptionId: row['linked_exception_id'] as string | undefined,
+      linkedRiskId: row['linked_risk_id'] as string | undefined,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
   async listFrameworkActivities(
-    _frameworkId: string,
+    frameworkId: string,
     _orgId?: string,
   ): Promise<FrameworkActivity[]> {
-    return [];
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('framework_id', frameworkId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
+  async listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('control_id', controlId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
+  private toFrameworkActivity(row: Record<string, unknown>): FrameworkActivity {
+    return {
+      id: row['id'] as string,
+      frameworkId: row['framework_id'] as string | undefined,
+      controlId: row['control_id'] as string | undefined,
+      action: row['action'] as string,
+      details: row['details'] as string,
+      actor: row['actor'] as string,
+      timestamp: row['timestamp'] as string,
+    };
   }
 
   async listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]> {
