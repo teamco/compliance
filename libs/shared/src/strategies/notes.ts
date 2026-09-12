@@ -632,7 +632,6 @@ export interface AssetPatch {
 
 export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
 export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
 
 // ─── Risk Methodology ──────────────────────────────────────────────────────
 

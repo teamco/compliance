@@ -247,65 +247,74 @@ describe('assets', () => {
 
 describe('risks', () => {
   let s: FakeNotesStrategy;
-  beforeEach(() => {
+  let categoryId: string;
+  beforeEach(async () => {
     s = new FakeNotesStrategy();
+    const [category] = await s.listRiskTaxonomy('org1');
+    categoryId = category!.id;
   });
 
-  it('creates risk and computes score', async () => {
+  it('creates risk and computes inherent score from methodology', async () => {
     const risk = await s.createRisk('org1', 'u1', {
       title: 'SQL Injection',
-      description: 'Input not sanitized',
-      category: 'Web Security',
-      likelihood: 'high',
-      impact: 'high',
+      riskStatement: 'Input not sanitized',
+      taxonomyCategoryId: categoryId,
+      ownerId: 'u1',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
     });
-    expect(risk.riskScore).toBe(16); // 4 * 4
-    expect(risk.treatment).toBe('mitigate');
+    expect(risk.inherentScore).toBe(16); // 4 * 4
+    expect(risk.inherentLabel).toBe('high');
+    expect(risk.status).toBe('open');
   });
 
   it('lists risks for org', async () => {
     await s.createRisk('org1', 'u1', {
       title: 'R1',
-      description: '',
-      category: 'Cat',
-      likelihood: 'low',
-      impact: 'low',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: categoryId,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
     });
     const list = await s.listRisks('org1');
     expect(list).toHaveLength(1);
   });
 
-  it('updates risk treatment', async () => {
+  it('updates risk treatment strategy', async () => {
     const risk = await s.createRisk('org1', 'u1', {
       title: 'R',
-      description: '',
-      category: 'C',
-      likelihood: 'low',
-      impact: 'low',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: categoryId,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
     });
-    const updated = await s.updateRisk(risk.id, { treatment: 'accept' });
-    expect(updated.treatment).toBe('accept');
+    const updated = await s.updateRisk(risk.id, { treatmentStrategy: 'accept' }, 'u1');
+    expect(updated.treatmentStrategy).toBe('accept');
   });
 
-  it('recomputes score when likelihood changes', async () => {
+  it('recomputes inherent score when likelihood changes', async () => {
     const risk = await s.createRisk('org1', 'u1', {
       title: 'R',
-      description: '',
-      category: 'C',
-      likelihood: 'low',
-      impact: 'medium',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: categoryId,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 3,
     });
-    const updated = await s.updateRisk(risk.id, { likelihood: 'very_high' });
-    expect(updated.riskScore).toBe(15); // 5 * 3
+    const updated = await s.updateRisk(risk.id, { inherentLikelihood: 5 }, 'u1');
+    expect(updated.inherentScore).toBe(15); // 5 * 3
   });
 
   it('deletes a risk', async () => {
     const risk = await s.createRisk('org1', 'u1', {
       title: 'R',
-      description: '',
-      category: 'C',
-      likelihood: 'low',
-      impact: 'low',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: categoryId,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
     });
     await s.deleteRisk(risk.id);
     expect(await s.listRisks('org1')).toHaveLength(0);
