@@ -137,7 +137,7 @@ export type ControlCriticality = 'critical' | 'high' | 'medium' | 'low';
 export type ControlType = 'preventive' | 'detective' | 'corrective';
 export type ControlExecution = 'manual' | 'automated' | 'hybrid';
 export type ControlFrequency =
-  | 'continuous' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'event_driven';
+  'continuous' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'event_driven';
 export type ControlNature = 'technical' | 'administrative' | 'physical';
 export type FrameworkMappingType = 'direct' | 'partial' | 'supporting';
 export type MappingValidation = 'ai_suggested' | 'human_validated';

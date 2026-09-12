@@ -105,25 +105,28 @@ export function useCreateControlEvidence(orgId: string, controlId: string) {
 export function useControlAssessments(controlId: string) {
   return useQuery<RequirementAssessment[]>({
     queryKey: ['internal-controls', controlId, 'assessments'],
-    queryFn: () => api<RequirementAssessment[]>(`/notes/internal-controls/${controlId}/assessments`),
+    queryFn: () =>
+      api<RequirementAssessment[]>(`/notes/internal-controls/${controlId}/assessments`),
     enabled: !!controlId,
   });
 }
 
 export function useCreateControlAssessment(orgId: string, controlId: string) {
   const qc = useQueryClient();
-  return useMutation<RequirementAssessment, Error, Omit<RequirementAssessment, 'id' | 'controlId'>>({
-    mutationFn: (data) =>
-      api<RequirementAssessment>(
-        `/notes/internal-controls/${controlId}/assessments?orgId=${encodeURIComponent(orgId)}`,
-        { method: 'POST', body: JSON.stringify(data) },
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['internal-controls', controlId, 'assessments'] });
-      qc.invalidateQueries({ queryKey: ['internal-controls', controlId, 'findings'] });
-      qc.invalidateQueries({ queryKey: ['internal-controls', controlId] });
+  return useMutation<RequirementAssessment, Error, Omit<RequirementAssessment, 'id' | 'controlId'>>(
+    {
+      mutationFn: (data) =>
+        api<RequirementAssessment>(
+          `/notes/internal-controls/${controlId}/assessments?orgId=${encodeURIComponent(orgId)}`,
+          { method: 'POST', body: JSON.stringify(data) },
+        ),
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: ['internal-controls', controlId, 'assessments'] });
+        qc.invalidateQueries({ queryKey: ['internal-controls', controlId, 'findings'] });
+        qc.invalidateQueries({ queryKey: ['internal-controls', controlId] });
+      },
     },
-  });
+  );
 }
 
 export function useControlFindings(controlId: string) {
