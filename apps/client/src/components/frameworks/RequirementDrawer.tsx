@@ -138,7 +138,7 @@ export function RequirementDrawer({
   const currentReq = requirement;
 
   const linkedInternalControls = internalControls.filter((c) =>
-    c.frameworkMappings.some(
+    (c.frameworkMappings ?? []).some(
       (m) =>
         m.frameworkId === framework.id &&
         (m.requirementCode === currentReq.code || m.requirementCode.includes(currentReq.code)),
@@ -782,7 +782,7 @@ export function RequirementDrawer({
                           </span>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[10px] text-muted-foreground/80">Satisfies:</span>
-                            {ctrl.frameworkMappings.map((m, idx) => (
+                            {(ctrl.frameworkMappings ?? []).map((m, idx) => (
                               <span
                                 key={idx}
                                 className="text-[10px] px-1.5 py-0.5 rounded bg-muted font-mono text-foreground"

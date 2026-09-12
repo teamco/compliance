@@ -856,8 +856,8 @@ function FrameworkWorkspacePage() {
                   <span>
                     {ctrl.coverageBenefit ||
                       `Implementing ${ctrl.code} improves coverage across ${
-                        new Set(ctrl.frameworkMappings.map((m) => m.frameworkId)).size
-                      } frameworks and ${ctrl.frameworkMappings.length} requirements.`}
+                        new Set((ctrl.frameworkMappings ?? []).map((m) => m.frameworkId)).size
+                      } frameworks and ${(ctrl.frameworkMappings ?? []).length} requirements.`}
                   </span>
                 </div>
 
@@ -867,7 +867,7 @@ function FrameworkWorkspacePage() {
                   </span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[10px] text-muted-foreground">Satisfies:</span>
-                    {ctrl.frameworkMappings.map((m, idx) => (
+                    {(ctrl.frameworkMappings ?? []).map((m, idx) => (
                       <span
                         key={idx}
                         className="text-[10px] px-2 py-0.5 rounded bg-background border border-border font-mono text-foreground"
