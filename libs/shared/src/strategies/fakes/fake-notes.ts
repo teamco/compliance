@@ -2580,6 +2580,18 @@ export class FakeNotesStrategy implements NotesStrategy {
     const control: InternalControl = {
       id: `ctrl-${globalThis.crypto.randomUUID().slice(0, 8)}`,
       orgId,
+      operator: '',
+      keyControl: false,
+      parentControlId: null,
+      implementationStatus: 'not_implemented',
+      implementationDescription: '',
+      designEffectiveness: 'not_tested',
+      operatingEffectiveness: 'not_tested',
+      frameworkMappings: [],
+      evidenceCount: 0,
+      findingsCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       ...data,
     };
     this.internalControls.push(control);
