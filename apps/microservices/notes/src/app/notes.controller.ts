@@ -43,6 +43,15 @@ import type {
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  RiskMethodology,
+  RiskMethodologyInput,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskControlMapping,
+  RiskControlMappingInput,
+  RiskAcceptance,
+  RiskAcceptanceInput,
+  RiskSnapshot,
   Organization,
   OrganizationInput,
   ReportTemplate,
@@ -571,13 +580,133 @@ export class NotesController {
   }
 
   @MessagePattern('notes.risks.update')
-  updateRisk(@Payload() payload: { id: string; patch: RiskPatch }): Promise<Risk> {
-    return this.strategy.updateRisk(payload.id, payload.patch);
+  updateRisk(
+    @Payload()
+    payload: {
+      id: string;
+      patch: RiskPatch;
+      changedBy: string;
+      reason?: string;
+    },
+  ): Promise<Risk> {
+    return this.strategy.updateRisk(payload.id, payload.patch, payload.changedBy, payload.reason);
   }
 
   @MessagePattern('notes.risks.delete')
   deleteRisk(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteRisk(payload.id);
+  }
+
+  @MessagePattern('notes.risks.methodology.get')
+  getRiskMethodology(@Payload() payload: { orgId: string }): Promise<RiskMethodology | null> {
+    return this.strategy.getRiskMethodology(payload.orgId);
+  }
+
+  @MessagePattern('notes.risks.methodology.upsert')
+  upsertRiskMethodology(
+    @Payload() payload: { orgId: string; data: RiskMethodologyInput },
+  ): Promise<RiskMethodology> {
+    return this.strategy.upsertRiskMethodology(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.list')
+  listRiskTaxonomy(@Payload() payload: { orgId: string }): Promise<RiskTaxonomyCategory[]> {
+    return this.strategy.listRiskTaxonomy(payload.orgId);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.create')
+  createRiskTaxonomyCategory(
+    @Payload() payload: { orgId: string; data: RiskTaxonomyCategoryInput },
+  ): Promise<RiskTaxonomyCategory> {
+    return this.strategy.createRiskTaxonomyCategory(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.archive')
+  archiveRiskTaxonomyCategory(@Payload() payload: { id: string }): Promise<RiskTaxonomyCategory> {
+    return this.strategy.archiveRiskTaxonomyCategory(payload.id);
+  }
+
+  @MessagePattern('notes.risks.mappings.list')
+  listRiskControlMappings(@Payload() payload: { riskId: string }): Promise<RiskControlMapping[]> {
+    return this.strategy.listRiskControlMappings(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.mappings.add')
+  addRiskControlMapping(
+    @Payload() payload: { riskId: string; data: RiskControlMappingInput },
+  ): Promise<RiskControlMapping> {
+    return this.strategy.addRiskControlMapping(payload.riskId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.mappings.remove')
+  removeRiskControlMapping(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.removeRiskControlMapping(payload.id);
+  }
+
+  @MessagePattern('notes.risks.acceptance.create')
+  createRiskAcceptance(
+    @Payload()
+    payload: {
+      orgId: string;
+      riskId: string;
+      requestedBy: string;
+      data: RiskAcceptanceInput;
+    },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.createRiskAcceptance(
+      payload.orgId,
+      payload.riskId,
+      payload.requestedBy,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.risks.acceptance.active')
+  getActiveRiskAcceptance(@Payload() payload: { riskId: string }): Promise<RiskAcceptance | null> {
+    return this.strategy.getActiveRiskAcceptance(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.acceptance.review')
+  reviewRiskAcceptance(
+    @Payload() payload: { id: string; reviewedBy: string; reviewNotes?: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.reviewRiskAcceptance(payload.id, payload.reviewedBy, payload.reviewNotes);
+  }
+
+  @MessagePattern('notes.risks.acceptance.approve')
+  approveRiskAcceptance(
+    @Payload() payload: { id: string; userId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.approveRiskAcceptance(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.risks.acceptance.reject')
+  rejectRiskAcceptance(
+    @Payload() payload: { id: string; userId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.rejectRiskAcceptance(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.risks.snapshots.list')
+  listRiskSnapshots(@Payload() payload: { riskId: string }): Promise<RiskSnapshot[]> {
+    return this.strategy.listRiskSnapshots(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.evidence.list')
+  listRiskEvidence(@Payload() payload: { riskId: string }): Promise<RequirementEvidence[]> {
+    return this.strategy.listRiskEvidence(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.evidence.create')
+  createRiskEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      riskId: string;
+      data: Omit<RequirementEvidence, 'id' | 'riskId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createRiskEvidence(payload.orgId, payload.riskId, payload.data);
   }
 
   // ─── Risk Assessments ────────────────────────────────────────────────────

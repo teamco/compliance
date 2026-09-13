@@ -34,6 +34,7 @@ import { Route as DashboardControlsIdRouteImport } from './routes/_dashboard/con
 import { Route as DashboardFrameworksIdRouteImport } from './routes/_dashboard/frameworks_.$id'
 import { Route as DashboardGapAnalysisIdRouteImport } from './routes/_dashboard/gap-analysis.$id'
 import { Route as DashboardPoliciesIdRouteImport } from './routes/_dashboard/policies_.$id'
+import { Route as DashboardRisksIdRouteImport } from './routes/_dashboard/risks_.$id'
 import { Route as DashboardStandardsIdRouteImport } from './routes/_dashboard/standards.$id'
 import { Route as DashboardVendorsIdRouteImport } from './routes/_dashboard/vendors_.$id'
 import { Route as AuthOauthCallbackRouteImport } from './routes/auth.oauth.callback'
@@ -162,6 +163,11 @@ const DashboardPoliciesIdRoute = DashboardPoliciesIdRouteImport.update({
   path: '/policies/$id',
   getParentRoute: () => DashboardRoute,
 } as any)
+const DashboardRisksIdRoute = DashboardRisksIdRouteImport.update({
+  id: '/risks_/$id',
+  path: '/risks/$id',
+  getParentRoute: () => DashboardRoute,
+} as any)
 const DashboardStandardsIdRoute = DashboardStandardsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -203,6 +209,7 @@ export interface FileRoutesByFullPath {
   '/frameworks/$id': typeof DashboardFrameworksIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/policies/$id': typeof DashboardPoliciesIdRoute
+  '/risks/$id': typeof DashboardRisksIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/vendors/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
@@ -232,6 +239,7 @@ export interface FileRoutesByTo {
   '/frameworks/$id': typeof DashboardFrameworksIdRoute
   '/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/policies/$id': typeof DashboardPoliciesIdRoute
+  '/risks/$id': typeof DashboardRisksIdRoute
   '/standards/$id': typeof DashboardStandardsIdRoute
   '/vendors/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
@@ -263,6 +271,7 @@ export interface FileRoutesById {
   '/_dashboard/frameworks_/$id': typeof DashboardFrameworksIdRoute
   '/_dashboard/gap-analysis/$id': typeof DashboardGapAnalysisIdRoute
   '/_dashboard/policies_/$id': typeof DashboardPoliciesIdRoute
+  '/_dashboard/risks_/$id': typeof DashboardRisksIdRoute
   '/_dashboard/standards/$id': typeof DashboardStandardsIdRoute
   '/_dashboard/vendors_/$id': typeof DashboardVendorsIdRoute
   '/auth/oauth/callback': typeof AuthOauthCallbackRoute
@@ -294,6 +303,7 @@ export interface FileRouteTypes {
     | '/frameworks/$id'
     | '/gap-analysis/$id'
     | '/policies/$id'
+    | '/risks/$id'
     | '/standards/$id'
     | '/vendors/$id'
     | '/auth/oauth/callback'
@@ -323,6 +333,7 @@ export interface FileRouteTypes {
     | '/frameworks/$id'
     | '/gap-analysis/$id'
     | '/policies/$id'
+    | '/risks/$id'
     | '/standards/$id'
     | '/vendors/$id'
     | '/auth/oauth/callback'
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/_dashboard/frameworks_/$id'
     | '/_dashboard/gap-analysis/$id'
     | '/_dashboard/policies_/$id'
+    | '/_dashboard/risks_/$id'
     | '/_dashboard/standards/$id'
     | '/_dashboard/vendors_/$id'
     | '/auth/oauth/callback'
@@ -543,6 +555,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardPoliciesIdRouteImport
       parentRoute: typeof DashboardRoute
     }
+    '/_dashboard/risks_/$id': {
+      id: '/_dashboard/risks_/$id'
+      path: '/risks/$id'
+      fullPath: '/risks/$id'
+      preLoaderRoute: typeof DashboardRisksIdRouteImport
+      parentRoute: typeof DashboardRoute
+    }
     '/_dashboard/standards/$id': {
       id: '/_dashboard/standards/$id'
       path: '/$id'
@@ -610,6 +629,7 @@ interface DashboardRouteChildren {
   DashboardControlsIdRoute: typeof DashboardControlsIdRoute
   DashboardFrameworksIdRoute: typeof DashboardFrameworksIdRoute
   DashboardPoliciesIdRoute: typeof DashboardPoliciesIdRoute
+  DashboardRisksIdRoute: typeof DashboardRisksIdRoute
   DashboardVendorsIdRoute: typeof DashboardVendorsIdRoute
 }
 
@@ -634,6 +654,7 @@ const DashboardRouteChildren: DashboardRouteChildren = {
   DashboardControlsIdRoute: DashboardControlsIdRoute,
   DashboardFrameworksIdRoute: DashboardFrameworksIdRoute,
   DashboardPoliciesIdRoute: DashboardPoliciesIdRoute,
+  DashboardRisksIdRoute: DashboardRisksIdRoute,
   DashboardVendorsIdRoute: DashboardVendorsIdRoute,
 }
 

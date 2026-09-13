@@ -97,12 +97,11 @@ vi.mock('@/queries/risks', () => ({
     data: [
       {
         id: 'r1',
-        assetId: 'asset-1',
+        assetIds: ['asset-1'],
         title: 'API Authentication Bypass',
-        category: 'Security',
-        likelihood: 'high',
-        impact: 'high',
-        riskScore: 16,
+        riskStatement: 'API Authentication Bypass',
+        inherentScore: 16,
+        inherentLabel: 'high',
       },
     ],
     isPending: false,

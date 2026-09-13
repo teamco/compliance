@@ -58,6 +58,16 @@ import type {
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  RiskMethodology,
+  RiskMethodologyInput,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskSnapshot,
+  RiskScoreLabel,
+  RiskControlMapping,
+  RiskControlMappingInput,
+  RiskAcceptance,
+  RiskAcceptanceInput,
   Policy,
   PolicyInput,
   PolicyPatch,
@@ -3490,6 +3500,112 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   // ─── Risks ───────────────────────────────────────────────────────────────
   private risks: Risk[] = [];
+  private riskSnapshots: RiskSnapshot[] = [];
+  private riskControlMappings: RiskControlMapping[] = [];
+  private riskAcceptances: RiskAcceptance[] = [];
+  private riskMethodologies: RiskMethodology[] = [];
+  private riskTaxonomy: RiskTaxonomyCategory[] = [];
+
+  async getRiskMethodology(orgId: string): Promise<RiskMethodology | null> {
+    const existing = this.riskMethodologies.find((m) => m.orgId === orgId && m.isActive);
+    if (existing) return existing;
+    const seeded: RiskMethodology = {
+      id: `meth-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      version: 1,
+      isActive: true,
+      scaleSize: 5,
+      likelihoodLabels: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost Certain'],
+      impactLabels: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+      thresholds: [
+        { maxScore: 4, label: 'low' },
+        { maxScore: 9, label: 'medium' },
+        { maxScore: 16, label: 'high' },
+        { maxScore: 25, label: 'critical' },
+      ],
+      appetiteThreshold: 9,
+      createdAt: new Date().toISOString(),
+    };
+    this.riskMethodologies.push(seeded);
+    return seeded;
+  }
+
+  async upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
+    const current = await this.getRiskMethodology(orgId);
+    const nextVersion = (current?.version ?? 0) + 1;
+    if (current) current.isActive = false;
+    const updated: RiskMethodology = {
+      id: `meth-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      version: nextVersion,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      ...data,
+    };
+    this.riskMethodologies.push(updated);
+    return updated;
+  }
+
+  async listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]> {
+    const existing = this.riskTaxonomy.filter((c) => c.orgId === orgId);
+    if (existing.length > 0) return existing;
+    const defaults = [
+      'Identity & Access',
+      'Vulnerability Management',
+      'Network Security',
+      'Application Security',
+      'Data Security',
+      'Security Operations',
+      'Incident Response',
+      'Availability',
+      'Infrastructure',
+      'Architecture',
+      'Change',
+      'Cloud',
+      'Technical Debt',
+      'Supplier Security',
+      'Concentration',
+      'Supply Chain',
+      'Outsourcing',
+      'Privacy',
+      'Compliance / Regulatory',
+      'Operational',
+      'Business Continuity / Resilience',
+      'Strategic',
+      'Financial',
+    ];
+    const seeded = defaults.map((name) => ({
+      id: `rtc-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    }));
+    this.riskTaxonomy.push(...seeded);
+    return seeded;
+  }
+
+  async createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory> {
+    const category: RiskTaxonomyCategory = {
+      id: `rtc-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name: data.name,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.riskTaxonomy.push(category);
+    return category;
+  }
+
+  async archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory> {
+    const category = this.riskTaxonomy.find((c) => c.id === id);
+    if (!category) throw new Error(`risk_taxonomy_category_not_found: ${id}`);
+    category.archived = true;
+    return category;
+  }
 
   private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
     const L: Record<RiskLikelihood, number> = {
@@ -3514,18 +3630,34 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const orgRiskCount = this.risks.filter((r) => r.orgId === orgId).length;
     const risk: Risk = {
       id: globalThis.crypto.randomUUID(),
+      riskId: `RSK-${String(orgRiskCount + 101).padStart(6, '0')}`,
       orgId,
       userId,
       title: data.title,
-      description: data.description,
-      category: data.category,
-      likelihood: data.likelihood,
-      impact: data.impact,
-      riskScore: this.computeRiskScore(data.likelihood, data.impact),
-      treatment: data.treatment ?? 'mitigate',
-      assetId: data.assetId ?? null,
+      riskStatement: data.riskStatement,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: data.ownerId,
+      businessUnit: data.businessUnit,
+      source: data.source ?? 'manual',
+      sourceRef: data.sourceRef,
+      assetIds: data.assetIds ?? [],
+      vendorIds: data.vendorIds ?? [],
+      methodologyId: methodology.id,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      inherentScore: score,
+      inherentLabel: label,
+      status: 'open',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3533,19 +3665,187 @@ export class FakeNotesStrategy implements NotesStrategy {
     return risk;
   }
 
+  private scoreRisk(
+    methodology: RiskMethodology,
+    likelihood: number,
+    impact: number,
+  ): { score: number; label: RiskScoreLabel } {
+    const score = likelihood * impact;
+    const band = methodology.thresholds.find((t) => score <= t.maxScore);
+    return { score, label: band?.label ?? 'critical' };
+  }
+
   async getRisk(id: string): Promise<Risk | null> {
     return this.risks.find((r) => r.id === id) ?? null;
   }
 
-  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
-    const idx = this.risks.findIndex((r) => r.id === id);
-    if (idx === -1) throw new Error('risk_not_found');
-    const merged: Risk = { ...this.risks[idx]!, ...patch, updatedAt: new Date().toISOString() };
-    if (patch.likelihood !== undefined || patch.impact !== undefined) {
-      merged.riskScore = this.computeRiskScore(merged.likelihood, merged.impact);
+  async updateRisk(
+    id: string,
+    patch: RiskPatch,
+    changedBy: string,
+    reason?: string,
+  ): Promise<Risk> {
+    const risk = this.risks.find((r) => r.id === id);
+    if (!risk) throw new Error(`risk_not_found: ${id}`);
+
+    const scoreFieldsChanging =
+      patch.inherentLikelihood !== undefined ||
+      patch.inherentImpact !== undefined ||
+      patch.residualLikelihood !== undefined ||
+      patch.residualImpact !== undefined ||
+      patch.treatmentStrategy !== undefined;
+
+    if (scoreFieldsChanging) {
+      this.riskSnapshots.unshift({
+        id: globalThis.crypto.randomUUID(),
+        riskId: id,
+        inherentScore: risk.inherentScore,
+        inherentLabel: risk.inherentLabel,
+        residualScore: risk.residualScore,
+        residualLabel: risk.residualLabel,
+        treatmentStrategy: risk.treatmentStrategy,
+        changedBy,
+        reason,
+        createdAt: new Date().toISOString(),
+      });
     }
-    this.risks[idx] = merged;
-    return merged;
+
+    Object.assign(risk, patch);
+
+    const methodology = this.riskMethodologies.find((m) => m.id === risk.methodologyId);
+    if (methodology) {
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          risk.inherentLikelihood,
+          risk.inherentImpact,
+        );
+        risk.inherentScore = score;
+        risk.inherentLabel = label;
+      }
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        risk.residualLikelihood !== undefined &&
+        risk.residualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          risk.residualLikelihood,
+          risk.residualImpact,
+        );
+        risk.residualScore = score;
+        risk.residualLabel = label;
+        risk.aboveAppetite = score > methodology.appetiteThreshold;
+      }
+    }
+
+    risk.updatedAt = new Date().toISOString();
+    return risk;
+  }
+
+  async listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]> {
+    return this.riskControlMappings.filter((m) => m.riskId === riskId);
+  }
+
+  async addRiskControlMapping(
+    riskId: string,
+    data: RiskControlMappingInput,
+  ): Promise<RiskControlMapping> {
+    const mapping: RiskControlMapping = {
+      id: globalThis.crypto.randomUUID(),
+      riskId,
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+    this.riskControlMappings.push(mapping);
+    return mapping;
+  }
+
+  async removeRiskControlMapping(id: string): Promise<void> {
+    this.riskControlMappings = this.riskControlMappings.filter((m) => m.id !== id);
+  }
+
+  async createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance> {
+    const acceptance: RiskAcceptance = {
+      id: globalThis.crypto.randomUUID(),
+      riskId,
+      orgId,
+      requestedBy,
+      justification: data.justification,
+      compensatingControls: data.compensatingControls,
+      expiresAt: data.expiresAt,
+      approverId: data.approverId,
+      status: 'requested',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    this.riskAcceptances.unshift(acceptance);
+    return acceptance;
+  }
+
+  async getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null> {
+    const now = new Date().toISOString();
+    return (
+      this.riskAcceptances.find(
+        (a) => a.riskId === riskId && a.status !== 'rejected' && a.expiresAt > now,
+      ) ?? null
+    );
+  }
+
+  async reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    acceptance.status = 'reviewed';
+    acceptance.reviewedBy = reviewedBy;
+    acceptance.reviewedAt = new Date().toISOString();
+    acceptance.reviewNotes = reviewNotes;
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
+  async approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.status === 'approved' || acceptance.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
+    if (acceptance.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (acceptance.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
+    acceptance.status = 'approved';
+    acceptance.approvedAt = new Date().toISOString();
+    acceptance.approvedBy = userId;
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
+  async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.status === 'approved' || acceptance.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
+    if (acceptance.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (acceptance.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
+    acceptance.status = 'rejected';
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
   }
 
   async deleteRisk(id: string): Promise<void> {
@@ -3670,6 +3970,29 @@ export class FakeNotesStrategy implements NotesStrategy {
       itemCount: items.length,
       updatedAt: new Date().toISOString(),
     };
+  }
+
+  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    return this.riskSnapshots.filter((s) => s.riskId === riskId);
+  }
+
+  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.riskId === riskId);
+  }
+
+  async createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    const ev: RequirementEvidence = {
+      id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      riskId,
+      ...data,
+    };
+    this.evidence.unshift(ev);
+    return ev;
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────
