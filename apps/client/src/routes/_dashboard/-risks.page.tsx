@@ -247,114 +247,116 @@ export function RisksPage() {
           <DialogHeader>
             <DialogTitle>{t('risks.addRisk')}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-3 max-h-[70vh] overflow-y-auto">
-            <div>
-              <Label htmlFor="risk-title">{t('risks.title')}</Label>
-              <Input
-                id="risk-title"
-                value={form.title}
-                onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="risk-statement">{t('risks.riskStatement')}</Label>
-              <textarea
-                id="risk-statement"
-                value={form.riskStatement}
-                onChange={(e) => setForm((f) => ({ ...f, riskStatement: e.target.value }))}
-                placeholder={t('risks.riskStatementPlaceholder')}
-                rows={3}
-                required
-                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleCreate} className="flex flex-col max-h-[70vh]">
+            <div className="space-y-3 overflow-y-auto px-1 -mx-1">
               <div>
-                <Label>{t('risks.category')}</Label>
-                <select
-                  value={form.taxonomyCategoryId}
-                  onChange={(e) => setForm((f) => ({ ...f, taxonomyCategoryId: e.target.value }))}
-                  required
-                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
-                >
-                  <option value="">{t('risks.selectCategory')}</option>
-                  {taxonomy
-                    .filter((c) => !c.archived)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-              <div>
-                <Label htmlFor="risk-owner">{t('risks.owner')}</Label>
+                <Label htmlFor="risk-title">{t('risks.title')}</Label>
                 <Input
-                  id="risk-owner"
-                  value={form.ownerId}
-                  onChange={(e) => setForm((f) => ({ ...f, ownerId: e.target.value }))}
+                  id="risk-title"
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   required
                 />
               </div>
-            </div>
-            <div>
-              <Label>{t('risks.affectedAssets')}</Label>
-              <MultiSelect
-                options={assets.map((a) => ({ value: a.id, label: a.name }))}
-                selected={form.assetIds ?? []}
-                onChange={(assetIds) => setForm((f) => ({ ...f, assetIds }))}
-                placeholder={t('risks.noAssets')}
-              />
-            </div>
-            <div>
-              <Label>{t('risks.relatedVendors')}</Label>
-              <MultiSelect
-                options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-                selected={form.vendorIds ?? []}
-                onChange={(vendorIds) => setForm((f) => ({ ...f, vendorIds }))}
-                placeholder={t('risks.noVendors')}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>{t('risks.inherentLikelihood')}</Label>
-                <select
-                  value={form.inherentLikelihood || ''}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, inherentLikelihood: Number(e.target.value) }))
-                  }
+                <Label htmlFor="risk-statement">{t('risks.riskStatement')}</Label>
+                <textarea
+                  id="risk-statement"
+                  value={form.riskStatement}
+                  onChange={(e) => setForm((f) => ({ ...f, riskStatement: e.target.value }))}
+                  placeholder={t('risks.riskStatementPlaceholder')}
+                  rows={3}
                   required
-                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
-                >
-                  <option value="">{t('risks.selectLikelihood')}</option>
-                  {methodology?.likelihoodLabels.map((label, i) => (
-                    <option key={i} value={i + 1}>
-                      {i + 1} — {label}
-                    </option>
-                  ))}
-                </select>
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>{t('risks.category')}</Label>
+                  <select
+                    value={form.taxonomyCategoryId}
+                    onChange={(e) => setForm((f) => ({ ...f, taxonomyCategoryId: e.target.value }))}
+                    required
+                    className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                  >
+                    <option value="">{t('risks.selectCategory')}</option>
+                    {taxonomy
+                      .filter((c) => !c.archived)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div>
+                  <Label htmlFor="risk-owner">{t('risks.owner')}</Label>
+                  <Input
+                    id="risk-owner"
+                    value={form.ownerId}
+                    onChange={(e) => setForm((f) => ({ ...f, ownerId: e.target.value }))}
+                    required
+                  />
+                </div>
               </div>
               <div>
-                <Label>{t('risks.inherentImpact')}</Label>
-                <select
-                  value={form.inherentImpact || ''}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, inherentImpact: Number(e.target.value) }))
-                  }
-                  required
-                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
-                >
-                  <option value="">{t('risks.selectImpact')}</option>
-                  {methodology?.impactLabels.map((label, i) => (
-                    <option key={i} value={i + 1}>
-                      {i + 1} — {label}
-                    </option>
-                  ))}
-                </select>
+                <Label>{t('risks.affectedAssets')}</Label>
+                <MultiSelect
+                  options={assets.map((a) => ({ value: a.id, label: a.name }))}
+                  selected={form.assetIds ?? []}
+                  onChange={(assetIds) => setForm((f) => ({ ...f, assetIds }))}
+                  placeholder={t('risks.noAssets')}
+                />
+              </div>
+              <div>
+                <Label>{t('risks.relatedVendors')}</Label>
+                <MultiSelect
+                  options={vendors.map((v) => ({ value: v.id, label: v.name }))}
+                  selected={form.vendorIds ?? []}
+                  onChange={(vendorIds) => setForm((f) => ({ ...f, vendorIds }))}
+                  placeholder={t('risks.noVendors')}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>{t('risks.inherentLikelihood')}</Label>
+                  <select
+                    value={form.inherentLikelihood || ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, inherentLikelihood: Number(e.target.value) }))
+                    }
+                    required
+                    className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                  >
+                    <option value="">{t('risks.selectLikelihood')}</option>
+                    {methodology?.likelihoodLabels.map((label, i) => (
+                      <option key={i} value={i + 1}>
+                        {i + 1} — {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <Label>{t('risks.inherentImpact')}</Label>
+                  <select
+                    value={form.inherentImpact || ''}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, inherentImpact: Number(e.target.value) }))
+                    }
+                    required
+                    className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                  >
+                    <option value="">{t('risks.selectImpact')}</option>
+                    {methodology?.impactLabels.map((label, i) => (
+                      <option key={i} value={i + 1}>
+                        {i + 1} — {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="mt-3 border-t border-border pt-3">
               <Button type="submit" disabled={createMut.isPending}>
                 {t('risks.addRisk')}
               </Button>
