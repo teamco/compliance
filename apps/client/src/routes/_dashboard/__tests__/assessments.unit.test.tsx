@@ -27,6 +27,25 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   };
 });
 
+let mockCurrentUserId = 'Alice';
+const mockNotifyError = vi.fn();
+const mockNotifySuccess = vi.fn();
+
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useAuthStore: (selector: (s: { user: { id: string; email: string } }) => unknown) =>
+      selector({ user: { id: mockCurrentUserId, email: 'user@example.com' } }),
+    useNotify: () => ({
+      success: mockNotifySuccess,
+      error: mockNotifyError,
+      info: vi.fn(),
+      warning: vi.fn(),
+    }),
+  };
+});
+
 vi.mock('@/stores/active-org', () => ({
   useActiveOrgStore: () => ({ activeOrgId: 'org1' }),
 }));
@@ -125,7 +144,7 @@ const mockAssessments: Assessment[] = [
     id: 'a4',
     assessmentCode: 'ASMT-004',
     title: 'Overdue Assessment',
-    ownerId: 'Dana',
+    ownerId: 'Alice',
     status: 'draft',
     dueDate: '2020-01-01T00:00:00Z',
     highestInherentScore: undefined,
@@ -163,6 +182,7 @@ async function renderAssessmentsPage() {
 describe('AssessmentsPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCurrentUserId = 'Alice';
   });
 
   it('renders the KPI summary line with correct counts', async () => {
@@ -249,26 +269,50 @@ describe('AssessmentsPage', () => {
     });
   });
 
+  it('only renders the delete button for draft assessments owned by the current user', async () => {
+    await renderAssessmentsPage();
+
+    // Only a4 (draft, owned by Alice) should show a delete button.
+    expect(screen.getAllByText('Delete')).toHaveLength(1);
+    const row = screen.getByText('ASMT-004').closest('tr') as HTMLElement;
+    expect(within(row).getByText('Delete')).toBeDefined();
+  });
+
   it('opens the delete AlertDialog and confirming calls the delete mutation', async () => {
     await renderAssessmentsPage();
 
-    const [firstDeleteButton] = screen.getAllByText('Delete');
-    fireEvent.click(firstDeleteButton);
+    const [deleteButton] = screen.getAllByText('Delete');
+    fireEvent.click(deleteButton);
 
     const alertDialog = screen.getByRole('alertdialog');
     expect(alertDialog).toBeDefined();
 
     fireEvent.click(within(alertDialog).getByRole('button', { name: 'Delete' }));
 
-    expect(mockDeleteMutate).toHaveBeenCalledWith('a1');
+    expect(mockDeleteMutate).toHaveBeenCalledWith('a4', expect.any(Object));
   });
 
   it('does not navigate the row when the delete button is clicked (stopPropagation)', async () => {
     await renderAssessmentsPage();
 
-    const [firstDeleteButton] = screen.getAllByText('Delete');
-    fireEvent.click(firstDeleteButton);
+    const [deleteButton] = screen.getAllByText('Delete');
+    fireEvent.click(deleteButton);
 
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast when the delete mutation fails', async () => {
+    mockDeleteMutate.mockImplementation((_id, opts) => {
+      opts?.onError?.();
+    });
+    await renderAssessmentsPage();
+
+    const [deleteButton] = screen.getAllByText('Delete');
+    fireEvent.click(deleteButton);
+
+    const alertDialog = screen.getByRole('alertdialog');
+    fireEvent.click(within(alertDialog).getByRole('button', { name: 'Delete' }));
+
+    expect(mockNotifyError).toHaveBeenCalled();
   });
 });
