@@ -531,6 +531,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       frameworkId: row['framework_id'] as string | undefined,
       requirementId: row['requirement_id'] as string | undefined,
       riskId: row['risk_id'] as string | undefined,
+      assessmentItemId: row['assessment_item_id'] as string | undefined,
       title: row['title'] as string,
       owner: row['owner'] as string,
       evidenceType: row['evidence_type'] as string,
@@ -2836,6 +2837,27 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const { data: row, error } = await this.db
       .from('requirement_evidence')
       .insert({ ...this.evidenceInsertPayload(orgId, data), risk_id: riskId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('assessment_item_id', itemId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), assessment_item_id: itemId })
       .select()
       .single();
     return this.toRequirementEvidence(ok(row, error));
