@@ -76,6 +76,8 @@ import type {
   PolicyControlInput,
   ControlFrameworkMappingInput,
   Finding,
+  AssessmentType,
+  AssessmentTypeInput,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -3855,6 +3857,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   // ─── Risk Assessments ────────────────────────────────────────────────────
   private assessments: RiskAssessment[] = [];
   private assessmentItems: RiskAssessmentItem[] = [];
+  private assessmentTypes: AssessmentType[] = [];
 
   async listAssessments(orgId: string): Promise<RiskAssessment[]> {
     return this.assessments.filter((a) => a.orgId === orgId);
@@ -3954,6 +3957,47 @@ export class FakeNotesStrategy implements NotesStrategy {
     const item = this.assessmentItems.find((i) => i.id === id);
     this.assessmentItems = this.assessmentItems.filter((i) => i.id !== id);
     if (item) this.recomputeAssessmentScore(item.assessmentId);
+  }
+
+  async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
+    const existing = this.assessmentTypes.filter((t) => t.orgId === orgId);
+    if (existing.length > 0) return existing;
+    const defaults: Array<[string, string, string]> = [
+      ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
+      ['Cyber Threat Risk Assessment', 'Threat Scenario', 'Threat Scenarios'],
+    ];
+    const seeded = defaults.map(([name, singular, plural]) => ({
+      id: `atype-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name,
+      itemNounSingular: singular,
+      itemNounPlural: plural,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    }));
+    this.assessmentTypes.push(...seeded);
+    return seeded;
+  }
+
+  async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
+    const type: AssessmentType = {
+      id: `atype-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name: data.name,
+      itemNounSingular: data.itemNounSingular,
+      itemNounPlural: data.itemNounPlural,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.assessmentTypes.push(type);
+    return type;
+  }
+
+  async archiveAssessmentType(id: string): Promise<AssessmentType> {
+    const type = this.assessmentTypes.find((t) => t.id === id);
+    if (!type) throw new Error(`assessment_type_not_found: ${id}`);
+    type.archived = true;
+    return type;
   }
 
   private recomputeAssessmentScore(assessmentId: string): void {
