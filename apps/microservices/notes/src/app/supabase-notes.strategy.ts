@@ -53,15 +53,15 @@ import type {
   ReportTemplateInput,
   RetentionPrefsPayload,
   Risk,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
   Assessment,
   AssessmentInput,
   AssessmentPatch,
   AssessmentType,
   AssessmentTypeInput,
   AssessmentStatus,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
   RiskAcceptance,
   RiskAcceptanceInput,
   RiskAcceptanceStatus,
@@ -2584,7 +2584,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toAssessment(data);
   }
 
-  async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+  async listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {
     const { data, error } = await this.db
       .from('risk_assessment_items')
       .select('*')
@@ -2593,70 +2593,149 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map(this.toAssessmentItem);
   }
 
-  async addAssessmentItem(
+  async createAssessmentItem(
     assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem> {
-    const itemScore = this.computeRiskScore(data.likelihood, data.impact);
+    data: AssessmentItemInput,
+  ): Promise<AssessmentItem> {
+    const assessment = await this.getAssessment(assessmentId);
+    if (!assessment) throw new Error('assessment_not_found');
+    const { data: methodologyRow, error: methodologyError } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('id', assessment.methodologyId)
+      .single();
+    const methodology = this.toRiskMethodology(ok(methodologyRow, methodologyError));
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+
     const { data: row, error } = await this.db
       .from('risk_assessment_items')
       .insert({
         assessment_id: assessmentId,
         subject: data.subject,
         description: data.description,
-        likelihood: data.likelihood,
-        impact: data.impact,
-        item_score: itemScore,
-        mitigations: data.mitigations ?? '',
+        inherent_likelihood: data.inherentLikelihood,
+        inherent_impact: data.inherentImpact,
+        inherent_score: score,
+        inherent_label: label,
       })
       .select()
       .single();
     const item = this.toAssessmentItem(ok(row, error));
-    await this.recomputeAssessmentScore(assessmentId);
+    await this.recomputeAssessmentSummary(assessmentId);
     return item;
   }
 
-  async updateAssessmentItem(
-    id: string,
-    patch: RiskAssessmentItemPatch,
-  ): Promise<RiskAssessmentItem> {
-    const existing = await this.db
+  private async recomputeAssessmentSummary(assessmentId: string): Promise<void> {
+    const { data: items, error } = await this.db
       .from('risk_assessment_items')
-      .select('likelihood, impact, assessment_id')
+      .select('inherent_score, inherent_label, residual_score, residual_label')
+      .eq('assessment_id', assessmentId);
+    const rows = ok(items, error);
+    const update: Record<string, unknown> = { item_count: rows.length };
+    if (rows.length === 0) {
+      update['highest_inherent_score'] = null;
+      update['highest_inherent_label'] = null;
+      update['highest_residual_score'] = null;
+      update['highest_residual_label'] = null;
+    } else {
+      const topInherent = rows.reduce((max, r) =>
+        (r['inherent_score'] as number) > (max['inherent_score'] as number) ? r : max,
+      );
+      update['highest_inherent_score'] = topInherent['inherent_score'];
+      update['highest_inherent_label'] = topInherent['inherent_label'];
+      const withResidual = rows.filter((r) => r['residual_score'] != null);
+      if (withResidual.length > 0) {
+        const topResidual = withResidual.reduce((max, r) =>
+          (r['residual_score'] as number) > (max['residual_score'] as number) ? r : max,
+        );
+        update['highest_residual_score'] = topResidual['residual_score'];
+        update['highest_residual_label'] = topResidual['residual_label'];
+      }
+    }
+    await this.db.from('risk_assessments').update(update).eq('id', assessmentId);
+  }
+
+  async updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem> {
+    const { data: currentRow, error: currentError } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
       .eq('id', id)
       .single();
-    if (existing.error) throw new Error(existing.error.message);
-    const newLikelihood = patch.likelihood ?? (existing.data['likelihood'] as RiskLikelihood);
-    const newImpact = patch.impact ?? (existing.data['impact'] as RiskImpact);
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      item_score: this.computeRiskScore(newLikelihood, newImpact),
-    };
+    const current = this.toAssessmentItem(ok(currentRow, currentError));
+
+    const { data: assessmentRow, error: assessmentError } = await this.db
+      .from('risk_assessments')
+      .select('methodology_id')
+      .eq('id', current.assessmentId)
+      .single();
+    const methodologyId = ok(assessmentRow, assessmentError)['methodology_id'] as string;
+    const { data: methodologyRow, error: methodologyError } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('id', methodologyId)
+      .single();
+    const methodology = this.toRiskMethodology(ok(methodologyRow, methodologyError));
+
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.subject !== undefined) update['subject'] = patch.subject;
     if (patch.description !== undefined) update['description'] = patch.description;
-    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
-    if (patch.impact !== undefined) update['impact'] = patch.impact;
-    if (patch.mitigations !== undefined) update['mitigations'] = patch.mitigations;
-    const { data: row, error } = await this.db
+
+    const newInherentLikelihood = patch.inherentLikelihood ?? current.inherentLikelihood;
+    const newInherentImpact = patch.inherentImpact ?? current.inherentImpact;
+    if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+      const { score, label } = this.scoreRisk(
+        methodology,
+        newInherentLikelihood,
+        newInherentImpact,
+      );
+      update['inherent_likelihood'] = newInherentLikelihood;
+      update['inherent_impact'] = newInherentImpact;
+      update['inherent_score'] = score;
+      update['inherent_label'] = label;
+    }
+
+    const newResidualLikelihood = patch.residualLikelihood ?? current.residualLikelihood;
+    const newResidualImpact = patch.residualImpact ?? current.residualImpact;
+    if (
+      (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+      newResidualLikelihood !== undefined &&
+      newResidualImpact !== undefined
+    ) {
+      const { score, label } = this.scoreRisk(
+        methodology,
+        newResidualLikelihood,
+        newResidualImpact,
+      );
+      update['residual_likelihood'] = newResidualLikelihood;
+      update['residual_impact'] = newResidualImpact;
+      update['residual_score'] = score;
+      update['residual_label'] = label;
+    }
+
+    const { data, error } = await this.db
       .from('risk_assessment_items')
       .update(update)
       .eq('id', id)
       .select()
       .single();
-    const item = this.toAssessmentItem(ok(row, error));
-    await this.recomputeAssessmentScore(existing.data['assessment_id'] as string);
+    const item = this.toAssessmentItem(ok(data, error));
+    await this.recomputeAssessmentSummary(item.assessmentId);
     return item;
   }
 
   async deleteAssessmentItem(id: string): Promise<void> {
-    const { data: existing } = await this.db
+    const { data: row } = await this.db
       .from('risk_assessment_items')
       .select('assessment_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     const { error } = await this.db.from('risk_assessment_items').delete().eq('id', id);
     if (error) throw new Error(error.message);
-    if (existing) await this.recomputeAssessmentScore(existing['assessment_id'] as string);
+    if (row) await this.recomputeAssessmentSummary(row['assessment_id'] as string);
   }
 
   private async recomputeAssessmentScore(assessmentId: string): Promise<void> {
@@ -2711,16 +2790,21 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     };
   }
 
-  private toAssessmentItem(row: Record<string, unknown>): RiskAssessmentItem {
+  private toAssessmentItem(row: Record<string, unknown>): AssessmentItem {
     return {
       id: row['id'] as string,
       assessmentId: row['assessment_id'] as string,
+      orgId: '', // populated by callers that need it; not stored redundantly on this table
       subject: row['subject'] as string,
       description: row['description'] as string,
-      likelihood: row['likelihood'] as RiskAssessmentItem['likelihood'],
-      impact: row['impact'] as RiskAssessmentItem['impact'],
-      itemScore: row['item_score'] as number,
-      mitigations: row['mitigations'] as string,
+      inherentLikelihood: row['inherent_likelihood'] as number,
+      inherentImpact: row['inherent_impact'] as number,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualLikelihood: row['residual_likelihood'] as number | undefined,
+      residualImpact: row['residual_impact'] as number | undefined,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
