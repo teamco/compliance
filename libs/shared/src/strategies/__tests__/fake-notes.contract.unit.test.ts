@@ -3,7 +3,6 @@ import type {
   AssessmentItemControlMappingInput,
   AssessmentItemPatch,
   AssessmentPatch,
-  RequirementEvidence,
 } from '../notes';
 import { runNotesContract } from './notes.contract.unit.test';
 
@@ -1433,6 +1432,44 @@ describe('Risk Register lifecycle', () => {
       verificationStatus: 'verified',
     });
 
+    const control = await strategy.createInternalControl('org-1', {
+      code: 'VM-002',
+      title: 'Vulnerability Scanning',
+      description: 'Weekly authenticated vulnerability scans.',
+      domain: 'Vulnerability Management',
+      owner: 'Security Ops',
+      criticality: 'medium',
+      controlType: 'detective',
+      execution: 'automated',
+      frequency: 'weekly',
+      nature: 'technical',
+      category: 'vuln-mgmt',
+    });
+    await strategy.createControlEvidence('org-1', control.id, {
+      title: 'Weekly scan report — 2026-09-08',
+      owner: 'Security Ops',
+      evidenceType: 'report',
+      source: 'Qualys',
+      collectionDate: new Date().toISOString(),
+      periodCovered: '2026-09-01/2026-09-08',
+      expirationDate: new Date().toISOString(),
+      verificationStatus: 'verified',
+    });
+
+    const nistId = '00000000-0000-0000-0000-000000000003';
+    await strategy.createFrameworkEvidence('org-1', {
+      frameworkId: nistId,
+      requirementId: 'nist-gv-po-01',
+      title: 'Quarterly Risk Assessment Signoff.pdf',
+      owner: 'Risk Officer',
+      evidenceType: 'Policy Document',
+      source: 'Jira',
+      collectionDate: '2026-09-01',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01',
+      verificationStatus: 'verified',
+    });
+
     const types = await strategy.listAssessmentTypes('org-1');
     const assessment = await strategy.createAssessment('org-1', 'user-1', {
       assessmentTypeId: types[0]!.id,
@@ -1452,7 +1489,7 @@ describe('Risk Register lifecycle', () => {
       inherentImpact: 4,
     });
 
-    const evidenceInput: Omit<RequirementEvidence, 'id' | 'assessmentItemId'> = {
+    const evidenceInput = {
       title: 'Evidence',
       owner: 'user-1',
       evidenceType: 'document',
@@ -1461,7 +1498,7 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
-    };
+    } as const;
     await strategy.createAssessmentItemEvidence('org-1', item1.id, evidenceInput);
     await strategy.createAssessmentItemEvidence('org-1', item2.id, evidenceInput);
 
@@ -1476,5 +1513,13 @@ describe('Risk Register lifecycle', () => {
     const riskEvidence = await strategy.listRiskEvidence(risk.id);
     expect(riskEvidence).toHaveLength(1);
     expect(item1Evidence.some((e) => e.id === riskEvidence[0]!.id)).toBe(false);
+
+    const controlEvidence = await strategy.listControlEvidence(control.id);
+    expect(controlEvidence).toHaveLength(1);
+    expect(item1Evidence.some((e) => e.id === controlEvidence[0]!.id)).toBe(false);
+
+    const frameworkEvidence = await strategy.listFrameworkEvidence(nistId, 'org-1');
+    expect(frameworkEvidence.length).toBeGreaterThanOrEqual(1);
+    expect(item1Evidence.some((e) => frameworkEvidence.some((fe) => fe.id === e.id))).toBe(false);
   });
 });
