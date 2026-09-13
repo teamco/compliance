@@ -50,14 +50,14 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
-  RiskLikelihood,
-  RiskImpact,
   Assessment,
   AssessmentInput,
   AssessmentPatch,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
   RiskMethodology,
   RiskMethodologyInput,
   RiskTaxonomyCategory,
@@ -3609,24 +3609,6 @@ export class FakeNotesStrategy implements NotesStrategy {
     return category;
   }
 
-  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
-    const L: Record<RiskLikelihood, number> = {
-      very_low: 1,
-      low: 2,
-      medium: 3,
-      high: 4,
-      very_high: 5,
-    };
-    const I: Record<RiskImpact, number> = {
-      very_low: 1,
-      low: 2,
-      medium: 3,
-      high: 4,
-      very_high: 5,
-    };
-    return L[likelihood] * I[impact];
-  }
-
   async listRisks(orgId: string): Promise<Risk[]> {
     return this.risks.filter((r) => r.orgId === orgId);
   }
@@ -3856,7 +3838,8 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   // ─── Risk Assessments ────────────────────────────────────────────────────
   private assessments: Assessment[] = [];
-  private assessmentItems: RiskAssessmentItem[] = [];
+  private assessmentItems: AssessmentItem[] = [];
+  private assessmentItemControlMappings: AssessmentItemControlMapping[] = [];
   private assessmentTypes: AssessmentType[] = [];
 
   async listAssessments(orgId: string): Promise<Assessment[]> {
@@ -3978,56 +3961,134 @@ export class FakeNotesStrategy implements NotesStrategy {
     this.assessmentItems = this.assessmentItems.filter((i) => i.assessmentId !== id);
   }
 
-  async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+  async listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {
     return this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
   }
 
-  async addAssessmentItem(
+  async createAssessmentItem(
     assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem> {
-    const now = new Date().toISOString();
-    const item: RiskAssessmentItem = {
+    data: AssessmentItemInput,
+  ): Promise<AssessmentItem> {
+    const assessment = this.assessments.find((a) => a.id === assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${assessmentId}`);
+    const methodology = this.riskMethodologies.find((m) => m.id === assessment.methodologyId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const item: AssessmentItem = {
       id: globalThis.crypto.randomUUID(),
       assessmentId,
+      orgId: assessment.orgId,
       subject: data.subject,
       description: data.description,
-      likelihood: data.likelihood,
-      impact: data.impact,
-      itemScore: this.computeRiskScore(data.likelihood, data.impact),
-      mitigations: data.mitigations ?? '',
-      createdAt: now,
-      updatedAt: now,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      inherentScore: score,
+      inherentLabel: label,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     this.assessmentItems.push(item);
-    this.recomputeAssessmentScore(assessmentId);
+    this.recomputeAssessmentSummary(assessmentId);
     return item;
   }
 
-  async updateAssessmentItem(
-    id: string,
-    patch: RiskAssessmentItemPatch,
-  ): Promise<RiskAssessmentItem> {
-    const idx = this.assessmentItems.findIndex((i) => i.id === id);
-    if (idx === -1) throw new Error('assessment_item_not_found');
-    const existing = this.assessmentItems[idx]!;
-    const merged: RiskAssessmentItem = {
-      ...existing,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
-    if (patch.likelihood !== undefined || patch.impact !== undefined) {
-      merged.itemScore = this.computeRiskScore(merged.likelihood, merged.impact);
+  private recomputeAssessmentSummary(assessmentId: string): void {
+    const assessment = this.assessments.find((a) => a.id === assessmentId);
+    if (!assessment) return;
+    const items = this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
+    assessment.itemCount = items.length;
+    if (items.length === 0) {
+      assessment.highestInherentScore = undefined;
+      assessment.highestInherentLabel = undefined;
+      assessment.highestResidualScore = undefined;
+      assessment.highestResidualLabel = undefined;
+      return;
     }
-    this.assessmentItems[idx] = merged;
-    this.recomputeAssessmentScore(merged.assessmentId);
-    return merged;
+    const topInherent = items.reduce((max, i) => (i.inherentScore > max.inherentScore ? i : max));
+    assessment.highestInherentScore = topInherent.inherentScore;
+    assessment.highestInherentLabel = topInherent.inherentLabel;
+    const withResidual = items.filter((i) => i.residualScore !== undefined);
+    if (withResidual.length > 0) {
+      const topResidual = withResidual.reduce((max, i) =>
+        (i.residualScore ?? 0) > (max.residualScore ?? 0) ? i : max,
+      );
+      assessment.highestResidualScore = topResidual.residualScore;
+      assessment.highestResidualLabel = topResidual.residualLabel;
+    }
+  }
+
+  async updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem> {
+    const item = this.assessmentItems.find((i) => i.id === id);
+    if (!item) throw new Error(`assessment_item_not_found: ${id}`);
+    const assessment = this.assessments.find((a) => a.id === item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    const methodology = this.riskMethodologies.find((m) => m.id === assessment.methodologyId);
+
+    Object.assign(item, patch);
+
+    if (methodology) {
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          item.inherentLikelihood,
+          item.inherentImpact,
+        );
+        item.inherentScore = score;
+        item.inherentLabel = label;
+      }
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        item.residualLikelihood !== undefined &&
+        item.residualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          item.residualLikelihood,
+          item.residualImpact,
+        );
+        item.residualScore = score;
+        item.residualLabel = label;
+      }
+    }
+
+    item.updatedAt = new Date().toISOString();
+    this.recomputeAssessmentSummary(item.assessmentId);
+    return item;
   }
 
   async deleteAssessmentItem(id: string): Promise<void> {
     const item = this.assessmentItems.find((i) => i.id === id);
+    if (!item) return;
     this.assessmentItems = this.assessmentItems.filter((i) => i.id !== id);
-    if (item) this.recomputeAssessmentScore(item.assessmentId);
+    this.recomputeAssessmentSummary(item.assessmentId);
+  }
+
+  async listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]> {
+    return this.assessmentItemControlMappings.filter((m) => m.itemId === itemId);
+  }
+
+  async addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping> {
+    const mapping: AssessmentItemControlMapping = {
+      id: globalThis.crypto.randomUUID(),
+      itemId,
+      ...data,
+      createdAt: new Date().toISOString(),
+    };
+    this.assessmentItemControlMappings.push(mapping);
+    return mapping;
+  }
+
+  async removeAssessmentItemControlMapping(id: string): Promise<void> {
+    this.assessmentItemControlMappings = this.assessmentItemControlMappings.filter(
+      (m) => m.id !== id,
+    );
   }
 
   async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
@@ -4069,22 +4130,6 @@ export class FakeNotesStrategy implements NotesStrategy {
     if (!type) throw new Error(`assessment_type_not_found: ${id}`);
     type.archived = true;
     return type;
-  }
-
-  private recomputeAssessmentScore(assessmentId: string): void {
-    const items = this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
-    const idx = this.assessments.findIndex((a) => a.id === assessmentId);
-    if (idx === -1) return;
-    const riskScore =
-      items.length > 0
-        ? Math.round(items.reduce((sum, i) => sum + i.itemScore, 0) / items.length)
-        : 0;
-    this.assessments[idx] = {
-      ...this.assessments[idx]!,
-      riskScore,
-      itemCount: items.length,
-      updatedAt: new Date().toISOString(),
-    };
   }
 
   async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
