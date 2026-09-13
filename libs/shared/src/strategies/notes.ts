@@ -831,7 +831,21 @@ export interface RiskSnapshot {
 
 // ─── Risk Assessments ──────────────────────────────────────────────────────
 
-export type AssessmentType = 'cvra' | 'ctra';
+export interface AssessmentType {
+  id: string;
+  orgId: string;
+  name: string;
+  itemNounSingular: string;
+  itemNounPlural: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface AssessmentTypeInput {
+  name: string;
+  itemNounSingular: string;
+  itemNounPlural: string;
+}
 export type AssessmentStatus = 'draft' | 'in_review' | 'completed';
 
 export interface RiskAssessment {
