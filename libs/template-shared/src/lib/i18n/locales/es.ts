@@ -937,6 +937,9 @@ export const es = {
     deleteConfirmTitle: '¿Eliminar este riesgo?',
     deleteConfirmDescription:
       'Esto elimina el riesgo, sus asignaciones, evidencia e historial. Esta acción no se puede deshacer.',
+    archiveCategoryConfirmTitle: '¿Archivar esta categoría?',
+    archiveCategoryConfirmDescription:
+      'Esta categoría se archivará y ya no estará disponible para nuevos riesgos. Esta acción no se puede deshacer.',
     tab: {
       overview: 'Resumen',
       assessment: 'Evaluación',

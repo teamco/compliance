@@ -776,6 +776,9 @@ export const ru = {
     deleteConfirmTitle: 'Удалить этот риск?',
     deleteConfirmDescription:
       'Это удалит риск, его связи, доказательства и историю. Это действие нельзя отменить.',
+    archiveCategoryConfirmTitle: 'Архивировать эту категорию?',
+    archiveCategoryConfirmDescription:
+      'Категория будет архивирована и больше не будет доступна для новых рисков. Это действие нельзя отменить.',
     tab: {
       overview: 'Обзор',
       assessment: 'Оценка',

@@ -962,6 +962,9 @@ export const en = {
     deleteConfirmTitle: 'Delete this risk?',
     deleteConfirmDescription:
       'This removes the risk, its mappings, evidence, and history. This cannot be undone.',
+    archiveCategoryConfirmTitle: 'Archive this category?',
+    archiveCategoryConfirmDescription:
+      'This category will be archived and no longer available for new risks. This cannot be undone.',
     tab: {
       overview: 'Overview',
       assessment: 'Assessment',
