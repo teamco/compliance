@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from '@tanstack/react-router';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { useOrgMembers } from '@/queries/org-members';
 import { useAssessmentTypes } from '@/queries/assessment-types';
 import {
   useCreateAssessment,
+  useUpdateAssessment,
   useAssessmentItems,
   type Assessment,
   type AssessmentInput,
@@ -43,6 +45,7 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
   const [step, setStep] = useState<WizardStep>('details');
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [form, setForm] = useState<AssessmentInput>(EMPTY_FORM);
+  const updateMut = useUpdateAssessment(orgId, assessment?.id ?? '');
 
   const memberOptions = members.map((m) => ({
     value: m.userId,
@@ -63,9 +66,7 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
   function handleDetailsNext() {
     if (!form.title || !form.assessmentTypeId || !form.ownerId) return;
     if (assessment) {
-      // Task 13 replaces this branch with a real useUpdateAssessment call once
-      // returning to Details after Items needs to persist edits.
-      setStep('items');
+      updateMut.mutate(form, { onSuccess: () => setStep('items') });
       return;
     }
     createMut.mutate(form, {
@@ -114,7 +115,8 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
                   value={form.assessmentTypeId}
                   onChange={(e) => setForm((f) => ({ ...f, assessmentTypeId: e.target.value }))}
                   required
-                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                  disabled={!!assessment}
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm disabled:opacity-50"
                 >
                   <option value="">{t('assessments.selectType')}</option>
                   {types
@@ -133,9 +135,15 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
                   value={form.ownerId}
                   onChange={(ownerId) => setForm((f) => ({ ...f, ownerId }))}
                   placeholder={t('assessments.selectOwner')}
+                  disabled={!!assessment}
                 />
               </div>
             </div>
+            {assessment && (
+              <p className="text-xs text-muted-foreground">
+                {t('assessments.wizard.detailsLockedNote')}
+              </p>
+            )}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label htmlFor="wizard-bu">{t('assessments.businessUnit')}</Label>
@@ -162,6 +170,7 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
                 value={form.approverId ?? ''}
                 onChange={(approverId) => setForm((f) => ({ ...f, approverId }))}
                 placeholder={t('assessments.selectApprover')}
+                disabled={!!assessment}
               />
             </div>
             <div>
@@ -186,7 +195,11 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
               <Button
                 onClick={handleDetailsNext}
                 disabled={
-                  !form.title || !form.assessmentTypeId || !form.ownerId || createMut.isPending
+                  !form.title ||
+                  !form.assessmentTypeId ||
+                  !form.ownerId ||
+                  createMut.isPending ||
+                  updateMut.isPending
                 }
               >
                 {t('assessments.wizard.next')}
@@ -204,6 +217,14 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
               onNext={() => setStep('review')}
             />
           </div>
+        )}
+
+        {step === 'review' && assessment && (
+          <ReviewStep
+            assessmentId={assessment.id}
+            onBack={() => setStep('items')}
+            onFinish={() => handleClose(false)}
+          />
         )}
       </DialogContent>
     </Dialog>
@@ -234,6 +255,51 @@ function ItemsStepFooter({
         )}
         <Button onClick={onNext} disabled={items.length === 0}>
           {t('assessments.wizard.next')}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewStep({
+  assessmentId,
+  onBack,
+  onFinish,
+}: {
+  assessmentId: string;
+  onBack: () => void;
+  onFinish: () => void;
+}) {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { data: items = [] } = useAssessmentItems(assessmentId);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">{t('assessments.wizard.reviewIntro')}</p>
+      <div className="space-y-2">
+        {items.map((item) => (
+          <div key={item.id} className="text-sm border border-border rounded-lg p-3">
+            <p className="font-medium">{item.subject}</p>
+            <p className="text-xs text-muted-foreground">
+              {t('assessments.inherent')}: {item.inherentScore} ({item.inherentLabel})
+              {item.residualScore != null &&
+                ` · ${t('assessments.residual')}: ${item.residualScore} (${item.residualLabel})`}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center justify-between pt-2 border-t border-border">
+        <Button variant="outline" onClick={onBack}>
+          {t('assessments.wizard.back')}
+        </Button>
+        <Button
+          onClick={() => {
+            onFinish();
+            void navigate({ to: '/assessments/$id', params: { id: assessmentId } });
+          }}
+        >
+          {t('assessments.wizard.finish')}
         </Button>
       </div>
     </div>
