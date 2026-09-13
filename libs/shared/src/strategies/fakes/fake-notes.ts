@@ -4179,6 +4179,25 @@ export class FakeNotesStrategy implements NotesStrategy {
     return ev;
   }
 
+  async listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.assessmentItemId === itemId);
+  }
+
+  async createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence> {
+    const ev: RequirementEvidence = {
+      id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      assessmentItemId: itemId,
+      ...data,
+    };
+    this.evidence.unshift(ev);
+    return ev;
+  }
+
   // ─── Policies ────────────────────────────────────────────────────────────
   private policies: Policy[] = [];
   private policyTemplates: PolicyTemplate[] = [
