@@ -58,7 +58,7 @@ export function AssessmentTypesSheet({ orgId }: { orgId: string }) {
                     onClick={() => setConfirmArchiveId(ty.id)}
                     className="text-xs text-muted-foreground hover:text-destructive cursor-pointer"
                   >
-                    {t('common.delete')}
+                    {t('assessments.archive')}
                   </button>
                 )}
               </div>
@@ -125,7 +125,7 @@ export function AssessmentTypesSheet({ orgId }: { orgId: string }) {
                 setConfirmArchiveId(null);
               }}
             >
-              {t('common.delete')}
+              {t('assessments.archive')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

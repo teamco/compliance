@@ -23,11 +23,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Combobox } from '@/components/ui/combobox';
 import { PageLayout } from '@/components/PageLayout';
 import { AssessmentTypesSheet } from '@/components/assessments/AssessmentTypesSheet';
 import { useActiveOrgStore } from '@/stores/active-org';
 import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
+import { useOrgMembers } from '@/queries/org-members';
 import { useAssessmentTypes } from '@/queries/assessment-types';
 import {
   useAssessments,
@@ -60,6 +62,7 @@ export function AssessmentsPage() {
   const { data: types = [] } = useAssessmentTypes(orgId);
   const { data: assets = [] } = useAssets(orgId);
   const { data: vendors = [] } = useVendors(orgId);
+  const { data: members = [] } = useOrgMembers(orgId);
   const createMut = useCreateAssessment(orgId);
   const deleteMut = useDeleteAssessment(orgId);
 
@@ -68,11 +71,20 @@ export function AssessmentsPage() {
   const [form, setForm] = useState<AssessmentInput>(EMPTY_FORM);
 
   const typeName = (id: string) => types.find((ty) => ty.id === id)?.name ?? '—';
+  const memberOptions = members.map((m) => ({
+    value: m.userId,
+    label: m.displayName ?? m.email ?? m.userId,
+  }));
+  const memberName = (userId: string) =>
+    members.find((m) => m.userId === userId)?.displayName ??
+    members.find((m) => m.userId === userId)?.email ??
+    userId;
 
   const summary = useMemo(() => {
     const active = assessments.filter((a) => a.status !== 'archived');
     const pendingReview = active.filter((a) => a.status === 'pending_review').length;
-    const overdue = active.filter((a) => a.dueDate && a.dueDate < new Date().toISOString()).length;
+    const today = new Date().toISOString().slice(0, 10);
+    const overdue = active.filter((a) => a.dueDate && a.dueDate < today).length;
     return { total: active.length, pendingReview, overdue };
   }, [assessments]);
 
@@ -144,7 +156,7 @@ export function AssessmentsPage() {
                 <td className="py-2 px-3 font-mono text-xs">{a.assessmentCode}</td>
                 <td className="py-2 px-3">{a.title}</td>
                 <td className="py-2 px-3 text-muted-foreground">{typeName(a.assessmentTypeId)}</td>
-                <td className="py-2 px-3 text-muted-foreground">{a.ownerId}</td>
+                <td className="py-2 px-3 text-muted-foreground">{memberName(a.ownerId)}</td>
                 <td className={`py-2 px-3 ${SCORE_COLOR(a.highestInherentLabel)}`}>
                   {a.highestInherentScore ?? '—'}
                 </td>
@@ -207,11 +219,11 @@ export function AssessmentsPage() {
                 </div>
                 <div>
                   <Label htmlFor="assessment-owner">{t('assessments.owner')}</Label>
-                  <Input
-                    id="assessment-owner"
+                  <Combobox
+                    options={memberOptions}
                     value={form.ownerId}
-                    onChange={(e) => setForm((f) => ({ ...f, ownerId: e.target.value }))}
-                    required
+                    onChange={(ownerId) => setForm((f) => ({ ...f, ownerId }))}
+                    placeholder={t('assessments.selectOwner')}
                   />
                 </div>
               </div>
@@ -236,10 +248,11 @@ export function AssessmentsPage() {
               </div>
               <div>
                 <Label htmlFor="assessment-approver">{t('assessments.approver')}</Label>
-                <Input
-                  id="assessment-approver"
+                <Combobox
+                  options={memberOptions}
                   value={form.approverId ?? ''}
-                  onChange={(e) => setForm((f) => ({ ...f, approverId: e.target.value }))}
+                  onChange={(approverId) => setForm((f) => ({ ...f, approverId }))}
+                  placeholder={t('assessments.selectApprover')}
                 />
               </div>
               <div>
