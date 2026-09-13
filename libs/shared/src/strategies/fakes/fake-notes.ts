@@ -52,9 +52,9 @@ import type {
   RiskPatch,
   RiskLikelihood,
   RiskImpact,
-  RiskAssessment,
-  RiskAssessmentInput,
-  RiskAssessmentPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
@@ -3855,51 +3855,55 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   // ─── Risk Assessments ────────────────────────────────────────────────────
-  private assessments: RiskAssessment[] = [];
+  private assessments: Assessment[] = [];
   private assessmentItems: RiskAssessmentItem[] = [];
   private assessmentTypes: AssessmentType[] = [];
 
-  async listAssessments(orgId: string): Promise<RiskAssessment[]> {
+  async listAssessments(orgId: string): Promise<Assessment[]> {
     return this.assessments.filter((a) => a.orgId === orgId);
   }
 
   async createAssessment(
     orgId: string,
     userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment> {
-    const now = new Date().toISOString();
-    const assessment: RiskAssessment = {
+    data: AssessmentInput,
+  ): Promise<Assessment> {
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const orgAssessmentCount = this.assessments.filter((a) => a.orgId === orgId).length;
+    const assessment: Assessment = {
       id: globalThis.crypto.randomUUID(),
+      assessmentCode: `ASM-${String(orgAssessmentCount + 101).padStart(6, '0')}`,
       orgId,
       userId,
-      type: data.type,
       title: data.title,
-      scope: data.scope,
+      assessmentTypeId: data.assessmentTypeId,
+      ownerId: data.ownerId,
+      businessUnit: data.businessUnit,
+      assetIds: data.assetIds ?? [],
+      vendorIds: data.vendorIds ?? [],
+      dueDate: data.dueDate,
+      approverId: data.approverId,
+      methodologyId: methodology.id,
       status: 'draft',
-      riskScore: 0,
       itemCount: 0,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     this.assessments.push(assessment);
     return assessment;
   }
 
-  async getAssessment(id: string): Promise<RiskAssessment | null> {
+  async getAssessment(id: string): Promise<Assessment | null> {
     return this.assessments.find((a) => a.id === id) ?? null;
   }
 
-  async updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
-    const idx = this.assessments.findIndex((a) => a.id === id);
-    if (idx === -1) throw new Error('assessment_not_found');
-    const updated: RiskAssessment = {
-      ...this.assessments[idx]!,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
-    this.assessments[idx] = updated;
-    return updated;
+  async updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
+    const assessment = this.assessments.find((a) => a.id === id);
+    if (!assessment) throw new Error(`assessment_not_found: ${id}`);
+    Object.assign(assessment, patch);
+    assessment.updatedAt = new Date().toISOString();
+    return assessment;
   }
 
   async deleteAssessment(id: string): Promise<void> {
