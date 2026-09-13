@@ -66,7 +66,16 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
   function handleDetailsNext() {
     if (!form.title || !form.assessmentTypeId || !form.ownerId) return;
     if (assessment) {
-      updateMut.mutate(form, { onSuccess: () => setStep('items') });
+      updateMut.mutate(
+        {
+          title: form.title,
+          businessUnit: form.businessUnit,
+          assetIds: form.assetIds,
+          vendorIds: form.vendorIds,
+          dueDate: form.dueDate,
+        },
+        { onSuccess: () => setStep('items') },
+      );
       return;
     }
     createMut.mutate(form, {
