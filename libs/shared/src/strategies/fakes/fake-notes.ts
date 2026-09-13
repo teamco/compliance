@@ -3906,6 +3906,73 @@ export class FakeNotesStrategy implements NotesStrategy {
     return assessment;
   }
 
+  async startAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'draft') throw new Error(`invalid_transition_from_${a.status}`);
+    a.status = 'in_progress';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async submitForReview(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'in_progress' && a.status !== 'changes_requested') {
+      throw new Error(`invalid_transition_from_${a.status}`);
+    }
+    if (!a.approverId) throw new Error('approver_required');
+    if (a.itemCount < 1) throw new Error('at_least_one_item_required');
+    a.status = 'pending_review';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async approveAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
+    if (a.approverId !== userId) throw new Error('not_authorized_approver');
+    a.status = 'approved';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
+    if (a.approverId !== userId) throw new Error('not_authorized_approver');
+    a.status = 'changes_requested';
+    a.lastReviewNote = note;
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async completeAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'approved') throw new Error(`invalid_transition_from_${a.status}`);
+    a.status = 'completed';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async archiveAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'draft' && a.status !== 'completed') {
+      throw new Error(`invalid_transition_from_${a.status}`);
+    }
+    a.status = 'archived';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
   async deleteAssessment(id: string): Promise<void> {
     this.assessments = this.assessments.filter((a) => a.id !== id);
     this.assessmentItems = this.assessmentItems.filter((i) => i.assessmentId !== id);
