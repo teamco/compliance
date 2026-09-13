@@ -91,6 +91,15 @@ vi.mock('@/queries/controls', () => ({
   useInternalControlsList: () => ({ data: mockControls }),
 }));
 
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({
+    data: [
+      { userId: 'Alice', displayName: 'Alice', email: 'alice@x.com', role: 'owner' },
+      { userId: 'Carol', displayName: 'Carol', email: 'carol@x.com', role: 'member' },
+    ],
+  }),
+}));
+
 let mockAssessment: Assessment = {
   id: 'a1',
   assessmentCode: 'ASMT-001',
@@ -139,6 +148,7 @@ const mockRequestChangesMutate = vi.fn();
 const mockCompleteMutate = vi.fn();
 const mockArchiveMutate = vi.fn();
 const mockCreateItemMutate = vi.fn();
+const mockUpdateItemMutate = vi.fn();
 const mockDeleteItemMutate = vi.fn();
 const mockAddMappingMutate = vi.fn();
 const mockRemoveMappingMutate = vi.fn();
@@ -147,6 +157,7 @@ vi.mock('@/queries/assessments', () => ({
   useAssessment: () => ({ data: mockAssessment, isPending: false }),
   useAssessmentItems: () => ({ data: mockItems }),
   useCreateAssessmentItem: () => ({ mutate: mockCreateItemMutate, isPending: false }),
+  useUpdateAssessmentItem: () => ({ mutate: mockUpdateItemMutate, isPending: false }),
   useDeleteAssessmentItem: () => ({ mutate: mockDeleteItemMutate, isPending: false }),
   useStartAssessment: () => ({ mutate: mockStartMutate, isPending: false }),
   useSubmitForReview: () => ({ mutate: mockSubmitMutate, isPending: false }),

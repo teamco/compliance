@@ -5,6 +5,18 @@ import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { Assessment, AssessmentType } from '@icore/shared';
 
+// Mock ResizeObserver which cmdk (used by Combobox) requires
+class MockResizeObserver {
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
+}
+
+global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
+
+// Mock scrollIntoView which cmdk uses
+Element.prototype.scrollIntoView = vi.fn();
+
 const mockNavigate = vi.fn();
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -25,6 +37,15 @@ vi.mock('@/queries/assets', () => ({
 
 vi.mock('@/queries/vendors', () => ({
   useVendors: () => ({ data: [] }),
+}));
+
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({
+    data: [
+      { userId: 'Alice', displayName: 'Alice', email: 'alice@x.com', role: 'owner' },
+      { userId: 'Erin', displayName: 'Erin', email: 'erin@x.com', role: 'member' },
+    ],
+  }),
 }));
 
 const mockTypes: AssessmentType[] = [
@@ -179,15 +200,15 @@ describe('AssessmentsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New Assessment' }));
     const dialog = screen.getByRole('dialog');
 
-    const [typeSelect] = within(dialog).getAllByRole('combobox');
+    // Combobox order in the dialog = Type (native select), Owner, Approver.
+    const [typeSelect, ownerCombobox] = within(dialog).getAllByRole('combobox');
 
     fireEvent.change(within(dialog).getByLabelText('Title'), {
       target: { value: 'New Vendor Assessment' },
     });
     fireEvent.change(typeSelect, { target: { value: 'type-1' } });
-    fireEvent.change(within(dialog).getByLabelText('Owner'), {
-      target: { value: 'Erin' },
-    });
+    fireEvent.click(ownerCombobox);
+    fireEvent.click(screen.getByText('Erin'));
 
     fireEvent.click(within(dialog).getByRole('button', { name: 'New Assessment' }));
 
