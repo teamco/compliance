@@ -37,12 +37,16 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
-  RiskAssessment,
-  RiskAssessmentInput,
-  RiskAssessmentPatch,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
+  AssessmentType,
+  AssessmentTypeInput,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
   RiskMethodology,
   RiskMethodologyInput,
   RiskTaxonomyCategory,
@@ -712,26 +716,24 @@ export class NotesController {
   // ─── Risk Assessments ────────────────────────────────────────────────────
 
   @MessagePattern('notes.assessments.list')
-  listAssessments(@Payload() p: { orgId: string }): Promise<RiskAssessment[]> {
+  listAssessments(@Payload() p: { orgId: string }): Promise<Assessment[]> {
     return this.strategy.listAssessments(p.orgId);
   }
 
   @MessagePattern('notes.assessments.create')
   createAssessment(
-    @Payload() p: { orgId: string; userId: string; data: RiskAssessmentInput },
-  ): Promise<RiskAssessment> {
+    @Payload() p: { orgId: string; userId: string; data: AssessmentInput },
+  ): Promise<Assessment> {
     return this.strategy.createAssessment(p.orgId, p.userId, p.data);
   }
 
   @MessagePattern('notes.assessments.get')
-  getAssessment(@Payload() p: { id: string }): Promise<RiskAssessment | null> {
+  getAssessment(@Payload() p: { id: string }): Promise<Assessment | null> {
     return this.strategy.getAssessment(p.id);
   }
 
   @MessagePattern('notes.assessments.update')
-  updateAssessment(
-    @Payload() p: { id: string; patch: RiskAssessmentPatch },
-  ): Promise<RiskAssessment> {
+  updateAssessment(@Payload() p: { id: string; patch: AssessmentPatch }): Promise<Assessment> {
     return this.strategy.updateAssessment(p.id, p.patch);
   }
 
@@ -741,27 +743,95 @@ export class NotesController {
   }
 
   @MessagePattern('notes.assessments.items.list')
-  listAssessmentItems(@Payload() p: { assessmentId: string }): Promise<RiskAssessmentItem[]> {
+  listAssessmentItems(@Payload() p: { assessmentId: string }): Promise<AssessmentItem[]> {
     return this.strategy.listAssessmentItems(p.assessmentId);
   }
 
   @MessagePattern('notes.assessments.items.add')
-  addAssessmentItem(
-    @Payload() p: { assessmentId: string; data: RiskAssessmentItemInput },
-  ): Promise<RiskAssessmentItem> {
-    return this.strategy.addAssessmentItem(p.assessmentId, p.data);
+  createAssessmentItem(
+    @Payload() p: { assessmentId: string; data: AssessmentItemInput },
+  ): Promise<AssessmentItem> {
+    return this.strategy.createAssessmentItem(p.assessmentId, p.data);
   }
 
   @MessagePattern('notes.assessments.items.update')
   updateAssessmentItem(
-    @Payload() p: { id: string; patch: RiskAssessmentItemPatch },
-  ): Promise<RiskAssessmentItem> {
+    @Payload() p: { id: string; patch: AssessmentItemPatch },
+  ): Promise<AssessmentItem> {
     return this.strategy.updateAssessmentItem(p.id, p.patch);
   }
 
   @MessagePattern('notes.assessments.items.delete')
   deleteAssessmentItem(@Payload() p: { id: string }): Promise<void> {
     return this.strategy.deleteAssessmentItem(p.id);
+  }
+
+  @MessagePattern('notes.assessment-types.list')
+  listAssessmentTypes(@Payload() payload: { orgId: string }): Promise<AssessmentType[]> {
+    return this.strategy.listAssessmentTypes(payload.orgId);
+  }
+
+  @MessagePattern('notes.assessment-types.create')
+  createAssessmentType(
+    @Payload() payload: { orgId: string; data: AssessmentTypeInput },
+  ): Promise<AssessmentType> {
+    return this.strategy.createAssessmentType(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.assessment-types.archive')
+  archiveAssessmentType(@Payload() payload: { id: string }): Promise<AssessmentType> {
+    return this.strategy.archiveAssessmentType(payload.id);
+  }
+
+  @MessagePattern('notes.assessments.start')
+  startAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.startAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.submit-for-review')
+  submitForReview(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.submitForReview(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.approve')
+  approveAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.approveAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.request-changes')
+  requestChanges(
+    @Payload() payload: { id: string; userId: string; note: string },
+  ): Promise<Assessment> {
+    return this.strategy.requestChanges(payload.id, payload.userId, payload.note);
+  }
+
+  @MessagePattern('notes.assessments.complete')
+  completeAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.completeAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.archive')
+  archiveAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.archiveAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.list')
+  listAssessmentItemControlMappings(
+    @Payload() payload: { itemId: string },
+  ): Promise<AssessmentItemControlMapping[]> {
+    return this.strategy.listAssessmentItemControlMappings(payload.itemId);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.add')
+  addAssessmentItemControlMapping(
+    @Payload() payload: { itemId: string; data: AssessmentItemControlMappingInput },
+  ): Promise<AssessmentItemControlMapping> {
+    return this.strategy.addAssessmentItemControlMapping(payload.itemId, payload.data);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.remove')
+  removeAssessmentItemControlMapping(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.removeAssessmentItemControlMapping(payload.id);
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────
