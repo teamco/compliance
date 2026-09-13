@@ -337,12 +337,8 @@ export function AssetsPage() {
     const total = assets.length;
     const critical = assets.filter((a) => a.criticality === 'critical').length;
     const highRisks = assets.filter((a) => {
-      const assetRisks = risks.filter(
-        (r) => r.assetId === a.id || (a.code && r.description?.includes(a.code)),
-      );
-      return assetRisks.some(
-        (r) => r.impact === 'high' || r.impact === 'very_high' || r.riskScore >= 12,
-      );
+      const assetRisks = risks.filter((r) => r.assetIds.includes(a.id));
+      return assetRisks.some((r) => r.inherentLabel === 'high' || r.inherentLabel === 'critical');
     }).length;
     const production = assets.filter(
       (a) => a.isProduction || a.environment === 'production',
@@ -834,11 +830,7 @@ export function AssetsPage() {
                       CLASSIFICATION_STYLES.internal;
 
                     // Compute linked risks & issues count
-                    const assetRisks = risks.filter(
-                      (r) =>
-                        r.assetId === asset.id ||
-                        (asset.code && r.description?.includes(asset.code)),
-                    );
+                    const assetRisks = risks.filter((r) => r.assetIds.includes(asset.id));
                     const assetIssues = issues.filter(
                       (i) =>
                         i.status !== 'resolved' &&
@@ -2297,13 +2289,7 @@ export function AssetsPage() {
                           {t('assets.profile.riskPosture')}
                         </span>
                         <div className="text-xl font-bold text-orange-400">
-                          {
-                            risks.filter(
-                              (r) =>
-                                r.assetId === viewingAsset.id ||
-                                (viewingAsset.code && r.description?.includes(viewingAsset.code)),
-                            ).length
-                          }{' '}
+                          {risks.filter((r) => r.assetIds.includes(viewingAsset.id)).length}{' '}
                           <span className="text-xs text-muted-foreground font-normal">Linked</span>
                         </div>
                       </div>
@@ -2613,11 +2599,7 @@ export function AssetsPage() {
                       {t('assets.profile.openRisks')}
                     </h4>
                     {(() => {
-                      const assetRisks = risks.filter(
-                        (r) =>
-                          r.assetId === viewingAsset.id ||
-                          (viewingAsset.code && r.description?.includes(viewingAsset.code)),
-                      );
+                      const assetRisks = risks.filter((r) => r.assetIds.includes(viewingAsset.id));
                       if (assetRisks.length === 0) {
                         return (
                           <div className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded border text-center">
@@ -2635,12 +2617,11 @@ export function AssetsPage() {
                               <div className="space-y-1">
                                 <div className="font-semibold text-foreground">{r.title}</div>
                                 <div className="text-[11px] text-muted-foreground">
-                                  Category: {r.category} · Likelihood: {r.likelihood} · Impact:{' '}
-                                  {r.impact}
+                                  {r.riskStatement}
                                 </div>
                               </div>
                               <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                                Score {r.riskScore}
+                                Score {r.inherentScore}
                               </span>
                             </div>
                           ))}
