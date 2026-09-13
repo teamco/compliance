@@ -1181,7 +1181,7 @@ export class NotesController {
 
   @Post('assessments/items/:itemId/evidence')
   @ApiOperation({ summary: 'Attach evidence to an assessment item' })
-  createAssessmentItemEvidence(
+  async createAssessmentItemEvidence(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('itemId') itemId: string,
@@ -1189,6 +1189,9 @@ export class NotesController {
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessmentItemEvidence(orgId, itemId, body);
   }
 
