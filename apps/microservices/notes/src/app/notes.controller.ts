@@ -738,8 +738,8 @@ export class NotesController {
   }
 
   @MessagePattern('notes.assessments.delete')
-  deleteAssessment(@Payload() p: { id: string }): Promise<void> {
-    return this.strategy.deleteAssessment(p.id);
+  deleteAssessment(@Payload() p: { id: string; userId: string }): Promise<void> {
+    return this.strategy.deleteAssessment(p.id, p.userId);
   }
 
   @MessagePattern('notes.assessments.items.list')

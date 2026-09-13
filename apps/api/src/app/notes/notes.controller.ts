@@ -1038,8 +1038,8 @@ export class NotesController {
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete risk assessment' })
   deleteAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
-    return this.notes.deleteAssessment(id);
+    const userId = this.uid(req);
+    return this.notes.deleteAssessment(id, userId);
   }
 
   @Get('assessments/:id/items')

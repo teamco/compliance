@@ -628,11 +628,6 @@ export interface AssetPatch {
   tags?: string[];
 }
 
-// ─── Risks ─────────────────────────────────────────────────────────────────
-
-export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-
 // ─── Risk Methodology ──────────────────────────────────────────────────────
 
 export type RiskScoreLabel = 'low' | 'medium' | 'high' | 'critical';
@@ -1315,7 +1310,7 @@ export interface NotesStrategy {
   createAssessment(orgId: string, userId: string, data: AssessmentInput): Promise<Assessment>;
   getAssessment(id: string): Promise<Assessment | null>;
   updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment>;
-  deleteAssessment(id: string): Promise<void>;
+  deleteAssessment(id: string, userId: string): Promise<void>;
 
   // Assessment lifecycle
   startAssessment(id: string, userId: string): Promise<Assessment>;

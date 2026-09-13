@@ -69,9 +69,7 @@ import type {
   RiskAcceptanceStatus,
   RiskControlMapping,
   RiskControlMappingInput,
-  RiskImpact,
   RiskInput,
-  RiskLikelihood,
   RiskMethodology,
   RiskMethodologyInput,
   RiskPatch,
@@ -106,18 +104,6 @@ function ok<T>(data: T | null, error: { message: string } | null): T {
 
 export class SupabaseNotesStrategy implements NotesStrategy {
   constructor(private readonly db: SupabaseClient) {}
-
-  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
-    const L: Record<RiskLikelihood, number> = {
-      very_low: 1,
-      low: 2,
-      medium: 3,
-      high: 4,
-      very_high: 5,
-    };
-    const I: Record<RiskImpact, number> = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 };
-    return L[likelihood] * I[impact];
-  }
 
   async listFrameworks(): Promise<Framework[]> {
     const { data, error } = await this.db
@@ -2357,18 +2343,23 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
       ['Cyber Threat Risk Assessment', 'Threat Scenario', 'Threat Scenarios'],
     ];
-    const { data: inserted, error: insertError } = await this.db
+    const { error: seedError } = await this.db.from('assessment_types').upsert(
+      defaults.map(([name, singular, plural]) => ({
+        org_id: orgId,
+        name,
+        item_noun_singular: singular,
+        item_noun_plural: plural,
+      })),
+      { onConflict: 'org_id,name', ignoreDuplicates: true },
+    );
+    if (seedError) throw new Error(seedError.message);
+
+    const { data: seeded, error: seededError } = await this.db
       .from('assessment_types')
-      .insert(
-        defaults.map(([name, singular, plural]) => ({
-          org_id: orgId,
-          name,
-          item_noun_singular: singular,
-          item_noun_plural: plural,
-        })),
-      )
-      .select();
-    return ok(inserted, insertError).map((r) => this.toAssessmentType(r));
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    return ok(seeded, seededError).map((r) => this.toAssessmentType(r));
   }
 
   async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
@@ -2454,10 +2445,6 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         approver_id: data.approverId ?? null,
         methodology_id: methodology.id,
         status: 'draft',
-        // legacy columns kept populated so the pre-existing NOT NULL/CHECK
-        // constraints on this table are satisfied without altering them:
-        type: 'cvra',
-        scope: '',
       })
       .select()
       .single();
@@ -2491,9 +2478,18 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toAssessment(ok(data, error));
   }
 
-  async deleteAssessment(id: string): Promise<void> {
-    const { error } = await this.db.from('risk_assessments').delete().eq('id', id);
+  async deleteAssessment(id: string, userId: string): Promise<void> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .eq('status', 'draft')
+      .select('id');
     if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new Error('not_authorized_owner_or_not_draft');
+    }
   }
 
   async startAssessment(id: string, userId: string): Promise<Assessment> {
@@ -2544,6 +2540,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   }
 
   async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    if (!note || note.trim() === '') throw new Error('note_required');
     const { data, error } = await this.db
       .from('risk_assessments')
       .update({
@@ -2591,7 +2588,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('risk_assessment_items')
       .select('*')
       .eq('assessment_id', assessmentId)
-      .order('item_score', { ascending: false });
+      .order('inherent_score', { ascending: false });
     return ok(data, error).map(this.toAssessmentItem);
   }
 
@@ -2637,7 +2634,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .select('inherent_score, inherent_label, residual_score, residual_label')
       .eq('assessment_id', assessmentId);
     const rows = ok(items, error);
-    const update: Record<string, unknown> = { item_count: rows.length };
+    const update: Record<string, unknown> = {
+      item_count: rows.length,
+      updated_at: new Date().toISOString(),
+    };
     if (rows.length === 0) {
       update['highest_inherent_score'] = null;
       update['highest_inherent_label'] = null;
@@ -2661,7 +2661,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         update['highest_residual_label'] = null;
       }
     }
-    await this.db.from('risk_assessments').update(update).eq('id', assessmentId);
+    const { error: updateError } = await this.db
+      .from('risk_assessments')
+      .update(update)
+      .eq('id', assessmentId);
+    if (updateError) throw new Error(updateError.message);
   }
 
   async updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem> {
@@ -2741,31 +2745,6 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const { error } = await this.db.from('risk_assessment_items').delete().eq('id', id);
     if (error) throw new Error(error.message);
     if (row) await this.recomputeAssessmentSummary(row['assessment_id'] as string);
-  }
-
-  private async recomputeAssessmentScore(assessmentId: string): Promise<void> {
-    const { data: items } = await this.db
-      .from('risk_assessment_items')
-      .select('item_score')
-      .eq('assessment_id', assessmentId);
-    const rows = items ?? [];
-    const riskScore =
-      rows.length > 0
-        ? Math.round(
-            rows.reduce(
-              (s: number, r: Record<string, unknown>) => s + (r['item_score'] as number),
-              0,
-            ) / rows.length,
-          )
-        : 0;
-    await this.db
-      .from('risk_assessments')
-      .update({
-        risk_score: riskScore,
-        item_count: rows.length,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', assessmentId);
   }
 
   private toAssessment(row: Record<string, unknown>): Assessment {
