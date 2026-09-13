@@ -62,6 +62,8 @@ import type {
   AssessmentItem,
   AssessmentItemInput,
   AssessmentItemPatch,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
   RiskAcceptance,
   RiskAcceptanceInput,
   RiskAcceptanceStatus,
@@ -3048,6 +3050,51 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return {
       id: row['id'] as string,
       riskId: row['risk_id'] as string,
+      controlId: row['control_id'] as string,
+      controlCode: row['control_code'] as string,
+      controlTitle: row['control_title'] as string,
+      effectivenessNote: row['effectiveness_note'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  async listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]> {
+    const { data, error } = await this.db
+      .from('assessment_item_control_mappings')
+      .select('*')
+      .eq('item_id', itemId);
+    return ok(data, error).map((r) => this.toAssessmentItemControlMapping(r));
+  }
+
+  async addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping> {
+    const { data: row, error } = await this.db
+      .from('assessment_item_control_mappings')
+      .insert({
+        item_id: itemId,
+        control_id: data.controlId,
+        control_code: data.controlCode,
+        control_title: data.controlTitle,
+        effectiveness_note: data.effectivenessNote ?? null,
+      })
+      .select()
+      .single();
+    return this.toAssessmentItemControlMapping(ok(row, error));
+  }
+
+  async removeAssessmentItemControlMapping(id: string): Promise<void> {
+    const { error } = await this.db.from('assessment_item_control_mappings').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toAssessmentItemControlMapping(
+    row: Record<string, unknown>,
+  ): AssessmentItemControlMapping {
+    return {
+      id: row['id'] as string,
+      itemId: row['item_id'] as string,
       controlId: row['control_id'] as string,
       controlCode: row['control_code'] as string,
       controlTitle: row['control_title'] as string,
