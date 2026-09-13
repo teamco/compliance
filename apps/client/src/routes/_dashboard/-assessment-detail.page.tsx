@@ -13,6 +13,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
@@ -67,6 +77,7 @@ export function AssessmentDetailPage() {
     inherentImpact: 0,
   });
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
 
   function handleCreateItem(e: React.FormEvent) {
     e.preventDefault();
@@ -252,7 +263,7 @@ export function AssessmentDetailPage() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      deleteItemMut.mutate(item.id);
+                      setConfirmDeleteItemId(item.id);
                     }}
                     className="text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
                   >
@@ -349,6 +360,33 @@ export function AssessmentDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!confirmDeleteItemId}
+        onOpenChange={(o) => !o && setConfirmDeleteItemId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('assessments.deleteItemConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('assessments.deleteItemConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmDeleteItemId(null)}>
+              {t('common.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteItemId) deleteItemMut.mutate(confirmDeleteItemId);
+                setConfirmDeleteItemId(null);
+              }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 }
