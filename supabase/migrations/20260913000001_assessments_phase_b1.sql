@@ -77,7 +77,10 @@ set
   owner_id = r.user_id,
   methodology_id = (select id from public.risk_methodologies m where m.org_id = r.org_id and m.is_active),
   status = case r.status when 'in_review' then 'pending_review' else r.status end,
-  highest_inherent_score = r.risk_score
+  highest_inherent_score = r.risk_score,
+  highest_inherent_label = case
+    when r.risk_score <= 4 then 'low' when r.risk_score <= 9 then 'medium'
+    when r.risk_score <= 16 then 'high' else 'critical' end
 from numbered
 where numbered.id = r.id;
 
@@ -94,9 +97,19 @@ create index risk_assessments_type_idx on public.risk_assessments(assessment_typ
 create index risk_assessments_owner_idx on public.risk_assessments(owner_id);
 create index risk_assessments_status_idx on public.risk_assessments(status);
 
+-- Replace the legacy creator-scoped policies: owner/approver can now be users
+-- other than the original creator, so RLS must be org-scoped like the rest of
+-- Phase B.1. Authorization itself is enforced in the notes MS; this is
+-- defence-in-depth for any non-service-role client.
 drop policy if exists "org members read assessments" on public.risk_assessments;
 create policy "org members read assessments"
   on public.risk_assessments for select using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
+
+drop policy if exists "users manage own assessments" on public.risk_assessments;
+create policy "org members manage assessments"
+  on public.risk_assessments for all using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
   );
 
@@ -129,6 +142,16 @@ alter table public.risk_assessment_items
   alter column inherent_impact set not null,
   alter column inherent_score set not null,
   alter column inherent_label set not null;
+
+drop policy if exists "items inherit assessment access" on public.risk_assessment_items;
+create policy "org members manage assessment items"
+  on public.risk_assessment_items for all using (
+    exists (
+      select 1 from public.risk_assessments ra
+      join public.org_profiles o on o.id = ra.org_id
+      where ra.id = assessment_id and o.user_id = auth.uid()
+    )
+  );
 
 -- Item <-> Control mapping (reuses the risk_control_mappings pattern).
 create table public.assessment_item_control_mappings (
