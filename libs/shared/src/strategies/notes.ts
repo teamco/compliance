@@ -802,6 +802,7 @@ export interface RiskAcceptance {
   reviewedAt?: string;
   reviewNotes?: string;
   approvedAt?: string;
+  approvedBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -1235,8 +1236,8 @@ export interface NotesStrategy {
     reviewedBy: string,
     reviewNotes?: string,
   ): Promise<RiskAcceptance>;
-  approveRiskAcceptance(id: string): Promise<RiskAcceptance>;
-  rejectRiskAcceptance(id: string): Promise<RiskAcceptance>;
+  approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+  rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
 
   // Risk history
   listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]>;

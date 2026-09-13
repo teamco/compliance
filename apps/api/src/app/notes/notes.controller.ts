@@ -952,15 +952,15 @@ export class NotesController {
   @Post('risk-acceptances/:id/approve')
   @ApiOperation({ summary: 'Approve a risk acceptance request' })
   approveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
-    return this.notes.approveRiskAcceptance(id);
+    const userId = this.uid(req);
+    return this.notes.approveRiskAcceptance(id, userId);
   }
 
   @Post('risk-acceptances/:id/reject')
   @ApiOperation({ summary: 'Reject a risk acceptance request' })
   rejectRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
-    return this.notes.rejectRiskAcceptance(id);
+    const userId = this.uid(req);
+    return this.notes.rejectRiskAcceptance(id, userId);
   }
 
   @Get('risks/:id/snapshots')

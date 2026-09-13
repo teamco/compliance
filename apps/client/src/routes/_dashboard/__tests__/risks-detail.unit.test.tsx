@@ -32,6 +32,15 @@ vi.mock('@/stores/active-org', () => ({
   useActiveOrgStore: () => ({ activeOrgId: 'org1' }),
 }));
 
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useAuthStore: (selector: (s: { user: { id: string; email: string } }) => unknown) =>
+      selector({ user: { id: 'Carol', email: 'carol@example.com' } }),
+  };
+});
+
 vi.mock('@/queries/assets', () => ({
   useAssets: () => ({ data: [] }),
 }));
