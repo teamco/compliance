@@ -2654,6 +2654,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         );
         update['highest_residual_score'] = topResidual['residual_score'];
         update['highest_residual_label'] = topResidual['residual_label'];
+      } else {
+        update['highest_residual_score'] = null;
+        update['highest_residual_label'] = null;
       }
     }
     await this.db.from('risk_assessments').update(update).eq('id', assessmentId);
