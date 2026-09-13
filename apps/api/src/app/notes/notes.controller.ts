@@ -41,10 +41,12 @@ import type {
   IssuePatch,
   RiskInput,
   RiskPatch,
-  RiskAssessmentInput,
-  RiskAssessmentPatch,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
+  AssessmentInput,
+  AssessmentPatch,
+  AssessmentItemPatch,
+  AssessmentTypeInput,
+  AssessmentItemInput,
+  AssessmentItemControlMappingInput,
   RiskMethodologyInput,
   RiskTaxonomyCategoryInput,
   RiskControlMappingInput,
@@ -1005,7 +1007,7 @@ export class NotesController {
   createAssessment(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
-    @Body() body: RiskAssessmentInput,
+    @Body() body: AssessmentInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
@@ -1026,7 +1028,7 @@ export class NotesController {
   updateAssessment(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
-    @Body() patch: RiskAssessmentPatch,
+    @Body() patch: AssessmentPatch,
   ) {
     this.uid(req);
     return this.notes.updateAssessment(id, patch);
@@ -1049,13 +1051,122 @@ export class NotesController {
 
   @Post('assessments/:id/items')
   @ApiOperation({ summary: 'Add item to risk assessment' })
-  addAssessmentItem(
+  createAssessmentItem(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') assessmentId: string,
-    @Body() body: RiskAssessmentItemInput,
+    @Body() body: AssessmentItemInput,
   ) {
     this.uid(req);
-    return this.notes.addAssessmentItem(assessmentId, body);
+    return this.notes.createAssessmentItem(assessmentId, body);
+  }
+
+  // ─── Assessment Types & Lifecycle ─────────────────────────────────────────
+
+  @Get('assessment-types')
+  @ApiOperation({ summary: 'List assessment types for org' })
+  listAssessmentTypes(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listAssessmentTypes(orgId);
+  }
+
+  @Post('assessment-types')
+  @ApiOperation({ summary: 'Create an assessment type' })
+  createAssessmentType(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: AssessmentTypeInput,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createAssessmentType(orgId, body);
+  }
+
+  @Patch('assessment-types/:id/archive')
+  @ApiOperation({ summary: 'Archive an assessment type' })
+  archiveAssessmentType(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.archiveAssessmentType(id);
+  }
+
+  @Post('assessments/:id/start')
+  @ApiOperation({ summary: 'Start an assessment (draft -> in_progress)' })
+  startAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.startAssessment(id, userId);
+  }
+
+  @Post('assessments/:id/submit-for-review')
+  @ApiOperation({ summary: 'Submit an assessment for review' })
+  submitForReview(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.submitForReview(id, userId);
+  }
+
+  @Post('assessments/:id/approve')
+  @ApiOperation({ summary: 'Approve an assessment' })
+  approveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.approveAssessment(id, userId);
+  }
+
+  @Post('assessments/:id/request-changes')
+  @ApiOperation({ summary: 'Request changes on an assessment' })
+  requestChanges(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { note: string },
+  ) {
+    const userId = this.uid(req);
+    return this.notes.requestChanges(id, userId, body.note);
+  }
+
+  @Post('assessments/:id/complete')
+  @ApiOperation({ summary: 'Complete an approved assessment' })
+  completeAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.completeAssessment(id, userId);
+  }
+
+  @Post('assessments/:id/archive')
+  @ApiOperation({ summary: 'Archive an assessment' })
+  archiveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.archiveAssessment(id, userId);
+  }
+
+  @Get('assessments/items/:itemId/mappings')
+  @ApiOperation({ summary: 'List controls mapped to an assessment item' })
+  listAssessmentItemControlMappings(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+  ) {
+    this.uid(req);
+    return this.notes.listAssessmentItemControlMappings(itemId);
+  }
+
+  @Post('assessments/items/:itemId/mappings')
+  @ApiOperation({ summary: 'Map a control to an assessment item' })
+  addAssessmentItemControlMapping(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+    @Body() body: AssessmentItemControlMappingInput,
+  ) {
+    this.uid(req);
+    return this.notes.addAssessmentItemControlMapping(itemId, body);
+  }
+
+  @Delete('assessments/items/mappings/:mappingId')
+  @ApiOperation({ summary: 'Remove an assessment item-control mapping' })
+  removeAssessmentItemControlMapping(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('mappingId') mappingId: string,
+  ) {
+    this.uid(req);
+    return this.notes.removeAssessmentItemControlMapping(mappingId);
   }
 
   @Patch('assessments/items/:itemId')
@@ -1063,7 +1174,7 @@ export class NotesController {
   updateAssessmentItem(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('itemId') itemId: string,
-    @Body() patch: RiskAssessmentItemPatch,
+    @Body() patch: AssessmentItemPatch,
   ) {
     this.uid(req);
     return this.notes.updateAssessmentItem(itemId, patch);
