@@ -10,7 +10,13 @@ import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
 import { useOrgMembers } from '@/queries/org-members';
 import { useAssessmentTypes } from '@/queries/assessment-types';
-import { useCreateAssessment, type Assessment, type AssessmentInput } from '@/queries/assessments';
+import {
+  useCreateAssessment,
+  useAssessmentItems,
+  type Assessment,
+  type AssessmentInput,
+} from '@/queries/assessments';
+import { AssessmentItemsPanel } from '@/components/assessments/AssessmentItemsPanel';
 
 type WizardStep = 'details' | 'items' | 'review';
 
@@ -188,7 +194,48 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
             </div>
           </div>
         )}
+
+        {step === 'items' && assessment && (
+          <div className="space-y-4">
+            <AssessmentItemsPanel orgId={orgId} assessmentId={assessment.id} />
+            <ItemsStepFooter
+              assessmentId={assessment.id}
+              onBack={() => setStep('details')}
+              onNext={() => setStep('review')}
+            />
+          </div>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ItemsStepFooter({
+  assessmentId,
+  onBack,
+  onNext,
+}: {
+  assessmentId: string;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  const { t } = useTranslation();
+  const { data: items = [] } = useAssessmentItems(assessmentId);
+  return (
+    <div className="flex items-center justify-between pt-2 border-t border-border">
+      <Button variant="outline" onClick={onBack}>
+        {t('assessments.wizard.back')}
+      </Button>
+      <div className="flex items-center gap-2">
+        {items.length === 0 && (
+          <span className="text-xs text-muted-foreground">
+            {t('assessments.wizard.needOneItemHint')}
+          </span>
+        )}
+        <Button onClick={onNext} disabled={items.length === 0}>
+          {t('assessments.wizard.next')}
+        </Button>
+      </div>
+    </div>
   );
 }
