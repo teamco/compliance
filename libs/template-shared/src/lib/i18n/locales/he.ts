@@ -901,6 +901,9 @@ export const he = {
     deleteConfirmTitle: 'למחוק את הסיכון הזה?',
     deleteConfirmDescription:
       'פעולה זו מסירה את הסיכון, השיוכים, הראיות וההיסטוריה שלו. לא ניתן לבטל פעולה זו.',
+    archiveCategoryConfirmTitle: 'להעביר לארכיון את הקטגוריה הזו?',
+    archiveCategoryConfirmDescription:
+      'הקטגוריה תועבר לארכיון ולא תהיה זמינה עוד לסיכונים חדשים. לא ניתן לבטל פעולה זו.',
     tab: {
       overview: 'סקירה כללית',
       assessment: 'הערכה',

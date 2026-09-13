@@ -5,6 +5,16 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   useRiskMethodology,
   useUpsertRiskMethodology,
   useRiskTaxonomy,
@@ -17,6 +27,7 @@ export function RiskMethodologySheet({ orgId }: { orgId: string }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'methodology' | 'taxonomy'>('methodology');
   const [newCategory, setNewCategory] = useState('');
+  const [confirmArchiveId, setConfirmArchiveId] = useState<string | null>(null);
 
   const { data: methodology } = useRiskMethodology(orgId);
   const upsertMut = useUpsertRiskMethodology(orgId);
@@ -87,7 +98,7 @@ export function RiskMethodologySheet({ orgId }: { orgId: string }) {
                   {!c.archived && (
                     <button
                       type="button"
-                      onClick={() => archiveCategoryMut.mutate(c.id)}
+                      onClick={() => setConfirmArchiveId(c.id)}
                       className="text-xs text-muted-foreground hover:text-destructive cursor-pointer"
                     >
                       {t('common.delete')}
@@ -116,6 +127,31 @@ export function RiskMethodologySheet({ orgId }: { orgId: string }) {
           )}
         </SheetContent>
       </Sheet>
+
+      <AlertDialog
+        open={!!confirmArchiveId}
+        onOpenChange={(open) => !open && setConfirmArchiveId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('risks.archiveCategoryConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('risks.archiveCategoryConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmArchiveId) archiveCategoryMut.mutate(confirmArchiveId);
+                setConfirmArchiveId(null);
+              }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
