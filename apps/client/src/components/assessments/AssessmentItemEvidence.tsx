@@ -9,6 +9,16 @@ interface AssessmentItemEvidenceProps {
   itemId: string;
 }
 
+function safeHref(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 const EMPTY_EVIDENCE_FORM = {
   title: '',
   owner: '',
@@ -27,9 +37,10 @@ export function AssessmentItemEvidence({ orgId, itemId }: AssessmentItemEvidence
   const createMut = useCreateAssessmentItemEvidence(orgId, itemId);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_EVIDENCE_FORM);
+  const unsafeUrl = form.url.trim().length > 0 && !safeHref(form.url);
 
   function handleAdd() {
-    if (!form.title.trim()) return;
+    if (!form.title.trim() || unsafeUrl) return;
     createMut.mutate(form, {
       onSuccess: () => {
         setForm(EMPTY_EVIDENCE_FORM);
@@ -46,16 +57,19 @@ export function AssessmentItemEvidence({ orgId, itemId }: AssessmentItemEvidence
             <span className="font-medium">{e.title}</span>
             <span className="text-muted-foreground/70">{e.verificationStatus}</span>
           </div>
-          {e.url && (
-            <a
-              href={e.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-muted-foreground/70 underline"
-            >
-              {e.url}
-            </a>
-          )}
+          {e.url &&
+            (safeHref(e.url) ? (
+              <a
+                href={safeHref(e.url)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted-foreground/70 underline"
+              >
+                {e.url}
+              </a>
+            ) : (
+              <span className="text-muted-foreground/70">{e.url}</span>
+            ))}
         </div>
       ))}
       {open ? (
@@ -72,11 +86,14 @@ export function AssessmentItemEvidence({ orgId, itemId }: AssessmentItemEvidence
             placeholder={t('assessments.evidenceUrlPlaceholder')}
             className="h-8 text-xs"
           />
+          {unsafeUrl && (
+            <p className="text-xs text-destructive">{t('assessments.evidenceUrlUnsafe')}</p>
+          )}
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handleAdd}
-              disabled={!form.title.trim() || createMut.isPending}
+              disabled={!form.title.trim() || unsafeUrl || createMut.isPending}
               className="h-7 px-2 rounded-md border border-border text-xs text-muted-foreground hover:text-foreground disabled:opacity-40 cursor-pointer"
             >
               {t('assessments.addEvidence')}
