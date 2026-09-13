@@ -53,12 +53,12 @@ import type {
   ReportTemplateInput,
   RetentionPrefsPayload,
   Risk,
-  RiskAssessment,
-  RiskAssessmentInput,
   RiskAssessmentItem,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
-  RiskAssessmentPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
   AssessmentType,
   AssessmentTypeInput,
   AssessmentStatus,
@@ -2407,7 +2407,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
   // ─── Risk Assessments ──────────────────────────────────────────────────────
 
-  async listAssessments(orgId: string): Promise<RiskAssessment[]> {
+  async listAssessments(orgId: string): Promise<Assessment[]> {
     const { data, error } = await this.db
       .from('risk_assessments')
       .select('*')
@@ -2419,23 +2419,50 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async createAssessment(
     orgId: string,
     userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment> {
+    data: AssessmentInput,
+  ): Promise<Assessment> {
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { data: existing, error: countError } = await this.db
+      .from('risk_assessments')
+      .select('assessment_code')
+      .eq('org_id', orgId)
+      .order('assessment_code', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (countError) throw new Error(countError.message);
+    const maxSuffix = existing?.assessment_code
+      ? parseInt(String(existing.assessment_code).replace('ASM-', ''), 10)
+      : 100;
+    const assessmentCode = `ASM-${String(maxSuffix + 1).padStart(6, '0')}`;
+
     const { data: row, error } = await this.db
       .from('risk_assessments')
       .insert({
         org_id: orgId,
         user_id: userId,
-        type: data.type,
+        assessment_code: assessmentCode,
         title: data.title,
-        scope: data.scope,
+        assessment_type_id: data.assessmentTypeId,
+        owner_id: data.ownerId,
+        business_unit: data.businessUnit ?? null,
+        asset_ids: data.assetIds ?? [],
+        vendor_ids: data.vendorIds ?? [],
+        due_date: data.dueDate ?? null,
+        approver_id: data.approverId ?? null,
+        methodology_id: methodology.id,
+        status: 'draft',
+        // legacy columns kept populated so the pre-existing NOT NULL/CHECK
+        // constraints on this table are satisfied without altering them:
+        type: 'cvra',
+        scope: '',
       })
       .select()
       .single();
     return this.toAssessment(ok(row, error));
   }
 
-  async getAssessment(id: string): Promise<RiskAssessment | null> {
+  async getAssessment(id: string): Promise<Assessment | null> {
     const { data, error } = await this.db
       .from('risk_assessments')
       .select('*')
@@ -2445,11 +2472,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.toAssessment(data) : null;
   }
 
-  async updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
+  async updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.scope !== undefined) update['scope'] = patch.scope;
-    if (patch.status !== undefined) update['status'] = patch.status;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
+    if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.dueDate !== undefined) update['due_date'] = patch.dueDate;
+    if (patch.approverId !== undefined) update['approver_id'] = patch.approverId;
+
     const { data, error } = await this.db
       .from('risk_assessments')
       .update(update)
@@ -2462,6 +2494,95 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async deleteAssessment(id: string): Promise<void> {
     const { error } = await this.db.from('risk_assessments').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  }
+
+  async startAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .eq('status', 'draft')
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_owner_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async submitForReview(id: string, userId: string): Promise<Assessment> {
+    const current = await this.getAssessment(id);
+    if (!current) throw new Error('assessment_not_found');
+    if (current.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (current.status !== 'in_progress' && current.status !== 'changes_requested') {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (!current.approverId) throw new Error('approver_required');
+    if (current.itemCount < 1) throw new Error('at_least_one_item_required');
+
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'pending_review', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .in('status', ['in_progress', 'changes_requested'])
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async approveAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('approver_id', userId)
+      .eq('status', 'pending_review')
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_approver_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({
+        status: 'changes_requested',
+        last_review_note: note,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('approver_id', userId)
+      .eq('status', 'pending_review')
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_approver_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async completeAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .eq('status', 'approved')
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_owner_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async archiveAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'archived', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .in('status', ['draft', 'completed'])
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_owner_or_invalid_transition');
+    return this.toAssessment(data);
   }
 
   async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
@@ -2564,17 +2685,28 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', assessmentId);
   }
 
-  private toAssessment(row: Record<string, unknown>): RiskAssessment {
+  private toAssessment(row: Record<string, unknown>): Assessment {
     return {
       id: row['id'] as string,
+      assessmentCode: row['assessment_code'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
-      type: row['type'] as AssessmentType,
       title: row['title'] as string,
-      scope: row['scope'] as string,
+      assessmentTypeId: row['assessment_type_id'] as string,
+      ownerId: row['owner_id'] as string,
+      businessUnit: row['business_unit'] as string | undefined,
+      assetIds: (row['asset_ids'] as string[]) ?? [],
+      vendorIds: (row['vendor_ids'] as string[]) ?? [],
+      dueDate: row['due_date'] as string | undefined,
+      approverId: row['approver_id'] as string | undefined,
+      methodologyId: row['methodology_id'] as string,
       status: row['status'] as AssessmentStatus,
-      riskScore: row['risk_score'] as number,
       itemCount: row['item_count'] as number,
+      highestInherentScore: row['highest_inherent_score'] as number | undefined,
+      highestInherentLabel: row['highest_inherent_label'] as RiskScoreLabel | undefined,
+      highestResidualScore: row['highest_residual_score'] as number | undefined,
+      highestResidualLabel: row['highest_residual_label'] as RiskScoreLabel | undefined,
+      lastReviewNote: row['last_review_note'] as string | undefined,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
