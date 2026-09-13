@@ -1,21 +1,37 @@
 import { useState } from 'react';
+import type React from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
 import { useAssessmentTypes } from '@/queries/assessment-types';
+import { AssessmentItemControls } from '@/components/assessments/AssessmentItemControls';
+import { useRiskMethodology } from '@/queries/risks';
+import { useInternalControlsList } from '@/queries/controls';
 import {
   useAssessment,
+  useAssessmentItems,
+  useCreateAssessmentItem,
+  useDeleteAssessmentItem,
   useStartAssessment,
   useSubmitForReview,
   useApproveAssessment,
   useRequestChanges,
   useCompleteAssessment,
   useArchiveAssessment,
+  type AssessmentItemInput,
 } from '@/queries/assessments';
 
 export function AssessmentDetailPage() {
@@ -35,8 +51,33 @@ export function AssessmentDetailPage() {
   const completeMut = useCompleteAssessment(orgId, id);
   const archiveMut = useArchiveAssessment(orgId, id);
 
+  const { data: items = [] } = useAssessmentItems(id);
+  const { data: methodology } = useRiskMethodology(orgId);
+  const { data: controls = [] } = useInternalControlsList(orgId);
+  const createItemMut = useCreateAssessmentItem(id);
+  const deleteItemMut = useDeleteAssessmentItem(id);
+
   const [tab, setTab] = useState<'overview' | 'items'>('overview');
   const [changesNote, setChangesNote] = useState('');
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [itemForm, setItemForm] = useState<AssessmentItemInput>({
+    subject: '',
+    description: '',
+    inherentLikelihood: 0,
+    inherentImpact: 0,
+  });
+  const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+
+  function handleCreateItem(e: React.FormEvent) {
+    e.preventDefault();
+    if (!itemForm.subject || !itemForm.inherentLikelihood || !itemForm.inherentImpact) return;
+    createItemMut.mutate(itemForm, {
+      onSuccess: () => {
+        setItemDialogOpen(false);
+        setItemForm({ subject: '', description: '', inherentLikelihood: 0, inherentImpact: 0 });
+      },
+    });
+  }
 
   if (isPending || !assessment) {
     return (
@@ -173,10 +214,141 @@ export function AssessmentDetailPage() {
       )}
 
       {tab === 'items' && (
-        <div className="py-8 text-center text-muted-foreground text-sm">
-          {t('assessments.itemsPlaceholder')}
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setItemDialogOpen(true)}>
+              <Plus size={14} className="mr-1.5" />
+              {t('assessments.addItem')}
+            </Button>
+          </div>
+          {items.length === 0 ? (
+            <p className="text-sm text-center text-muted-foreground py-12">
+              {t('assessments.noItems')}
+            </p>
+          ) : (
+            items.map((item) => (
+              <div key={item.id} className="border border-border rounded-xl overflow-hidden">
+                <div
+                  className="flex items-start gap-3 p-4 cursor-pointer hover:bg-surface"
+                  onClick={() => setExpandedItemId((cur) => (cur === item.id ? null : item.id))}
+                >
+                  <span className="text-lg font-bold tabular-nums shrink-0">
+                    {item.inherentScore}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm text-foreground">{item.subject}</p>
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {item.description}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground/60 mt-1">
+                      {t('assessments.inherent')}: {item.inherentScore} ({item.inherentLabel})
+                      {item.residualScore != null &&
+                        ` · ${t('assessments.residual')}: ${item.residualScore} (${item.residualLabel})`}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteItemMut.mutate(item.id);
+                    }}
+                    className="text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+                {expandedItemId === item.id && (
+                  <div className="border-t border-border p-4 bg-background/40">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      {t('assessments.linkedControls')}
+                    </p>
+                    <AssessmentItemControls
+                      itemId={item.id}
+                      availableControls={controls.map((c) => ({
+                        id: c.id,
+                        code: c.code,
+                        title: c.title,
+                      }))}
+                    />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
       )}
+
+      <Dialog open={itemDialogOpen} onOpenChange={setItemDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assessments.addItem')}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateItem} className="space-y-3">
+            <div>
+              <Label>{t('assessments.subject')}</Label>
+              <Input
+                value={itemForm.subject}
+                onChange={(e) => setItemForm((f) => ({ ...f, subject: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label>{t('assessments.description')}</Label>
+              <textarea
+                value={itemForm.description}
+                onChange={(e) => setItemForm((f) => ({ ...f, description: e.target.value }))}
+                rows={2}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>{t('assessments.inherentLikelihood')}</Label>
+                <select
+                  value={itemForm.inherentLikelihood || ''}
+                  onChange={(e) =>
+                    setItemForm((f) => ({ ...f, inherentLikelihood: Number(e.target.value) }))
+                  }
+                  required
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                >
+                  <option value="">{t('risks.selectLikelihood')}</option>
+                  {methodology?.likelihoodLabels.map((label, i) => (
+                    <option key={i} value={i + 1}>
+                      {i + 1} — {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>{t('assessments.inherentImpact')}</Label>
+                <select
+                  value={itemForm.inherentImpact || ''}
+                  onChange={(e) =>
+                    setItemForm((f) => ({ ...f, inherentImpact: Number(e.target.value) }))
+                  }
+                  required
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                >
+                  <option value="">{t('risks.selectImpact')}</option>
+                  {methodology?.impactLabels.map((label, i) => (
+                    <option key={i} value={i + 1}>
+                      {i + 1} — {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={createItemMut.isPending}>
+                {t('assessments.addItem')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </PageLayout>
   );
 }
