@@ -50,14 +50,14 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
-  RiskLikelihood,
-  RiskImpact,
-  RiskAssessment,
-  RiskAssessmentInput,
-  RiskAssessmentPatch,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
   RiskMethodology,
   RiskMethodologyInput,
   RiskTaxonomyCategory,
@@ -76,6 +76,8 @@ import type {
   PolicyControlInput,
   ControlFrameworkMappingInput,
   Finding,
+  AssessmentType,
+  AssessmentTypeInput,
 } from '../notes';
 import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
 
@@ -3607,24 +3609,6 @@ export class FakeNotesStrategy implements NotesStrategy {
     return category;
   }
 
-  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
-    const L: Record<RiskLikelihood, number> = {
-      very_low: 1,
-      low: 2,
-      medium: 3,
-      high: 4,
-      very_high: 5,
-    };
-    const I: Record<RiskImpact, number> = {
-      very_low: 1,
-      low: 2,
-      medium: 3,
-      high: 4,
-      very_high: 5,
-    };
-    return L[likelihood] * I[impact];
-  }
-
   async listRisks(orgId: string): Promise<Risk[]> {
     return this.risks.filter((r) => r.orgId === orgId);
   }
@@ -3853,123 +3837,323 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   // ─── Risk Assessments ────────────────────────────────────────────────────
-  private assessments: RiskAssessment[] = [];
-  private assessmentItems: RiskAssessmentItem[] = [];
+  private assessments: Assessment[] = [];
+  private assessmentItems: AssessmentItem[] = [];
+  private assessmentItemControlMappings: AssessmentItemControlMapping[] = [];
+  private assessmentTypes: AssessmentType[] = [];
 
-  async listAssessments(orgId: string): Promise<RiskAssessment[]> {
+  async listAssessments(orgId: string): Promise<Assessment[]> {
     return this.assessments.filter((a) => a.orgId === orgId);
   }
 
   async createAssessment(
     orgId: string,
     userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment> {
-    const now = new Date().toISOString();
-    const assessment: RiskAssessment = {
+    data: AssessmentInput,
+  ): Promise<Assessment> {
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const maxSuffix = this.assessments
+      .filter((a) => a.orgId === orgId)
+      .reduce(
+        (max, a) => Math.max(max, parseInt(a.assessmentCode.replace('ASM-', ''), 10) || 0),
+        100,
+      );
+    const assessment: Assessment = {
       id: globalThis.crypto.randomUUID(),
+      assessmentCode: `ASM-${String(maxSuffix + 1).padStart(6, '0')}`,
       orgId,
       userId,
-      type: data.type,
       title: data.title,
-      scope: data.scope,
+      assessmentTypeId: data.assessmentTypeId,
+      ownerId: data.ownerId,
+      businessUnit: data.businessUnit,
+      assetIds: data.assetIds ?? [],
+      vendorIds: data.vendorIds ?? [],
+      dueDate: data.dueDate,
+      approverId: data.approverId,
+      methodologyId: methodology.id,
       status: 'draft',
-      riskScore: 0,
       itemCount: 0,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     this.assessments.push(assessment);
     return assessment;
   }
 
-  async getAssessment(id: string): Promise<RiskAssessment | null> {
+  async getAssessment(id: string): Promise<Assessment | null> {
     return this.assessments.find((a) => a.id === id) ?? null;
   }
 
-  async updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
-    const idx = this.assessments.findIndex((a) => a.id === id);
-    if (idx === -1) throw new Error('assessment_not_found');
-    const updated: RiskAssessment = {
-      ...this.assessments[idx]!,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
-    this.assessments[idx] = updated;
-    return updated;
+  async updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
+    const assessment = this.assessments.find((a) => a.id === id);
+    if (!assessment) throw new Error(`assessment_not_found: ${id}`);
+    if (patch.title !== undefined) assessment.title = patch.title;
+    if (patch.businessUnit !== undefined) assessment.businessUnit = patch.businessUnit;
+    if (patch.assetIds !== undefined) assessment.assetIds = patch.assetIds;
+    if (patch.vendorIds !== undefined) assessment.vendorIds = patch.vendorIds;
+    if (patch.dueDate !== undefined) assessment.dueDate = patch.dueDate;
+    assessment.updatedAt = new Date().toISOString();
+    return assessment;
   }
 
-  async deleteAssessment(id: string): Promise<void> {
-    this.assessments = this.assessments.filter((a) => a.id !== id);
+  async startAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'draft') throw new Error(`invalid_transition_from_${a.status}`);
+    a.status = 'in_progress';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async submitForReview(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'in_progress' && a.status !== 'changes_requested') {
+      throw new Error(`invalid_transition_from_${a.status}`);
+    }
+    if (!a.approverId) throw new Error('approver_required');
+    if (a.itemCount < 1) throw new Error('at_least_one_item_required');
+    a.status = 'pending_review';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async approveAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
+    if (a.approverId !== userId) throw new Error('not_authorized_approver');
+    a.status = 'approved';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    if (!note || note.trim() === '') throw new Error('note_required');
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
+    if (a.approverId !== userId) throw new Error('not_authorized_approver');
+    a.status = 'changes_requested';
+    a.lastReviewNote = note;
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async completeAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'approved') throw new Error(`invalid_transition_from_${a.status}`);
+    a.status = 'completed';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async archiveAssessment(id: string, userId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'draft' && a.status !== 'completed') {
+      throw new Error(`invalid_transition_from_${a.status}`);
+    }
+    a.status = 'archived';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async deleteAssessment(id: string, userId: string): Promise<void> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'draft') throw new Error(`delete_forbidden_from_${a.status}`);
+    this.assessments = this.assessments.filter((x) => x.id !== id);
     this.assessmentItems = this.assessmentItems.filter((i) => i.assessmentId !== id);
   }
 
-  async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
-    return this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
+  async listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {
+    return this.assessmentItems
+      .filter((i) => i.assessmentId === assessmentId)
+      .sort((a, b) => b.inherentScore - a.inherentScore);
   }
 
-  async addAssessmentItem(
+  async createAssessmentItem(
     assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem> {
-    const now = new Date().toISOString();
-    const item: RiskAssessmentItem = {
+    data: AssessmentItemInput,
+  ): Promise<AssessmentItem> {
+    const assessment = this.assessments.find((a) => a.id === assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${assessmentId}`);
+    const methodology = this.riskMethodologies.find((m) => m.id === assessment.methodologyId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const item: AssessmentItem = {
       id: globalThis.crypto.randomUUID(),
       assessmentId,
+      orgId: assessment.orgId,
       subject: data.subject,
       description: data.description,
-      likelihood: data.likelihood,
-      impact: data.impact,
-      itemScore: this.computeRiskScore(data.likelihood, data.impact),
-      mitigations: data.mitigations ?? '',
-      createdAt: now,
-      updatedAt: now,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      inherentScore: score,
+      inherentLabel: label,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     this.assessmentItems.push(item);
-    this.recomputeAssessmentScore(assessmentId);
+    this.recomputeAssessmentSummary(assessmentId);
     return item;
   }
 
-  async updateAssessmentItem(
-    id: string,
-    patch: RiskAssessmentItemPatch,
-  ): Promise<RiskAssessmentItem> {
-    const idx = this.assessmentItems.findIndex((i) => i.id === id);
-    if (idx === -1) throw new Error('assessment_item_not_found');
-    const existing = this.assessmentItems[idx]!;
-    const merged: RiskAssessmentItem = {
-      ...existing,
-      ...patch,
-      updatedAt: new Date().toISOString(),
-    };
-    if (patch.likelihood !== undefined || patch.impact !== undefined) {
-      merged.itemScore = this.computeRiskScore(merged.likelihood, merged.impact);
+  private recomputeAssessmentSummary(assessmentId: string): void {
+    const assessment = this.assessments.find((a) => a.id === assessmentId);
+    if (!assessment) return;
+    const items = this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
+    assessment.itemCount = items.length;
+    if (items.length === 0) {
+      assessment.highestInherentScore = undefined;
+      assessment.highestInherentLabel = undefined;
+      assessment.highestResidualScore = undefined;
+      assessment.highestResidualLabel = undefined;
+      return;
     }
-    this.assessmentItems[idx] = merged;
-    this.recomputeAssessmentScore(merged.assessmentId);
-    return merged;
+    const topInherent = items.reduce((max, i) => (i.inherentScore > max.inherentScore ? i : max));
+    assessment.highestInherentScore = topInherent.inherentScore;
+    assessment.highestInherentLabel = topInherent.inherentLabel;
+    const withResidual = items.filter((i) => i.residualScore !== undefined);
+    if (withResidual.length > 0) {
+      const topResidual = withResidual.reduce((max, i) =>
+        (i.residualScore ?? 0) > (max.residualScore ?? 0) ? i : max,
+      );
+      assessment.highestResidualScore = topResidual.residualScore;
+      assessment.highestResidualLabel = topResidual.residualLabel;
+    } else {
+      assessment.highestResidualScore = undefined;
+      assessment.highestResidualLabel = undefined;
+    }
+  }
+
+  async updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem> {
+    const item = this.assessmentItems.find((i) => i.id === id);
+    if (!item) throw new Error(`assessment_item_not_found: ${id}`);
+    const assessment = this.assessments.find((a) => a.id === item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    const methodology = this.riskMethodologies.find((m) => m.id === assessment.methodologyId);
+
+    if (patch.subject !== undefined) item.subject = patch.subject;
+    if (patch.description !== undefined) item.description = patch.description;
+    if (patch.inherentLikelihood !== undefined) item.inherentLikelihood = patch.inherentLikelihood;
+    if (patch.inherentImpact !== undefined) item.inherentImpact = patch.inherentImpact;
+    if (patch.residualLikelihood !== undefined) item.residualLikelihood = patch.residualLikelihood;
+    if (patch.residualImpact !== undefined) item.residualImpact = patch.residualImpact;
+
+    if (methodology) {
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          item.inherentLikelihood,
+          item.inherentImpact,
+        );
+        item.inherentScore = score;
+        item.inherentLabel = label;
+      }
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        item.residualLikelihood !== undefined &&
+        item.residualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          item.residualLikelihood,
+          item.residualImpact,
+        );
+        item.residualScore = score;
+        item.residualLabel = label;
+      }
+    }
+
+    item.updatedAt = new Date().toISOString();
+    this.recomputeAssessmentSummary(item.assessmentId);
+    return item;
   }
 
   async deleteAssessmentItem(id: string): Promise<void> {
     const item = this.assessmentItems.find((i) => i.id === id);
+    if (!item) return;
     this.assessmentItems = this.assessmentItems.filter((i) => i.id !== id);
-    if (item) this.recomputeAssessmentScore(item.assessmentId);
+    this.recomputeAssessmentSummary(item.assessmentId);
   }
 
-  private recomputeAssessmentScore(assessmentId: string): void {
-    const items = this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
-    const idx = this.assessments.findIndex((a) => a.id === assessmentId);
-    if (idx === -1) return;
-    const riskScore =
-      items.length > 0
-        ? Math.round(items.reduce((sum, i) => sum + i.itemScore, 0) / items.length)
-        : 0;
-    this.assessments[idx] = {
-      ...this.assessments[idx]!,
-      riskScore,
-      itemCount: items.length,
-      updatedAt: new Date().toISOString(),
+  async listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]> {
+    return this.assessmentItemControlMappings.filter((m) => m.itemId === itemId);
+  }
+
+  async addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping> {
+    const mapping: AssessmentItemControlMapping = {
+      ...data,
+      id: globalThis.crypto.randomUUID(),
+      itemId,
+      createdAt: new Date().toISOString(),
     };
+    this.assessmentItemControlMappings.push(mapping);
+    return mapping;
+  }
+
+  async removeAssessmentItemControlMapping(id: string): Promise<void> {
+    this.assessmentItemControlMappings = this.assessmentItemControlMappings.filter(
+      (m) => m.id !== id,
+    );
+  }
+
+  async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
+    const defaults: Array<[string, string, string]> = [
+      ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
+      ['Cyber Threat Risk Assessment', 'Threat Scenario', 'Threat Scenarios'],
+    ];
+    for (const [name, singular, plural] of defaults) {
+      if (this.assessmentTypes.some((t) => t.orgId === orgId && t.name === name)) continue;
+      this.assessmentTypes.push({
+        id: `atype-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+        orgId,
+        name,
+        itemNounSingular: singular,
+        itemNounPlural: plural,
+        archived: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    return this.assessmentTypes.filter((t) => t.orgId === orgId);
+  }
+
+  async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
+    const type: AssessmentType = {
+      id: `atype-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      name: data.name,
+      itemNounSingular: data.itemNounSingular,
+      itemNounPlural: data.itemNounPlural,
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+    this.assessmentTypes.push(type);
+    return type;
+  }
+
+  async archiveAssessmentType(id: string): Promise<AssessmentType> {
+    const type = this.assessmentTypes.find((t) => t.id === id);
+    if (!type) throw new Error(`assessment_type_not_found: ${id}`);
+    type.archived = true;
+    return type;
   }
 
   async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {

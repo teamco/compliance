@@ -1,4 +1,9 @@
 import { FakeNotesStrategy } from '../fakes/fake-notes';
+import type {
+  AssessmentItemControlMappingInput,
+  AssessmentItemPatch,
+  AssessmentPatch,
+} from '../notes';
 import { runNotesContract } from './notes.contract.unit.test';
 
 runNotesContract('FakeNotesStrategy', () => new FakeNotesStrategy());
@@ -327,90 +332,507 @@ describe('risk assessments', () => {
     s = new FakeNotesStrategy();
   });
 
-  it('creates CVRA assessment with draft status', async () => {
+  it('creates assessment with auto-generated code and draft status', async () => {
+    const types = await s.listAssessmentTypes('org1');
     const a = await s.createAssessment('org1', 'u1', {
-      type: 'cvra',
-      title: 'Q2 CVRA',
-      scope: 'Payment services',
+      assessmentTypeId: types[0]!.id,
+      title: 'Q2 Vulnerability Sweep',
+      ownerId: 'u1',
     });
-    expect(a.type).toBe('cvra');
+    expect(a.assessmentCode).toMatch(/^ASM-\d{6}$/);
     expect(a.status).toBe('draft');
-    expect(a.riskScore).toBe(0);
     expect(a.itemCount).toBe(0);
+    expect(a.highestInherentScore).toBeUndefined();
   });
 
-  it('creates CTRA assessment', async () => {
-    const a = await s.createAssessment('org1', 'u1', {
-      type: 'ctra',
-      title: 'Ransomware CTRA',
-      scope: 'All systems',
+  it('creates assessment with different assessment types', async () => {
+    const types = await s.listAssessmentTypes('org1');
+    expect(types).toHaveLength(2);
+    const a1 = await s.createAssessment('org1', 'u1', {
+      assessmentTypeId: types[0]!.id,
+      title: 'Vulnerability Assessment',
+      ownerId: 'u1',
     });
-    expect(a.type).toBe('ctra');
+    const a2 = await s.createAssessment('org1', 'u1', {
+      assessmentTypeId: types[1]!.id,
+      title: 'Threat Assessment',
+      ownerId: 'u1',
+    });
+    expect(a1.assessmentTypeId).toBe(types[0]!.id);
+    expect(a2.assessmentTypeId).toBe(types[1]!.id);
   });
 
-  it('adds items and recomputes aggregate score', async () => {
+  it('adds items, scores them, and recomputes assessment summary', async () => {
+    const types = await s.listAssessmentTypes('org1');
     const a = await s.createAssessment('org1', 'u1', {
-      type: 'cvra',
+      assessmentTypeId: types[0]!.id,
       title: 'T',
-      scope: 'S',
+      ownerId: 'u1',
     });
-    await s.addAssessmentItem(a.id, {
+    const item1 = await s.createAssessmentItem(a.id, {
       subject: 'Unpatched OS',
       description: 'Missing patches',
-      likelihood: 'high',
-      impact: 'high',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
     });
-    await s.addAssessmentItem(a.id, {
+    expect(item1.inherentScore).toBe(16);
+    const item2 = await s.createAssessmentItem(a.id, {
       subject: 'Weak auth',
       description: 'No MFA',
-      likelihood: 'medium',
-      impact: 'medium',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
     });
+    expect(item2.inherentScore).toBe(9);
     const updated = await s.getAssessment(a.id);
     expect(updated!.itemCount).toBe(2);
-    expect(updated!.riskScore).toBe(Math.round((16 + 9) / 2)); // (4*4 + 3*3) / 2 = 12
+    expect(updated!.highestInherentScore).toBe(16);
   });
 
-  it('updates assessment status', async () => {
+  it('updates assessment status via the owner-gated lifecycle transition', async () => {
+    const types = await s.listAssessmentTypes('org1');
     const a = await s.createAssessment('org1', 'u1', {
-      type: 'cvra',
+      assessmentTypeId: types[0]!.id,
       title: 'T',
-      scope: 'S',
+      ownerId: 'u1',
     });
-    const updated = await s.updateAssessment(a.id, { status: 'in_review' });
-    expect(updated.status).toBe('in_review');
+    const updated = await s.startAssessment(a.id, 'u1');
+    expect(updated.status).toBe('in_progress');
   });
 
   it('lists assessments scoped by orgId', async () => {
-    await s.createAssessment('org1', 'u1', { type: 'cvra', title: 'T', scope: 'S' });
+    const types = await s.listAssessmentTypes('org1');
+    await s.createAssessment('org1', 'u1', {
+      assessmentTypeId: types[0]!.id,
+      title: 'T',
+      ownerId: 'u1',
+    });
     expect(await s.listAssessments('org2')).toHaveLength(0);
     expect(await s.listAssessments('org1')).toHaveLength(1);
   });
 
   it('deletes assessment and its items', async () => {
-    const a = await s.createAssessment('org1', 'u1', { type: 'cvra', title: 'T', scope: 'S' });
-    await s.addAssessmentItem(a.id, {
+    const types = await s.listAssessmentTypes('org1');
+    const a = await s.createAssessment('org1', 'u1', {
+      assessmentTypeId: types[0]!.id,
+      title: 'T',
+      ownerId: 'u1',
+    });
+    await s.createAssessmentItem(a.id, {
       subject: 'X',
       description: '',
-      likelihood: 'low',
-      impact: 'low',
+      inherentLikelihood: 1,
+      inherentImpact: 1,
     });
-    await s.deleteAssessment(a.id);
+    await s.deleteAssessment(a.id, 'u1');
     expect(await s.listAssessments('org1')).toHaveLength(0);
     expect(await s.listAssessmentItems(a.id)).toHaveLength(0);
   });
 
-  it('updates item and recomputes score', async () => {
-    const a = await s.createAssessment('org1', 'u1', { type: 'cvra', title: 'T', scope: 'S' });
-    const item = await s.addAssessmentItem(a.id, {
+  it('updates item and recomputes assessment summary', async () => {
+    const types = await s.listAssessmentTypes('org1');
+    const a = await s.createAssessment('org1', 'u1', {
+      assessmentTypeId: types[0]!.id,
+      title: 'T',
+      ownerId: 'u1',
+    });
+    const item = await s.createAssessmentItem(a.id, {
       subject: 'X',
       description: '',
-      likelihood: 'low',
-      impact: 'low',
+      inherentLikelihood: 1,
+      inherentImpact: 1,
     });
-    await s.updateAssessmentItem(item.id, { likelihood: 'very_high', impact: 'very_high' });
+    expect(item.inherentScore).toBe(1);
+    await s.updateAssessmentItem(item.id, {
+      inherentLikelihood: 5,
+      inherentImpact: 5,
+    });
     const updated = await s.getAssessment(a.id);
-    expect(updated!.riskScore).toBe(25); // 5*5
+    expect(updated!.highestInherentScore).toBe(25);
+  });
+});
+
+describe('Assessment lifecycle (Phase B.1)', () => {
+  it('seeds two default assessment types on first access', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    expect(types).toHaveLength(2);
+    expect(types.map((t) => t.itemNounSingular).sort()).toEqual([
+      'Threat Scenario',
+      'Vulnerability',
+    ]);
+  });
+
+  it('creates an assessment with an auto-generated code and pinned methodology', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      title: 'Q1 Vulnerability Sweep',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'user-1',
+    });
+    expect(assessment.assessmentCode).toMatch(/^ASM-\d{6}$/);
+    expect(assessment.status).toBe('draft');
+    expect(assessment.methodologyId).toBeTruthy();
+    expect(assessment.itemCount).toBe(0);
+  });
+
+  it('adding an item scores it and recomputes the assessment summary', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'user-1',
+    });
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Unpatched Log4j',
+      description: 'CVE-2025-XXXX on web-01',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+    expect(item.inherentScore).toBe(16);
+    const refreshed = await strategy.getAssessment(assessment.id);
+    expect(refreshed?.itemCount).toBe(1);
+    expect(refreshed?.highestInherentScore).toBe(16);
+  });
+
+  it('links a control to an item, and manual residual scoring works after linking', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'user-1',
+    });
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+
+    await strategy.addAssessmentItemControlMapping(item.id, {
+      controlId: 'ctrl-1',
+      controlCode: 'VULN-001',
+      controlTitle: 'Patch Management',
+    });
+    expect(await strategy.listAssessmentItemControlMappings(item.id)).toHaveLength(1);
+
+    const updated = await strategy.updateAssessmentItem(item.id, {
+      residualLikelihood: 2,
+      residualImpact: 3,
+    });
+    expect(updated.residualScore).toBe(6);
+
+    const refreshed = await strategy.getAssessment(assessment.id);
+    expect(refreshed?.highestResidualScore).toBe(6);
+  });
+
+  it('clears highestResidualScore/label once no remaining item carries a residual score', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'user-1',
+    });
+    const itemWithResidual = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject A',
+      description: 'Description A',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+    await strategy.updateAssessmentItem(itemWithResidual.id, {
+      residualLikelihood: 4,
+      residualImpact: 5,
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject B (no residual)',
+      description: 'Description B',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+
+    const beforeDelete = await strategy.getAssessment(assessment.id);
+    expect(beforeDelete?.highestResidualScore).toBe(20);
+
+    await strategy.deleteAssessmentItem(itemWithResidual.id);
+
+    const afterDelete = await strategy.getAssessment(assessment.id);
+    expect(afterDelete?.itemCount).toBe(1);
+    expect(afterDelete?.highestResidualScore).toBeUndefined();
+    expect(afterDelete?.highestResidualLabel).toBeUndefined();
+  });
+
+  it('enforces the full lifecycle with owner/approver gating', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    const submitted = await strategy.submitForReview(assessment.id, 'owner-1');
+    expect(submitted.status).toBe('pending_review');
+
+    await expect(strategy.approveAssessment(assessment.id, 'owner-1')).rejects.toThrow(
+      'not_authorized_approver',
+    );
+
+    const approved = await strategy.approveAssessment(assessment.id, 'approver-1');
+    expect(approved.status).toBe('approved');
+
+    const completed = await strategy.completeAssessment(assessment.id, 'owner-1');
+    expect(completed.status).toBe('completed');
+
+    const archived = await strategy.archiveAssessment(assessment.id, 'owner-1');
+    expect(archived.status).toBe('archived');
+  });
+
+  it('requestChanges records a note and returns the assessment to changes_requested', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    const changed = await strategy.requestChanges(assessment.id, 'approver-1', 'Add mitigations');
+    expect(changed.status).toBe('changes_requested');
+    expect(changed.lastReviewNote).toBe('Add mitigations');
+
+    const resubmitted = await strategy.submitForReview(assessment.id, 'owner-1');
+    expect(resubmitted.status).toBe('pending_review');
+  });
+
+  it('rejects requestChanges without a note', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    await expect(strategy.requestChanges(assessment.id, 'approver-1', '   ')).rejects.toThrow(
+      'note_required',
+    );
+    expect((await strategy.getAssessment(assessment.id))?.status).toBe('pending_review');
+  });
+});
+
+describe('Assessment write-path hardening', () => {
+  async function seedDraft(strategy: FakeNotesStrategy) {
+    const types = await strategy.listAssessmentTypes('org-1');
+    return strategy.createAssessment('org-1', 'creator-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+  }
+
+  it('ignores ownerId/approverId supplied in a raw updateAssessment payload', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+
+    const updated = await strategy.updateAssessment(assessment.id, {
+      title: 'Renamed',
+      ownerId: 'attacker',
+      approverId: 'attacker',
+    } as AssessmentPatch);
+
+    expect(updated.title).toBe('Renamed');
+    expect(updated.ownerId).toBe('owner-1');
+    expect(updated.approverId).toBe('approver-1');
+  });
+
+  it('ignores identity and derived score fields in a raw updateAssessmentItem payload', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+
+    const updated = await strategy.updateAssessmentItem(item.id, {
+      subject: 'Renamed',
+      id: 'forged-id',
+      assessmentId: 'forged-assessment',
+      orgId: 'forged-org',
+      inherentScore: 999,
+      inherentLabel: 'critical',
+      residualScore: 999,
+      residualLabel: 'critical',
+      createdAt: '1970-01-01T00:00:00.000Z',
+    } as AssessmentItemPatch);
+
+    expect(updated.subject).toBe('Renamed');
+    expect(updated.id).toBe(item.id);
+    expect(updated.assessmentId).toBe(assessment.id);
+    expect(updated.orgId).toBe('org-1');
+    expect(updated.inherentScore).toBe(4);
+    expect(updated.inherentLabel).toBe('low');
+    expect(updated.residualScore).toBeUndefined();
+    expect(updated.residualLabel).toBeUndefined();
+    expect(updated.createdAt).toBe(item.createdAt);
+  });
+
+  it('ignores id/itemId supplied in a raw control mapping payload', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+
+    const mapping = await strategy.addAssessmentItemControlMapping(item.id, {
+      controlId: 'ctrl-1',
+      controlCode: 'VULN-001',
+      controlTitle: 'Patch Management',
+      id: 'forged-id',
+      itemId: 'forged-item',
+    } as AssessmentItemControlMappingInput);
+
+    expect(mapping.id).not.toBe('forged-id');
+    expect(mapping.itemId).toBe(item.id);
+    expect(await strategy.listAssessmentItemControlMappings(item.id)).toHaveLength(1);
+  });
+
+  it('removes a control mapping by id', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+    const mapping = await strategy.addAssessmentItemControlMapping(item.id, {
+      controlId: 'ctrl-1',
+      controlCode: 'VULN-001',
+      controlTitle: 'Patch Management',
+    });
+    const other = await strategy.addAssessmentItemControlMapping(item.id, {
+      controlId: 'ctrl-2',
+      controlCode: 'VULN-002',
+      controlTitle: 'Vulnerability Scanning',
+    });
+
+    await strategy.removeAssessmentItemControlMapping(mapping.id);
+
+    const remaining = await strategy.listAssessmentItemControlMappings(item.id);
+    expect(remaining.map((m) => m.id)).toEqual([other.id]);
+  });
+
+  it('archives an assessment type without removing it from the org listing', async () => {
+    const strategy = new FakeNotesStrategy();
+    const created = await strategy.createAssessmentType('org-1', {
+      name: 'Third Party Risk Assessment',
+      itemNounSingular: 'Vendor',
+      itemNounPlural: 'Vendors',
+    });
+    expect(created.archived).toBe(false);
+
+    const archived = await strategy.archiveAssessmentType(created.id);
+    expect(archived.archived).toBe(true);
+
+    const types = await strategy.listAssessmentTypes('org-1');
+    expect(types.find((t) => t.id === created.id)?.archived).toBe(true);
+  });
+
+  it('only lets the owner delete a draft assessment', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+
+    await expect(strategy.deleteAssessment(assessment.id, 'someone-else')).rejects.toThrow(
+      'not_authorized_owner',
+    );
+    expect(await strategy.listAssessments('org-1')).toHaveLength(1);
+
+    await strategy.deleteAssessment(assessment.id, 'owner-1');
+    expect(await strategy.listAssessments('org-1')).toHaveLength(0);
+  });
+
+  it('refuses to delete an assessment that has left draft', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+    await strategy.startAssessment(assessment.id, 'owner-1');
+
+    await expect(strategy.deleteAssessment(assessment.id, 'owner-1')).rejects.toThrow(
+      'delete_forbidden_from_in_progress',
+    );
+    expect(await strategy.listAssessments('org-1')).toHaveLength(1);
+  });
+
+  it('does not collide with a live assessment code after a delete', async () => {
+    const strategy = new FakeNotesStrategy();
+    const first = await seedDraft(strategy);
+    const second = await seedDraft(strategy);
+    expect(second.assessmentCode).not.toBe(first.assessmentCode);
+
+    await strategy.deleteAssessment(first.id, 'owner-1');
+    const third = await seedDraft(strategy);
+
+    expect(third.assessmentCode).not.toBe(second.assessmentCode);
+  });
+
+  it('sorts assessment items by descending inherent score', async () => {
+    const strategy = new FakeNotesStrategy();
+    const assessment = await seedDraft(strategy);
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Low',
+      description: '',
+      inherentLikelihood: 1,
+      inherentImpact: 1,
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'High',
+      description: '',
+      inherentLikelihood: 5,
+      inherentImpact: 5,
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Medium',
+      description: '',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+
+    const items = await strategy.listAssessmentItems(assessment.id);
+    expect(items.map((i) => i.subject)).toEqual(['High', 'Medium', 'Low']);
   });
 });
 
