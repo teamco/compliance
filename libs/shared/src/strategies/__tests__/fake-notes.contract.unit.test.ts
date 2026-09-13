@@ -3,6 +3,7 @@ import type {
   AssessmentItemControlMappingInput,
   AssessmentItemPatch,
   AssessmentPatch,
+  RequirementEvidence,
 } from '../notes';
 import { runNotesContract } from './notes.contract.unit.test';
 
@@ -1377,5 +1378,103 @@ describe('Risk Register lifecycle', () => {
     });
 
     expect(await strategy.listRiskEvidence(risk.id)).toHaveLength(1);
+  });
+
+  it('attaches evidence to an assessment item', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      assessmentTypeId: types[0]!.id,
+      title: 'Q3 Risk Assessment',
+      ownerId: 'user-1',
+    });
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Unpatched OS',
+      description: 'Missing patches',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+
+    const ev = await strategy.createAssessmentItemEvidence('org-1', item.id, {
+      title: 'Patch report',
+      owner: 'user-1',
+      evidenceType: 'document',
+      source: 'internal',
+      collectionDate: new Date().toISOString(),
+      periodCovered: '2026',
+      expirationDate: new Date().toISOString(),
+      verificationStatus: 'verified',
+    });
+
+    expect(ev.assessmentItemId).toBe(item.id);
+    expect(ev.orgId).toBe('org-1');
+    expect(await strategy.listAssessmentItemEvidence(item.id)).toHaveLength(1);
+  });
+
+  it('scopes assessment item evidence to the requested item, excluding other items and risk-scoped evidence', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.createRiskEvidence('org-1', risk.id, {
+      title: 'Risk acceptance memo',
+      owner: 'user-1',
+      evidenceType: 'document',
+      source: 'internal',
+      collectionDate: new Date().toISOString(),
+      periodCovered: '2026',
+      expirationDate: new Date().toISOString(),
+      verificationStatus: 'verified',
+    });
+
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      assessmentTypeId: types[0]!.id,
+      title: 'Q3 Risk Assessment',
+      ownerId: 'user-1',
+    });
+    const item1 = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Unpatched OS',
+      description: 'Missing patches',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const item2 = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Weak auth',
+      description: 'No MFA',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+
+    const evidenceInput: Omit<RequirementEvidence, 'id' | 'assessmentItemId'> = {
+      title: 'Evidence',
+      owner: 'user-1',
+      evidenceType: 'document',
+      source: 'internal',
+      collectionDate: new Date().toISOString(),
+      periodCovered: '2026',
+      expirationDate: new Date().toISOString(),
+      verificationStatus: 'verified',
+    };
+    await strategy.createAssessmentItemEvidence('org-1', item1.id, evidenceInput);
+    await strategy.createAssessmentItemEvidence('org-1', item2.id, evidenceInput);
+
+    const item1Evidence = await strategy.listAssessmentItemEvidence(item1.id);
+    const item2Evidence = await strategy.listAssessmentItemEvidence(item2.id);
+    expect(item1Evidence).toHaveLength(1);
+    expect(item2Evidence).toHaveLength(1);
+    expect(item1Evidence[0]!.id).not.toBe(item2Evidence[0]!.id);
+    expect(item1Evidence.every((e) => e.assessmentItemId === item1.id)).toBe(true);
+    expect(item2Evidence.every((e) => e.assessmentItemId === item2.id)).toBe(true);
+
+    const riskEvidence = await strategy.listRiskEvidence(risk.id);
+    expect(riskEvidence).toHaveLength(1);
+    expect(item1Evidence.some((e) => e.id === riskEvidence[0]!.id)).toBe(false);
   });
 });
