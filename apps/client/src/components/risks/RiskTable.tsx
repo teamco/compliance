@@ -58,7 +58,7 @@ export function RiskTable({ risks, taxonomy, onRowClick, onDeleteClick }: RiskTa
                 {r.residualScore != null ? `${r.residualScore} · ${r.residualLabel}` : '—'}
               </td>
               <td className="py-2 px-3">
-                {r.aboveAppetite === undefined ? '—' : r.aboveAppetite ? '⚠' : '✓'}
+                {r.aboveAppetite == null ? '—' : r.aboveAppetite ? '⚠' : '✓'}
               </td>
               <td className="py-2 px-3">{r.treatmentStrategy ?? '—'}</td>
               <td className="py-2 px-3">{r.status}</td>
