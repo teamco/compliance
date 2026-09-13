@@ -18,12 +18,26 @@ global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 Element.prototype.scrollIntoView = vi.fn();
 
 const mockNavigate = vi.fn();
+const mockNotify = {
+  success: vi.fn(),
+  error: vi.fn(),
+  info: vi.fn(),
+  warning: vi.fn(),
+};
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-router')>();
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+  };
+});
+
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useNotify: () => mockNotify,
   };
 });
 
@@ -269,5 +283,35 @@ describe('AssessmentWizard', () => {
       params: { id: 'a1' },
     });
     expect(mockSubmitMutate).not.toHaveBeenCalled();
+  });
+
+  it('shows an error notification when creating the assessment fails', async () => {
+    mockCreateMutate.mockImplementationOnce((_data: unknown, opts?: { onError?: () => void }) => {
+      opts?.onError?.();
+    });
+    await renderWizard();
+    fillDetailsRequiredFields();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(mockNotify.error).toHaveBeenCalledWith('Something went wrong.');
+    expect(screen.queryByRole('button', { name: 'Add Item' })).toBeNull();
+  });
+
+  it('shows an error notification and stays on Details when revisiting Details update fails', async () => {
+    mockItems = [oneItemFixture];
+    await renderWizard();
+    fillDetailsRequiredFields();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' })); // creates -> items
+    fireEvent.click(screen.getByRole('button', { name: 'Back' })); // -> details
+
+    mockUpdateMutate.mockImplementationOnce((_data: unknown, opts?: { onError?: () => void }) => {
+      opts?.onError?.();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(mockNotify.error).toHaveBeenCalledWith('Something went wrong.');
+    expect(screen.queryByRole('button', { name: 'Add Item' })).toBeNull();
   });
 });

@@ -2,21 +2,13 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { useNotify } from '@icore/template-shared';
 import { useAssessmentItemEvidence, useCreateAssessmentItemEvidence } from '@/queries/assessments';
+import { safeHref } from '@/lib/safe-href';
 
 interface AssessmentItemEvidenceProps {
   orgId: string;
   itemId: string;
-}
-
-function safeHref(url: string | undefined): string | undefined {
-  if (!url) return undefined;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? url : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 const EMPTY_EVIDENCE_FORM = {
@@ -33,6 +25,7 @@ const EMPTY_EVIDENCE_FORM = {
 
 export function AssessmentItemEvidence({ orgId, itemId }: AssessmentItemEvidenceProps) {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { data: evidence = [] } = useAssessmentItemEvidence(itemId);
   const createMut = useCreateAssessmentItemEvidence(orgId, itemId);
   const [open, setOpen] = useState(false);
@@ -46,32 +39,36 @@ export function AssessmentItemEvidence({ orgId, itemId }: AssessmentItemEvidence
         setForm(EMPTY_EVIDENCE_FORM);
         setOpen(false);
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 
   return (
     <div className="space-y-2">
-      {evidence.map((e) => (
-        <div key={e.id} className="text-xs border border-border rounded px-2 py-1.5">
-          <div className="flex items-center justify-between">
-            <span className="font-medium">{e.title}</span>
-            <span className="text-muted-foreground/70">{e.verificationStatus}</span>
+      {evidence.map((e) => {
+        const href = safeHref(e.url);
+        return (
+          <div key={e.id} className="text-xs border border-border rounded px-2 py-1.5">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">{e.title}</span>
+              <span className="text-muted-foreground/70">{e.verificationStatus}</span>
+            </div>
+            {e.url &&
+              (href ? (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-muted-foreground/70 underline"
+                >
+                  {e.url}
+                </a>
+              ) : (
+                <span className="text-muted-foreground/70">{e.url}</span>
+              ))}
           </div>
-          {e.url &&
-            (safeHref(e.url) ? (
-              <a
-                href={safeHref(e.url)}
-                target="_blank"
-                rel="noreferrer"
-                className="text-muted-foreground/70 underline"
-              >
-                {e.url}
-              </a>
-            ) : (
-              <span className="text-muted-foreground/70">{e.url}</span>
-            ))}
-        </div>
-      ))}
+        );
+      })}
       {open ? (
         <div className="space-y-1.5 border border-border rounded p-2">
           <Input
