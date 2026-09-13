@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Plus, ClipboardList } from 'lucide-react';
+import { useAuthStore, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -57,6 +58,8 @@ export function AssessmentsPage() {
   const navigate = useNavigate();
   const { activeOrgId } = useActiveOrgStore();
   const orgId = activeOrgId ?? '';
+  const currentUserId = useAuthStore((s) => s.user?.id);
+  const notify = useNotify();
 
   const { data: assessments = [], isPending } = useAssessments(orgId);
   const { data: types = [] } = useAssessmentTypes(orgId);
@@ -165,16 +168,18 @@ export function AssessmentsPage() {
                 </td>
                 <td className="py-2 px-3">{t(`assessments.status.${a.status}`)}</td>
                 <td className="py-2 px-3 text-center">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setConfirmDeleteId(a.id);
-                    }}
-                    className="text-muted-foreground hover:text-destructive cursor-pointer"
-                  >
-                    {t('common.delete')}
-                  </button>
+                  {a.status === 'draft' && currentUserId === a.ownerId && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmDeleteId(a.id);
+                      }}
+                      className="text-muted-foreground hover:text-destructive cursor-pointer"
+                    >
+                      {t('common.delete')}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -297,7 +302,11 @@ export function AssessmentsPage() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                if (confirmDeleteId) deleteMut.mutate(confirmDeleteId);
+                if (confirmDeleteId) {
+                  deleteMut.mutate(confirmDeleteId, {
+                    onError: () => notify.error(t('error.unknown')),
+                  });
+                }
                 setConfirmDeleteId(null);
               }}
             >
