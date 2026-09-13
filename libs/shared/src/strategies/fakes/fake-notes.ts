@@ -4022,6 +4022,9 @@ export class FakeNotesStrategy implements NotesStrategy {
       );
       assessment.highestResidualScore = topResidual.residualScore;
       assessment.highestResidualLabel = topResidual.residualLabel;
+    } else {
+      assessment.highestResidualScore = undefined;
+      assessment.highestResidualLabel = undefined;
     }
   }
 
