@@ -383,14 +383,14 @@ describe('risk assessments', () => {
     expect(updated!.highestInherentScore).toBe(16);
   });
 
-  it('updates assessment status', async () => {
+  it('updates assessment status via the owner-gated lifecycle transition', async () => {
     const types = await s.listAssessmentTypes('org1');
     const a = await s.createAssessment('org1', 'u1', {
       assessmentTypeId: types[0]!.id,
       title: 'T',
       ownerId: 'u1',
     });
-    const updated = await s.updateAssessment(a.id, { status: 'in_progress' });
+    const updated = await s.startAssessment(a.id, 'u1');
     expect(updated.status).toBe('in_progress');
   });
 

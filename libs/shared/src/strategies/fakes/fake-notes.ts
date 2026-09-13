@@ -3884,7 +3884,11 @@ export class FakeNotesStrategy implements NotesStrategy {
   async updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
     const assessment = this.assessments.find((a) => a.id === id);
     if (!assessment) throw new Error(`assessment_not_found: ${id}`);
-    Object.assign(assessment, patch);
+    if (patch.title !== undefined) assessment.title = patch.title;
+    if (patch.businessUnit !== undefined) assessment.businessUnit = patch.businessUnit;
+    if (patch.assetIds !== undefined) assessment.assetIds = patch.assetIds;
+    if (patch.vendorIds !== undefined) assessment.vendorIds = patch.vendorIds;
+    if (patch.dueDate !== undefined) assessment.dueDate = patch.dueDate;
     assessment.updatedAt = new Date().toISOString();
     return assessment;
   }
