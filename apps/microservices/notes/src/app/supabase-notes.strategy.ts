@@ -60,6 +60,7 @@ import type {
   RiskAssessmentItemPatch,
   RiskAssessmentPatch,
   AssessmentType,
+  AssessmentTypeInput,
   AssessmentStatus,
   RiskAcceptance,
   RiskAcceptanceInput,
@@ -2334,6 +2335,71 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       id: row['id'] as string,
       orgId: row['org_id'] as string,
       name: row['name'] as string,
+      archived: row['archived'] as boolean,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Assessment Types ──────────────────────────────────────────────────────
+
+  async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
+    const { data, error } = await this.db
+      .from('assessment_types')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    const rows = ok(data, error);
+    if (rows.length > 0) return rows.map((r) => this.toAssessmentType(r));
+
+    const defaults: Array<[string, string, string]> = [
+      ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
+      ['Cyber Threat Risk Assessment', 'Threat Scenario', 'Threat Scenarios'],
+    ];
+    const { data: inserted, error: insertError } = await this.db
+      .from('assessment_types')
+      .insert(
+        defaults.map(([name, singular, plural]) => ({
+          org_id: orgId,
+          name,
+          item_noun_singular: singular,
+          item_noun_plural: plural,
+        })),
+      )
+      .select();
+    return ok(inserted, insertError).map((r) => this.toAssessmentType(r));
+  }
+
+  async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
+    const { data: row, error } = await this.db
+      .from('assessment_types')
+      .insert({
+        org_id: orgId,
+        name: data.name,
+        item_noun_singular: data.itemNounSingular,
+        item_noun_plural: data.itemNounPlural,
+      })
+      .select()
+      .single();
+    return this.toAssessmentType(ok(row, error));
+  }
+
+  async archiveAssessmentType(id: string): Promise<AssessmentType> {
+    const { data, error } = await this.db
+      .from('assessment_types')
+      .update({ archived: true })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessmentType(ok(data, error));
+  }
+
+  private toAssessmentType(row: Record<string, unknown>): AssessmentType {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      name: row['name'] as string,
+      itemNounSingular: row['item_noun_singular'] as string,
+      itemNounPlural: row['item_noun_plural'] as string,
       archived: row['archived'] as boolean,
       createdAt: row['created_at'] as string,
     };
