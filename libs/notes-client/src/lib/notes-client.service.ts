@@ -799,8 +799,8 @@ export class NotesClientService {
     return signedSend<Assessment>(this.client, 'notes.assessments.update', { id, patch });
   }
 
-  deleteAssessment(id: string): Promise<void> {
-    return signedSend<void>(this.client, 'notes.assessments.delete', { id });
+  deleteAssessment(id: string, userId: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.assessments.delete', { id, userId });
   }
 
   listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {

@@ -3853,10 +3853,15 @@ export class FakeNotesStrategy implements NotesStrategy {
   ): Promise<Assessment> {
     const methodology = await this.getRiskMethodology(orgId);
     if (!methodology) throw new Error('risk_methodology_not_found');
-    const orgAssessmentCount = this.assessments.filter((a) => a.orgId === orgId).length;
+    const maxSuffix = this.assessments
+      .filter((a) => a.orgId === orgId)
+      .reduce(
+        (max, a) => Math.max(max, parseInt(a.assessmentCode.replace('ASM-', ''), 10) || 0),
+        100,
+      );
     const assessment: Assessment = {
       id: globalThis.crypto.randomUUID(),
-      assessmentCode: `ASM-${String(orgAssessmentCount + 101).padStart(6, '0')}`,
+      assessmentCode: `ASM-${String(maxSuffix + 1).padStart(6, '0')}`,
       orgId,
       userId,
       title: data.title,
@@ -3928,6 +3933,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    if (!note || note.trim() === '') throw new Error('note_required');
     const a = this.assessments.find((x) => x.id === id);
     if (!a) throw new Error(`assessment_not_found: ${id}`);
     if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
@@ -3960,13 +3966,19 @@ export class FakeNotesStrategy implements NotesStrategy {
     return a;
   }
 
-  async deleteAssessment(id: string): Promise<void> {
-    this.assessments = this.assessments.filter((a) => a.id !== id);
+  async deleteAssessment(id: string, userId: string): Promise<void> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (a.status !== 'draft') throw new Error(`delete_forbidden_from_${a.status}`);
+    this.assessments = this.assessments.filter((x) => x.id !== id);
     this.assessmentItems = this.assessmentItems.filter((i) => i.assessmentId !== id);
   }
 
   async listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {
-    return this.assessmentItems.filter((i) => i.assessmentId === assessmentId);
+    return this.assessmentItems
+      .filter((i) => i.assessmentId === assessmentId)
+      .sort((a, b) => b.inherentScore - a.inherentScore);
   }
 
   async createAssessmentItem(
@@ -4035,7 +4047,12 @@ export class FakeNotesStrategy implements NotesStrategy {
     if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
     const methodology = this.riskMethodologies.find((m) => m.id === assessment.methodologyId);
 
-    Object.assign(item, patch);
+    if (patch.subject !== undefined) item.subject = patch.subject;
+    if (patch.description !== undefined) item.description = patch.description;
+    if (patch.inherentLikelihood !== undefined) item.inherentLikelihood = patch.inherentLikelihood;
+    if (patch.inherentImpact !== undefined) item.inherentImpact = patch.inherentImpact;
+    if (patch.residualLikelihood !== undefined) item.residualLikelihood = patch.residualLikelihood;
+    if (patch.residualImpact !== undefined) item.residualImpact = patch.residualImpact;
 
     if (methodology) {
       if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
@@ -4083,9 +4100,9 @@ export class FakeNotesStrategy implements NotesStrategy {
     data: AssessmentItemControlMappingInput,
   ): Promise<AssessmentItemControlMapping> {
     const mapping: AssessmentItemControlMapping = {
+      ...data,
       id: globalThis.crypto.randomUUID(),
       itemId,
-      ...data,
       createdAt: new Date().toISOString(),
     };
     this.assessmentItemControlMappings.push(mapping);
@@ -4099,23 +4116,23 @@ export class FakeNotesStrategy implements NotesStrategy {
   }
 
   async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
-    const existing = this.assessmentTypes.filter((t) => t.orgId === orgId);
-    if (existing.length > 0) return existing;
     const defaults: Array<[string, string, string]> = [
       ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
       ['Cyber Threat Risk Assessment', 'Threat Scenario', 'Threat Scenarios'],
     ];
-    const seeded = defaults.map(([name, singular, plural]) => ({
-      id: `atype-${globalThis.crypto.randomUUID().slice(0, 8)}`,
-      orgId,
-      name,
-      itemNounSingular: singular,
-      itemNounPlural: plural,
-      archived: false,
-      createdAt: new Date().toISOString(),
-    }));
-    this.assessmentTypes.push(...seeded);
-    return seeded;
+    for (const [name, singular, plural] of defaults) {
+      if (this.assessmentTypes.some((t) => t.orgId === orgId && t.name === name)) continue;
+      this.assessmentTypes.push({
+        id: `atype-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+        orgId,
+        name,
+        itemNounSingular: singular,
+        itemNounPlural: plural,
+        archived: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    return this.assessmentTypes.filter((t) => t.orgId === orgId);
   }
 
   async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
