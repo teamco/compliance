@@ -60,6 +60,9 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
   });
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
+  const [residualDraft, setResidualDraft] = useState<
+    Record<string, { likelihood?: number; impact?: number }>
+  >({});
 
   const { data: expandedItemMappings = [] } = useAssessmentItemControlMappings(
     expandedItemId ?? '',
@@ -82,12 +85,23 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
     field: 'residualLikelihood' | 'residualImpact',
     value: number,
   ) {
-    const next = {
-      residualLikelihood: field === 'residualLikelihood' ? value : (item.residualLikelihood ?? 0),
-      residualImpact: field === 'residualImpact' ? value : (item.residualImpact ?? 0),
+    const current = residualDraft[item.id] ?? {
+      likelihood: item.residualLikelihood,
+      impact: item.residualImpact,
     };
-    if (!next.residualLikelihood || !next.residualImpact) return;
-    updateItemMut.mutate({ id: item.id, patch: next });
+    const next = {
+      likelihood: field === 'residualLikelihood' ? value : current.likelihood,
+      impact: field === 'residualImpact' ? value : current.impact,
+    };
+    setResidualDraft((d) => ({ ...d, [item.id]: next }));
+    if (!next.likelihood || !next.impact) return;
+    updateItemMut.mutate(
+      {
+        id: item.id,
+        patch: { residualLikelihood: next.likelihood, residualImpact: next.impact },
+      },
+      { onSuccess: () => setResidualDraft((d) => ({ ...d, [item.id]: {} })) },
+    );
   }
 
   return (
@@ -160,7 +174,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                     <div>
                       <Label>{t('assessments.residualLikelihood')}</Label>
                       <select
-                        value={item.residualLikelihood ?? ''}
+                        value={residualDraft[item.id]?.likelihood ?? item.residualLikelihood ?? ''}
                         disabled={!hasLinkedControls}
                         onChange={(e) =>
                           handleResidualChange(item, 'residualLikelihood', Number(e.target.value))
@@ -178,7 +192,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                     <div>
                       <Label>{t('assessments.residualImpact')}</Label>
                       <select
-                        value={item.residualImpact ?? ''}
+                        value={residualDraft[item.id]?.impact ?? item.residualImpact ?? ''}
                         disabled={!hasLinkedControls}
                         onChange={(e) =>
                           handleResidualChange(item, 'residualImpact', Number(e.target.value))
