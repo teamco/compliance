@@ -451,7 +451,10 @@ describe('Assessment lifecycle (Phase B.1)', () => {
     const strategy = new FakeNotesStrategy();
     const types = await strategy.listAssessmentTypes('org-1');
     expect(types).toHaveLength(2);
-    expect(types.map((t) => t.itemNounSingular).sort()).toEqual(['Threat Scenario', 'Vulnerability']);
+    expect(types.map((t) => t.itemNounSingular).sort()).toEqual([
+      'Threat Scenario',
+      'Vulnerability',
+    ]);
   });
 
   it('creates an assessment with an auto-generated code and pinned methodology', async () => {
@@ -508,7 +511,7 @@ describe('Assessment lifecycle (Phase B.1)', () => {
       controlCode: 'VULN-001',
       controlTitle: 'Patch Management',
     });
-    expect((await strategy.listAssessmentItemControlMappings(item.id))).toHaveLength(1);
+    expect(await strategy.listAssessmentItemControlMappings(item.id)).toHaveLength(1);
 
     const updated = await strategy.updateAssessmentItem(item.id, {
       residualLikelihood: 2,
@@ -518,6 +521,42 @@ describe('Assessment lifecycle (Phase B.1)', () => {
 
     const refreshed = await strategy.getAssessment(assessment.id);
     expect(refreshed?.highestResidualScore).toBe(6);
+  });
+
+  it('clears highestResidualScore/label once no remaining item carries a residual score', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'user-1',
+    });
+    const itemWithResidual = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject A',
+      description: 'Description A',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+    await strategy.updateAssessmentItem(itemWithResidual.id, {
+      residualLikelihood: 4,
+      residualImpact: 5,
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject B (no residual)',
+      description: 'Description B',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+
+    const beforeDelete = await strategy.getAssessment(assessment.id);
+    expect(beforeDelete?.highestResidualScore).toBe(20);
+
+    await strategy.deleteAssessmentItem(itemWithResidual.id);
+
+    const afterDelete = await strategy.getAssessment(assessment.id);
+    expect(afterDelete?.itemCount).toBe(1);
+    expect(afterDelete?.highestResidualScore).toBeUndefined();
+    expect(afterDelete?.highestResidualLabel).toBeUndefined();
   });
 
   it('enforces the full lifecycle with owner/approver gating', async () => {
