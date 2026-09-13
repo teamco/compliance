@@ -11,6 +11,16 @@ import type {
   Asset,
   AssetInput,
   AssetPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
+  AssessmentType,
+  AssessmentTypeInput,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
   AuditLogFilters,
   AuditLogPage,
   ControlFrameworkMappingInput,
@@ -51,12 +61,6 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
-  RiskAssessment,
-  RiskAssessmentInput,
-  RiskAssessmentPatch,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
   RiskMethodology,
   RiskMethodologyInput,
   RiskTaxonomyCategory,
@@ -775,52 +779,45 @@ export class NotesClientService {
 
   // ─── Risk Assessments ────────────────────────────────────────────────────
 
-  listAssessments(orgId: string): Promise<RiskAssessment[]> {
-    return signedSend<RiskAssessment[]>(this.client, 'notes.assessments.list', { orgId });
+  listAssessments(orgId: string): Promise<Assessment[]> {
+    return signedSend<Assessment[]>(this.client, 'notes.assessments.list', { orgId });
   }
 
-  createAssessment(
-    orgId: string,
-    userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment> {
-    return signedSend<RiskAssessment>(this.client, 'notes.assessments.create', {
+  createAssessment(orgId: string, userId: string, data: AssessmentInput): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.create', {
       orgId,
       userId,
       data,
     });
   }
 
-  getAssessment(id: string): Promise<RiskAssessment | null> {
-    return signedSend<RiskAssessment | null>(this.client, 'notes.assessments.get', { id });
+  getAssessment(id: string): Promise<Assessment | null> {
+    return signedSend<Assessment | null>(this.client, 'notes.assessments.get', { id });
   }
 
-  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
-    return signedSend<RiskAssessment>(this.client, 'notes.assessments.update', { id, patch });
+  updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.update', { id, patch });
   }
 
-  deleteAssessment(id: string): Promise<void> {
-    return signedSend<void>(this.client, 'notes.assessments.delete', { id });
+  deleteAssessment(id: string, userId: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.assessments.delete', { id, userId });
   }
 
-  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
-    return signedSend<RiskAssessmentItem[]>(this.client, 'notes.assessments.items.list', {
+  listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {
+    return signedSend<AssessmentItem[]>(this.client, 'notes.assessments.items.list', {
       assessmentId,
     });
   }
 
-  addAssessmentItem(
-    assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem> {
-    return signedSend<RiskAssessmentItem>(this.client, 'notes.assessments.items.add', {
+  createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem> {
+    return signedSend<AssessmentItem>(this.client, 'notes.assessments.items.add', {
       assessmentId,
       data,
     });
   }
 
-  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem> {
-    return signedSend<RiskAssessmentItem>(this.client, 'notes.assessments.items.update', {
+  updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem> {
+    return signedSend<AssessmentItem>(this.client, 'notes.assessments.items.update', {
       id,
       patch,
     });
@@ -828,6 +825,75 @@ export class NotesClientService {
 
   deleteAssessmentItem(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.assessments.items.delete', { id });
+  }
+
+  listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
+    return signedSend<AssessmentType[]>(this.client, 'notes.assessment-types.list', { orgId });
+  }
+
+  createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
+    return signedSend<AssessmentType>(this.client, 'notes.assessment-types.create', {
+      orgId,
+      data,
+    });
+  }
+
+  archiveAssessmentType(id: string): Promise<AssessmentType> {
+    return signedSend<AssessmentType>(this.client, 'notes.assessment-types.archive', { id });
+  }
+
+  startAssessment(id: string, userId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.start', { id, userId });
+  }
+
+  submitForReview(id: string, userId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.submit-for-review', {
+      id,
+      userId,
+    });
+  }
+
+  approveAssessment(id: string, userId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.approve', { id, userId });
+  }
+
+  requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.request-changes', {
+      id,
+      userId,
+      note,
+    });
+  }
+
+  completeAssessment(id: string, userId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.complete', { id, userId });
+  }
+
+  archiveAssessment(id: string, userId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.archive', { id, userId });
+  }
+
+  listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]> {
+    return signedSend<AssessmentItemControlMapping[]>(
+      this.client,
+      'notes.assessments.items.mappings.list',
+      { itemId },
+    );
+  }
+
+  addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping> {
+    return signedSend<AssessmentItemControlMapping>(
+      this.client,
+      'notes.assessments.items.mappings.add',
+      { itemId, data },
+    );
+  }
+
+  removeAssessmentItemControlMapping(id: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.assessments.items.mappings.remove', { id });
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────

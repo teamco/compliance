@@ -628,11 +628,6 @@ export interface AssetPatch {
   tags?: string[];
 }
 
-// ─── Risks ─────────────────────────────────────────────────────────────────
-
-export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-
 // ─── Risk Methodology ──────────────────────────────────────────────────────
 
 export type RiskScoreLabel = 'low' | 'medium' | 'high' | 'critical';
@@ -831,62 +826,125 @@ export interface RiskSnapshot {
 
 // ─── Risk Assessments ──────────────────────────────────────────────────────
 
-export type AssessmentType = 'cvra' | 'ctra';
-export type AssessmentStatus = 'draft' | 'in_review' | 'completed';
-
-export interface RiskAssessment {
+export interface AssessmentType {
   id: string;
   orgId: string;
+  name: string;
+  itemNounSingular: string;
+  itemNounPlural: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface AssessmentTypeInput {
+  name: string;
+  itemNounSingular: string;
+  itemNounPlural: string;
+}
+export type AssessmentStatus =
+  | 'draft'
+  | 'in_progress'
+  | 'pending_review'
+  | 'changes_requested'
+  | 'approved'
+  | 'completed'
+  | 'archived';
+
+export interface Assessment {
+  id: string;
+  assessmentCode: string;
+  orgId: string;
   userId: string;
-  type: AssessmentType;
   title: string;
-  scope: string;
+  assessmentTypeId: string;
+  ownerId: string;
+  businessUnit?: string;
+  assetIds: string[];
+  vendorIds: string[];
+  dueDate?: string;
+  approverId?: string;
+  methodologyId: string;
   status: AssessmentStatus;
-  riskScore: number;
   itemCount: number;
+  highestInherentScore?: number;
+  highestInherentLabel?: RiskScoreLabel;
+  highestResidualScore?: number;
+  highestResidualLabel?: RiskScoreLabel;
+  lastReviewNote?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface RiskAssessmentInput {
-  type: AssessmentType;
+export interface AssessmentInput {
   title: string;
-  scope: string;
+  assessmentTypeId: string;
+  ownerId: string;
+  businessUnit?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  dueDate?: string;
+  approverId?: string;
 }
 
-export interface RiskAssessmentPatch {
+export interface AssessmentPatch {
   title?: string;
-  scope?: string;
-  status?: AssessmentStatus;
+  businessUnit?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  dueDate?: string;
 }
 
-export interface RiskAssessmentItem {
+export interface AssessmentItem {
   id: string;
   assessmentId: string;
+  orgId: string;
   subject: string;
   description: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  itemScore: number;
-  mitigations: string;
+  inherentLikelihood: number;
+  inherentImpact: number;
+  inherentScore: number;
+  inherentLabel: RiskScoreLabel;
+  residualLikelihood?: number;
+  residualImpact?: number;
+  residualScore?: number;
+  residualLabel?: RiskScoreLabel;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface RiskAssessmentItemInput {
+export interface AssessmentItemInput {
   subject: string;
   description: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  mitigations?: string;
+  inherentLikelihood: number;
+  inherentImpact: number;
 }
 
-export interface RiskAssessmentItemPatch {
+export interface AssessmentItemPatch {
   subject?: string;
   description?: string;
-  likelihood?: RiskLikelihood;
-  impact?: RiskImpact;
-  mitigations?: string;
+  inherentLikelihood?: number;
+  inherentImpact?: number;
+  residualLikelihood?: number;
+  residualImpact?: number;
+}
+
+// ─── Assessment Item ↔ Control ──────────────────────────────────────────────
+
+export interface AssessmentItemControlMapping {
+  id: string;
+  itemId: string;
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
+  createdAt: string;
+}
+
+export interface AssessmentItemControlMappingInput {
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
 }
 
 // ─── Policies ──────────────────────────────────────────────────────────────
@@ -1242,25 +1300,39 @@ export interface NotesStrategy {
   // Risk history
   listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]>;
 
-  // Risk Assessments
-  listAssessments(orgId: string): Promise<RiskAssessment[]>;
-  createAssessment(
-    orgId: string,
-    userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment>;
-  getAssessment(id: string): Promise<RiskAssessment | null>;
-  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment>;
-  deleteAssessment(id: string): Promise<void>;
+  // Assessment Types
+  listAssessmentTypes(orgId: string): Promise<AssessmentType[]>;
+  createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType>;
+  archiveAssessmentType(id: string): Promise<AssessmentType>;
+
+  // Assessments
+  listAssessments(orgId: string): Promise<Assessment[]>;
+  createAssessment(orgId: string, userId: string, data: AssessmentInput): Promise<Assessment>;
+  getAssessment(id: string): Promise<Assessment | null>;
+  updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment>;
+  deleteAssessment(id: string, userId: string): Promise<void>;
+
+  // Assessment lifecycle
+  startAssessment(id: string, userId: string): Promise<Assessment>;
+  submitForReview(id: string, userId: string): Promise<Assessment>;
+  approveAssessment(id: string, userId: string): Promise<Assessment>;
+  requestChanges(id: string, userId: string, note: string): Promise<Assessment>;
+  completeAssessment(id: string, userId: string): Promise<Assessment>;
+  archiveAssessment(id: string, userId: string): Promise<Assessment>;
 
   // Assessment items
-  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]>;
-  addAssessmentItem(
-    assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem>;
-  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem>;
+  listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]>;
+  createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem>;
+  updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem>;
   deleteAssessmentItem(id: string): Promise<void>;
+
+  // Item <-> control mapping
+  listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]>;
+  addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping>;
+  removeAssessmentItemControlMapping(id: string): Promise<void>;
 
   // Policies
   listPolicies(orgId: string): Promise<Policy[]>;
