@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@icore/template-shared';
 import { PageLayout } from '@/components/PageLayout';
 import { ScrollableRow } from '@/components/ui/scrollable-row';
 import {
@@ -36,6 +37,7 @@ export function RiskDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/_dashboard/risks_/$id' });
   const { activeOrgId } = useActiveOrgStore();
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const { data: risk, isPending } = useRisk(id);
   const { data: taxonomy = [] } = useRiskTaxonomy(activeOrgId ?? undefined);
   const { data: mappings = [] } = useRiskControlMappings(id);
@@ -120,7 +122,7 @@ export function RiskDetailPage() {
           <Field
             label={t('risks.colAppetite')}
             value={
-              risk.aboveAppetite === undefined
+              risk.aboveAppetite == null
                 ? '—'
                 : risk.aboveAppetite
                   ? t('risks.aboveAppetite')
@@ -166,11 +168,12 @@ export function RiskDetailPage() {
               <span className="text-xs text-muted-foreground">{t('risks.treatmentStrategy')}</span>
               <select
                 defaultValue={risk.treatmentStrategy ?? ''}
-                onChange={(e) =>
+                onChange={(e) => {
+                  if (!e.target.value) return;
                   updateMut.mutate({
                     treatmentStrategy: e.target.value as typeof risk.treatmentStrategy,
-                  })
-                }
+                  });
+                }}
                 className="mt-1 w-full h-9 rounded-md border border-border bg-surface px-2 text-sm"
               >
                 <option value="">{t('risks.selectTreatment')}</option>
@@ -205,7 +208,10 @@ export function RiskDetailPage() {
               <Input
                 type="number"
                 defaultValue={risk.targetScore}
-                onBlur={(e) => updateMut.mutate({ targetScore: Number(e.target.value) })}
+                onBlur={(e) => {
+                  if (e.target.value === '') return;
+                  updateMut.mutate({ targetScore: Number(e.target.value) });
+                }}
                 className="mt-1"
               />
             </label>
@@ -214,7 +220,10 @@ export function RiskDetailPage() {
               <Input
                 type="date"
                 defaultValue={risk.targetDate?.slice(0, 10)}
-                onBlur={(e) => updateMut.mutate({ targetDate: e.target.value })}
+                onBlur={(e) => {
+                  if (!e.target.value) return;
+                  updateMut.mutate({ targetDate: e.target.value });
+                }}
                 className="mt-1"
               />
             </label>
@@ -232,7 +241,8 @@ export function RiskDetailPage() {
                   {t('risks.expiresAt')}: {activeAcceptance.expiresAt.slice(0, 10)}
                 </p>
                 {activeAcceptance.status !== 'approved' &&
-                  activeAcceptance.status !== 'rejected' && (
+                  activeAcceptance.status !== 'rejected' &&
+                  currentUserId === activeAcceptance.approverId && (
                     <div className="flex gap-2 pt-2">
                       <Button
                         size="sm"
