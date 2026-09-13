@@ -893,12 +893,10 @@ export interface AssessmentInput {
 
 export interface AssessmentPatch {
   title?: string;
-  ownerId?: string;
   businessUnit?: string;
   assetIds?: string[];
   vendorIds?: string[];
   dueDate?: string;
-  approverId?: string;
 }
 
 export interface AssessmentItem {

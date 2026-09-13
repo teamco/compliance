@@ -2475,12 +2475,10 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
     if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
     if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
     if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
     if (patch.dueDate !== undefined) update['due_date'] = patch.dueDate;
-    if (patch.approverId !== undefined) update['approver_id'] = patch.approverId;
 
     const { data, error } = await this.db
       .from('risk_assessments')
@@ -2523,6 +2521,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('risk_assessments')
       .update({ status: 'pending_review', updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('owner_id', userId)
       .in('status', ['in_progress', 'changes_requested'])
       .select()
       .single();
