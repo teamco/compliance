@@ -106,10 +106,15 @@ on conflict (org_id, name) do nothing;
 
 with likelihood_map(old_val, num) as (
   values ('very_low',1), ('low',2), ('medium',3), ('high',4), ('very_high',5)
+),
+numbered as (
+  select id, row_number() over (partition by org_id order by created_at) as rn
+  from public.risks
+  where risk_id is null
 )
 update public.risks r
 set
-  risk_id = 'RSK-' || lpad((row_number() over (partition by r.org_id order by r.created_at))::text, 6, '0'),
+  risk_id = 'RSK-' || lpad((numbered.rn)::text, 6, '0'),
   risk_statement = coalesce(r.description, ''),
   taxonomy_category_id = (select id from public.risk_taxonomy_categories tc where tc.org_id = r.org_id and tc.name = 'Uncategorized'),
   owner_id = r.user_id,
@@ -121,7 +126,8 @@ set
     when r.risk_score <= 4 then 'low' when r.risk_score <= 9 then 'medium'
     when r.risk_score <= 16 then 'high' else 'critical' end,
   asset_ids = case when r.asset_id is not null then array[r.asset_id] else '{}' end
-where r.risk_id is null;
+from numbered
+where numbered.id = r.id and r.risk_id is null;
 
 alter table public.risks
   alter column risk_id set not null,
@@ -159,7 +165,7 @@ create policy "org members read risk control mappings"
     exists (
       select 1 from public.risks r
       join public.org_profiles o on o.id = r.org_id
-      where r.id = risk_id and o.user_id = auth.uid()
+      where r.id = risk_control_mappings.risk_id and o.user_id = auth.uid()
     )
   );
 
@@ -168,11 +174,11 @@ create policy "users manage own risk control mappings"
     exists (
       select 1 from public.risks r
       join public.org_profiles o on o.id = r.org_id
-      where r.id = risk_id and o.user_id = auth.uid()
+      where r.id = risk_control_mappings.risk_id and o.user_id = auth.uid()
     )
     and exists (
       select 1 from public.internal_controls c
-      join public.risks r2 on r2.id = risk_id
+      join public.risks r2 on r2.id = risk_control_mappings.risk_id
       where c.id = control_id and c.org_id = r2.org_id
     )
   );
@@ -209,7 +215,7 @@ create policy "org members read risk acceptances"
 create policy "users manage own risk acceptances"
   on public.risk_acceptances for all using (
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
-    and exists (select 1 from public.risks r where r.id = risk_id and r.org_id = risk_acceptances.org_id)
+    and exists (select 1 from public.risks r where r.id = risk_acceptances.risk_id and r.org_id = risk_acceptances.org_id)
   );
 
 -- Risk history: immutable snapshots.
@@ -235,7 +241,7 @@ create policy "org members read risk snapshots"
     exists (
       select 1 from public.risks r
       join public.org_profiles o on o.id = r.org_id
-      where r.id = risk_id and o.user_id = auth.uid()
+      where r.id = risk_snapshots.risk_id and o.user_id = auth.uid()
     )
   );
 
@@ -244,7 +250,7 @@ create policy "users insert own risk snapshots"
     exists (
       select 1 from public.risks r
       join public.org_profiles o on o.id = r.org_id
-      where r.id = risk_id and o.user_id = auth.uid()
+      where r.id = risk_snapshots.risk_id and o.user_id = auth.uid()
     )
   );
 
@@ -283,7 +289,7 @@ create policy "users manage own evidence"
       risk_id is null
       or exists (
         select 1 from public.risks r
-        where r.id = risk_id and r.org_id = requirement_evidence.org_id
+        where r.id = requirement_evidence.risk_id and r.org_id = requirement_evidence.org_id
       )
     )
   );
