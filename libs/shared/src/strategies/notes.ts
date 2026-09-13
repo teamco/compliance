@@ -232,6 +232,7 @@ export interface RequirementEvidence {
   id: string;
   orgId?: string;
   controlId?: string;
+  riskId?: string;
   frameworkId?: string;
   requirementId?: string;
   title: string;
@@ -631,42 +632,201 @@ export interface AssetPatch {
 
 export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
 export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
+
+// ─── Risk Methodology ──────────────────────────────────────────────────────
+
+export type RiskScoreLabel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface RiskThresholdBand {
+  maxScore: number;
+  label: RiskScoreLabel;
+}
+
+export interface RiskMethodology {
+  id: string;
+  orgId: string;
+  version: number;
+  isActive: boolean;
+  scaleSize: 3 | 4 | 5;
+  likelihoodLabels: string[];
+  impactLabels: string[];
+  thresholds: RiskThresholdBand[];
+  appetiteThreshold: number;
+  createdAt: string;
+}
+
+export interface RiskMethodologyInput {
+  scaleSize: 3 | 4 | 5;
+  likelihoodLabels: string[];
+  impactLabels: string[];
+  thresholds: RiskThresholdBand[];
+  appetiteThreshold: number;
+}
+
+// ─── Risk Taxonomy ─────────────────────────────────────────────────────────
+
+export interface RiskTaxonomyCategory {
+  id: string;
+  orgId: string;
+  name: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface RiskTaxonomyCategoryInput {
+  name: string;
+}
+
+export type RiskStatus = 'open' | 'monitoring' | 'closed';
+export type RiskSource =
+  | 'manual'
+  | 'risk_assessment'
+  | 'gap_analysis'
+  | 'internal_audit'
+  | 'external_audit'
+  | 'vendor_assessment'
+  | 'security_incident'
+  | 'vulnerability'
+  | 'issue'
+  | 'regulatory_change'
+  | 'management_review'
+  | 'threat_intelligence';
+export type RiskTreatmentStrategy = 'avoid' | 'mitigate' | 'transfer' | 'accept' | 'monitor';
 
 export interface Risk {
   id: string;
+  riskId: string;
   orgId: string;
   userId: string;
   title: string;
-  description: string;
-  category: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  riskScore: number;
-  treatment: RiskTreatment;
-  assetId: string | null;
+  riskStatement: string;
+  taxonomyCategoryId: string;
+  ownerId: string;
+  businessUnit?: string;
+  source: RiskSource;
+  sourceRef?: string;
+  assetIds: string[];
+  vendorIds: string[];
+
+  methodologyId: string;
+  inherentLikelihood: number;
+  inherentImpact: number;
+  inherentScore: number;
+  inherentLabel: RiskScoreLabel;
+
+  residualLikelihood?: number;
+  residualImpact?: number;
+  residualScore?: number;
+  residualLabel?: RiskScoreLabel;
+  aboveAppetite?: boolean;
+
+  treatmentStrategy?: RiskTreatmentStrategy;
+  treatmentOwner?: string;
+  treatmentPlan?: string;
+  targetScore?: number;
+  targetDate?: string;
+
+  status: RiskStatus;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface RiskInput {
   title: string;
-  description: string;
-  category: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  treatment?: RiskTreatment;
-  assetId?: string;
+  riskStatement: string;
+  taxonomyCategoryId: string;
+  ownerId: string;
+  businessUnit?: string;
+  source?: RiskSource;
+  sourceRef?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  inherentLikelihood: number;
+  inherentImpact: number;
 }
 
 export interface RiskPatch {
   title?: string;
-  description?: string;
-  category?: string;
-  likelihood?: RiskLikelihood;
-  impact?: RiskImpact;
-  treatment?: RiskTreatment;
-  assetId?: string | null;
+  riskStatement?: string;
+  taxonomyCategoryId?: string;
+  ownerId?: string;
+  businessUnit?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  inherentLikelihood?: number;
+  inherentImpact?: number;
+  residualLikelihood?: number;
+  residualImpact?: number;
+  treatmentStrategy?: RiskTreatmentStrategy;
+  treatmentOwner?: string;
+  treatmentPlan?: string;
+  targetScore?: number;
+  targetDate?: string;
+  status?: RiskStatus;
+}
+
+// ─── Risk ↔ Control ─────────────────────────────────────────────────────────
+
+export interface RiskControlMapping {
+  id: string;
+  riskId: string;
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
+  createdAt: string;
+}
+
+export interface RiskControlMappingInput {
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
+}
+
+// ─── Risk Acceptance ────────────────────────────────────────────────────────
+
+export type RiskAcceptanceStatus = 'requested' | 'reviewed' | 'approved' | 'rejected';
+
+export interface RiskAcceptance {
+  id: string;
+  riskId: string;
+  orgId: string;
+  requestedBy: string;
+  justification: string;
+  compensatingControls: string;
+  expiresAt: string;
+  approverId: string;
+  status: RiskAcceptanceStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskAcceptanceInput {
+  justification: string;
+  compensatingControls: string;
+  expiresAt: string;
+  approverId: string;
+}
+
+// ─── Risk History ───────────────────────────────────────────────────────────
+
+export interface RiskSnapshot {
+  id: string;
+  riskId: string;
+  inherentScore: number;
+  inherentLabel: RiskScoreLabel;
+  residualScore?: number;
+  residualLabel?: RiskScoreLabel;
+  treatmentStrategy?: RiskTreatmentStrategy;
+  changedBy: string;
+  reason?: string;
+  createdAt: string;
 }
 
 // ─── Risk Assessments ──────────────────────────────────────────────────────
@@ -885,6 +1045,12 @@ export interface NotesStrategy {
     controlId: string,
     data: Omit<RequirementEvidence, 'id' | 'controlId'>,
   ): Promise<RequirementEvidence>;
+  listRiskEvidence(riskId: string): Promise<RequirementEvidence[]>;
+  createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence>;
 
   listControlAssessments(controlId: string): Promise<RequirementAssessment[]>;
   createControlAssessment(
@@ -1033,12 +1199,48 @@ export interface NotesStrategy {
   updateAsset(id: string, patch: AssetPatch): Promise<Asset>;
   deleteAsset(id: string): Promise<void>;
 
+  // Risk Methodology
+  getRiskMethodology(orgId: string): Promise<RiskMethodology | null>;
+  upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology>;
+
+  // Risk Taxonomy
+  listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]>;
+  createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory>;
+  archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory>;
+
   // Risks
   listRisks(orgId: string): Promise<Risk[]>;
   createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk>;
   getRisk(id: string): Promise<Risk | null>;
-  updateRisk(id: string, patch: RiskPatch): Promise<Risk>;
+  updateRisk(id: string, patch: RiskPatch, changedBy: string, reason?: string): Promise<Risk>;
   deleteRisk(id: string): Promise<void>;
+
+  // Risk ↔ Control mapping
+  listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]>;
+  addRiskControlMapping(riskId: string, data: RiskControlMappingInput): Promise<RiskControlMapping>;
+  removeRiskControlMapping(id: string): Promise<void>;
+
+  // Risk Acceptance
+  createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance>;
+  getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null>;
+  reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance>;
+  approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+  rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+
+  // Risk history
+  listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]>;
 
   // Risk Assessments
   listAssessments(orgId: string): Promise<RiskAssessment[]>;

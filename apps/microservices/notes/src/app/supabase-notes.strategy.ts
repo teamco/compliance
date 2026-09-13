@@ -61,10 +61,25 @@ import type {
   RiskAssessmentPatch,
   AssessmentType,
   AssessmentStatus,
+  RiskAcceptance,
+  RiskAcceptanceInput,
+  RiskAcceptanceStatus,
+  RiskControlMapping,
+  RiskControlMappingInput,
   RiskImpact,
   RiskInput,
   RiskLikelihood,
+  RiskMethodology,
+  RiskMethodologyInput,
   RiskPatch,
+  RiskScoreLabel,
+  RiskSnapshot,
+  RiskSource,
+  RiskStatus,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskThresholdBand,
+  RiskTreatmentStrategy,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -526,6 +541,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       controlId: row['control_id'] as string | undefined,
       frameworkId: row['framework_id'] as string | undefined,
       requirementId: row['requirement_id'] as string | undefined,
+      riskId: row['risk_id'] as string | undefined,
       title: row['title'] as string,
       owner: row['owner'] as string,
       evidenceType: row['evidence_type'] as string,
@@ -1970,29 +1986,73 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('risks')
       .select('*')
       .eq('org_id', orgId)
-      .order('risk_score', { ascending: false });
+      .order('inherent_score', { ascending: false });
     return ok(data, error).map((row) => this.toRisk(row));
   }
 
   async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
-    const riskScore = this.computeRiskScore(data.likelihood, data.impact);
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const { data: lastRisk } = await this.db
+      .from('risks')
+      .select('risk_id')
+      .eq('org_id', orgId)
+      .order('risk_id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastSuffix = lastRisk?.['risk_id']
+      ? parseInt(String(lastRisk['risk_id']).slice('RSK-'.length), 10)
+      : 100;
+    const riskId = `RSK-${String(lastSuffix + 1).padStart(6, '0')}`;
+
     const { data: row, error } = await this.db
       .from('risks')
       .insert({
         org_id: orgId,
         user_id: userId,
+        risk_id: riskId,
         title: data.title,
-        description: data.description,
-        category: data.category,
-        likelihood: data.likelihood,
-        impact: data.impact,
-        risk_score: riskScore,
-        treatment: data.treatment ?? 'mitigate',
-        asset_id: data.assetId ?? null,
+        risk_statement: data.riskStatement,
+        taxonomy_category_id: data.taxonomyCategoryId,
+        owner_id: data.ownerId,
+        business_unit: data.businessUnit ?? null,
+        source: data.source ?? 'manual',
+        source_ref: data.sourceRef ?? null,
+        asset_ids: data.assetIds ?? [],
+        vendor_ids: data.vendorIds ?? [],
+        methodology_id: methodology.id,
+        inherent_likelihood: data.inherentLikelihood,
+        inherent_impact: data.inherentImpact,
+        inherent_score: score,
+        inherent_label: label,
+        status: 'open',
+        // legacy columns kept populated for backward compatibility with any
+        // code path still reading the pre-rebuild columns directly:
+        description: data.riskStatement,
+        category: data.taxonomyCategoryId,
+        likelihood: 'medium',
+        impact: 'medium',
+        risk_score: score,
+        treatment: 'mitigate',
       })
       .select()
       .single();
     return this.toRisk(ok(row, error));
+  }
+
+  private scoreRisk(
+    methodology: RiskMethodology,
+    likelihood: number,
+    impact: number,
+  ): { score: number; label: RiskScoreLabel } {
+    const score = likelihood * impact;
+    const band = methodology.thresholds.find((t) => score <= t.maxScore);
+    return { score, label: band?.label ?? 'critical' };
   }
 
   async getRisk(id: string): Promise<Risk | null> {
@@ -2001,22 +2061,87 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.toRisk(data) : null;
   }
 
-  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+  async updateRisk(
+    id: string,
+    patch: RiskPatch,
+    changedBy: string,
+    reason?: string,
+  ): Promise<Risk> {
     const current = await this.getRisk(id);
     if (!current) throw new Error('risk_not_found');
-    const newLikelihood = patch.likelihood ?? current.likelihood;
-    const newImpact = patch.impact ?? current.impact;
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      risk_score: this.computeRiskScore(newLikelihood, newImpact),
-    };
+
+    const scoreFieldsChanging =
+      patch.inherentLikelihood !== undefined ||
+      patch.inherentImpact !== undefined ||
+      patch.residualLikelihood !== undefined ||
+      patch.residualImpact !== undefined ||
+      patch.treatmentStrategy !== undefined;
+
+    if (scoreFieldsChanging) {
+      await this.db.from('risk_snapshots').insert({
+        risk_id: id,
+        inherent_score: current.inherentScore,
+        inherent_label: current.inherentLabel,
+        residual_score: current.residualScore ?? null,
+        residual_label: current.residualLabel ?? null,
+        treatment_strategy: current.treatmentStrategy ?? null,
+        changed_by: changedBy,
+        reason: reason ?? null,
+      });
+    }
+
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.description !== undefined) update['description'] = patch.description;
-    if (patch.category !== undefined) update['category'] = patch.category;
-    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
-    if (patch.impact !== undefined) update['impact'] = patch.impact;
-    if (patch.treatment !== undefined) update['treatment'] = patch.treatment;
-    if ('assetId' in patch) update['asset_id'] = patch.assetId;
+    if (patch.riskStatement !== undefined) update['risk_statement'] = patch.riskStatement;
+    if (patch.taxonomyCategoryId !== undefined)
+      update['taxonomy_category_id'] = patch.taxonomyCategoryId;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
+    if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.treatmentStrategy !== undefined)
+      update['treatment_strategy'] = patch.treatmentStrategy;
+    if (patch.treatmentOwner !== undefined) update['treatment_owner'] = patch.treatmentOwner;
+    if (patch.treatmentPlan !== undefined) update['treatment_plan'] = patch.treatmentPlan;
+    if (patch.targetScore !== undefined) update['target_score'] = patch.targetScore;
+    if (patch.targetDate !== undefined) update['target_date'] = patch.targetDate;
+    if (patch.status !== undefined) update['status'] = patch.status;
+
+    const methodology = await this.getRiskMethodology(current.orgId);
+    if (methodology) {
+      const newInherentLikelihood = patch.inherentLikelihood ?? current.inherentLikelihood;
+      const newInherentImpact = patch.inherentImpact ?? current.inherentImpact;
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          newInherentLikelihood,
+          newInherentImpact,
+        );
+        update['inherent_likelihood'] = newInherentLikelihood;
+        update['inherent_impact'] = newInherentImpact;
+        update['inherent_score'] = score;
+        update['inherent_label'] = label;
+      }
+      const newResidualLikelihood = patch.residualLikelihood ?? current.residualLikelihood;
+      const newResidualImpact = patch.residualImpact ?? current.residualImpact;
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        newResidualLikelihood !== undefined &&
+        newResidualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          newResidualLikelihood,
+          newResidualImpact,
+        );
+        update['residual_likelihood'] = newResidualLikelihood;
+        update['residual_impact'] = newResidualImpact;
+        update['residual_score'] = score;
+        update['residual_label'] = label;
+        update['above_appetite'] = score > methodology.appetiteThreshold;
+      }
+    }
+
     const { data, error } = await this.db
       .from('risks')
       .update(update)
@@ -2034,18 +2159,183 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   private toRisk(row: Record<string, unknown>): Risk {
     return {
       id: row['id'] as string,
+      riskId: row['risk_id'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
       title: row['title'] as string,
-      description: row['description'] as string,
-      category: row['category'] as string,
-      likelihood: row['likelihood'] as Risk['likelihood'],
-      impact: row['impact'] as Risk['impact'],
-      riskScore: row['risk_score'] as number,
-      treatment: row['treatment'] as Risk['treatment'],
-      assetId: row['asset_id'] as string | null,
+      riskStatement: row['risk_statement'] as string,
+      taxonomyCategoryId: row['taxonomy_category_id'] as string,
+      ownerId: row['owner_id'] as string,
+      businessUnit: row['business_unit'] as string | undefined,
+      source: row['source'] as RiskSource,
+      sourceRef: row['source_ref'] as string | undefined,
+      assetIds: (row['asset_ids'] as string[]) ?? [],
+      vendorIds: (row['vendor_ids'] as string[]) ?? [],
+      methodologyId: row['methodology_id'] as string,
+      inherentLikelihood: row['inherent_likelihood'] as number,
+      inherentImpact: row['inherent_impact'] as number,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualLikelihood: row['residual_likelihood'] as number | undefined,
+      residualImpact: row['residual_impact'] as number | undefined,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      aboveAppetite: row['above_appetite'] as boolean | undefined,
+      treatmentStrategy: row['treatment_strategy'] as RiskTreatmentStrategy | undefined,
+      treatmentOwner: row['treatment_owner'] as string | undefined,
+      treatmentPlan: row['treatment_plan'] as string | undefined,
+      targetScore: row['target_score'] as number | undefined,
+      targetDate: row['target_date'] as string | undefined,
+      status: row['status'] as RiskStatus,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Risk Methodology ──────────────────────────────────────────────────────
+
+  async getRiskMethodology(orgId: string): Promise<RiskMethodology | null> {
+    const { data, error } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data) return this.toRiskMethodology(data);
+
+    const seeded = {
+      org_id: orgId,
+      scale_size: 5,
+      likelihood_labels: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost Certain'],
+      impact_labels: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+      thresholds: [
+        { maxScore: 4, label: 'low' },
+        { maxScore: 9, label: 'medium' },
+        { maxScore: 16, label: 'high' },
+        { maxScore: 25, label: 'critical' },
+      ],
+      appetite_threshold: 9,
+    };
+    const { data: row, error: insertError } = await this.db
+      .from('risk_methodologies')
+      .insert(seeded)
+      .select()
+      .single();
+    return this.toRiskMethodology(ok(row, insertError));
+  }
+
+  async upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
+    const current = await this.getRiskMethodology(orgId);
+    const nextVersion = (current?.version ?? 0) + 1;
+    const { data: row, error } = await this.db
+      .from('risk_methodologies')
+      .insert({
+        org_id: orgId,
+        version: nextVersion,
+        is_active: true,
+        scale_size: data.scaleSize,
+        likelihood_labels: data.likelihoodLabels,
+        impact_labels: data.impactLabels,
+        thresholds: data.thresholds,
+        appetite_threshold: data.appetiteThreshold,
+      })
+      .select()
+      .single();
+    const result = this.toRiskMethodology(ok(row, error));
+    if (current) {
+      await this.db.from('risk_methodologies').update({ is_active: false }).eq('id', current.id);
+    }
+    return result;
+  }
+
+  private toRiskMethodology(row: Record<string, unknown>): RiskMethodology {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      version: row['version'] as number,
+      isActive: row['is_active'] as boolean,
+      scaleSize: row['scale_size'] as 3 | 4 | 5,
+      likelihoodLabels: row['likelihood_labels'] as string[],
+      impactLabels: row['impact_labels'] as string[],
+      thresholds: row['thresholds'] as RiskThresholdBand[],
+      appetiteThreshold: row['appetite_threshold'] as number,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk Taxonomy ─────────────────────────────────────────────────────────
+
+  async listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    const rows = ok(data, error);
+    if (rows.length > 0) return rows.map((r) => this.toRiskTaxonomyCategory(r));
+
+    const defaults = [
+      'Identity & Access',
+      'Vulnerability Management',
+      'Network Security',
+      'Application Security',
+      'Data Security',
+      'Security Operations',
+      'Incident Response',
+      'Availability',
+      'Infrastructure',
+      'Architecture',
+      'Change',
+      'Cloud',
+      'Technical Debt',
+      'Supplier Security',
+      'Concentration',
+      'Supply Chain',
+      'Outsourcing',
+      'Privacy',
+      'Compliance / Regulatory',
+      'Operational',
+      'Business Continuity / Resilience',
+      'Strategic',
+      'Financial',
+    ];
+    const { data: inserted, error: insertError } = await this.db
+      .from('risk_taxonomy_categories')
+      .insert(defaults.map((name) => ({ org_id: orgId, name })))
+      .select();
+    return ok(inserted, insertError).map((r) => this.toRiskTaxonomyCategory(r));
+  }
+
+  async createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory> {
+    const { data: row, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .insert({ org_id: orgId, name: data.name })
+      .select()
+      .single();
+    return this.toRiskTaxonomyCategory(ok(row, error));
+  }
+
+  async archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .update({ archived: true })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskTaxonomyCategory(ok(data, error));
+  }
+
+  private toRiskTaxonomyCategory(row: Record<string, unknown>): RiskTaxonomyCategory {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      name: row['name'] as string,
+      archived: row['archived'] as boolean,
+      createdAt: row['created_at'] as string,
     };
   }
 
@@ -2239,6 +2529,53 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     };
   }
 
+  // ─── Risk history and risk-scoped evidence ──────────────────────────────────
+
+  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    const { data, error } = await this.db
+      .from('risk_snapshots')
+      .select('*')
+      .eq('risk_id', riskId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((r) => this.toRiskSnapshot(r));
+  }
+
+  private toRiskSnapshot(row: Record<string, unknown>): RiskSnapshot {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      treatmentStrategy: row['treatment_strategy'] as RiskTreatmentStrategy | undefined,
+      changedBy: row['changed_by'] as string,
+      reason: row['reason'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('risk_id', riskId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), risk_id: riskId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
   // ─── Policies ──────────────────────────────────────────────────────────────
 
   async listPolicies(orgId: string): Promise<Policy[]> {
@@ -2387,6 +2724,184 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       controlCode: row['control_code'] as string,
       frameworkId: row['framework_id'] as string,
       createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk ↔ Control mapping ─────────────────────────────────────────────────
+
+  async listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]> {
+    const { data, error } = await this.db
+      .from('risk_control_mappings')
+      .select('*')
+      .eq('risk_id', riskId);
+    return ok(data, error).map((r) => this.toRiskControlMapping(r));
+  }
+
+  async addRiskControlMapping(
+    riskId: string,
+    data: RiskControlMappingInput,
+  ): Promise<RiskControlMapping> {
+    const { data: row, error } = await this.db
+      .from('risk_control_mappings')
+      .insert({
+        risk_id: riskId,
+        control_id: data.controlId,
+        control_code: data.controlCode,
+        control_title: data.controlTitle,
+        effectiveness_note: data.effectivenessNote ?? null,
+      })
+      .select()
+      .single();
+    return this.toRiskControlMapping(ok(row, error));
+  }
+
+  async removeRiskControlMapping(id: string): Promise<void> {
+    const { error } = await this.db.from('risk_control_mappings').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toRiskControlMapping(row: Record<string, unknown>): RiskControlMapping {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      controlId: row['control_id'] as string,
+      controlCode: row['control_code'] as string,
+      controlTitle: row['control_title'] as string,
+      effectivenessNote: row['effectiveness_note'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk Acceptance ────────────────────────────────────────────────────────
+
+  async createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance> {
+    const { data: row, error } = await this.db
+      .from('risk_acceptances')
+      .insert({
+        risk_id: riskId,
+        org_id: orgId,
+        requested_by: requestedBy,
+        justification: data.justification,
+        compensating_controls: data.compensatingControls,
+        expires_at: data.expiresAt,
+        approver_id: data.approverId,
+      })
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(row, error));
+  }
+
+  async getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('risk_id', riskId)
+      .neq('status', 'rejected')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskAcceptance(data) : null;
+  }
+
+  async reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({
+        status: 'reviewed',
+        reviewed_by: reviewedBy,
+        reviewed_at: new Date().toISOString(),
+        review_notes: reviewNotes ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private async getRiskAcceptanceOrThrow(id: string): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private assertCanDecideRiskAcceptance(current: RiskAcceptance, userId: string): void {
+    if (current.status === 'approved' || current.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${current.id}`);
+    }
+    if (current.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
+  }
+
+  async approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, userId);
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('approver_id', userId)
+      .in('status', ['requested', 'reviewed'])
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, userId);
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('approver_id', userId)
+      .in('status', ['requested', 'reviewed'])
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private toRiskAcceptance(row: Record<string, unknown>): RiskAcceptance {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      justification: row['justification'] as string,
+      compensatingControls: row['compensating_controls'] as string,
+      expiresAt: row['expires_at'] as string,
+      approverId: row['approver_id'] as string,
+      status: row['status'] as RiskAcceptanceStatus,
+      reviewedBy: row['reviewed_by'] as string | undefined,
+      reviewedAt: row['reviewed_at'] as string | undefined,
+      reviewNotes: row['review_notes'] as string | undefined,
+      approvedAt: row['approved_at'] as string | undefined,
+      approvedBy: row['approved_by'] as string | undefined,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
     };
   }
 }

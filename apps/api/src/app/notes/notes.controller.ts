@@ -45,6 +45,10 @@ import type {
   RiskAssessmentPatch,
   RiskAssessmentItemInput,
   RiskAssessmentItemPatch,
+  RiskMethodologyInput,
+  RiskTaxonomyCategoryInput,
+  RiskControlMappingInput,
+  RiskAcceptanceInput,
   FrameworkInput,
   FrameworkPatch,
   FrameworkRequirementPatch,
@@ -802,6 +806,25 @@ export class NotesController {
     return this.notes.createRisk(orgId, userId, body);
   }
 
+  @Get('risks/methodology')
+  @ApiOperation({ summary: 'Get the org active risk methodology' })
+  getRiskMethodology(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.getRiskMethodology(orgId);
+  }
+
+  @Get('risks/taxonomy')
+  @ApiOperation({ summary: 'List the org risk taxonomy categories' })
+  listRiskTaxonomy(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.listRiskTaxonomy(orgId);
+  }
+
   @Get('risks/:id')
   @ApiOperation({ summary: 'Get risk' })
   async getRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
@@ -812,14 +835,15 @@ export class NotesController {
   }
 
   @Patch('risks/:id')
-  @ApiOperation({ summary: 'Update risk' })
+  @ApiOperation({ summary: 'Update risk (writes a history snapshot first)' })
   updateRisk(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
-    @Body() patch: RiskPatch,
+    @Body() body: RiskPatch & { reason?: string },
   ) {
-    this.uid(req);
-    return this.notes.updateRisk(id, patch);
+    const userId = this.uid(req);
+    const { reason, ...patch } = body;
+    return this.notes.updateRisk(id, patch, userId, reason);
   }
 
   @Delete('risks/:id')
@@ -828,6 +852,142 @@ export class NotesController {
   deleteRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     return this.notes.deleteRisk(id);
+  }
+
+  // ─── Risk Register ───────────────────────────────────────────────────────
+
+  @Post('risks/methodology')
+  @ApiOperation({ summary: 'Update the org risk methodology (creates a new version)' })
+  upsertRiskMethodology(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: RiskMethodologyInput,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.upsertRiskMethodology(orgId, body);
+  }
+
+  @Post('risks/taxonomy')
+  @ApiOperation({ summary: 'Add a risk taxonomy category' })
+  createRiskTaxonomyCategory(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: RiskTaxonomyCategoryInput,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createRiskTaxonomyCategory(orgId, body);
+  }
+
+  @Patch('risks/taxonomy/:id/archive')
+  @ApiOperation({ summary: 'Archive a risk taxonomy category' })
+  archiveRiskTaxonomyCategory(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    this.uid(req);
+    return this.notes.archiveRiskTaxonomyCategory(id);
+  }
+
+  @Get('risks/:id/mappings')
+  @ApiOperation({ summary: 'List controls mapped to a risk' })
+  listRiskControlMappings(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listRiskControlMappings(id);
+  }
+
+  @Post('risks/:id/mappings')
+  @ApiOperation({ summary: 'Map a control to a risk' })
+  addRiskControlMapping(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: RiskControlMappingInput,
+  ) {
+    this.uid(req);
+    return this.notes.addRiskControlMapping(id, body);
+  }
+
+  @Delete('risks/:riskId/mappings/:mappingId')
+  @ApiOperation({ summary: 'Remove a risk-control mapping' })
+  removeRiskControlMapping(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('mappingId') mappingId: string,
+  ) {
+    this.uid(req);
+    return this.notes.removeRiskControlMapping(mappingId);
+  }
+
+  @Post('risks/:id/acceptance')
+  @ApiOperation({ summary: 'Request risk acceptance' })
+  createRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: RiskAcceptanceInput,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createRiskAcceptance(orgId, id, userId, body);
+  }
+
+  @Get('risks/:id/acceptance/active')
+  @ApiOperation({ summary: 'Get the active risk acceptance, if any' })
+  getActiveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.getActiveRiskAcceptance(id);
+  }
+
+  @Post('risk-acceptances/:id/review')
+  @ApiOperation({ summary: 'Review a risk acceptance request' })
+  reviewRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { reviewNotes?: string },
+  ) {
+    const userId = this.uid(req);
+    return this.notes.reviewRiskAcceptance(id, userId, body.reviewNotes);
+  }
+
+  @Post('risk-acceptances/:id/approve')
+  @ApiOperation({ summary: 'Approve a risk acceptance request' })
+  approveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.approveRiskAcceptance(id, userId);
+  }
+
+  @Post('risk-acceptances/:id/reject')
+  @ApiOperation({ summary: 'Reject a risk acceptance request' })
+  rejectRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    return this.notes.rejectRiskAcceptance(id, userId);
+  }
+
+  @Get('risks/:id/snapshots')
+  @ApiOperation({ summary: 'List risk history snapshots' })
+  listRiskSnapshots(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listRiskSnapshots(id);
+  }
+
+  @Get('risks/:id/evidence')
+  @ApiOperation({ summary: 'List evidence attached to a risk' })
+  listRiskEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listRiskEvidence(id);
+  }
+
+  @Post('risks/:id/evidence')
+  @ApiOperation({ summary: 'Attach evidence to a risk' })
+  createRiskEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createRiskEvidence(orgId, id, body);
   }
 
   // ─── Risk Assessments ────────────────────────────────────────────────────
