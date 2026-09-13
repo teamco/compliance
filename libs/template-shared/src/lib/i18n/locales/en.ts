@@ -1040,6 +1040,13 @@ export const en = {
     description: 'Description',
     inherentLikelihood: 'Inherent Likelihood',
     inherentImpact: 'Inherent Impact',
+    residualScoring: 'Residual Scoring',
+    residualLikelihood: 'Residual Likelihood',
+    residualImpact: 'Residual Impact',
+    residualScoringHint: 'Link at least one control before scoring residual risk',
+    effectivenessNotePlaceholder: 'Optional effectiveness note…',
+    selectOwner: 'Select an owner…',
+    selectApprover: 'Select an approver…',
     deleteItemConfirmTitle: 'Delete this item?',
     deleteItemConfirmDescription:
       'This will permanently delete the item and its linked controls. This action cannot be undone.',
