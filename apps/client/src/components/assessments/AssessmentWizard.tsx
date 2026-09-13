@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
+import { useNotify } from '@icore/template-shared';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ interface AssessmentWizardProps {
 
 export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizardProps) {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { data: types = [] } = useAssessmentTypes(orgId);
   const { data: assets = [] } = useAssets(orgId);
   const { data: vendors = [] } = useVendors(orgId);
@@ -74,7 +76,10 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
           vendorIds: form.vendorIds,
           dueDate: form.dueDate,
         },
-        { onSuccess: () => setStep('items') },
+        {
+          onSuccess: () => setStep('items'),
+          onError: () => notify.error(t('error.unknown')),
+        },
       );
       return;
     }
@@ -83,6 +88,7 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
         setAssessment(created);
         setStep('items');
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 
