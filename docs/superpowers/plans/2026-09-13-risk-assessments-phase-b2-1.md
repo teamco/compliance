@@ -722,7 +722,6 @@ import { useOrgMembers } from '@/queries/org-members';
 import { useAssessmentTypes } from '@/queries/assessment-types';
 import {
   useCreateAssessment,
-  useUpdateAssessment,
   type Assessment,
   type AssessmentInput,
 } from '@/queries/assessments';
@@ -748,7 +747,6 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
   const { data: vendors = [] } = useVendors(orgId);
   const { data: members = [] } = useOrgMembers(orgId);
   const createMut = useCreateAssessment(orgId);
-  const updateMut = useUpdateAssessment(orgId, /* filled in once assessment exists */ '');
 
   const [step, setStep] = useState<WizardStep>('details');
   const [assessment, setAssessment] = useState<Assessment | null>(null);
@@ -773,9 +771,10 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
   function handleDetailsNext() {
     if (!form.title || !form.assessmentTypeId || !form.ownerId) return;
     if (assessment) {
-      // returning to Details after already creating — update, don't re-create
-      // (Task 13 wires the actual updateMut call once its orgId/id dependency is resolved —
-      // see that task for the final form of this branch)
+      // Returning to Details after already creating: Task 13 replaces this whole
+      // branch with a real useUpdateAssessment call once `assessment.id` is in scope.
+      // Left as a plain step-advance here (no backend write) so this task's build has
+      // no unused-variable/import to trip lint on.
       setStep('items');
       return;
     }
@@ -909,7 +908,7 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
 }
 ```
 
-Note: `updateMut` is declared with a placeholder empty-string id and its actual wiring (for the "return to Details after Items" edit path) is finished in Task 13, once the real `assessment.id` is available in scope — flag this clearly in your commit/report rather than silently leaving it half-wired; Task 13 depends on you having NOT deleted this line.
+Note: this task deliberately does NOT wire the "return to Details after Items" edit path to a real backend update — that's Task 13's job, once `assessment.id` is in scope. Do not add a `useUpdateAssessment` call or import in this task; doing so now would leave an unused variable (the branch that would call it doesn't exist yet), which fails lint.
 
 - [ ] **Step 2: Build**
 
@@ -1006,12 +1005,12 @@ git commit -m "feat(client): add AssessmentWizard Items step with review-gate"
 - Modify: `apps/client/src/components/assessments/AssessmentWizard.tsx`
 
 **Interfaces:**
-- Consumes: `useAssessmentItems`, `useUpdateAssessment` (already imported/declared in Task 11).
+- Consumes: `useAssessmentItems`, `useUpdateAssessment` (existing hook, not yet imported by Task 11 — this task adds it).
 - Produces: complete `AssessmentWizard`, consumed by Task 14.
 
-- [ ] **Step 1: Fix the `updateMut` wiring from Task 11**
+- [ ] **Step 1: Wire the Details-revisit update path**
 
-Task 11 declared `const updateMut = useUpdateAssessment(orgId, '');` as a placeholder. Now that `assessment` is in scope, change it to only construct the mutation once an assessment exists, and use it in `handleDetailsNext`'s "already created" branch:
+Task 11 deliberately left the "return to Details after Items" branch as a plain step-advance with no backend write (to avoid an unused-variable lint failure in that task, since the branch that needed it didn't exist yet). Now add the real wiring: add `useUpdateAssessment` to the existing `@/queries/assessments` import, then add the mutation declaration right after `createMut`:
 
 ```tsx
   const updateMut = useUpdateAssessment(orgId, assessment?.id ?? '');
