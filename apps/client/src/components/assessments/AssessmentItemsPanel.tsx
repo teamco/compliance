@@ -100,7 +100,14 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
         id: item.id,
         patch: { residualLikelihood: next.likelihood, residualImpact: next.impact },
       },
-      { onSuccess: () => setResidualDraft((d) => ({ ...d, [item.id]: {} })) },
+      {
+        onSuccess: () =>
+          setResidualDraft((d) => {
+            const next = { ...d };
+            delete next[item.id];
+            return next;
+          }),
+      },
     );
   }
 

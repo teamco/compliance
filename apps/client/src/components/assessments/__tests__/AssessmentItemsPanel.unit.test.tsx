@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, within, act } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -102,7 +102,12 @@ function wrap(ui: React.ReactElement) {
 
 async function renderPanel() {
   const { AssessmentItemsPanel } = await import('../AssessmentItemsPanel');
-  render(wrap(<AssessmentItemsPanel orgId="org1" assessmentId="a1" />));
+  const utils = render(wrap(<AssessmentItemsPanel orgId="org1" assessmentId="a1" />));
+  return {
+    ...utils,
+    rerenderPanel: () =>
+      utils.rerender(wrap(<AssessmentItemsPanel orgId="org1" assessmentId="a1" />)),
+  };
 }
 
 describe('AssessmentItemsPanel', () => {
@@ -235,6 +240,49 @@ describe('AssessmentItemsPanel', () => {
 
     expect(mockCreateEvidenceMutate).toHaveBeenCalledWith(
       expect.objectContaining({ title: 'New Evidence', url: '' }),
+      expect.any(Object),
+    );
+  });
+
+  it('re-scores a single residual field after both fields have already persisted', async () => {
+    mockMappings = [
+      {
+        id: 'map-1',
+        itemId: 'item-1',
+        controlId: 'c1',
+        controlCode: 'IAM-001',
+        controlTitle: 'Access Review',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+    const { rerenderPanel } = await renderPanel();
+
+    fireEvent.click(screen.getByText('Unpatched endpoints'));
+
+    const [, likelihoodSelect, impactSelect] = screen.getAllByRole('combobox');
+
+    fireEvent.change(likelihoodSelect, { target: { value: '3' } });
+    fireEvent.change(impactSelect, { target: { value: '4' } });
+
+    expect(mockUpdateItemMutate).toHaveBeenCalledTimes(1);
+    expect(mockUpdateItemMutate).toHaveBeenLastCalledWith(
+      { id: 'item-1', patch: { residualLikelihood: 3, residualImpact: 4 } },
+      expect.any(Object),
+    );
+
+    // Simulate the mutation succeeding, then the query refetch (which the real
+    // useUpdateAssessmentItem hook triggers via invalidateQueries) landing the
+    // persisted values back on the item.
+    const [, firstOptions] = mockUpdateItemMutate.mock.calls[0];
+    act(() => firstOptions.onSuccess());
+    mockItems = [{ ...mockItems[0], residualLikelihood: 3, residualImpact: 4 }];
+    rerenderPanel();
+
+    fireEvent.change(screen.getAllByRole('combobox')[2], { target: { value: '5' } });
+
+    expect(mockUpdateItemMutate).toHaveBeenCalledTimes(2);
+    expect(mockUpdateItemMutate).toHaveBeenLastCalledWith(
+      { id: 'item-1', patch: { residualLikelihood: 3, residualImpact: 5 } },
       expect.any(Object),
     );
   });
