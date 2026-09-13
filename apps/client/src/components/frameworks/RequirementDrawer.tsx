@@ -31,6 +31,7 @@ import {
   type RequirementEvidence,
   type RequirementAssessment,
 } from '@/queries/frameworks';
+import { safeHref } from '@/lib/safe-href';
 
 type DrawerSection =
   'requirement' | 'applicability' | 'implementation' | 'mapping' | 'evidence' | 'assessments';
@@ -935,18 +936,23 @@ export function RequirementDrawer({
                           Expires: <strong className="text-foreground">{ev.expirationDate}</strong>
                         </div>
                       </div>
-                      {ev.url && (
-                        <div className="pt-1">
-                          <a
-                            href={ev.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-green-500 hover:underline inline-flex items-center gap-1"
-                          >
-                            View Evidence Artifact <ExternalLink size={11} />
-                          </a>
-                        </div>
-                      )}
+                      {ev.url &&
+                        (safeHref(ev.url) ? (
+                          <div className="pt-1">
+                            <a
+                              href={safeHref(ev.url)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-green-500 hover:underline inline-flex items-center gap-1"
+                            >
+                              View Evidence Artifact <ExternalLink size={11} />
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="pt-1">
+                            <span className="text-xs text-muted-foreground">{ev.url}</span>
+                          </div>
+                        ))}
                     </div>
                   ))}
                 </div>
