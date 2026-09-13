@@ -30,17 +30,21 @@ import { useAssessmentTypes } from '@/queries/assessment-types';
 import { AssessmentItemControls } from '@/components/assessments/AssessmentItemControls';
 import { useRiskMethodology } from '@/queries/risks';
 import { useInternalControlsList } from '@/queries/controls';
+import { useOrgMembers } from '@/queries/org-members';
 import {
   useAssessment,
   useAssessmentItems,
   useCreateAssessmentItem,
+  useUpdateAssessmentItem,
   useDeleteAssessmentItem,
+  useAssessmentItemControlMappings,
   useStartAssessment,
   useSubmitForReview,
   useApproveAssessment,
   useRequestChanges,
   useCompleteAssessment,
   useArchiveAssessment,
+  type AssessmentItem,
   type AssessmentItemInput,
 } from '@/queries/assessments';
 
@@ -64,7 +68,9 @@ export function AssessmentDetailPage() {
   const { data: items = [] } = useAssessmentItems(id);
   const { data: methodology } = useRiskMethodology(orgId);
   const { data: controls = [] } = useInternalControlsList(orgId);
+  const { data: members = [] } = useOrgMembers(orgId);
   const createItemMut = useCreateAssessmentItem(id);
+  const updateItemMut = useUpdateAssessmentItem(id);
   const deleteItemMut = useDeleteAssessmentItem(id);
 
   const [tab, setTab] = useState<'overview' | 'items'>('overview');
@@ -79,6 +85,17 @@ export function AssessmentDetailPage() {
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
   const [confirmDeleteItemId, setConfirmDeleteItemId] = useState<string | null>(null);
 
+  const { data: expandedItemMappings = [] } = useAssessmentItemControlMappings(
+    expandedItemId ?? '',
+  );
+  const hasLinkedControls = expandedItemMappings.length > 0;
+
+  const memberName = (userId?: string | null) => {
+    if (!userId) return '';
+    const member = members.find((m) => m.userId === userId);
+    return member?.displayName ?? member?.email ?? userId;
+  };
+
   function handleCreateItem(e: React.FormEvent) {
     e.preventDefault();
     if (!itemForm.subject || !itemForm.inherentLikelihood || !itemForm.inherentImpact) return;
@@ -88,6 +105,19 @@ export function AssessmentDetailPage() {
         setItemForm({ subject: '', description: '', inherentLikelihood: 0, inherentImpact: 0 });
       },
     });
+  }
+
+  function handleResidualChange(
+    item: AssessmentItem,
+    field: 'residualLikelihood' | 'residualImpact',
+    value: number,
+  ) {
+    const next = {
+      residualLikelihood: field === 'residualLikelihood' ? value : (item.residualLikelihood ?? 0),
+      residualImpact: field === 'residualImpact' ? value : (item.residualImpact ?? 0),
+    };
+    if (!next.residualLikelihood || !next.residualImpact) return;
+    updateItemMut.mutate({ id: item.id, patch: next });
   }
 
   if (isPending || !assessment) {
@@ -192,9 +222,9 @@ export function AssessmentDetailPage() {
           <Field label={t('assessments.colCode')} value={assessment.assessmentCode} />
           <Field label={t('assessments.title')} value={assessment.title} />
           <Field label={t('assessments.type')} value={typeName} />
-          <Field label={t('assessments.owner')} value={assessment.ownerId} />
+          <Field label={t('assessments.owner')} value={memberName(assessment.ownerId)} />
           <Field label={t('assessments.businessUnit')} value={assessment.businessUnit ?? ''} />
-          <Field label={t('assessments.approver')} value={assessment.approverId ?? ''} />
+          <Field label={t('assessments.approver')} value={memberName(assessment.approverId)} />
           <Field label={t('assessments.dueDate')} value={assessment.dueDate?.slice(0, 10) ?? ''} />
           <Field
             label={t('assessments.colStatus')}
@@ -271,18 +301,72 @@ export function AssessmentDetailPage() {
                   </button>
                 </div>
                 {expandedItemId === item.id && (
-                  <div className="border-t border-border p-4 bg-background/40">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">
-                      {t('assessments.linkedControls')}
-                    </p>
-                    <AssessmentItemControls
-                      itemId={item.id}
-                      availableControls={controls.map((c) => ({
-                        id: c.id,
-                        code: c.code,
-                        title: c.title,
-                      }))}
-                    />
+                  <div className="border-t border-border p-4 bg-background/40 space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {t('assessments.linkedControls')}
+                      </p>
+                      <AssessmentItemControls
+                        itemId={item.id}
+                        availableControls={controls.map((c) => ({
+                          id: c.id,
+                          code: c.code,
+                          title: c.title,
+                        }))}
+                      />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        {t('assessments.residualScoring')}
+                      </p>
+                      {!hasLinkedControls && (
+                        <p className="text-[11px] text-muted-foreground/70 mb-2">
+                          {t('assessments.residualScoringHint')}
+                        </p>
+                      )}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>{t('assessments.residualLikelihood')}</Label>
+                          <select
+                            value={item.residualLikelihood ?? ''}
+                            disabled={!hasLinkedControls}
+                            onChange={(e) =>
+                              handleResidualChange(
+                                item,
+                                'residualLikelihood',
+                                Number(e.target.value),
+                              )
+                            }
+                            className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm disabled:opacity-40"
+                          >
+                            <option value="">{t('risks.selectLikelihood')}</option>
+                            {methodology?.likelihoodLabels.map((label, i) => (
+                              <option key={i} value={i + 1}>
+                                {i + 1} — {label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label>{t('assessments.residualImpact')}</Label>
+                          <select
+                            value={item.residualImpact ?? ''}
+                            disabled={!hasLinkedControls}
+                            onChange={(e) =>
+                              handleResidualChange(item, 'residualImpact', Number(e.target.value))
+                            }
+                            className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm disabled:opacity-40"
+                          >
+                            <option value="">{t('risks.selectImpact')}</option>
+                            {methodology?.impactLabels.map((label, i) => (
+                              <option key={i} value={i + 1}>
+                                {i + 1} — {label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
