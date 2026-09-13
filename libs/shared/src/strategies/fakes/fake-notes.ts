@@ -3812,18 +3812,37 @@ export class FakeNotesStrategy implements NotesStrategy {
     return acceptance;
   }
 
-  async approveRiskAcceptance(id: string): Promise<RiskAcceptance> {
+  async approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     const acceptance = this.riskAcceptances.find((a) => a.id === id);
     if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.status === 'approved' || acceptance.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
+    if (acceptance.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (acceptance.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
     acceptance.status = 'approved';
     acceptance.approvedAt = new Date().toISOString();
+    acceptance.approvedBy = userId;
     acceptance.updatedAt = new Date().toISOString();
     return acceptance;
   }
 
-  async rejectRiskAcceptance(id: string): Promise<RiskAcceptance> {
+  async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     const acceptance = this.riskAcceptances.find((a) => a.id === id);
     if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.status === 'approved' || acceptance.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
+    if (acceptance.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (acceptance.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
     acceptance.status = 'rejected';
     acceptance.updatedAt = new Date().toISOString();
     return acceptance;

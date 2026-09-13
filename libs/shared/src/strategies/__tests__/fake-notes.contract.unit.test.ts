@@ -894,10 +894,10 @@ describe('Risk Register lifecycle', () => {
       controlTitle: 'Privileged Access MFA',
       effectivenessNote: 'Effective',
     });
-    expect((await strategy.listRiskControlMappings(risk.id))).toHaveLength(1);
+    expect(await strategy.listRiskControlMappings(risk.id)).toHaveLength(1);
 
     await strategy.removeRiskControlMapping(mapping.id);
-    expect((await strategy.listRiskControlMappings(risk.id))).toHaveLength(0);
+    expect(await strategy.listRiskControlMappings(risk.id)).toHaveLength(0);
   });
 
   it('runs a risk acceptance through requested -> approved, and supersedes on a new request', async () => {
@@ -922,9 +922,10 @@ describe('Risk Register lifecycle', () => {
     expect(acceptance.status).toBe('requested');
 
     await strategy.reviewRiskAcceptance(acceptance.id, 'ciso-1', 'Looks reasonable');
-    const approved = await strategy.approveRiskAcceptance(acceptance.id);
+    const approved = await strategy.approveRiskAcceptance(acceptance.id, 'ciso-1');
     expect(approved.status).toBe('approved');
     expect(approved.approvedAt).toBeTruthy();
+    expect(approved.approvedBy).toBe('ciso-1');
 
     const active = await strategy.getActiveRiskAcceptance(risk.id);
     expect(active?.id).toBe(acceptance.id);
@@ -953,6 +954,6 @@ describe('Risk Register lifecycle', () => {
       verificationStatus: 'verified',
     });
 
-    expect((await strategy.listRiskEvidence(risk.id))).toHaveLength(1);
+    expect(await strategy.listRiskEvidence(risk.id)).toHaveLength(1);
   });
 });

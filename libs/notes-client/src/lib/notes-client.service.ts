@@ -739,12 +739,18 @@ export class NotesClientService {
     });
   }
 
-  approveRiskAcceptance(id: string): Promise<RiskAcceptance> {
-    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.approve', { id });
+  approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.approve', {
+      id,
+      userId,
+    });
   }
 
-  rejectRiskAcceptance(id: string): Promise<RiskAcceptance> {
-    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reject', { id });
+  rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reject', {
+      id,
+      userId,
+    });
   }
 
   listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {

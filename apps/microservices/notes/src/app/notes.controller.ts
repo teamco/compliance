@@ -674,13 +674,17 @@ export class NotesController {
   }
 
   @MessagePattern('notes.risks.acceptance.approve')
-  approveRiskAcceptance(@Payload() payload: { id: string }): Promise<RiskAcceptance> {
-    return this.strategy.approveRiskAcceptance(payload.id);
+  approveRiskAcceptance(
+    @Payload() payload: { id: string; userId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.approveRiskAcceptance(payload.id, payload.userId);
   }
 
   @MessagePattern('notes.risks.acceptance.reject')
-  rejectRiskAcceptance(@Payload() payload: { id: string }): Promise<RiskAcceptance> {
-    return this.strategy.rejectRiskAcceptance(payload.id);
+  rejectRiskAcceptance(
+    @Payload() payload: { id: string; userId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.rejectRiskAcceptance(payload.id, payload.userId);
   }
 
   @MessagePattern('notes.risks.snapshots.list')

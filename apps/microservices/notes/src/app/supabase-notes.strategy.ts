@@ -1998,11 +1998,17 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       data.inherentLikelihood,
       data.inherentImpact,
     );
-    const { count } = await this.db
+    const { data: lastRisk } = await this.db
       .from('risks')
-      .select('id', { count: 'exact', head: true })
-      .eq('org_id', orgId);
-    const riskId = `RSK-${String((count ?? 0) + 101).padStart(6, '0')}`;
+      .select('risk_id')
+      .eq('org_id', orgId)
+      .order('risk_id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastSuffix = lastRisk?.['risk_id']
+      ? parseInt(String(lastRisk['risk_id']).slice('RSK-'.length), 10)
+      : 100;
+    const riskId = `RSK-${String(lastSuffix + 1).padStart(6, '0')}`;
 
     const { data: row, error } = await this.db
       .from('risks')
@@ -2222,9 +2228,6 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
     const current = await this.getRiskMethodology(orgId);
     const nextVersion = (current?.version ?? 0) + 1;
-    if (current) {
-      await this.db.from('risk_methodologies').update({ is_active: false }).eq('id', current.id);
-    }
     const { data: row, error } = await this.db
       .from('risk_methodologies')
       .insert({
@@ -2239,7 +2242,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       })
       .select()
       .single();
-    return this.toRiskMethodology(ok(row, error));
+    const result = this.toRiskMethodology(ok(row, error));
+    if (current) {
+      await this.db.from('risk_methodologies').update({ is_active: false }).eq('id', current.id);
+    }
+    return result;
   }
 
   private toRiskMethodology(row: Record<string, unknown>): RiskMethodology {
@@ -2823,25 +2830,55 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toRiskAcceptance(ok(data, error));
   }
 
-  async approveRiskAcceptance(id: string): Promise<RiskAcceptance> {
+  private async getRiskAcceptanceOrThrow(id: string): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private assertCanDecideRiskAcceptance(current: RiskAcceptance, userId: string): void {
+    if (current.status === 'approved' || current.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${current.id}`);
+    }
+    if (current.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
+  }
+
+  async approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, userId);
     const { data, error } = await this.db
       .from('risk_acceptances')
       .update({
         status: 'approved',
         approved_at: new Date().toISOString(),
+        approved_by: userId,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('approver_id', userId)
+      .in('status', ['requested', 'reviewed'])
       .select()
       .single();
     return this.toRiskAcceptance(ok(data, error));
   }
 
-  async rejectRiskAcceptance(id: string): Promise<RiskAcceptance> {
+  async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, userId);
     const { data, error } = await this.db
       .from('risk_acceptances')
       .update({ status: 'rejected', updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('approver_id', userId)
+      .in('status', ['requested', 'reviewed'])
       .select()
       .single();
     return this.toRiskAcceptance(ok(data, error));
@@ -2862,6 +2899,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       reviewedAt: row['reviewed_at'] as string | undefined,
       reviewNotes: row['review_notes'] as string | undefined,
       approvedAt: row['approved_at'] as string | undefined,
+      approvedBy: row['approved_by'] as string | undefined,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };

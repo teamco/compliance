@@ -314,3 +314,26 @@ create policy "users manage own risks"
       )
     )
   );
+
+-- RLS fix: the pre-existing "org members read risks" / "org members read assets"
+-- SELECT policies used `using (true)`, letting any authenticated user read every
+-- org's risks and assets. Scope both to the requesting user's own org via
+-- org_profiles, matching the org-scoping pattern used throughout this migration.
+drop policy "org members read risks" on public.risks;
+
+create policy "org members read risks"
+  on public.risks for select
+  using (
+    exists (select 1 from public.org_profiles o where o.id = risks.org_id and o.user_id = auth.uid())
+  );
+
+drop policy "org members read assets" on public.assets;
+
+create policy "org members read assets"
+  on public.assets for select
+  using (
+    exists (select 1 from public.org_profiles o where o.id = assets.org_id and o.user_id = auth.uid())
+  );
+
+-- Risk Acceptance: track who actually approved the request (Finding 6).
+alter table public.risk_acceptances add column approved_by uuid;
