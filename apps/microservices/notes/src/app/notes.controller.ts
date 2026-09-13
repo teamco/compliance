@@ -713,6 +713,25 @@ export class NotesController {
     return this.strategy.createRiskEvidence(payload.orgId, payload.riskId, payload.data);
   }
 
+  @MessagePattern('notes.assessments.items.evidence.list')
+  listAssessmentItemEvidence(
+    @Payload() payload: { itemId: string },
+  ): Promise<RequirementEvidence[]> {
+    return this.strategy.listAssessmentItemEvidence(payload.itemId);
+  }
+
+  @MessagePattern('notes.assessments.items.evidence.create')
+  createAssessmentItemEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      itemId: string;
+      data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createAssessmentItemEvidence(payload.orgId, payload.itemId, payload.data);
+  }
+
   // ─── Risk Assessments ────────────────────────────────────────────────────
 
   @MessagePattern('notes.assessments.list')
