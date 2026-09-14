@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { Plus, Bug } from 'lucide-react';
 import { useDraft, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   type Issue,
   type IssueInput,
 } from '@/queries/issues';
+import { useFindingsByLink } from '@/queries/frameworks';
 import { useOrgMembers } from '@/queries/org-members';
 
 const SEVERITY_COLORS: Record<Issue['severity'], string> = {
@@ -53,6 +55,72 @@ const EMPTY_FORM: IssueInput = {
   ownerId: '',
   affectedAssets: '',
 };
+
+function IssueRow({
+  issue,
+  onStatusChange,
+  onDelete,
+}: {
+  issue: Issue;
+  onStatusChange: (status: Issue['status']) => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  const { data: linkedFindings = [] } = useFindingsByLink({
+    issueId: issue.source === 'gap_analysis' ? issue.id : undefined,
+  });
+  const linkedFinding = linkedFindings[0];
+
+  return (
+    <div className="flex items-start gap-4 bg-surface border border-border rounded-xl p-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className="font-medium text-sm text-foreground truncate">{issue.title}</span>
+          <span
+            className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${SEVERITY_COLORS[issue.severity]}`}
+          >
+            {t(`issues.severity.${issue.severity}`)}
+          </span>
+          <span
+            className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[issue.status]}`}
+          >
+            {t(`issues.status.${issue.status}`)}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">{issue.description}</p>
+        {linkedFinding && (
+          <Link
+            to="/controls/$id"
+            params={{ id: linkedFinding.controlId }}
+            className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
+          >
+            {t('issues.linkedFinding', { code: linkedFinding.code })}
+          </Link>
+        )}
+      </div>
+      <div className="flex gap-1.5 shrink-0">
+        <select
+          value={issue.status}
+          onChange={(e) => onStatusChange(e.target.value as Issue['status'])}
+          className="text-xs h-7 rounded border border-border bg-surface px-1 text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40"
+        >
+          {STATUS_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {t(`issues.status.${s}`)}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors"
+        >
+          {t('common.delete')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function IssuesPage() {
   const { t } = useTranslation();
@@ -116,54 +184,12 @@ export function IssuesPage() {
       ) : (
         <div className="space-y-2">
           {issues.map((issue) => (
-            <div
+            <IssueRow
               key={issue.id}
-              className="flex items-start gap-4 bg-surface border border-border rounded-xl p-4"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-medium text-sm text-foreground truncate">
-                    {issue.title}
-                  </span>
-                  <span
-                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${SEVERITY_COLORS[issue.severity]}`}
-                  >
-                    {t(`issues.severity.${issue.severity}`)}
-                  </span>
-                  <span
-                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[issue.status]}`}
-                  >
-                    {t(`issues.status.${issue.status}`)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{issue.description}</p>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                <select
-                  value={issue.status}
-                  onChange={(e) =>
-                    updateMut.mutate({
-                      id: issue.id,
-                      patch: { status: e.target.value as Issue['status'] },
-                    })
-                  }
-                  className="text-xs h-7 rounded border border-border bg-surface px-1 text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40"
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {t(`issues.status.${s}`)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => deleteMut.mutate(issue.id)}
-                  className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors"
-                >
-                  {t('common.delete')}
-                </button>
-              </div>
-            </div>
+              issue={issue}
+              onStatusChange={(status) => updateMut.mutate({ id: issue.id, patch: { status } })}
+              onDelete={() => deleteMut.mutate(issue.id)}
+            />
           ))}
         </div>
       )}

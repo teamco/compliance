@@ -702,6 +702,7 @@ export const en = {
       resolved: 'Resolved',
       wont_fix: "Won't Fix",
     },
+    linkedFinding: 'From Finding {{code}}',
   },
   assets: {
     subtitle: 'Inventory and risk context for organizational technology and information assets',
