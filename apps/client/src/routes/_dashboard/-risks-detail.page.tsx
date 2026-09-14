@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
 import { PageLayout } from '@/components/PageLayout';
@@ -148,12 +148,13 @@ export function RiskDetailPage() {
                 className="border border-border rounded-lg p-3 flex items-center justify-between text-sm"
               >
                 <div>
-                  <a
-                    href={`/assessments/${item.assessmentId}`}
+                  <Link
+                    to="/assessments/$id"
+                    params={{ id: item.assessmentId }}
                     className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
                   >
                     {item.assessmentCode}
-                  </a>
+                  </Link>
                   <span className="ml-2">{item.subject}</span>
                 </div>
                 <span className="text-xs text-muted-foreground">
