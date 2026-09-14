@@ -18,10 +18,13 @@ import {
   useLinkFindingToIssue,
   useCreateRiskFromFinding,
   useLinkFindingToRisk,
+  useCreateExceptionFromFinding,
+  useResolveFindingViaException,
   type InternalControl,
 } from '@/queries/frameworks';
 import { useIssues } from '@/queries/issues';
 import { useRisks, useRiskTaxonomy } from '@/queries/risks';
+import { useExceptions } from '@/queries/exceptions';
 import { useOrgMembers } from '@/queries/org-members';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -49,8 +52,8 @@ export function LinkedFindingSection({
   findingId,
   controlId,
   orgId,
-  frameworkId: _frameworkId,
-  internalControls: _internalControls,
+  frameworkId,
+  internalControls,
 }: LinkedFindingSectionProps) {
   const { t } = useTranslation();
   const notify = useNotify();
@@ -60,12 +63,18 @@ export function LinkedFindingSection({
   const { data: issues = [] } = useIssues(orgId);
   const { data: risks = [] } = useRisks(orgId);
   const { data: taxonomy = [] } = useRiskTaxonomy(orgId);
+  const { data: exceptions = [] } = useExceptions(orgId);
   const { data: members = [] } = useOrgMembers(orgId);
+  const approvedExceptions = exceptions.filter((e) => e.status === 'approved');
+
+  const control = internalControls.find((c) => c.id === controlId);
 
   const createIssueMut = useCreateIssueFromFinding(findingId);
   const linkIssueMut = useLinkFindingToIssue(findingId);
   const createRiskMut = useCreateRiskFromFinding(findingId);
   const linkRiskMut = useLinkFindingToRisk(findingId);
+  const createExceptionMut = useCreateExceptionFromFinding(findingId);
+  const resolveMut = useResolveFindingViaException(findingId);
 
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
   const [linkIssueOpen, setLinkIssueOpen] = useState(false);
@@ -99,6 +108,24 @@ export function LinkedFindingSection({
   function closeLinkRisk() {
     setLinkRiskOpen(false);
     setSelectedRiskId('');
+  }
+
+  const [createExceptionOpen, setCreateExceptionOpen] = useState(false);
+  const [linkExceptionOpen, setLinkExceptionOpen] = useState(false);
+  const [selectedExceptionId, setSelectedExceptionId] = useState('');
+  const [exceptionOwnerId, setExceptionOwnerId] = useState('');
+  const [exceptionStatement, setExceptionStatement] = useState('');
+  const [exceptionJustification, setExceptionJustification] = useState('');
+
+  function closeCreateException() {
+    setCreateExceptionOpen(false);
+    setExceptionOwnerId('');
+    setExceptionStatement('');
+    setExceptionJustification('');
+  }
+  function closeLinkException() {
+    setLinkExceptionOpen(false);
+    setSelectedExceptionId('');
   }
 
   if (!finding) return null;
@@ -174,6 +201,26 @@ export function LinkedFindingSection({
               </Button>
               <Button size="sm" variant="outline" onClick={() => setLinkRiskOpen(true)}>
                 {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing')}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p className="text-muted-foreground mb-1">
+            {t('frameworks.drawer.findingBridge.exceptionTitle', 'Exception')}
+          </p>
+          {finding.linkedExceptionId ? (
+            <span className="text-muted-foreground">
+              {t('frameworks.drawer.findingBridge.linked', 'Linked')}
+            </span>
+          ) : (
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => setCreateExceptionOpen(true)}>
+                {t('frameworks.drawer.findingBridge.createException', 'Create New Exception')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setLinkExceptionOpen(true)}>
+                {t('frameworks.drawer.findingBridge.linkException', 'Link Existing (Approved)')}
               </Button>
             </div>
           )}
@@ -396,6 +443,130 @@ export function LinkedFindingSection({
               }
             >
               {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing Risk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createExceptionOpen} onOpenChange={(o) => !o && closeCreateException()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('frameworks.drawer.findingBridge.createException', 'Create New Exception')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>{t('frameworks.drawer.findingBridge.selectOwner', 'Owner')}</Label>
+              <Combobox
+                options={members.map((m) => ({ value: m.userId, label: m.displayName }))}
+                value={exceptionOwnerId}
+                onChange={setExceptionOwnerId}
+                placeholder={t('frameworks.drawer.findingBridge.selectOwner', 'Select owner...')}
+              />
+            </div>
+            <div>
+              <Label>{t('exceptions.statement')}</Label>
+              <textarea
+                value={exceptionStatement}
+                onChange={(e) => setExceptionStatement(e.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none"
+                required
+              />
+            </div>
+            <div>
+              <Label>{t('exceptions.justification')}</Label>
+              <textarea
+                value={exceptionJustification}
+                onChange={(e) => setExceptionJustification(e.target.value)}
+                rows={3}
+                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none"
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCreateException}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={
+                !exceptionOwnerId ||
+                !exceptionStatement.trim() ||
+                !exceptionJustification.trim() ||
+                createExceptionMut.isPending
+              }
+              onClick={() =>
+                createExceptionMut.mutate(
+                  {
+                    controlCode: control?.code ?? '',
+                    frameworkId,
+                    title: finding.title,
+                    statement: exceptionStatement.trim(),
+                    justification: exceptionJustification.trim(),
+                    ownerId: exceptionOwnerId,
+                  },
+                  {
+                    onSuccess: () => {
+                      closeCreateException();
+                      notify.success(
+                        t(
+                          'frameworks.drawer.findingBridge.exceptionCreated',
+                          'Exception submitted for approval',
+                        ),
+                      );
+                    },
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                )
+              }
+            >
+              {t('frameworks.drawer.findingBridge.createException', 'Create New Exception')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={linkExceptionOpen} onOpenChange={(o) => !o && closeLinkException()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t(
+                'frameworks.drawer.findingBridge.linkException',
+                'Link Existing (Approved) Exception',
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <Combobox
+            options={approvedExceptions.map((e) => ({ value: e.id, label: e.title }))}
+            value={selectedExceptionId}
+            onChange={setSelectedExceptionId}
+            placeholder={t(
+              'frameworks.drawer.findingBridge.selectException',
+              'Select an approved exception...',
+            )}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={closeLinkException}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!selectedExceptionId || resolveMut.isPending}
+              onClick={() =>
+                resolveMut.mutate(
+                  { exceptionId: selectedExceptionId },
+                  {
+                    onSuccess: () => closeLinkException(),
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                )
+              }
+            >
+              {t(
+                'frameworks.drawer.findingBridge.linkException',
+                'Link Existing (Approved) Exception',
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
