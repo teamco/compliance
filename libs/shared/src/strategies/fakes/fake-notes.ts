@@ -2957,6 +2957,16 @@ export class FakeNotesStrategy implements NotesStrategy {
     asm.findingTitle = finding.title;
     asm.findingSeverity = finding.severity;
 
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      frameworkId: asm.frameworkId,
+      controlId: asm.controlId,
+      action: 'Finding Logged',
+      details: `${finding.code}: ${finding.title}`,
+      actor: 'system',
+      timestamp: now,
+    });
+
     return { findingId: finding.id };
   }
 

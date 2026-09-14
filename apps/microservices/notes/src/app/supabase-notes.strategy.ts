@@ -568,7 +568,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   ): Promise<{ findingId: string }> {
     const { data: asmRow, error: asmError } = await this.db
       .from('requirement_assessments')
-      .select('control_id')
+      .select('control_id, framework_id')
       .eq('id', assessmentId)
       .single();
     if (asmError || !asmRow?.['control_id']) {
@@ -602,7 +602,17 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       })
       .select()
       .single();
-    return { findingId: this.toFinding(ok(row, error)).id };
+    const finding = this.toFinding(ok(row, error));
+
+    await this.db.from('framework_activities').insert({
+      framework_id: asmRow['framework_id'],
+      control_id: asmRow['control_id'],
+      action: 'Finding Logged',
+      details: `${finding.code}: ${finding.title}`,
+      actor: 'system',
+    });
+
+    return { findingId: finding.id };
   }
 
   async listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
