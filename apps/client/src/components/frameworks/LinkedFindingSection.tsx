@@ -16,9 +16,12 @@ import {
   useControlFindings,
   useCreateIssueFromFinding,
   useLinkFindingToIssue,
+  useCreateRiskFromFinding,
+  useLinkFindingToRisk,
   type InternalControl,
 } from '@/queries/frameworks';
 import { useIssues } from '@/queries/issues';
+import { useRisks, useRiskTaxonomy } from '@/queries/risks';
 import { useOrgMembers } from '@/queries/org-members';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -55,15 +58,27 @@ export function LinkedFindingSection({
   const finding = findings?.find((f) => f.id === findingId);
 
   const { data: issues = [] } = useIssues(orgId);
+  const { data: risks = [] } = useRisks(orgId);
+  const { data: taxonomy = [] } = useRiskTaxonomy(orgId);
   const { data: members = [] } = useOrgMembers(orgId);
 
   const createIssueMut = useCreateIssueFromFinding(findingId);
   const linkIssueMut = useLinkFindingToIssue(findingId);
+  const createRiskMut = useCreateRiskFromFinding(findingId);
+  const linkRiskMut = useLinkFindingToRisk(findingId);
 
   const [createIssueOpen, setCreateIssueOpen] = useState(false);
   const [linkIssueOpen, setLinkIssueOpen] = useState(false);
   const [selectedIssueId, setSelectedIssueId] = useState('');
   const [issueOwnerId, setIssueOwnerId] = useState('');
+
+  const [createRiskOpen, setCreateRiskOpen] = useState(false);
+  const [linkRiskOpen, setLinkRiskOpen] = useState(false);
+  const [selectedRiskId, setSelectedRiskId] = useState('');
+  const [riskCategoryId, setRiskCategoryId] = useState('');
+  const [riskOwnerId, setRiskOwnerId] = useState('');
+  const [riskLikelihood, setRiskLikelihood] = useState(0);
+  const [riskImpact, setRiskImpact] = useState(0);
 
   function closeCreateIssue() {
     setCreateIssueOpen(false);
@@ -74,7 +89,23 @@ export function LinkedFindingSection({
     setSelectedIssueId('');
   }
 
+  function closeCreateRisk() {
+    setCreateRiskOpen(false);
+    setRiskCategoryId('');
+    setRiskOwnerId('');
+    setRiskLikelihood(0);
+    setRiskImpact(0);
+  }
+  function closeLinkRisk() {
+    setLinkRiskOpen(false);
+    setSelectedRiskId('');
+  }
+
   if (!finding) return null;
+
+  const linkedRisk = finding.linkedRiskId
+    ? risks.find((r) => r.id === finding.linkedRiskId)
+    : undefined;
 
   return (
     <div className="p-3 rounded-lg bg-surface border border-border space-y-3">
@@ -113,6 +144,36 @@ export function LinkedFindingSection({
               </Button>
               <Button size="sm" variant="outline" onClick={() => setLinkIssueOpen(true)}>
                 {t('frameworks.drawer.findingBridge.linkIssue', 'Link Existing')}
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p className="text-muted-foreground mb-1">
+            {t('frameworks.drawer.findingBridge.riskTitle', 'Risk')}
+          </p>
+          {finding.linkedRiskId ? (
+            linkedRisk ? (
+              <Link
+                to="/risks/$id"
+                params={{ id: linkedRisk.id }}
+                className="underline text-muted-foreground hover:text-foreground"
+              >
+                {linkedRisk.riskId}
+              </Link>
+            ) : (
+              <span className="text-muted-foreground">
+                {t('frameworks.drawer.findingBridge.linked', 'Linked')}
+              </span>
+            )
+          ) : (
+            <div className="flex gap-1">
+              <Button size="sm" variant="outline" onClick={() => setCreateRiskOpen(true)}>
+                {t('frameworks.drawer.findingBridge.createRisk', 'Create New Risk')}
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setLinkRiskOpen(true)}>
+                {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing')}
               </Button>
             </div>
           )}
@@ -197,6 +258,144 @@ export function LinkedFindingSection({
               }
             >
               {t('frameworks.drawer.findingBridge.linkIssue', 'Link Existing Issue')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={createRiskOpen} onOpenChange={(o) => !o && closeCreateRisk()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('frameworks.drawer.findingBridge.createRisk', 'Create New Risk')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>{t('risks.category')}</Label>
+              <select
+                value={riskCategoryId}
+                onChange={(e) => setRiskCategoryId(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+              >
+                <option value="">{t('risks.selectCategory')}</option>
+                {taxonomy.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>{t('frameworks.drawer.findingBridge.selectOwner', 'Owner')}</Label>
+              <Combobox
+                options={members.map((m) => ({ value: m.userId, label: m.displayName }))}
+                value={riskOwnerId}
+                onChange={setRiskOwnerId}
+                placeholder={t('frameworks.drawer.findingBridge.selectOwner', 'Select owner...')}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>{t('risks.inherentLikelihood')}</Label>
+                <select
+                  value={riskLikelihood || ''}
+                  onChange={(e) => setRiskLikelihood(Number(e.target.value))}
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                >
+                  <option value="">--</option>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>{t('risks.inherentImpact')}</Label>
+                <select
+                  value={riskImpact || ''}
+                  onChange={(e) => setRiskImpact(Number(e.target.value))}
+                  className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+                >
+                  <option value="">--</option>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCreateRisk}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={
+                !riskCategoryId ||
+                !riskOwnerId ||
+                !riskLikelihood ||
+                !riskImpact ||
+                createRiskMut.isPending
+              }
+              onClick={() =>
+                createRiskMut.mutate(
+                  {
+                    title: finding.title,
+                    description: finding.description,
+                    taxonomyCategoryId: riskCategoryId,
+                    ownerId: riskOwnerId,
+                    inherentLikelihood: riskLikelihood,
+                    inherentImpact: riskImpact,
+                  },
+                  {
+                    onSuccess: (created) => {
+                      closeCreateRisk();
+                      notify.success(t('assessments.riskCreated', { code: created.riskId }));
+                    },
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                )
+              }
+            >
+              {t('frameworks.drawer.findingBridge.createRisk', 'Create New Risk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={linkRiskOpen} onOpenChange={(o) => !o && closeLinkRisk()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing Risk')}
+            </DialogTitle>
+          </DialogHeader>
+          <Combobox
+            options={risks.map((r) => ({ value: r.id, label: `${r.riskId} — ${r.title}` }))}
+            value={selectedRiskId}
+            onChange={setSelectedRiskId}
+            placeholder={t('frameworks.drawer.findingBridge.selectRisk', 'Select a risk...')}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={closeLinkRisk}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!selectedRiskId || linkRiskMut.isPending}
+              onClick={() =>
+                linkRiskMut.mutate(
+                  { riskId: selectedRiskId },
+                  {
+                    onSuccess: () => closeLinkRisk(),
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                )
+              }
+            >
+              {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing Risk')}
             </Button>
           </DialogFooter>
         </DialogContent>
