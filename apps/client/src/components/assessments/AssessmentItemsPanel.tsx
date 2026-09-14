@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { Plus, Trash2 } from 'lucide-react';
+import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -53,6 +55,7 @@ interface AssessmentItemsPanelProps {
 
 export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPanelProps) {
   const { t } = useTranslation();
+  const notify = useNotify();
 
   const { data: items = [] } = useAssessmentItems(assessmentId);
   const { data: methodology } = useRiskMethodology(orgId);
@@ -96,6 +99,16 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
         setItemForm({ subject: '', description: '', inherentLikelihood: 0, inherentImpact: 0 });
       },
     });
+  }
+
+  function closeCreateRiskDialog() {
+    setCreateRiskDialogItemId(null);
+    setTaxonomyCategoryId('');
+  }
+
+  function closeLinkRiskDialog() {
+    setLinkRiskDialogItemId(null);
+    setSelectedRiskId('');
   }
 
   function handleResidualChange(
@@ -371,10 +384,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
         </AlertDialogContent>
       </AlertDialog>
 
-      <Dialog
-        open={!!createRiskDialogItemId}
-        onOpenChange={(o) => !o && setCreateRiskDialogItemId(null)}
-      >
+      <Dialog open={!!createRiskDialogItemId} onOpenChange={(o) => !o && closeCreateRiskDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('assessments.createNewRisk')}</DialogTitle>
@@ -397,7 +407,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateRiskDialogItemId(null)}>
+            <Button variant="outline" onClick={closeCreateRiskDialog}>
               {t('common.cancel')}
             </Button>
             <Button
@@ -407,10 +417,11 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                 createRiskMut.mutate(
                   { taxonomyCategoryId },
                   {
-                    onSuccess: () => {
-                      setCreateRiskDialogItemId(null);
-                      setTaxonomyCategoryId('');
+                    onSuccess: (created) => {
+                      closeCreateRiskDialog();
+                      notify.success(t('assessments.riskCreated', { code: created.riskId }));
                     },
+                    onError: () => notify.error(t('error.unknown')),
                   },
                 );
               }}
@@ -421,10 +432,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!linkRiskDialogItemId}
-        onOpenChange={(o) => !o && setLinkRiskDialogItemId(null)}
-      >
+      <Dialog open={!!linkRiskDialogItemId} onOpenChange={(o) => !o && closeLinkRiskDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('assessments.linkExistingRisk')}</DialogTitle>
@@ -436,7 +444,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
             placeholder={t('assessments.selectRisk')}
           />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkRiskDialogItemId(null)}>
+            <Button variant="outline" onClick={closeLinkRiskDialog}>
               {t('common.cancel')}
             </Button>
             <Button
@@ -446,10 +454,8 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                 linkRiskMut.mutate(
                   { riskId: selectedRiskId },
                   {
-                    onSuccess: () => {
-                      setLinkRiskDialogItemId(null);
-                      setSelectedRiskId('');
-                    },
+                    onSuccess: () => closeLinkRiskDialog(),
+                    onError: () => notify.error(t('error.unknown')),
                   },
                 );
               }}
@@ -465,6 +471,7 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
 
 function LinkedRiskSection({ item }: { item: AssessmentItem }) {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { data: risk } = useRisk(item.linkedRiskId ?? '');
   const updateRiskMut = useUpdateRisk(item.linkedRiskId ?? '');
   const unlinkMut = useUnlinkAssessmentItemFromRisk(item.id);
@@ -472,6 +479,11 @@ function LinkedRiskSection({ item }: { item: AssessmentItem }) {
   const [reason, setReason] = useState('');
 
   const canReassess = item.residualLikelihood != null && item.residualImpact != null;
+
+  function closeReassessDialog() {
+    setReassessOpen(false);
+    setReason('');
+  }
 
   if (!risk) return null;
 
@@ -481,16 +493,19 @@ function LinkedRiskSection({ item }: { item: AssessmentItem }) {
         {t('assessments.riskRegister')}
       </p>
       <div className="flex items-center gap-2 text-sm">
-        <a
-          href={`/risks/${risk.id}`}
+        <Link
+          to="/risks/$id"
+          params={{ id: risk.id }}
           className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
         >
           {risk.riskId}
-        </a>
+        </Link>
         <span className="text-muted-foreground">{risk.title}</span>
         <button
           type="button"
-          onClick={() => unlinkMut.mutate()}
+          onClick={() =>
+            unlinkMut.mutate(undefined, { onError: () => notify.error(t('error.unknown')) })
+          }
           className="text-muted-foreground hover:text-destructive cursor-pointer text-xs"
         >
           {t('assessments.unlinkRisk')}
@@ -506,7 +521,7 @@ function LinkedRiskSection({ item }: { item: AssessmentItem }) {
         {t('assessments.submitReassessment')}
       </Button>
 
-      <Dialog open={reassessOpen} onOpenChange={setReassessOpen}>
+      <Dialog open={reassessOpen} onOpenChange={(o) => !o && closeReassessDialog()}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t('assessments.submitReassessment')}</DialogTitle>
@@ -528,7 +543,7 @@ function LinkedRiskSection({ item }: { item: AssessmentItem }) {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReassessOpen(false)}>
+            <Button variant="outline" onClick={closeReassessDialog}>
               {t('common.cancel')}
             </Button>
             <Button
@@ -541,10 +556,8 @@ function LinkedRiskSection({ item }: { item: AssessmentItem }) {
                     reason: reason.trim(),
                   },
                   {
-                    onSuccess: () => {
-                      setReassessOpen(false);
-                      setReason('');
-                    },
+                    onSuccess: () => closeReassessDialog(),
+                    onError: () => notify.error(t('error.unknown')),
                   },
                 )
               }

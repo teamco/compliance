@@ -990,6 +990,7 @@ export const he = {
     residualScoringHint: 'קשר לפחות בקרה אחת לפני ניקוד הסיכון השיורי',
     riskRegister: 'מרשם סיכונים',
     createNewRisk: 'צור סיכון חדש',
+    riskCreated: 'הסיכון {{code}} נוצר',
     linkExistingRisk: 'קשר לסיכון קיים',
     selectRisk: 'בחר סיכון…',
     unlinkRisk: 'בטל קישור',

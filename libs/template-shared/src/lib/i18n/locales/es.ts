@@ -1026,6 +1026,7 @@ export const es = {
     residualScoringHint: 'Vincula al menos un control antes de puntuar el riesgo residual',
     riskRegister: 'Registro de riesgos',
     createNewRisk: 'Crear nuevo riesgo',
+    riskCreated: 'Riesgo {{code}} creado',
     linkExistingRisk: 'Vincular riesgo existente',
     selectRisk: 'Seleccionar un riesgo…',
     unlinkRisk: 'Desvincular',

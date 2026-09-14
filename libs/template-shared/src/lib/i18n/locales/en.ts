@@ -1051,6 +1051,7 @@ export const en = {
     residualScoringHint: 'Link at least one control before scoring residual risk',
     riskRegister: 'Risk Register',
     createNewRisk: 'Create New Risk',
+    riskCreated: 'Risk {{code}} created',
     linkExistingRisk: 'Link Existing Risk',
     selectRisk: 'Select a risk…',
     unlinkRisk: 'Unlink',

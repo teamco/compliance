@@ -46,6 +46,31 @@ let mockAvailableRisks: Risk[] = [];
 let mockLinkedRisk: Risk | undefined;
 const mockUpdateRiskMutate = vi.fn();
 
+vi.mock('@tanstack/react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-router')>();
+  return {
+    ...actual,
+    Link: ({
+      children,
+      to,
+      params,
+      className,
+    }: {
+      children: React.ReactNode;
+      to: string;
+      params?: Record<string, string>;
+      className?: string;
+    }) => (
+      <a
+        href={Object.entries(params ?? {}).reduce((p, [k, v]) => p.replace(`$${k}`, v), to)}
+        className={className}
+      >
+        {children}
+      </a>
+    ),
+  };
+});
+
 vi.mock('@/queries/risks', () => ({
   useRiskMethodology: () => ({ data: mockMethodology }),
   useRiskTaxonomy: () => ({ data: mockTaxonomy }),
