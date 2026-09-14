@@ -65,6 +65,8 @@ const mockCreateIssueMutate = vi.fn();
 const mockLinkIssueMutate = vi.fn();
 const mockCreateRiskMutate = vi.fn();
 const mockLinkRiskMutate = vi.fn();
+const mockCreateExceptionMutate = vi.fn();
+const mockResolveMutate = vi.fn();
 
 vi.mock('@/queries/frameworks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/queries/frameworks')>();
@@ -75,8 +77,8 @@ vi.mock('@/queries/frameworks', async (importOriginal) => {
     useLinkFindingToIssue: () => ({ mutate: mockLinkIssueMutate, isPending: false }),
     useCreateRiskFromFinding: () => ({ mutate: mockCreateRiskMutate, isPending: false }),
     useLinkFindingToRisk: () => ({ mutate: mockLinkRiskMutate, isPending: false }),
-    useCreateExceptionFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
-    useResolveFindingViaException: () => ({ mutate: vi.fn(), isPending: false }),
+    useCreateExceptionFromFinding: () => ({ mutate: mockCreateExceptionMutate, isPending: false }),
+    useResolveFindingViaException: () => ({ mutate: mockResolveMutate, isPending: false }),
   };
 });
 
@@ -88,7 +90,12 @@ vi.mock('@/queries/risks', () => ({
   useRiskTaxonomy: () => ({ data: [{ id: 'cat1', name: 'Category 1' }] }),
 }));
 vi.mock('@/queries/exceptions', () => ({
-  useExceptions: () => ({ data: [] }),
+  useExceptions: () => ({
+    data: [
+      { id: 'exc1', title: 'Approved one', status: 'approved' },
+      { id: 'exc2', title: 'Pending one', status: 'pending' },
+    ],
+  }),
 }));
 vi.mock('@/queries/org-members', () => ({
   useOrgMembers: () => ({
@@ -174,5 +181,53 @@ describe('LinkedFindingSection', () => {
       },
       expect.any(Object),
     );
+  });
+
+  it('filters the Link Existing Exception combobox to approved exceptions only', async () => {
+    await renderSection();
+    fireEvent.click(screen.getByRole('button', { name: /link existing \(approved\)/i }));
+    fireEvent.click(screen.getByRole('combobox'));
+
+    expect(screen.getByRole('option', { name: 'Approved one' })).toBeDefined();
+    expect(screen.queryByRole('option', { name: 'Pending one' })).toBeNull();
+  });
+
+  it('calls createExceptionFromFinding with control code, frameworkId, statement, justification and owner', async () => {
+    await renderSection();
+    fireEvent.click(screen.getByRole('button', { name: /create new exception/i }));
+
+    fireEvent.click(screen.getByRole('combobox'));
+    fireEvent.click(screen.getByRole('option', { name: 'Alice' }));
+
+    const [statementTextarea, justificationTextarea] = screen.getAllByRole('textbox');
+    fireEvent.change(statementTextarea, { target: { value: 'We accept this risk for now' } });
+    fireEvent.change(justificationTextarea, {
+      target: { value: 'Compensating control X is in place' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /create new exception/i }));
+
+    expect(mockCreateExceptionMutate).toHaveBeenCalledWith(
+      {
+        controlCode: 'POL-001',
+        frameworkId: 'fw1',
+        title: mockFinding.title,
+        statement: 'We accept this risk for now',
+        justification: 'Compensating control X is in place',
+        ownerId: 'user1',
+      },
+      expect.any(Object),
+    );
+  });
+
+  it('calls resolveFindingViaException with the selected approved exception id', async () => {
+    await renderSection();
+    fireEvent.click(screen.getByRole('button', { name: /link existing \(approved\)/i }));
+    fireEvent.click(screen.getByRole('combobox'));
+    fireEvent.click(screen.getByRole('option', { name: 'Approved one' }));
+
+    fireEvent.click(screen.getByRole('button', { name: /link existing \(approved\) exception/i }));
+
+    expect(mockResolveMutate).toHaveBeenCalledWith({ exceptionId: 'exc1' }, expect.any(Object));
   });
 });
