@@ -4100,6 +4100,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   ): Promise<Risk> {
     const item = this.assessmentItems.find((i) => i.id === itemId);
     if (!item) throw new Error(`assessment_item_not_found: ${itemId}`);
+    if (item.orgId !== orgId) throw new Error('risk_belongs_to_different_org');
     const assessment = await this.getAssessment(item.assessmentId);
     if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
     const risk = await this.createRisk(orgId, userId, {
