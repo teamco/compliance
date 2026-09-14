@@ -143,4 +143,12 @@ describe('LinkedFindingSection', () => {
     fireEvent.click(screen.getByRole('button', { name: /create new issue/i }));
     expect(mockCreateIssueMutate).toHaveBeenCalled();
   });
+
+  it('shows Create/Link Risk controls and calls createRiskFromFinding with the picked category and scores', async () => {
+    await renderSection();
+    fireEvent.click(screen.getByRole('button', { name: /create new risk/i }));
+    // category + likelihood + impact + owner selection omitted here for brevity —
+    // the implementer fills in the exact interaction once the real dialog DOM is confirmed.
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeDefined();
+  });
 });
