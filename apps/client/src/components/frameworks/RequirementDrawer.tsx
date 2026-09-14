@@ -32,6 +32,7 @@ import {
   type RequirementAssessment,
 } from '@/queries/frameworks';
 import { safeHref } from '@/lib/safe-href';
+import { LinkedFindingSection } from './LinkedFindingSection';
 
 type DrawerSection =
   'requirement' | 'applicability' | 'implementation' | 'mapping' | 'evidence' | 'assessments';
@@ -974,6 +975,15 @@ export function RequirementDrawer({
                 </div>
                 <Button
                   size="sm"
+                  disabled={linkedAssessments.length === 0}
+                  title={
+                    linkedAssessments.length === 0
+                      ? t(
+                          'frameworks.drawer.findingBridge.noAssessmentYet',
+                          'Log an assessment before recording a finding',
+                        )
+                      : undefined
+                  }
                   onClick={() => setShowAddFinding(!showAddFinding)}
                   className="h-7 text-xs gap-1 bg-amber-600 hover:bg-amber-500 text-white"
                 >
@@ -1102,20 +1112,14 @@ export function RequirementDrawer({
                         </div>
                       )}
 
-                      {asm.findingId && (
-                        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs font-bold text-red-400">
-                              {asm.findingId}
-                            </span>
-                            <span className="text-xs text-foreground font-medium">
-                              {asm.findingTitle}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-red-500/20 text-red-400">
-                            {asm.findingSeverity}
-                          </span>
-                        </div>
+                      {asm.findingId && asm.controlId && (
+                        <LinkedFindingSection
+                          findingId={asm.findingId}
+                          controlId={asm.controlId}
+                          orgId={orgId}
+                          frameworkId={framework.id}
+                          internalControls={internalControls}
+                        />
                       )}
                     </div>
                   ))}
