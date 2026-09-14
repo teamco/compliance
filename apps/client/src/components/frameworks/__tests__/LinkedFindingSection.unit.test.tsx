@@ -183,6 +183,12 @@ describe('LinkedFindingSection', () => {
     );
   });
 
+  it('shows the short "Link Existing (Approved)" trigger text, not the full dialog title text', async () => {
+    await renderSection();
+    expect(screen.getByRole('button', { name: 'Link Existing (Approved)' })).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Link Existing (Approved) Exception' })).toBeNull();
+  });
+
   it('filters the Link Existing Exception combobox to approved exceptions only', async () => {
     await renderSection();
     fireEvent.click(screen.getByRole('button', { name: /link existing \(approved\)/i }));

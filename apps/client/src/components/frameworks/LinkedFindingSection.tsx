@@ -183,7 +183,7 @@ export function LinkedFindingSection({
                 className="flex-1"
                 onClick={() => setLinkIssueOpen(true)}
               >
-                {t('frameworks.drawer.findingBridge.linkIssue', 'Link Existing')}
+                {t('frameworks.drawer.findingBridge.linkIssueShort', 'Link Existing')}
               </Button>
             </div>
           )}
@@ -223,7 +223,7 @@ export function LinkedFindingSection({
                 className="flex-1"
                 onClick={() => setLinkRiskOpen(true)}
               >
-                {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing')}
+                {t('frameworks.drawer.findingBridge.linkRiskShort', 'Link Existing')}
               </Button>
             </div>
           )}
@@ -253,7 +253,10 @@ export function LinkedFindingSection({
                 className="flex-1"
                 onClick={() => setLinkExceptionOpen(true)}
               >
-                {t('frameworks.drawer.findingBridge.linkException', 'Link Existing (Approved)')}
+                {t(
+                  'frameworks.drawer.findingBridge.linkExceptionShort',
+                  'Link Existing (Approved)',
+                )}
               </Button>
             </div>
           )}
@@ -268,7 +271,7 @@ export function LinkedFindingSection({
             </DialogTitle>
           </DialogHeader>
           <div>
-            <Label>{t('frameworks.drawer.findingBridge.selectOwner', 'Owner')}</Label>
+            <Label>{t('frameworks.drawer.findingBridge.selectOwnerLabel', 'Owner')}</Label>
             <Combobox
               options={members.map((m) => ({ value: m.userId, label: m.displayName }))}
               value={issueOwnerId}
@@ -367,7 +370,7 @@ export function LinkedFindingSection({
               </select>
             </div>
             <div>
-              <Label>{t('frameworks.drawer.findingBridge.selectOwner', 'Owner')}</Label>
+              <Label>{t('frameworks.drawer.findingBridge.selectOwnerLabel', 'Owner')}</Label>
               <Combobox
                 options={members.map((m) => ({ value: m.userId, label: m.displayName }))}
                 value={riskOwnerId}
@@ -490,7 +493,7 @@ export function LinkedFindingSection({
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>{t('frameworks.drawer.findingBridge.selectOwner', 'Owner')}</Label>
+              <Label>{t('frameworks.drawer.findingBridge.selectOwnerLabel', 'Owner')}</Label>
               <Combobox
                 options={members.map((m) => ({ value: m.userId, label: m.displayName }))}
                 value={exceptionOwnerId}
