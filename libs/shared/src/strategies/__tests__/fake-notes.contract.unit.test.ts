@@ -836,6 +836,144 @@ describe('Assessment write-path hardening', () => {
   });
 });
 
+describe('assessment item <-> risk bridge', () => {
+  async function seedItem(strategy: FakeNotesStrategy, orgId: string) {
+    const types = await strategy.listAssessmentTypes(orgId);
+    const assessment = await strategy.createAssessment(orgId, 'creator-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      businessUnit: 'Engineering',
+      assetIds: ['asset-1'],
+      vendorIds: ['vendor-1'],
+      approverId: 'approver-1',
+    });
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Unpatched CVE',
+      description: 'Critical CVE found on prod host',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+    return { assessment, item };
+  }
+
+  it('creates a risk from an assessment item and links it back', async () => {
+    const strategy = new FakeNotesStrategy();
+    const { assessment, item } = await seedItem(strategy, 'org-1');
+    const [category] = await strategy.listRiskTaxonomy('org-1');
+
+    const risk = await strategy.createRiskFromAssessmentItem('org-1', 'u1', item.id, {
+      taxonomyCategoryId: category!.id,
+    });
+
+    expect(risk.title).toBe(item.subject);
+    expect(risk.riskStatement).toBe(item.description);
+    expect(risk.ownerId).toBe(assessment.ownerId);
+    expect(risk.businessUnit).toBe(assessment.businessUnit);
+    expect(risk.assetIds).toEqual(assessment.assetIds);
+    expect(risk.vendorIds).toEqual(assessment.vendorIds);
+    expect(risk.inherentLikelihood).toBe(item.inherentLikelihood);
+    expect(risk.inherentImpact).toBe(item.inherentImpact);
+    expect(risk.source).toBe('risk_assessment');
+    expect(risk.sourceRef).toBe(item.id);
+
+    const updatedItems = await strategy.listAssessmentItems(assessment.id);
+    expect(updatedItems.find((i) => i.id === item.id)?.linkedRiskId).toBe(risk.id);
+  });
+
+  it('links an assessment item to a risk in the same org', async () => {
+    const strategy = new FakeNotesStrategy();
+    const { item } = await seedItem(strategy, 'org-1');
+    const [category] = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'u1', {
+      title: 'Standalone Risk',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: category!.id,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+
+    const linked = await strategy.linkAssessmentItemToRisk(item.id, risk.id);
+
+    expect(linked.linkedRiskId).toBe(risk.id);
+  });
+
+  it('refuses to link an assessment item to a risk from a different org', async () => {
+    const strategy = new FakeNotesStrategy();
+    const { item } = await seedItem(strategy, 'org-1');
+    const [otherCategory] = await strategy.listRiskTaxonomy('org-2');
+    const otherOrgRisk = await strategy.createRisk('org-2', 'u2', {
+      title: 'Other Org Risk',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: otherCategory!.id,
+      ownerId: 'u2',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+
+    await expect(strategy.linkAssessmentItemToRisk(item.id, otherOrgRisk.id)).rejects.toThrow();
+  });
+
+  it('unlinks an assessment item from its risk', async () => {
+    const strategy = new FakeNotesStrategy();
+    const { item } = await seedItem(strategy, 'org-1');
+    const [category] = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'u1', {
+      title: 'Standalone Risk',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: category!.id,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+    await strategy.linkAssessmentItemToRisk(item.id, risk.id);
+
+    const unlinked = await strategy.unlinkAssessmentItemFromRisk(item.id);
+
+    expect(unlinked.linkedRiskId).toBeUndefined();
+  });
+
+  it('lists only the assessment items linked to a given risk, with assessment context', async () => {
+    const strategy = new FakeNotesStrategy();
+    const { assessment, item: item1 } = await seedItem(strategy, 'org-1');
+    const item2 = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Second finding',
+      description: 'Another finding on the same assessment',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const [category] = await strategy.listRiskTaxonomy('org-1');
+    const riskA = await strategy.createRisk('org-1', 'u1', {
+      title: 'Risk A',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: category!.id,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+    const riskB = await strategy.createRisk('org-1', 'u1', {
+      title: 'Risk B',
+      riskStatement: 'stmt',
+      taxonomyCategoryId: category!.id,
+      ownerId: 'u1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+    await strategy.linkAssessmentItemToRisk(item1.id, riskA.id);
+    await strategy.linkAssessmentItemToRisk(item2.id, riskB.id);
+
+    const linkedToA = await strategy.listAssessmentItemsForRisk(riskA.id);
+    const linkedToB = await strategy.listAssessmentItemsForRisk(riskB.id);
+
+    expect(linkedToA.map((i) => i.id)).toEqual([item1.id]);
+    expect(linkedToB.map((i) => i.id)).toEqual([item2.id]);
+    expect(linkedToA[0]!.assessmentCode).toBe(assessment.assessmentCode);
+    expect(linkedToA[0]!.assessmentTitle).toBe(assessment.title);
+    expect(linkedToA[0]!.assessmentStatus).toBe(assessment.status);
+  });
+});
+
 describe('policies', () => {
   let s: FakeNotesStrategy;
   beforeEach(() => {
