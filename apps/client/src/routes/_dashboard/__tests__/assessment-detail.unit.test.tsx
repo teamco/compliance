@@ -74,6 +74,10 @@ const mockMethodology: RiskMethodology = {
 
 vi.mock('@/queries/risks', () => ({
   useRiskMethodology: () => ({ data: mockMethodology }),
+  useRiskTaxonomy: () => ({ data: [] }),
+  useRisks: () => ({ data: [] }),
+  useRisk: () => ({ data: undefined }),
+  useUpdateRisk: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const mockControls: InternalControl[] = [
@@ -164,6 +168,11 @@ vi.mock('@/queries/assessments', () => ({
   useCompleteAssessment: () => ({ mutate: mockCompleteMutate, isPending: false }),
   useArchiveAssessment: () => ({ mutate: mockArchiveMutate, isPending: false }),
   useAssessmentItemControlMappings: () => ({ data: mockMappings }),
+  useAssessmentItemEvidence: () => ({ data: [] }),
+  useCreateAssessmentItemEvidence: () => ({ mutate: vi.fn(), isPending: false }),
+  useCreateRiskFromAssessmentItem: () => ({ mutate: vi.fn(), isPending: false }),
+  useLinkAssessmentItemToRisk: () => ({ mutate: vi.fn(), isPending: false }),
+  useUnlinkAssessmentItemFromRisk: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
