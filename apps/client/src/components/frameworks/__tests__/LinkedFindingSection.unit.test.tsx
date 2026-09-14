@@ -63,6 +63,8 @@ const mockControls: InternalControl[] = [
 
 const mockCreateIssueMutate = vi.fn();
 const mockLinkIssueMutate = vi.fn();
+const mockCreateRiskMutate = vi.fn();
+const mockLinkRiskMutate = vi.fn();
 
 vi.mock('@/queries/frameworks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/queries/frameworks')>();
@@ -71,8 +73,8 @@ vi.mock('@/queries/frameworks', async (importOriginal) => {
     useControlFindings: () => ({ data: [mockFinding] }),
     useCreateIssueFromFinding: () => ({ mutate: mockCreateIssueMutate, isPending: false }),
     useLinkFindingToIssue: () => ({ mutate: mockLinkIssueMutate, isPending: false }),
-    useCreateRiskFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
-    useLinkFindingToRisk: () => ({ mutate: vi.fn(), isPending: false }),
+    useCreateRiskFromFinding: () => ({ mutate: mockCreateRiskMutate, isPending: false }),
+    useLinkFindingToRisk: () => ({ mutate: mockLinkRiskMutate, isPending: false }),
     useCreateExceptionFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
     useResolveFindingViaException: () => ({ mutate: vi.fn(), isPending: false }),
   };
@@ -144,11 +146,33 @@ describe('LinkedFindingSection', () => {
     expect(mockCreateIssueMutate).toHaveBeenCalled();
   });
 
-  it('shows Create/Link Risk controls and calls createRiskFromFinding with the picked category and scores', async () => {
+  it('calls createRiskFromFinding with the picked category, owner, and scores', async () => {
     await renderSection();
     fireEvent.click(screen.getByRole('button', { name: /create new risk/i }));
-    // category + likelihood + impact + owner selection omitted here for brevity —
-    // the implementer fills in the exact interaction once the real dialog DOM is confirmed.
-    expect(screen.getByRole('button', { name: /cancel/i })).toBeDefined();
+
+    const [categorySelect, ownerCombobox, likelihoodSelect, impactSelect] =
+      screen.getAllByRole('combobox');
+
+    fireEvent.change(categorySelect, { target: { value: 'cat1' } });
+
+    fireEvent.click(ownerCombobox);
+    fireEvent.click(screen.getByRole('option', { name: 'Alice' }));
+
+    fireEvent.change(likelihoodSelect, { target: { value: '3' } });
+    fireEvent.change(impactSelect, { target: { value: '4' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /create new risk/i }));
+
+    expect(mockCreateRiskMutate).toHaveBeenCalledWith(
+      {
+        title: mockFinding.title,
+        description: mockFinding.description,
+        taxonomyCategoryId: 'cat1',
+        ownerId: 'user1',
+        inherentLikelihood: 3,
+        inherentImpact: 4,
+      },
+      expect.any(Object),
+    );
   });
 });
