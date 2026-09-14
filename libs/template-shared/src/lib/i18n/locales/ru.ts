@@ -865,6 +865,7 @@ export const ru = {
     residualScoringHint: 'Свяжите хотя бы один контроль перед оценкой остаточного риска',
     riskRegister: 'Реестр рисков',
     createNewRisk: 'Создать новый риск',
+    riskCreated: 'Риск {{code}} создан',
     linkExistingRisk: 'Связать с существующим риском',
     selectRisk: 'Выберите риск…',
     unlinkRisk: 'Отвязать',
