@@ -168,7 +168,7 @@ export function LinkedFindingSection({
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </Link>
           ) : (
-            <div className="flex flex-col gap-1 @[750px]:flex-row @[750px]:gap-2">
+            <div className="flex flex-row gap-2 @[750px]:flex-col @[750px]:gap-1">
               <Button
                 size="sm"
                 variant="outline"
@@ -208,7 +208,7 @@ export function LinkedFindingSection({
               </span>
             )
           ) : (
-            <div className="flex flex-col gap-1 @[750px]:flex-row @[750px]:gap-2">
+            <div className="flex flex-row gap-2 @[750px]:flex-col @[750px]:gap-1">
               <Button
                 size="sm"
                 variant="outline"
@@ -238,7 +238,7 @@ export function LinkedFindingSection({
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </span>
           ) : (
-            <div className="flex flex-col gap-1 @[750px]:flex-row @[750px]:gap-2">
+            <div className="flex flex-row gap-2 @[750px]:flex-col @[750px]:gap-1">
               <Button
                 size="sm"
                 variant="outline"
