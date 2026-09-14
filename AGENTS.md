@@ -28,6 +28,7 @@
 - **Playwright before "done"**: Any UI change MUST be verified in browser via Playwright MCP before reporting complete. No exceptions. "I read the code and it looks correct" is not verification.
 - **Propose architecture first**: For any non-trivial decision (routing, state shape, error flow) — write 2-3 sentence proposal + tradeoffs, wait for approval. Never pick the first idea and implement it silently.
 - **No self-report without proof**: Never say "verified", "tested", "checked" without attaching Playwright screenshot or server log as evidence.
+- **Consult design skills for layout/UX decisions**: For any non-trivial layout, spacing, or interaction-pattern decision (not just visual polish — e.g. how to lay out a group of actions, how a component should adapt to a narrow container, whether to use a button group vs. a menu), consult the `ui-ux-pro-max` skill (`python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux|--stack shadcn`) and/or the `impeccable` skill (`layout`/`critique`/`polish` commands) before picking an approach. Don't guess at a CSS fix by trial and error when a documented pattern already answers the question.
 
 ## Architecture
 
