@@ -44,6 +44,7 @@ import type {
   Issue,
   IssueInput,
   IssuePatch,
+  IssueSeverity,
   Asset,
   AssetInput,
   AssetPatch,
@@ -89,7 +90,21 @@ export class FakeNotesStrategy implements NotesStrategy {
   private orgRequirementOverrides = new Map<string, Partial<FrameworkRequirement>>(); // key = `${orgId}:${frameworkId}:${reqCode}`
   private frameworkOrgStatus = new Map<string, FrameworkStatus>(); // key = `${orgId}:${frameworkId}`
   private internalControls: InternalControl[] = [];
-  private findings: Finding[] = [];
+  private findings: Finding[] = [
+    {
+      id: 'finding-nist-gvpo01',
+      orgId: 'org1',
+      code: 'FIND-000101',
+      controlId: 'ctrl-pol-001',
+      assessmentId: 'asm-nist-2026',
+      title: 'Missing Q2 Access Review Evidence',
+      description: 'Quarterly access re-certification evidence was not retained for Q2 2026.',
+      severity: 'high',
+      status: 'open',
+      createdAt: '2026-09-08T00:00:00Z',
+      updatedAt: '2026-09-08T00:00:00Z',
+    },
+  ];
   private evidence: RequirementEvidence[] = [];
   private assessmentsList: RequirementAssessment[] = [];
   private activities: FrameworkActivity[] = [];
@@ -2186,6 +2201,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         id: 'asm-nist-2026',
         frameworkId: nistId,
         requirementId: 'nist-gv-po-01',
+        controlId: 'ctrl-pol-001',
         cycleName: '2026 NIST CSF Assessment',
         status: 'completed',
         implementationStatus: 'partially_implemented',
@@ -2194,7 +2210,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         assessor: 'John Smith (Lead Assessor)',
         assessmentDate: '2026-09-08',
         observation: 'Quarterly review evidence was unavailable for Q2 access re-certifications.',
-        findingId: 'FIND-2026-0042',
+        findingId: 'finding-nist-gvpo01',
         findingTitle: 'Missing Q2 Access Review Evidence',
         findingSeverity: 'high',
       },
@@ -2768,10 +2784,104 @@ export class FakeNotesStrategy implements NotesStrategy {
   async resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding> {
     const finding = this.findings.find((f) => f.id === findingId);
     if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    const exception = this.exceptions.get(exceptionId);
+    if (!exception) throw new Error(`exception_not_found: ${exceptionId}`);
+    if (exception.status !== 'approved') throw new Error('exception_not_approved');
     finding.linkedExceptionId = exceptionId;
     finding.status = 'accepted';
     finding.updatedAt = new Date().toISOString();
     return finding;
+  }
+
+  async getFinding(id: string): Promise<Finding | null> {
+    return this.findings.find((f) => f.id === id) ?? null;
+  }
+
+  async listFindingsByLink(params: {
+    issueId?: string;
+    riskId?: string;
+    exceptionId?: string;
+  }): Promise<Finding[]> {
+    if (params.issueId) return this.findings.filter((f) => f.linkedIssueId === params.issueId);
+    if (params.riskId) return this.findings.filter((f) => f.linkedRiskId === params.riskId);
+    if (params.exceptionId) {
+      return this.findings.filter((f) => f.linkedExceptionId === params.exceptionId);
+    }
+    return [];
+  }
+
+  async createIssueFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ): Promise<Issue> {
+    const finding = this.findings.find((f) => f.id === findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    const issue = await this.createIssue(orgId, userId, {
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
+      reporterId: userId,
+      ownerId: data.ownerId,
+      source: 'gap_analysis',
+      sourceId: findingId,
+    });
+    finding.linkedIssueId = issue.id;
+    finding.updatedAt = new Date().toISOString();
+    return issue;
+  }
+
+  async createRiskFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ): Promise<Risk> {
+    const finding = this.findings.find((f) => f.id === findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    const risk = await this.createRisk(orgId, userId, {
+      title: data.title,
+      riskStatement: data.description,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: data.ownerId,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      source: 'gap_analysis',
+      sourceRef: findingId,
+    });
+    finding.linkedRiskId = risk.id;
+    finding.updatedAt = new Date().toISOString();
+    return risk;
+  }
+
+  async createExceptionFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ): Promise<Exception> {
+    const finding = this.findings.find((f) => f.id === findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    return this.createException(orgId, userId, data);
   }
 
   async listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
@@ -2822,25 +2932,32 @@ export class FakeNotesStrategy implements NotesStrategy {
       description: string;
     },
   ): Promise<{ findingId: string }> {
-    const findingNum = Math.floor(1000 + Math.random() * 9000);
-    const findingId = `FIND-${new Date().getFullYear()}-${findingNum}`;
+    const asm = this.assessmentsList.find((a) => a.id === assessmentId);
+    if (!asm) throw new Error(`requirement_assessment_not_found: ${assessmentId}`);
+    if (!asm.controlId) throw new Error('requirement_assessment_missing_control');
 
-    await this.createIssue(orgId, 'system', {
+    const orgFindingCount = this.findings.filter((f) => f.orgId === orgId).length;
+    const now = new Date().toISOString();
+    const finding: Finding = {
+      id: globalThis.crypto.randomUUID(),
+      orgId,
+      code: `FIND-${String(orgFindingCount + 101).padStart(6, '0')}`,
+      controlId: asm.controlId,
+      assessmentId,
       title: findingData.title,
       description: findingData.description,
       severity: findingData.severity,
-      reporterId: 'system',
-      ownerId: 'system',
-    });
+      status: 'open',
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.findings.push(finding);
 
-    const asm = this.assessmentsList.find((a) => a.id === assessmentId);
-    if (asm) {
-      asm.findingId = findingId;
-      asm.findingTitle = findingData.title;
-      asm.findingSeverity = findingData.severity;
-    }
+    asm.findingId = finding.id;
+    asm.findingTitle = finding.title;
+    asm.findingSeverity = finding.severity;
 
-    return { findingId };
+    return { findingId: finding.id };
   }
 
   async listFrameworkActivities(
