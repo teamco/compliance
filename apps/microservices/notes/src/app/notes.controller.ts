@@ -774,6 +774,11 @@ export class NotesController {
     return this.strategy.listAssessmentItems(p.assessmentId);
   }
 
+  @MessagePattern('notes.assessments.items.get')
+  getAssessmentItem(@Payload() p: { id: string }): Promise<AssessmentItem | null> {
+    return this.strategy.getAssessmentItem(p.id);
+  }
+
   @MessagePattern('notes.assessments.items.add')
   createAssessmentItem(
     @Payload() p: { assessmentId: string; data: AssessmentItemInput },

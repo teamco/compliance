@@ -3982,6 +3982,10 @@ export class FakeNotesStrategy implements NotesStrategy {
       .sort((a, b) => b.inherentScore - a.inherentScore);
   }
 
+  async getAssessmentItem(id: string): Promise<AssessmentItem | null> {
+    return this.assessmentItems.find((i) => i.id === id) ?? null;
+  }
+
   async createAssessmentItem(
     assessmentId: string,
     data: AssessmentItemInput,

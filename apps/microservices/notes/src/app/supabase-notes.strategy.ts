@@ -2594,6 +2594,21 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map(this.toAssessmentItem);
   }
 
+  async getAssessmentItem(id: string): Promise<AssessmentItem | null> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const item = this.toAssessmentItem(data);
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    item.orgId = assessment.orgId;
+    return item;
+  }
+
   async createAssessmentItem(
     assessmentId: string,
     data: AssessmentItemInput,
