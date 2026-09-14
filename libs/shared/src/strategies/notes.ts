@@ -909,8 +909,15 @@ export interface AssessmentItem {
   residualImpact?: number;
   residualScore?: number;
   residualLabel?: RiskScoreLabel;
+  linkedRiskId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface AssessmentItemWithContext extends AssessmentItem {
+  assessmentCode: string;
+  assessmentTitle: string;
+  assessmentStatus: AssessmentStatus;
 }
 
 export interface AssessmentItemInput {
@@ -1329,9 +1336,21 @@ export interface NotesStrategy {
 
   // Assessment items
   listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]>;
+  getAssessmentItem(id: string): Promise<AssessmentItem | null>;
   createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem>;
   updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem>;
   deleteAssessmentItem(id: string): Promise<void>;
+
+  // Assessment item <-> Risk bridge
+  createRiskFromAssessmentItem(
+    orgId: string,
+    userId: string,
+    itemId: string,
+    data: { taxonomyCategoryId: string },
+  ): Promise<Risk>;
+  linkAssessmentItemToRisk(itemId: string, riskId: string): Promise<AssessmentItem>;
+  unlinkAssessmentItemFromRisk(itemId: string): Promise<AssessmentItem>;
+  listAssessmentItemsForRisk(riskId: string): Promise<AssessmentItemWithContext[]>;
 
   // Item <-> control mapping
   listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]>;

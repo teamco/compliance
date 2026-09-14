@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
 import { PageLayout } from '@/components/PageLayout';
@@ -15,6 +15,7 @@ import {
   useRejectRiskAcceptance,
   useRiskEvidence,
   useRiskSnapshots,
+  useAssessmentItemsForRisk,
 } from '@/queries/risks';
 import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
@@ -48,6 +49,7 @@ export function RiskDetailPage() {
   const rejectAcceptanceMut = useRejectRiskAcceptance(id);
   const { data: evidence = [] } = useRiskEvidence(id);
   const { data: snapshots = [] } = useRiskSnapshots(id);
+  const { data: assessmentItems = [] } = useAssessmentItemsForRisk(id);
   const { data: assets = [] } = useAssets(activeOrgId ?? '');
   const { data: vendors = [] } = useVendors(activeOrgId ?? '');
   const [tab, setTab] = useState<Tab>('overview');
@@ -134,8 +136,35 @@ export function RiskDetailPage() {
       )}
 
       {tab === 'assessment' && (
-        <div className="py-8 text-center text-muted-foreground text-sm">
-          {t('risks.noAssessmentsYet')}
+        <div className="space-y-2">
+          {assessmentItems.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground text-sm">
+              {t('risks.noAssessmentsYet')}
+            </div>
+          ) : (
+            assessmentItems.map((item) => (
+              <div
+                key={item.id}
+                className="border border-border rounded-lg p-3 flex items-center justify-between text-sm"
+              >
+                <div>
+                  <Link
+                    to="/assessments/$id"
+                    params={{ id: item.assessmentId }}
+                    className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
+                  >
+                    {item.assessmentCode}
+                  </Link>
+                  <span className="ml-2">{item.subject}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {t('assessments.inherent')}: {item.inherentScore} ({item.inherentLabel})
+                  {item.residualScore != null &&
+                    ` · ${t('assessments.residual')}: ${item.residualScore} (${item.residualLabel})`}
+                </span>
+              </div>
+            ))
+          )}
         </div>
       )}
 

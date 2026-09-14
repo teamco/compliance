@@ -10,6 +10,7 @@ import type {
   RiskAcceptance,
   RiskSnapshot,
   RequirementEvidence,
+  AssessmentItemWithContext,
 } from '@icore/shared';
 
 // ScrollableRow (wraps the tab bar) requires ResizeObserver, which jsdom does not implement.
@@ -25,6 +26,24 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     useParams: () => ({ id: 'r1' }),
+    Link: ({
+      children,
+      to,
+      params,
+      className,
+    }: {
+      children: React.ReactNode;
+      to: string;
+      params?: Record<string, string>;
+      className?: string;
+    }) => (
+      <a
+        href={Object.entries(params ?? {}).reduce((p, [k, v]) => p.replace(`$${k}`, v), to)}
+        className={className}
+      >
+        {children}
+      </a>
+    ),
   };
 });
 
@@ -152,6 +171,32 @@ const mockSnapshots: RiskSnapshot[] = [
   },
 ];
 
+const mockAssessmentItems: AssessmentItemWithContext[] = [
+  {
+    id: 'item-1',
+    assessmentId: 'assess-1',
+    orgId: 'org1',
+    subject: 'Endpoint patch coverage',
+    description: 'Assess ransomware exposure via unpatched endpoints.',
+    inherentLikelihood: 4,
+    inherentImpact: 4,
+    inherentScore: 16,
+    inherentLabel: 'critical',
+    residualLikelihood: 2,
+    residualImpact: 3,
+    residualScore: 6,
+    residualLabel: 'medium',
+    linkedRiskId: 'r1',
+    createdAt: '2026-01-01T00:00:00Z',
+    updatedAt: '2026-01-01T00:00:00Z',
+    assessmentCode: 'ASMT-001',
+    assessmentTitle: 'Q1 Security Assessment',
+    assessmentStatus: 'in_progress',
+  },
+];
+
+let mockAssessmentItemsData: AssessmentItemWithContext[] = [];
+
 let mockActiveAcceptance: RiskAcceptance | null = null;
 
 const mockCreateAcceptanceMutate = vi.fn();
@@ -170,6 +215,7 @@ vi.mock('@/queries/risks', () => ({
   useRejectRiskAcceptance: () => ({ mutate: mockRejectAcceptanceMutate, isPending: false }),
   useRiskEvidence: () => ({ data: mockEvidence }),
   useRiskSnapshots: () => ({ data: mockSnapshots }),
+  useAssessmentItemsForRisk: () => ({ data: mockAssessmentItemsData }),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
@@ -192,6 +238,7 @@ describe('RiskDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockActiveAcceptance = null;
+    mockAssessmentItemsData = [];
   });
 
   it('renders Overview tab fields including inherent, residual, and appetite display', async () => {
@@ -210,6 +257,19 @@ describe('RiskDetailPage', () => {
     expect(screen.getByText('16 — critical (L:4 × I:4)')).toBeDefined();
     expect(screen.getByText('6 — medium (L:2 × I:3)')).toBeDefined();
     expect(screen.getByText('Above Appetite')).toBeDefined();
+  });
+
+  it('renders Assessment tab fixture data when linked assessment items exist', async () => {
+    mockAssessmentItemsData = mockAssessmentItems;
+
+    await renderDetailPage();
+
+    fireEvent.click(screen.getByText('Assessment'));
+
+    expect(screen.getByText('ASMT-001')).toBeDefined();
+    expect(screen.getByText('Endpoint patch coverage')).toBeDefined();
+    expect(screen.getByText(/16 \(critical\)/)).toBeDefined();
+    expect(screen.getByText(/6 \(medium\)/)).toBeDefined();
   });
 
   it('renders RiskControlMapping fixture rows on the Controls tab', async () => {

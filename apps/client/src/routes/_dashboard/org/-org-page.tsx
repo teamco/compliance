@@ -107,6 +107,7 @@ export function OrgPage() {
           <OrgForm
             initial={EMPTY_FORM}
             onSave={(data) => void handleCreate(data)}
+            onCancel={() => setCreateOpen(false)}
             isPending={create.isPending}
             submitLabel={t('org.createOrganization')}
           />

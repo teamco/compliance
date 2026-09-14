@@ -357,6 +357,9 @@ export function RisksPage() {
               </div>
             </div>
             <DialogFooter className="mt-3 border-t border-border pt-3">
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                {t('common.cancel')}
+              </Button>
               <Button type="submit" disabled={createMut.isPending}>
                 {t('risks.addRisk')}
               </Button>

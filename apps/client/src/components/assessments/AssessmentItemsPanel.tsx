@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import type React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { Plus, Trash2 } from 'lucide-react';
+import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -22,9 +24,16 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { AssessmentItemControls } from '@/components/assessments/AssessmentItemControls';
 import { AssessmentItemEvidence } from '@/components/assessments/AssessmentItemEvidence';
-import { useRiskMethodology } from '@/queries/risks';
+import {
+  useRiskMethodology,
+  useRiskTaxonomy,
+  useRisks,
+  useRisk,
+  useUpdateRisk,
+} from '@/queries/risks';
 import { useInternalControlsList } from '@/queries/controls';
 import {
   useAssessmentItems,
@@ -32,6 +41,9 @@ import {
   useUpdateAssessmentItem,
   useDeleteAssessmentItem,
   useAssessmentItemControlMappings,
+  useCreateRiskFromAssessmentItem,
+  useLinkAssessmentItemToRisk,
+  useUnlinkAssessmentItemFromRisk,
   type AssessmentItem,
   type AssessmentItemInput,
 } from '@/queries/assessments';
@@ -43,6 +55,7 @@ interface AssessmentItemsPanelProps {
 
 export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPanelProps) {
   const { t } = useTranslation();
+  const notify = useNotify();
 
   const { data: items = [] } = useAssessmentItems(assessmentId);
   const { data: methodology } = useRiskMethodology(orgId);
@@ -63,6 +76,14 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
   const [residualDraft, setResidualDraft] = useState<
     Record<string, { likelihood?: number; impact?: number }>
   >({});
+  const [createRiskDialogItemId, setCreateRiskDialogItemId] = useState<string | null>(null);
+  const [linkRiskDialogItemId, setLinkRiskDialogItemId] = useState<string | null>(null);
+  const [taxonomyCategoryId, setTaxonomyCategoryId] = useState('');
+  const [selectedRiskId, setSelectedRiskId] = useState('');
+  const { data: taxonomy = [] } = useRiskTaxonomy(orgId);
+  const { data: allRisks = [] } = useRisks(orgId);
+  const createRiskMut = useCreateRiskFromAssessmentItem(createRiskDialogItemId ?? '');
+  const linkRiskMut = useLinkAssessmentItemToRisk(linkRiskDialogItemId ?? '');
 
   const { data: expandedItemMappings = [] } = useAssessmentItemControlMappings(
     expandedItemId ?? '',
@@ -78,6 +99,16 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
         setItemForm({ subject: '', description: '', inherentLikelihood: 0, inherentImpact: 0 });
       },
     });
+  }
+
+  function closeCreateRiskDialog() {
+    setCreateRiskDialogItemId(null);
+    setTaxonomyCategoryId('');
+  }
+
+  function closeLinkRiskDialog() {
+    setLinkRiskDialogItemId(null);
+    setSelectedRiskId('');
   }
 
   function handleResidualChange(
@@ -222,6 +253,31 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                   </p>
                   <AssessmentItemEvidence orgId={orgId} itemId={item.id} />
                 </div>
+                {item.linkedRiskId ? (
+                  <LinkedRiskSection item={item} />
+                ) : (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      {t('assessments.riskRegister')}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCreateRiskDialogItemId(item.id)}
+                      >
+                        {t('assessments.createNewRisk')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLinkRiskDialogItemId(item.id)}
+                      >
+                        {t('assessments.linkExistingRisk')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -290,6 +346,9 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
               </div>
             </div>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setItemDialogOpen(false)}>
+                {t('common.cancel')}
+              </Button>
               <Button type="submit" disabled={createItemMut.isPending}>
                 {t('assessments.addItem')}
               </Button>
@@ -324,6 +383,190 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!createRiskDialogItemId} onOpenChange={(o) => !o && closeCreateRiskDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assessments.createNewRisk')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>{t('risks.category')}</Label>
+              <select
+                value={taxonomyCategoryId}
+                onChange={(e) => setTaxonomyCategoryId(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+              >
+                <option value="">{t('risks.selectCategory')}</option>
+                {taxonomy.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeCreateRiskDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!taxonomyCategoryId || createRiskMut.isPending}
+              onClick={() => {
+                if (!createRiskDialogItemId) return;
+                createRiskMut.mutate(
+                  { taxonomyCategoryId },
+                  {
+                    onSuccess: (created) => {
+                      closeCreateRiskDialog();
+                      notify.success(t('assessments.riskCreated', { code: created.riskId }));
+                    },
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                );
+              }}
+            >
+              {t('assessments.createNewRisk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!linkRiskDialogItemId} onOpenChange={(o) => !o && closeLinkRiskDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assessments.linkExistingRisk')}</DialogTitle>
+          </DialogHeader>
+          <Combobox
+            options={allRisks.map((r) => ({ value: r.id, label: `${r.riskId} — ${r.title}` }))}
+            value={selectedRiskId}
+            onChange={setSelectedRiskId}
+            placeholder={t('assessments.selectRisk')}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={closeLinkRiskDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!selectedRiskId || linkRiskMut.isPending}
+              onClick={() => {
+                if (!linkRiskDialogItemId) return;
+                linkRiskMut.mutate(
+                  { riskId: selectedRiskId },
+                  {
+                    onSuccess: () => closeLinkRiskDialog(),
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                );
+              }}
+            >
+              {t('assessments.linkExistingRisk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function LinkedRiskSection({ item }: { item: AssessmentItem }) {
+  const { t } = useTranslation();
+  const notify = useNotify();
+  const { data: risk } = useRisk(item.linkedRiskId ?? '');
+  const updateRiskMut = useUpdateRisk(item.linkedRiskId ?? '');
+  const unlinkMut = useUnlinkAssessmentItemFromRisk(item.id);
+  const [reassessOpen, setReassessOpen] = useState(false);
+  const [reason, setReason] = useState('');
+
+  const canReassess = item.residualLikelihood != null && item.residualImpact != null;
+
+  function closeReassessDialog() {
+    setReassessOpen(false);
+    setReason('');
+  }
+
+  if (!risk) return null;
+
+  return (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground mb-2">
+        {t('assessments.riskRegister')}
+      </p>
+      <div className="flex items-center gap-2 text-sm">
+        <Link
+          to="/risks/$id"
+          params={{ id: risk.id }}
+          className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
+        >
+          {risk.riskId}
+        </Link>
+        <span className="text-muted-foreground">{risk.title}</span>
+        <button
+          type="button"
+          onClick={() =>
+            unlinkMut.mutate(undefined, { onError: () => notify.error(t('error.unknown')) })
+          }
+          className="text-muted-foreground hover:text-destructive cursor-pointer text-xs"
+        >
+          {t('assessments.unlinkRisk')}
+        </button>
+      </div>
+      <Button
+        size="sm"
+        variant="outline"
+        className="mt-2"
+        disabled={!canReassess}
+        onClick={() => setReassessOpen(true)}
+      >
+        {t('assessments.submitReassessment')}
+      </Button>
+
+      <Dialog open={reassessOpen} onOpenChange={(o) => !o && closeReassessDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assessments.submitReassessment')}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {t('assessments.reassessmentCurrent')}: {risk.residualScore ?? '—'} (
+            {risk.residualLabel ?? '—'}) → {t('assessments.reassessmentProposed')}:{' '}
+            {item.residualScore} ({item.residualLabel})
+          </p>
+          <div>
+            <Label htmlFor="reassess-reason">{t('assessments.reassessmentReason')}</Label>
+            <textarea
+              id="reassess-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none"
+              required
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeReassessDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!reason.trim() || updateRiskMut.isPending}
+              onClick={() =>
+                updateRiskMut.mutate(
+                  {
+                    residualLikelihood: item.residualLikelihood,
+                    residualImpact: item.residualImpact,
+                    reason: reason.trim(),
+                  },
+                  {
+                    onSuccess: () => closeReassessDialog(),
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                )
+              }
+            >
+              {t('assessments.submitReassessment')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
