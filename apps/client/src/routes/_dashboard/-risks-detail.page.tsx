@@ -17,6 +17,7 @@ import {
   useRiskSnapshots,
   useAssessmentItemsForRisk,
 } from '@/queries/risks';
+import { useFindingsByLink } from '@/queries/frameworks';
 import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,10 @@ export function RiskDetailPage() {
   const { data: evidence = [] } = useRiskEvidence(id);
   const { data: snapshots = [] } = useRiskSnapshots(id);
   const { data: assessmentItems = [] } = useAssessmentItemsForRisk(id);
+  const { data: linkedFindings = [] } = useFindingsByLink({
+    riskId: risk?.source === 'gap_analysis' ? risk.id : undefined,
+  });
+  const linkedFinding = linkedFindings[0];
   const { data: assets = [] } = useAssets(activeOrgId ?? '');
   const { data: vendors = [] } = useVendors(activeOrgId ?? '');
   const [tab, setTab] = useState<Tab>('overview');
@@ -132,6 +137,17 @@ export function RiskDetailPage() {
             }
           />
           <Field label={t('risks.colStatus')} value={risk.status} />
+          {linkedFinding && (
+            <div>
+              <Link
+                to="/controls/$id"
+                params={{ id: linkedFinding.controlId }}
+                className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
+              >
+                {t('risks.linkedFinding', { code: linkedFinding.code })}
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
