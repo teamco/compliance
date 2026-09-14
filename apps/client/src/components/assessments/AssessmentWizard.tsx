@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from '@tanstack/react-router';
 import { useNotify } from '@icore/template-shared';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,10 +50,12 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
   const { data: members = [] } = useOrgMembers(orgId);
   const createMut = useCreateAssessment(orgId);
 
+  const navigate = useNavigate();
   const [step, setStep] = useState<WizardStep>('details');
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [form, setForm] = useState<AssessmentInput>(EMPTY_FORM);
   const updateMut = useUpdateAssessment(orgId, assessment?.id ?? '');
+  const { data: items = [] } = useAssessmentItems(assessment?.id ?? '');
 
   const memberOptions = members.map((m) => ({
     value: m.userId,
@@ -206,7 +214,31 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
                 placeholder={t('assessments.noVendors')}
               />
             </div>
-            <div className="flex justify-end pt-2">
+          </div>
+        )}
+
+        {step === 'items' && assessment && (
+          <AssessmentItemsPanel orgId={orgId} assessmentId={assessment.id} />
+        )}
+
+        {step === 'review' && assessment && <ReviewStep assessmentId={assessment.id} />}
+
+        <DialogFooter className="flex flex-row items-center justify-between gap-2 pt-3 border-t border-border sm:justify-between">
+          <Button variant="outline" onClick={() => handleClose(false)}>
+            {t('common.cancel')}
+          </Button>
+          <div className="flex items-center gap-2">
+            {step === 'items' && (
+              <Button variant="outline" onClick={() => setStep('details')}>
+                {t('assessments.wizard.back')}
+              </Button>
+            )}
+            {step === 'review' && (
+              <Button variant="outline" onClick={() => setStep('items')}>
+                {t('assessments.wizard.back')}
+              </Button>
+            )}
+            {step === 'details' && (
               <Button
                 onClick={handleDetailsNext}
                 disabled={
@@ -219,74 +251,38 @@ export function AssessmentWizard({ orgId, open, onOpenChange }: AssessmentWizard
               >
                 {t('assessments.wizard.next')}
               </Button>
-            </div>
+            )}
+            {step === 'items' && (
+              <>
+                {items.length === 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    {t('assessments.wizard.needOneItemHint')}
+                  </span>
+                )}
+                <Button onClick={() => setStep('review')} disabled={items.length === 0}>
+                  {t('assessments.wizard.next')}
+                </Button>
+              </>
+            )}
+            {step === 'review' && assessment && (
+              <Button
+                onClick={() => {
+                  handleClose(false);
+                  void navigate({ to: '/assessments/$id', params: { id: assessment.id } });
+                }}
+              >
+                {t('assessments.wizard.finish')}
+              </Button>
+            )}
           </div>
-        )}
-
-        {step === 'items' && assessment && (
-          <div className="space-y-4">
-            <AssessmentItemsPanel orgId={orgId} assessmentId={assessment.id} />
-            <ItemsStepFooter
-              assessmentId={assessment.id}
-              onBack={() => setStep('details')}
-              onNext={() => setStep('review')}
-            />
-          </div>
-        )}
-
-        {step === 'review' && assessment && (
-          <ReviewStep
-            assessmentId={assessment.id}
-            onBack={() => setStep('items')}
-            onFinish={() => handleClose(false)}
-          />
-        )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
 
-function ItemsStepFooter({
-  assessmentId,
-  onBack,
-  onNext,
-}: {
-  assessmentId: string;
-  onBack: () => void;
-  onNext: () => void;
-}) {
+function ReviewStep({ assessmentId }: { assessmentId: string }) {
   const { t } = useTranslation();
-  const { data: items = [] } = useAssessmentItems(assessmentId);
-  return (
-    <div className="flex items-center justify-between pt-2 border-t border-border">
-      <Button variant="outline" onClick={onBack}>
-        {t('assessments.wizard.back')}
-      </Button>
-      <div className="flex items-center gap-2">
-        {items.length === 0 && (
-          <span className="text-xs text-muted-foreground">
-            {t('assessments.wizard.needOneItemHint')}
-          </span>
-        )}
-        <Button onClick={onNext} disabled={items.length === 0}>
-          {t('assessments.wizard.next')}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ReviewStep({
-  assessmentId,
-  onBack,
-  onFinish,
-}: {
-  assessmentId: string;
-  onBack: () => void;
-  onFinish: () => void;
-}) {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
   const { data: items = [] } = useAssessmentItems(assessmentId);
 
   return (
@@ -303,19 +299,6 @@ function ReviewStep({
             </p>
           </div>
         ))}
-      </div>
-      <div className="flex items-center justify-between pt-2 border-t border-border">
-        <Button variant="outline" onClick={onBack}>
-          {t('assessments.wizard.back')}
-        </Button>
-        <Button
-          onClick={() => {
-            onFinish();
-            void navigate({ to: '/assessments/$id', params: { id: assessmentId } });
-          }}
-        >
-          {t('assessments.wizard.finish')}
-        </Button>
       </div>
     </div>
   );

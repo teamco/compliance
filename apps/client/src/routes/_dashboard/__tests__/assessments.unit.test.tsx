@@ -163,6 +163,7 @@ vi.mock('@/queries/assessments', () => ({
   useCreateAssessment: () => ({ mutate: mockCreateMutate, isPending: false }),
   useUpdateAssessment: () => ({ mutate: mockUpdateMutate, isPending: false }),
   useDeleteAssessment: () => ({ mutate: mockDeleteMutate, isPending: false }),
+  useAssessmentItems: () => ({ data: [] }),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
