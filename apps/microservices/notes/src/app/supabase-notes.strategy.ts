@@ -45,6 +45,7 @@ import type {
   Issue,
   IssueInput,
   IssuePatch,
+  IssueSeverity,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -557,17 +558,51 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   }
 
   async createAssessmentFinding(
-    _orgId: string,
-    _assessmentId: string,
-    _findingData: {
+    orgId: string,
+    assessmentId: string,
+    findingData: {
       title: string;
       severity: 'critical' | 'high' | 'medium' | 'low';
       description: string;
     },
   ): Promise<{ findingId: string }> {
-    return {
-      findingId: `FIND-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-    };
+    const { data: asmRow, error: asmError } = await this.db
+      .from('requirement_assessments')
+      .select('control_id')
+      .eq('id', assessmentId)
+      .single();
+    if (asmError || !asmRow?.['control_id']) {
+      throw new Error(`requirement_assessment_missing_control: ${assessmentId}`);
+    }
+
+    const { data: existing, error: countError } = await this.db
+      .from('findings')
+      .select('code')
+      .eq('org_id', orgId)
+      .order('code', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (countError) throw new Error(countError.message);
+    const maxSuffix = existing?.code
+      ? parseInt(String(existing.code).replace('FIND-', ''), 10)
+      : 100;
+    const code = `FIND-${String(maxSuffix + 1).padStart(6, '0')}`;
+
+    const { data: row, error } = await this.db
+      .from('findings')
+      .insert({
+        org_id: orgId,
+        code,
+        control_id: asmRow['control_id'],
+        assessment_id: assessmentId,
+        title: findingData.title,
+        description: findingData.description,
+        severity: findingData.severity,
+        status: 'open',
+      })
+      .select()
+      .single();
+    return { findingId: this.toFinding(ok(row, error)).id };
   }
 
   async listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
@@ -694,6 +729,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   }
 
   async resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding> {
+    const exception = await this.getException(exceptionId);
+    if (!exception) throw new Error(`exception_not_found: ${exceptionId}`);
+    if (exception.status !== 'approved') throw new Error('exception_not_approved');
     const { data, error } = await this.db
       .from('findings')
       .update({
@@ -705,6 +743,106 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .select()
       .single();
     return this.toFinding(ok(data, error));
+  }
+
+  async getFinding(id: string): Promise<Finding | null> {
+    const { data, error } = await this.db.from('findings').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toFinding(data) : null;
+  }
+
+  async listFindingsByLink(params: {
+    issueId?: string;
+    riskId?: string;
+    exceptionId?: string;
+  }): Promise<Finding[]> {
+    let query = this.db.from('findings').select('*');
+    if (params.issueId) query = query.eq('linked_issue_id', params.issueId);
+    else if (params.riskId) query = query.eq('linked_risk_id', params.riskId);
+    else if (params.exceptionId) query = query.eq('linked_exception_id', params.exceptionId);
+    else return [];
+    const { data, error } = await query;
+    return ok(data, error).map((row) => this.toFinding(row));
+  }
+
+  async createIssueFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ): Promise<Issue> {
+    const finding = await this.getFinding(findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    const issue = await this.createIssue(orgId, userId, {
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
+      reporterId: userId,
+      ownerId: data.ownerId,
+      source: 'gap_analysis',
+      sourceId: findingId,
+    });
+    const { error: linkError } = await this.db
+      .from('findings')
+      .update({ linked_issue_id: issue.id, updated_at: new Date().toISOString() })
+      .eq('id', findingId);
+    if (linkError) throw new Error(linkError.message);
+    return issue;
+  }
+
+  async createRiskFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ): Promise<Risk> {
+    const finding = await this.getFinding(findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    const risk = await this.createRisk(orgId, userId, {
+      title: data.title,
+      riskStatement: data.description,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: data.ownerId,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      source: 'gap_analysis',
+      sourceRef: findingId,
+    });
+    const { error: linkError } = await this.db
+      .from('findings')
+      .update({ linked_risk_id: risk.id, updated_at: new Date().toISOString() })
+      .eq('id', findingId);
+    if (linkError) throw new Error(linkError.message);
+    return risk;
+  }
+
+  async createExceptionFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ): Promise<Exception> {
+    const finding = await this.getFinding(findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    return this.createException(orgId, userId, data);
   }
 
   private toFinding(row: Record<string, unknown>): Finding {
