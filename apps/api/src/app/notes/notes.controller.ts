@@ -1169,6 +1169,32 @@ export class NotesController {
     return this.notes.removeAssessmentItemControlMapping(mappingId);
   }
 
+  @Get('assessments/items/:itemId/evidence')
+  @ApiOperation({ summary: 'List evidence attached to an assessment item' })
+  listAssessmentItemEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+  ) {
+    this.uid(req);
+    return this.notes.listAssessmentItemEvidence(itemId);
+  }
+
+  @Post('assessments/items/:itemId/evidence')
+  @ApiOperation({ summary: 'Attach evidence to an assessment item' })
+  async createAssessmentItemEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('itemId') itemId: string,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createAssessmentItemEvidence(orgId, itemId, body);
+  }
+
   @Patch('assessments/items/:itemId')
   @ApiOperation({ summary: 'Update risk assessment item' })
   updateAssessmentItem(

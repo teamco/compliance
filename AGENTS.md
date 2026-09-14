@@ -70,6 +70,8 @@ const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // 
 
 Never combine create and edit into a single `modalMode` state — keep them separate so the components are independent.
 
+**Dialog/Sheet buttons live in the footer, and every overlay needs an explicit Cancel/Close.** The shared `Dialog` primitive has no close-X and doesn't dismiss on outside click (by design), so a step's own body must never be the only place a user can back out. Put every action button (`Cancel`, `Next`, `Back`, `Save`, `Finish`, etc.) inside `DialogFooter` (or `SheetFooter`), never inline within the form/step content, and always include a `Cancel` button that closes the overlay — even for a single-step form. Multi-step flows (wizards) render one shared footer across all steps, swapping only the step-specific action(s) based on current step.
+
 **Strategy swap** — provider is chosen at runtime via env. Never import a concrete strategy in app code; always inject via the factory token (`AuthStrategy`, `StorageStrategy`, `DBStrategy`, `AiStrategy`).
 
 **Transport** — `buildTransport(prefix)` reads `TCP*` vars. Same helper on gateway client-modules and each MS `main.ts`. Supports tcp / nats / mqtt / rmq / kafka — change by flipping `*_TRANSPORT` in `.env`.

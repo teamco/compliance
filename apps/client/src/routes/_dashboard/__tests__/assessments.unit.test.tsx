@@ -155,12 +155,15 @@ const mockAssessments: Assessment[] = [
 ];
 
 const mockCreateMutate = vi.fn();
+const mockUpdateMutate = vi.fn();
 const mockDeleteMutate = vi.fn();
 
 vi.mock('@/queries/assessments', () => ({
   useAssessments: () => ({ data: mockAssessments, isPending: false }),
   useCreateAssessment: () => ({ mutate: mockCreateMutate, isPending: false }),
+  useUpdateAssessment: () => ({ mutate: mockUpdateMutate, isPending: false }),
   useDeleteAssessment: () => ({ mutate: mockDeleteMutate, isPending: false }),
+  useAssessmentItems: () => ({ data: [] }),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
@@ -230,7 +233,7 @@ describe('AssessmentsPage', () => {
     fireEvent.click(ownerCombobox);
     fireEvent.click(screen.getByText('Erin'));
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'New Assessment' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }));
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -253,7 +256,7 @@ describe('AssessmentsPage', () => {
     });
     // type and owner left unset
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'New Assessment' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Next' }));
 
     expect(mockCreateMutate).not.toHaveBeenCalled();
   });

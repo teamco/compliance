@@ -5,13 +5,6 @@ import { Plus, ClipboardList } from 'lucide-react';
 import { useAuthStore, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -21,29 +14,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { Combobox } from '@/components/ui/combobox';
 import { PageLayout } from '@/components/PageLayout';
 import { AssessmentTypesSheet } from '@/components/assessments/AssessmentTypesSheet';
+import { AssessmentWizard } from '@/components/assessments/AssessmentWizard';
 import { useActiveOrgStore } from '@/stores/active-org';
-import { useAssets } from '@/queries/assets';
-import { useVendors } from '@/queries/vendors';
 import { useOrgMembers } from '@/queries/org-members';
 import { useAssessmentTypes } from '@/queries/assessment-types';
-import {
-  useAssessments,
-  useCreateAssessment,
-  useDeleteAssessment,
-  type AssessmentInput,
-} from '@/queries/assessments';
-
-const EMPTY_FORM: AssessmentInput = {
-  title: '',
-  assessmentTypeId: '',
-  ownerId: '',
-};
+import { useAssessments, useDeleteAssessment } from '@/queries/assessments';
 
 const SCORE_COLOR = (label?: string) => {
   if (label === 'critical') return 'text-red-400';
@@ -63,21 +40,13 @@ export function AssessmentsPage() {
 
   const { data: assessments = [], isPending } = useAssessments(orgId);
   const { data: types = [] } = useAssessmentTypes(orgId);
-  const { data: assets = [] } = useAssets(orgId);
-  const { data: vendors = [] } = useVendors(orgId);
   const { data: members = [] } = useOrgMembers(orgId);
-  const createMut = useCreateAssessment(orgId);
   const deleteMut = useDeleteAssessment(orgId);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState<AssessmentInput>(EMPTY_FORM);
 
   const typeName = (id: string) => types.find((ty) => ty.id === id)?.name ?? '—';
-  const memberOptions = members.map((m) => ({
-    value: m.userId,
-    label: m.displayName ?? m.email ?? m.userId,
-  }));
   const memberName = (userId: string) =>
     members.find((m) => m.userId === userId)?.displayName ??
     members.find((m) => m.userId === userId)?.email ??
@@ -90,17 +59,6 @@ export function AssessmentsPage() {
     const overdue = active.filter((a) => a.dueDate && a.dueDate < today).length;
     return { total: active.length, pendingReview, overdue };
   }, [assessments]);
-
-  function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!form.title || !form.assessmentTypeId || !form.ownerId) return;
-    createMut.mutate(form, {
-      onSuccess: () => {
-        setCreateOpen(false);
-        setForm(EMPTY_FORM);
-      },
-    });
-  }
 
   return (
     <PageLayout title={t('nav.assessments')}>
@@ -187,106 +145,7 @@ export function AssessmentsPage() {
         </table>
       )}
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t('assessments.newAssessment')}</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="flex flex-col max-h-[70vh]">
-            <div className="space-y-3 overflow-y-auto px-1 -mx-1">
-              <div>
-                <Label htmlFor="assessment-title">{t('assessments.title')}</Label>
-                <Input
-                  id="assessment-title"
-                  value={form.title}
-                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>{t('assessments.type')}</Label>
-                  <select
-                    value={form.assessmentTypeId}
-                    onChange={(e) => setForm((f) => ({ ...f, assessmentTypeId: e.target.value }))}
-                    required
-                    className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
-                  >
-                    <option value="">{t('assessments.selectType')}</option>
-                    {types
-                      .filter((ty) => !ty.archived)
-                      .map((ty) => (
-                        <option key={ty.id} value={ty.id}>
-                          {ty.name}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="assessment-owner">{t('assessments.owner')}</Label>
-                  <Combobox
-                    options={memberOptions}
-                    value={form.ownerId}
-                    onChange={(ownerId) => setForm((f) => ({ ...f, ownerId }))}
-                    placeholder={t('assessments.selectOwner')}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="assessment-bu">{t('assessments.businessUnit')}</Label>
-                  <Input
-                    id="assessment-bu"
-                    value={form.businessUnit ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, businessUnit: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="assessment-due">{t('assessments.dueDate')}</Label>
-                  <Input
-                    id="assessment-due"
-                    type="date"
-                    value={form.dueDate ?? ''}
-                    onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="assessment-approver">{t('assessments.approver')}</Label>
-                <Combobox
-                  options={memberOptions}
-                  value={form.approverId ?? ''}
-                  onChange={(approverId) => setForm((f) => ({ ...f, approverId }))}
-                  placeholder={t('assessments.selectApprover')}
-                />
-              </div>
-              <div>
-                <Label>{t('assessments.inScopeAssets')}</Label>
-                <MultiSelect
-                  options={assets.map((a) => ({ value: a.id, label: a.name }))}
-                  selected={form.assetIds ?? []}
-                  onChange={(assetIds) => setForm((f) => ({ ...f, assetIds }))}
-                  placeholder={t('assessments.noAssets')}
-                />
-              </div>
-              <div>
-                <Label>{t('assessments.inScopeVendors')}</Label>
-                <MultiSelect
-                  options={vendors.map((v) => ({ value: v.id, label: v.name }))}
-                  selected={form.vendorIds ?? []}
-                  onChange={(vendorIds) => setForm((f) => ({ ...f, vendorIds }))}
-                  placeholder={t('assessments.noVendors')}
-                />
-              </div>
-            </div>
-            <DialogFooter className="mt-3 border-t border-border pt-3">
-              <Button type="submit" disabled={createMut.isPending}>
-                {t('assessments.newAssessment')}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <AssessmentWizard orgId={orgId} open={createOpen} onOpenChange={setCreateOpen} />
 
       <AlertDialog open={!!confirmDeleteId} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
         <AlertDialogContent>
