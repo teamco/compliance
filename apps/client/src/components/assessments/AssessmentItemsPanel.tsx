@@ -333,6 +333,9 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
               </div>
             </div>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setItemDialogOpen(false)}>
+                {t('common.cancel')}
+              </Button>
               <Button type="submit" disabled={createItemMut.isPending}>
                 {t('assessments.addItem')}
               </Button>

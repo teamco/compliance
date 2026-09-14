@@ -255,6 +255,9 @@ export function ControlsPage() {
               <Input id="owner" name="owner" required />
             </div>
             <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>
+                {t('common.cancel')}
+              </Button>
               <Button type="submit" disabled={createControl.isPending}>
                 {t('controls.addControl')}
               </Button>
