@@ -22,9 +22,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
+import { Combobox } from '@/components/ui/combobox';
 import { AssessmentItemControls } from '@/components/assessments/AssessmentItemControls';
 import { AssessmentItemEvidence } from '@/components/assessments/AssessmentItemEvidence';
-import { useRiskMethodology } from '@/queries/risks';
+import { useRiskMethodology, useRiskTaxonomy, useRisks } from '@/queries/risks';
 import { useInternalControlsList } from '@/queries/controls';
 import {
   useAssessmentItems,
@@ -32,6 +33,8 @@ import {
   useUpdateAssessmentItem,
   useDeleteAssessmentItem,
   useAssessmentItemControlMappings,
+  useCreateRiskFromAssessmentItem,
+  useLinkAssessmentItemToRisk,
   type AssessmentItem,
   type AssessmentItemInput,
 } from '@/queries/assessments';
@@ -63,6 +66,14 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
   const [residualDraft, setResidualDraft] = useState<
     Record<string, { likelihood?: number; impact?: number }>
   >({});
+  const [createRiskDialogItemId, setCreateRiskDialogItemId] = useState<string | null>(null);
+  const [linkRiskDialogItemId, setLinkRiskDialogItemId] = useState<string | null>(null);
+  const [taxonomyCategoryId, setTaxonomyCategoryId] = useState('');
+  const [selectedRiskId, setSelectedRiskId] = useState('');
+  const { data: taxonomy = [] } = useRiskTaxonomy(orgId);
+  const { data: allRisks = [] } = useRisks(orgId);
+  const createRiskMut = useCreateRiskFromAssessmentItem(createRiskDialogItemId ?? '');
+  const linkRiskMut = useLinkAssessmentItemToRisk(linkRiskDialogItemId ?? '');
 
   const { data: expandedItemMappings = [] } = useAssessmentItemControlMappings(
     expandedItemId ?? '',
@@ -222,6 +233,29 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                   </p>
                   <AssessmentItemEvidence orgId={orgId} itemId={item.id} />
                 </div>
+                {!item.linkedRiskId && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">
+                      {t('assessments.riskRegister')}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCreateRiskDialogItemId(item.id)}
+                      >
+                        {t('assessments.createNewRisk')}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setLinkRiskDialogItemId(item.id)}
+                      >
+                        {t('assessments.linkExistingRisk')}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -324,6 +358,95 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={!!createRiskDialogItemId}
+        onOpenChange={(o) => !o && setCreateRiskDialogItemId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assessments.createNewRisk')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>{t('risks.category')}</Label>
+              <select
+                value={taxonomyCategoryId}
+                onChange={(e) => setTaxonomyCategoryId(e.target.value)}
+                className="w-full h-9 rounded-md border border-border bg-surface px-3 text-sm"
+              >
+                <option value="">{t('risks.selectCategory')}</option>
+                {taxonomy.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateRiskDialogItemId(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!taxonomyCategoryId || createRiskMut.isPending}
+              onClick={() => {
+                if (!createRiskDialogItemId) return;
+                createRiskMut.mutate(
+                  { taxonomyCategoryId },
+                  {
+                    onSuccess: () => {
+                      setCreateRiskDialogItemId(null);
+                      setTaxonomyCategoryId('');
+                    },
+                  },
+                );
+              }}
+            >
+              {t('assessments.createNewRisk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!linkRiskDialogItemId}
+        onOpenChange={(o) => !o && setLinkRiskDialogItemId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('assessments.linkExistingRisk')}</DialogTitle>
+          </DialogHeader>
+          <Combobox
+            options={allRisks.map((r) => ({ value: r.id, label: `${r.riskId} — ${r.title}` }))}
+            value={selectedRiskId}
+            onChange={setSelectedRiskId}
+            placeholder={t('assessments.selectRisk')}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLinkRiskDialogItemId(null)}>
+              {t('common.cancel')}
+            </Button>
+            <Button
+              disabled={!selectedRiskId || linkRiskMut.isPending}
+              onClick={() => {
+                if (!linkRiskDialogItemId) return;
+                linkRiskMut.mutate(
+                  { riskId: selectedRiskId },
+                  {
+                    onSuccess: () => {
+                      setLinkRiskDialogItemId(null);
+                      setSelectedRiskId('');
+                    },
+                  },
+                );
+              }}
+            >
+              {t('assessments.linkExistingRisk')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
