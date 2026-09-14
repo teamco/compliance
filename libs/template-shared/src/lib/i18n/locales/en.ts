@@ -941,6 +941,7 @@ export const en = {
     withinAppetite: 'Within Appetite',
     status: 'Status',
     detailTitle: 'Risk',
+    linkedFinding: 'From Finding {{code}}',
     noAssessmentsYet: 'No assessments linked to this risk yet.',
     noMitigatingControls: 'No mitigating controls mapped yet.',
     treatmentStrategy: 'Treatment Strategy',

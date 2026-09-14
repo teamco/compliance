@@ -11,6 +11,7 @@ import type {
   RiskSnapshot,
   RequirementEvidence,
   AssessmentItemWithContext,
+  Finding,
 } from '@icore/shared';
 
 // ScrollableRow (wraps the tab bar) requires ResizeObserver, which jsdom does not implement.
@@ -197,6 +198,23 @@ const mockAssessmentItems: AssessmentItemWithContext[] = [
 
 let mockAssessmentItemsData: AssessmentItemWithContext[] = [];
 
+const mockLinkedFinding: Finding = {
+  id: 'f1',
+  orgId: 'org1',
+  code: 'FIND-000202',
+  controlId: 'c1',
+  assessmentId: 'a1',
+  title: 'Finding title',
+  description: 'Finding description',
+  severity: 'high',
+  status: 'open',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+};
+
+let mockRiskData: Risk = mockRisk;
+let mockLinkedFindingsData: Finding[] = [];
+
 let mockActiveAcceptance: RiskAcceptance | null = null;
 
 const mockCreateAcceptanceMutate = vi.fn();
@@ -204,8 +222,12 @@ const mockApproveAcceptanceMutate = vi.fn();
 const mockRejectAcceptanceMutate = vi.fn();
 const mockUpdateMutate = vi.fn();
 
+vi.mock('@/queries/frameworks', () => ({
+  useFindingsByLink: () => ({ data: mockLinkedFindingsData }),
+}));
+
 vi.mock('@/queries/risks', () => ({
-  useRisk: () => ({ data: mockRisk, isPending: false }),
+  useRisk: () => ({ data: mockRiskData, isPending: false }),
   useRiskTaxonomy: () => ({ data: mockTaxonomy }),
   useRiskControlMappings: () => ({ data: mockMappings }),
   useUpdateRisk: () => ({ mutate: mockUpdateMutate, isPending: false }),
@@ -239,6 +261,8 @@ describe('RiskDetailPage', () => {
     vi.clearAllMocks();
     mockActiveAcceptance = null;
     mockAssessmentItemsData = [];
+    mockRiskData = mockRisk;
+    mockLinkedFindingsData = [];
   });
 
   it('renders Overview tab fields including inherent, residual, and appetite display', async () => {
@@ -364,5 +388,23 @@ describe('RiskDetailPage', () => {
     expect(entries[1].textContent).toBe('Inherent: 16 (critical) · Residual: 6 (medium)');
     expect(screen.getByText(/Initial assessment/)).toBeDefined();
     expect(screen.getByText(/EDR deployed/)).toBeDefined();
+  });
+
+  it('shows a link back to the originating control when the risk is sourced from a gap_analysis Finding', async () => {
+    mockRiskData = { ...mockRisk, source: 'gap_analysis' };
+    mockLinkedFindingsData = [mockLinkedFinding];
+
+    await renderDetailPage();
+
+    const link = screen.getByText('From Finding FIND-000202');
+    expect(link.closest('a')?.getAttribute('href')).toBe('/controls/c1');
+  });
+
+  it('does not show a Finding back-link when the risk source is manual', async () => {
+    mockLinkedFindingsData = [];
+
+    await renderDetailPage();
+
+    expect(screen.queryByText(/From Finding/)).toBeNull();
   });
 });
