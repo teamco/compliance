@@ -27,6 +27,7 @@ import type {
   Issue,
   IssueInput,
   IssuePatch,
+  IssueSeverity,
   NotesStrategy,
   Policy,
   PolicyInput,
@@ -235,6 +236,87 @@ export class NotesController {
     @Payload() payload: { findingId: string; exceptionId: string },
   ): Promise<Finding> {
     return this.strategy.resolveFindingViaException(payload.findingId, payload.exceptionId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.get')
+  getFinding(@Payload() payload: { id: string }): Promise<Finding | null> {
+    return this.strategy.getFinding(payload.id);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.by-link')
+  listFindingsByLink(
+    @Payload() payload: { issueId?: string; riskId?: string; exceptionId?: string },
+  ): Promise<Finding[]> {
+    return this.strategy.listFindingsByLink(payload);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.create-issue')
+  createIssueFromFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      findingId: string;
+      data: { title: string; description: string; severity: IssueSeverity; ownerId: string };
+    },
+  ): Promise<Issue> {
+    return this.strategy.createIssueFromFinding(
+      payload.orgId,
+      payload.userId,
+      payload.findingId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.internal-controls.findings.create-risk')
+  createRiskFromFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      findingId: string;
+      data: {
+        title: string;
+        description: string;
+        taxonomyCategoryId: string;
+        ownerId: string;
+        inherentLikelihood: number;
+        inherentImpact: number;
+      };
+    },
+  ): Promise<Risk> {
+    return this.strategy.createRiskFromFinding(
+      payload.orgId,
+      payload.userId,
+      payload.findingId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.internal-controls.findings.create-exception')
+  createExceptionFromFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      findingId: string;
+      data: {
+        controlCode: string;
+        frameworkId: string;
+        title: string;
+        statement: string;
+        justification: string;
+        ownerId: string;
+        compensatingControls?: string;
+      };
+    },
+  ): Promise<Exception> {
+    return this.strategy.createExceptionFromFinding(
+      payload.orgId,
+      payload.userId,
+      payload.findingId,
+      payload.data,
+    );
   }
 
   @MessagePattern('notes.internal-controls.activity.list')
