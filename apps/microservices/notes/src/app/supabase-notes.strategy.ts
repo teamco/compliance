@@ -62,6 +62,7 @@ import type {
   AssessmentItem,
   AssessmentItemInput,
   AssessmentItemPatch,
+  AssessmentItemWithContext,
   AssessmentItemControlMapping,
   AssessmentItemControlMappingInput,
   RiskAcceptance,
@@ -2748,6 +2749,95 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (row) await this.recomputeAssessmentSummary(row['assessment_id'] as string);
   }
 
+  // ─── Risk ↔ Assessment Item bridge ──────────────────────────────────────────
+
+  async createRiskFromAssessmentItem(
+    orgId: string,
+    userId: string,
+    itemId: string,
+    data: { taxonomyCategoryId: string },
+  ): Promise<Risk> {
+    const { data: itemRow, error: itemError } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('id', itemId)
+      .single();
+    const item = this.toAssessmentItem(ok(itemRow, itemError));
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    if (assessment.orgId !== orgId) throw new Error('risk_belongs_to_different_org');
+    const risk = await this.createRisk(orgId, userId, {
+      title: item.subject,
+      riskStatement: item.description || item.subject,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: assessment.ownerId,
+      businessUnit: assessment.businessUnit,
+      assetIds: assessment.assetIds,
+      vendorIds: assessment.vendorIds,
+      inherentLikelihood: item.inherentLikelihood,
+      inherentImpact: item.inherentImpact,
+      source: 'risk_assessment',
+      sourceRef: item.id,
+    });
+    const { error: linkError } = await this.db
+      .from('risk_assessment_items')
+      .update({ linked_risk_id: risk.id })
+      .eq('id', itemId);
+    if (linkError) throw new Error(linkError.message);
+    return risk;
+  }
+
+  async linkAssessmentItemToRisk(itemId: string, riskId: string): Promise<AssessmentItem> {
+    const { data: itemRow, error: itemError } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('id', itemId)
+      .single();
+    const item = this.toAssessmentItem(ok(itemRow, itemError));
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    const { data: riskRow, error: riskError } = await this.db
+      .from('risks')
+      .select('org_id')
+      .eq('id', riskId)
+      .single();
+    const risk = ok(riskRow, riskError);
+    if (risk['org_id'] !== assessment.orgId) throw new Error('risk_belongs_to_different_org');
+    const { data: updated, error } = await this.db
+      .from('risk_assessment_items')
+      .update({ linked_risk_id: riskId })
+      .eq('id', itemId)
+      .select()
+      .single();
+    return this.toAssessmentItem(ok(updated, error));
+  }
+
+  async unlinkAssessmentItemFromRisk(itemId: string): Promise<AssessmentItem> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .update({ linked_risk_id: null })
+      .eq('id', itemId)
+      .select()
+      .single();
+    return this.toAssessmentItem(ok(data, error));
+  }
+
+  async listAssessmentItemsForRisk(riskId: string): Promise<AssessmentItemWithContext[]> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .select('*, risk_assessments(assessment_code, title, status)')
+      .eq('linked_risk_id', riskId);
+    return ok(data, error).map((row: Record<string, unknown>) => {
+      const assessment = row['risk_assessments'] as Record<string, unknown> | null;
+      return {
+        ...this.toAssessmentItem(row),
+        assessmentCode: (assessment?.['assessment_code'] as string) ?? '',
+        assessmentTitle: (assessment?.['title'] as string) ?? '',
+        assessmentStatus: (assessment?.['status'] as AssessmentStatus) ?? 'draft',
+      };
+    });
+  }
+
   private toAssessment(row: Record<string, unknown>): Assessment {
     return {
       id: row['id'] as string,
@@ -2790,6 +2880,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       residualImpact: row['residual_impact'] as number | undefined,
       residualScore: row['residual_score'] as number | undefined,
       residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      linkedRiskId: row['linked_risk_id'] as string | undefined,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
