@@ -17,6 +17,7 @@ import type {
   AssessmentItem,
   AssessmentItemInput,
   AssessmentItemPatch,
+  AssessmentItemWithContext,
   AssessmentType,
   AssessmentTypeInput,
   AssessmentItemControlMapping,
@@ -827,6 +828,10 @@ export class NotesClientService {
     });
   }
 
+  getAssessmentItem(id: string): Promise<AssessmentItem | null> {
+    return signedSend<AssessmentItem | null>(this.client, 'notes.assessments.items.get', { id });
+  }
+
   createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem> {
     return signedSend<AssessmentItem>(this.client, 'notes.assessments.items.add', {
       assessmentId,
@@ -912,6 +917,41 @@ export class NotesClientService {
 
   removeAssessmentItemControlMapping(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.assessments.items.mappings.remove', { id });
+  }
+
+  createRiskFromAssessmentItem(
+    orgId: string,
+    userId: string,
+    itemId: string,
+    data: { taxonomyCategoryId: string },
+  ): Promise<Risk> {
+    return signedSend<Risk>(this.client, 'notes.assessments.items.risk.create', {
+      orgId,
+      userId,
+      itemId,
+      data,
+    });
+  }
+
+  linkAssessmentItemToRisk(itemId: string, riskId: string): Promise<AssessmentItem> {
+    return signedSend<AssessmentItem>(this.client, 'notes.assessments.items.risk.link', {
+      itemId,
+      riskId,
+    });
+  }
+
+  unlinkAssessmentItemFromRisk(itemId: string): Promise<AssessmentItem> {
+    return signedSend<AssessmentItem>(this.client, 'notes.assessments.items.risk.unlink', {
+      itemId,
+    });
+  }
+
+  listAssessmentItemsForRisk(riskId: string): Promise<AssessmentItemWithContext[]> {
+    return signedSend<AssessmentItemWithContext[]>(
+      this.client,
+      'notes.risks.assessment-items.list',
+      { riskId },
+    );
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────

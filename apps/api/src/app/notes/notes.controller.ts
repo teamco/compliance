@@ -992,6 +992,16 @@ export class NotesController {
     return this.notes.createRiskEvidence(orgId, id, body);
   }
 
+  @Get('risks/:id/assessment-items')
+  @ApiOperation({ summary: 'List assessment items linked to a risk' })
+  listAssessmentItemsForRisk(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    this.uid(req);
+    return this.notes.listAssessmentItemsForRisk(id);
+  }
+
   // ─── Risk Assessments ────────────────────────────────────────────────────
 
   @Get('assessments')
@@ -1215,6 +1225,53 @@ export class NotesController {
   ) {
     this.uid(req);
     return this.notes.deleteAssessmentItem(itemId);
+  }
+
+  @Post('assessments/items/:itemId/create-risk')
+  @ApiOperation({ summary: 'Create a new Risk from an assessment item' })
+  async createRiskFromAssessmentItem(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+    @Body() body: { taxonomyCategoryId: string },
+  ) {
+    const uid = this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createRiskFromAssessmentItem(item.orgId, uid, itemId, body);
+  }
+
+  @Post('assessments/items/:itemId/link-risk')
+  @ApiOperation({ summary: 'Link an assessment item to an existing Risk' })
+  async linkAssessmentItemToRisk(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+    @Body() body: { riskId: string },
+  ) {
+    this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.linkAssessmentItemToRisk(itemId, body.riskId);
+  }
+
+  @Delete('assessments/items/:itemId/link-risk')
+  @ApiOperation({ summary: 'Unlink an assessment item from its Risk' })
+  async unlinkAssessmentItemFromRisk(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('itemId') itemId: string,
+  ) {
+    this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.unlinkAssessmentItemFromRisk(itemId);
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────

@@ -14,6 +14,7 @@ import type {
   RiskAcceptanceInput,
   RiskSnapshot,
   RequirementEvidence,
+  AssessmentItemWithContext,
 } from '@icore/shared';
 
 export function useRisks(orgId?: string) {
@@ -220,5 +221,13 @@ export function useCreateRiskEvidence(orgId: string, riskId: string) {
         { method: 'POST', body: JSON.stringify(data) },
       ),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['risks', riskId, 'evidence'] }),
+  });
+}
+
+export function useAssessmentItemsForRisk(riskId: string) {
+  return useQuery<AssessmentItemWithContext[]>({
+    queryKey: ['risks', riskId, 'assessment-items'],
+    queryFn: () => api<AssessmentItemWithContext[]>(`/notes/risks/${riskId}/assessment-items`),
+    enabled: !!riskId,
   });
 }
