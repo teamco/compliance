@@ -26,6 +26,24 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
   return {
     ...actual,
     useParams: () => ({ id: 'r1' }),
+    Link: ({
+      children,
+      to,
+      params,
+      className,
+    }: {
+      children: React.ReactNode;
+      to: string;
+      params?: Record<string, string>;
+      className?: string;
+    }) => (
+      <a
+        href={Object.entries(params ?? {}).reduce((p, [k, v]) => p.replace(`$${k}`, v), to)}
+        className={className}
+      >
+        {children}
+      </a>
+    ),
   };
 });
 
