@@ -127,6 +127,16 @@ describe('NotesClientService', () => {
     });
   });
 
+  it('getRequirementAssessment() sends id over RPC', async () => {
+    const send = vi.fn().mockReturnValue(of({ id: 'asm1', cycleName: '2026 Assessment' }));
+    const service = new NotesClientService(makeClient(send));
+
+    const result = await service.getRequirementAssessment('asm1');
+
+    expect(result).toEqual({ id: 'asm1', cycleName: '2026 Assessment' });
+    expect(send).toHaveBeenCalledWith('notes.frameworks.assessments.get', { id: 'asm1' });
+  });
+
   it('createAssessmentFinding() sends finding creation over RPC', async () => {
     const send = vi.fn().mockReturnValue(of({ findingId: 'FIND-2026-0042' }));
     const service = new NotesClientService(makeClient(send));

@@ -345,6 +345,13 @@ export class NotesController {
     return this.strategy.listFrameworkAssessments(payload.frameworkId, payload.orgId);
   }
 
+  @MessagePattern('notes.frameworks.assessments.get')
+  getRequirementAssessment(
+    @Payload() payload: { id: string },
+  ): Promise<RequirementAssessment | null> {
+    return this.strategy.getRequirementAssessment(payload.id);
+  }
+
   @MessagePattern('notes.frameworks.assessments.finding')
   createAssessmentFinding(
     @Payload()

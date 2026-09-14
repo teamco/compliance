@@ -480,7 +480,6 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') _id: string,
     @Param('assessmentId') assessmentId: string,
-    @Query('orgId') orgId: string,
     @Body()
     body: {
       title: string;
@@ -488,11 +487,13 @@ export class NotesController {
       description: string;
     },
   ) {
-    if (!orgId) throw new BadRequestException('orgId required');
-    const org = await this.notes.getOrganizationById(orgId);
+    this.uid(req);
+    const assessment = await this.notes.getRequirementAssessment(assessmentId);
+    if (!assessment || !assessment.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
-    return this.notes.createAssessmentFinding(orgId, assessmentId, body);
+    return this.notes.createAssessmentFinding(assessment.orgId, assessmentId, body);
   }
 
   @Get('frameworks/:id/activities')

@@ -1767,6 +1767,7 @@ export class FakeNotesStrategy implements NotesStrategy {
     this.internalControls = [
       {
         id: 'ctrl-iam-004',
+        orgId: 'org1',
         code: 'IAM-004',
         title: 'Privileged Access Management (PAM) & Ephemeral Credentials',
         description:
@@ -1890,6 +1891,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'ctrl-ac-001',
+        orgId: 'org1',
         code: 'AC-001',
         title: 'MFA required for privileged and remote access',
         description:
@@ -1935,6 +1937,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'ctrl-pol-001',
+        orgId: 'org1',
         code: 'POL-001',
         title: 'Information Security Policy Governance & Review',
         description:
@@ -1968,6 +1971,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'ctrl-log-002',
+        orgId: 'org1',
         code: 'LOG-002',
         title: 'Centralized SIEM Log Collection & 365-Day Retention',
         description:
@@ -2007,6 +2011,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'ctrl-vuln-001',
+        orgId: 'org1',
         code: 'VULN-001',
         title: 'Quarterly Vulnerability Scanning & Remediation SLA',
         description:
@@ -2040,6 +2045,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'ctrl-bcp-001',
+        orgId: 'org1',
         code: 'BCP-001',
         title: 'Disaster Recovery & Business Continuity Testing',
         description:
@@ -2073,6 +2079,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'ctrl-dpa-001',
+        orgId: 'org1',
         code: 'DPA-001',
         title: 'Data Protection Agreements & Vendor Privacy Risk Management',
         description:
@@ -2199,6 +2206,7 @@ export class FakeNotesStrategy implements NotesStrategy {
     this.assessmentsList = [
       {
         id: 'asm-nist-2026',
+        orgId: 'org1',
         frameworkId: nistId,
         requirementId: 'nist-gv-po-01',
         controlId: 'ctrl-pol-001',
@@ -2216,6 +2224,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'asm-soc2-type2',
+        orgId: 'org1',
         frameworkId: soc2Id,
         requirementId: 'soc2-cc6-1',
         cycleName: 'SOC 2 Type II Annual Examination (2025–2026)',
@@ -2230,6 +2239,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'asm-soc2-type1',
+        orgId: 'org1',
         frameworkId: soc2Id,
         requirementId: 'soc2-cc6-3',
         cycleName: 'SOC 2 Type I Point-in-time Readiness Assessment',
@@ -2244,6 +2254,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       },
       {
         id: 'asm-iso-cert',
+        orgId: 'org1',
         frameworkId: isoId,
         requirementId: 'iso-a5-15',
         cycleName: 'ISO/IEC 27001:2022 Stage 2 Certification Audit',
@@ -2923,6 +2934,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return this.assessmentsList.filter((a) => a.frameworkId === frameworkId);
   }
 
+  async getRequirementAssessment(id: string): Promise<RequirementAssessment | null> {
+    return this.assessmentsList.find((a) => a.id === id) ?? null;
+  }
+
   async createAssessmentFinding(
     orgId: string,
     assessmentId: string,
@@ -2934,6 +2949,9 @@ export class FakeNotesStrategy implements NotesStrategy {
   ): Promise<{ findingId: string }> {
     const asm = this.assessmentsList.find((a) => a.id === assessmentId);
     if (!asm) throw new Error(`requirement_assessment_not_found: ${assessmentId}`);
+    if (asm.orgId && asm.orgId !== orgId) {
+      throw new Error('requirement_assessment_belongs_to_different_org');
+    }
     if (!asm.controlId) throw new Error('requirement_assessment_missing_control');
 
     const orgFindingCount = this.findings.filter((f) => f.orgId === orgId).length;

@@ -224,7 +224,8 @@ export function RequirementDrawer({
 
   function handleCreateFinding() {
     if (!findingTitle.trim()) return;
-    const targetAssessment = linkedAssessments[0] || { id: 'asm-default' };
+    const targetAssessment = linkedAssessments[0];
+    if (!targetAssessment) return;
     addFindingMut.mutate(
       {
         assessmentId: targetAssessment.id,
