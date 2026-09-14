@@ -1336,6 +1336,7 @@ export interface NotesStrategy {
 
   // Assessment items
   listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]>;
+  getAssessmentItem(id: string): Promise<AssessmentItem | null>;
   createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem>;
   updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem>;
   deleteAssessmentItem(id: string): Promise<void>;

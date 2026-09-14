@@ -828,6 +828,10 @@ export class NotesClientService {
     });
   }
 
+  getAssessmentItem(id: string): Promise<AssessmentItem | null> {
+    return signedSend<AssessmentItem | null>(this.client, 'notes.assessments.items.get', { id });
+  }
+
   createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem> {
     return signedSend<AssessmentItem>(this.client, 'notes.assessments.items.add', {
       assessmentId,
