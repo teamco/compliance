@@ -135,7 +135,7 @@ export function LinkedFindingSection({
     : undefined;
 
   return (
-    <div className="p-3 rounded-lg bg-surface border border-border space-y-3">
+    <div className="p-3 rounded-lg bg-surface border border-border space-y-3 @container">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-mono text-xs font-bold text-foreground">{finding.code}</span>
@@ -155,21 +155,34 @@ export function LinkedFindingSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
+      <div className="grid grid-cols-1 gap-2 @[750px]:grid-cols-3 text-xs">
         <div>
           <p className="text-muted-foreground mb-1">
             {t('frameworks.drawer.findingBridge.issueTitle', 'Issue')}
           </p>
           {finding.linkedIssueId ? (
-            <Link to="/issues" className="underline text-muted-foreground hover:text-foreground">
+            <Link
+              to="/issues"
+              className="underline text-muted-foreground hover:text-foreground cursor-pointer"
+            >
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </Link>
           ) : (
-            <div className="flex gap-1">
-              <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCreateIssueOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.createIssue', 'Create New Issue')}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setLinkIssueOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setLinkIssueOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.linkIssue', 'Link Existing')}
               </Button>
             </div>
@@ -185,7 +198,7 @@ export function LinkedFindingSection({
               <Link
                 to="/risks/$id"
                 params={{ id: linkedRisk.id }}
-                className="underline text-muted-foreground hover:text-foreground"
+                className="underline text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 {linkedRisk.riskId}
               </Link>
@@ -195,7 +208,7 @@ export function LinkedFindingSection({
               </span>
             )
           ) : (
-            <div className="flex gap-1">
+            <div className="flex flex-col gap-1">
               <Button size="sm" variant="outline" onClick={() => setCreateRiskOpen(true)}>
                 {t('frameworks.drawer.findingBridge.createRisk', 'Create New Risk')}
               </Button>
@@ -215,7 +228,7 @@ export function LinkedFindingSection({
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </span>
           ) : (
-            <div className="flex gap-1">
+            <div className="flex flex-col gap-1">
               <Button size="sm" variant="outline" onClick={() => setCreateExceptionOpen(true)}>
                 {t('frameworks.drawer.findingBridge.createException', 'Create New Exception')}
               </Button>
