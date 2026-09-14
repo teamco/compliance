@@ -291,11 +291,11 @@ export class NotesController {
   async listControlFindings(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
-    @Query('orgId') orgId: string,
   ) {
     this.uid(req);
-    if (!orgId) throw new BadRequestException('orgId required');
-    const org = await this.notes.getOrganizationById(orgId);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlFindings(id);
@@ -314,6 +314,8 @@ export class NotesController {
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
+    const risk = await this.notes.getRisk(body.riskId);
+    if (!risk || risk.orgId !== finding.orgId) throw new ForbiddenException();
     return this.notes.linkFindingToRisk(id, body.riskId);
   }
 
@@ -330,6 +332,8 @@ export class NotesController {
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
+    const issue = await this.notes.getIssue(body.issueId);
+    if (!issue || issue.orgId !== finding.orgId) throw new ForbiddenException();
     return this.notes.linkFindingToIssue(id, body.issueId);
   }
 
@@ -346,6 +350,8 @@ export class NotesController {
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
+    const exception = await this.notes.getException(body.exceptionId);
+    if (!exception || exception.orgId !== finding.orgId) throw new ForbiddenException();
     return this.notes.resolveFindingViaException(id, body.exceptionId);
   }
 
