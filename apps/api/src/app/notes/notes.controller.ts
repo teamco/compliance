@@ -39,6 +39,7 @@ import type {
   ExceptionPatch,
   IssueInput,
   IssuePatch,
+  IssueSeverity,
   RiskInput,
   RiskPatch,
   AssessmentInput,
@@ -287,42 +288,150 @@ export class NotesController {
 
   @Get('internal-controls/:id/findings')
   @ApiOperation({ summary: 'List findings for an internal control' })
-  listControlFindings(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlFindings(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId: string,
+  ) {
     this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlFindings(id);
   }
 
   @Post('findings/:id/link-risk')
   @ApiOperation({ summary: 'Link a finding to a risk register entry' })
-  linkFindingToRisk(
+  async linkFindingToRisk(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { riskId: string },
   ) {
     this.uid(req);
+    const finding = await this.notes.getFinding(id);
+    if (!finding) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(finding.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.linkFindingToRisk(id, body.riskId);
   }
 
   @Post('findings/:id/link-issue')
   @ApiOperation({ summary: 'Link a finding to an issue' })
-  linkFindingToIssue(
+  async linkFindingToIssue(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { issueId: string },
   ) {
     this.uid(req);
+    const finding = await this.notes.getFinding(id);
+    if (!finding) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(finding.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.linkFindingToIssue(id, body.issueId);
   }
 
   @Post('findings/:id/resolve-via-exception')
   @ApiOperation({ summary: 'Resolve a finding by attaching an approved exception' })
-  resolveFindingViaException(
+  async resolveFindingViaException(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { exceptionId: string },
   ) {
     this.uid(req);
+    const finding = await this.notes.getFinding(id);
+    if (!finding) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(finding.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.resolveFindingViaException(id, body.exceptionId);
+  }
+
+  @Post('findings/:id/create-issue')
+  @ApiOperation({ summary: 'Create a new Issue from a Finding and link it back' })
+  async createIssueFromFinding(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ) {
+    const uid = this.uid(req);
+    const finding = await this.notes.getFinding(id);
+    if (!finding) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(finding.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createIssueFromFinding(finding.orgId, uid, id, body);
+  }
+
+  @Post('findings/:id/create-risk')
+  @ApiOperation({ summary: 'Create a new Risk from a Finding and link it back' })
+  async createRiskFromFinding(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body()
+    body: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ) {
+    const uid = this.uid(req);
+    const finding = await this.notes.getFinding(id);
+    if (!finding) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(finding.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createRiskFromFinding(finding.orgId, uid, id, body);
+  }
+
+  @Post('findings/:id/create-exception')
+  @ApiOperation({ summary: 'Create a new (pending) Exception from a Finding' })
+  async createExceptionFromFinding(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body()
+    body: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ) {
+    const uid = this.uid(req);
+    const finding = await this.notes.getFinding(id);
+    if (!finding) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(finding.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createExceptionFromFinding(finding.orgId, uid, id, body);
+  }
+
+  @Get('findings/by-link')
+  @ApiOperation({ summary: 'List findings linked to a given Issue, Risk, or Exception' })
+  async listFindingsByLink(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('issueId') issueId?: string,
+    @Query('riskId') riskId?: string,
+    @Query('exceptionId') exceptionId?: string,
+  ) {
+    this.uid(req);
+    let orgId: string | undefined;
+    if (issueId) orgId = (await this.notes.getIssue(issueId))?.orgId;
+    else if (riskId) orgId = (await this.notes.getRisk(riskId))?.orgId;
+    else if (exceptionId) orgId = (await this.notes.getException(exceptionId))?.orgId;
+    if (!orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listFindingsByLink({ issueId, riskId, exceptionId });
   }
 
   @Get('internal-controls/:id/activity')
