@@ -56,6 +56,7 @@ import type {
   AssessmentItem,
   AssessmentItemInput,
   AssessmentItemPatch,
+  AssessmentItemWithContext,
   AssessmentItemControlMapping,
   AssessmentItemControlMappingInput,
   RiskMethodology,
@@ -4089,6 +4090,63 @@ export class FakeNotesStrategy implements NotesStrategy {
     if (!item) return;
     this.assessmentItems = this.assessmentItems.filter((i) => i.id !== id);
     this.recomputeAssessmentSummary(item.assessmentId);
+  }
+
+  async createRiskFromAssessmentItem(
+    orgId: string,
+    userId: string,
+    itemId: string,
+    data: { taxonomyCategoryId: string },
+  ): Promise<Risk> {
+    const item = this.assessmentItems.find((i) => i.id === itemId);
+    if (!item) throw new Error(`assessment_item_not_found: ${itemId}`);
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    const risk = await this.createRisk(orgId, userId, {
+      title: item.subject,
+      riskStatement: item.description || item.subject,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: assessment.ownerId,
+      businessUnit: assessment.businessUnit,
+      assetIds: assessment.assetIds,
+      vendorIds: assessment.vendorIds,
+      inherentLikelihood: item.inherentLikelihood,
+      inherentImpact: item.inherentImpact,
+      source: 'risk_assessment',
+      sourceRef: item.id,
+    });
+    item.linkedRiskId = risk.id;
+    return risk;
+  }
+
+  async linkAssessmentItemToRisk(itemId: string, riskId: string): Promise<AssessmentItem> {
+    const item = this.assessmentItems.find((i) => i.id === itemId);
+    if (!item) throw new Error(`assessment_item_not_found: ${itemId}`);
+    const risk = this.risks.find((r) => r.id === riskId);
+    if (!risk) throw new Error(`risk_not_found: ${riskId}`);
+    if (risk.orgId !== item.orgId) throw new Error('risk_belongs_to_different_org');
+    item.linkedRiskId = riskId;
+    return item;
+  }
+
+  async unlinkAssessmentItemFromRisk(itemId: string): Promise<AssessmentItem> {
+    const item = this.assessmentItems.find((i) => i.id === itemId);
+    if (!item) throw new Error(`assessment_item_not_found: ${itemId}`);
+    item.linkedRiskId = undefined;
+    return item;
+  }
+
+  async listAssessmentItemsForRisk(riskId: string): Promise<AssessmentItemWithContext[]> {
+    const items = this.assessmentItems.filter((i) => i.linkedRiskId === riskId);
+    return items.map((i) => {
+      const assessment = this.assessments.find((a) => a.id === i.assessmentId);
+      return {
+        ...i,
+        assessmentCode: assessment?.assessmentCode ?? '',
+        assessmentTitle: assessment?.title ?? '',
+        assessmentStatus: assessment?.status ?? 'draft',
+      };
+    });
   }
 
   async listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]> {
