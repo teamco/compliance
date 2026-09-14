@@ -168,11 +168,21 @@ export function LinkedFindingSection({
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </Link>
           ) : (
-            <div className="flex flex-col gap-1">
-              <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCreateIssueOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.createIssue', 'Create New Issue')}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setLinkIssueOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setLinkIssueOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.linkIssue', 'Link Existing')}
               </Button>
             </div>
@@ -198,11 +208,21 @@ export function LinkedFindingSection({
               </span>
             )
           ) : (
-            <div className="flex flex-col gap-1">
-              <Button size="sm" variant="outline" onClick={() => setCreateRiskOpen(true)}>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCreateRiskOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.createRisk', 'Create New Risk')}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setLinkRiskOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setLinkRiskOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.linkRisk', 'Link Existing')}
               </Button>
             </div>
@@ -218,11 +238,21 @@ export function LinkedFindingSection({
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </span>
           ) : (
-            <div className="flex flex-col gap-1">
-              <Button size="sm" variant="outline" onClick={() => setCreateExceptionOpen(true)}>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setCreateExceptionOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.createException', 'Create New Exception')}
               </Button>
-              <Button size="sm" variant="outline" onClick={() => setLinkExceptionOpen(true)}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => setLinkExceptionOpen(true)}
+              >
                 {t('frameworks.drawer.findingBridge.linkException', 'Link Existing (Approved)')}
               </Button>
             </div>
