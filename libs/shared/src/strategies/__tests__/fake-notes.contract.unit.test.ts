@@ -881,6 +881,23 @@ describe('assessment item <-> risk bridge', () => {
     expect(updatedItems.find((i) => i.id === item.id)?.linkedRiskId).toBe(risk.id);
   });
 
+  it('refuses to create a risk from an assessment item under a mismatched org', async () => {
+    const strategy = new FakeNotesStrategy();
+    const { item } = await seedItem(strategy, 'org-1');
+    const [otherCategory] = await strategy.listRiskTaxonomy('org-2');
+
+    await expect(
+      strategy.createRiskFromAssessmentItem('org-2', 'u2', item.id, {
+        taxonomyCategoryId: otherCategory!.id,
+      }),
+    ).rejects.toThrow();
+
+    const risksInOrg2 = await strategy.listRisks('org-2');
+    expect(risksInOrg2).toHaveLength(0);
+    const items = await strategy.listAssessmentItems(item.assessmentId);
+    expect(items.find((i) => i.id === item.id)?.linkedRiskId).toBeUndefined();
+  });
+
   it('links an assessment item to a risk in the same org', async () => {
     const strategy = new FakeNotesStrategy();
     const { item } = await seedItem(strategy, 'org-1');
