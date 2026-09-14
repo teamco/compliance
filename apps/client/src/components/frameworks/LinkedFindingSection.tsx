@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
@@ -102,9 +103,9 @@ export function LinkedFindingSection({
             {t('frameworks.drawer.findingBridge.issueTitle', 'Issue')}
           </p>
           {finding.linkedIssueId ? (
-            <a href={`/issues`} className="underline text-muted-foreground hover:text-foreground">
+            <Link to="/issues" className="underline text-muted-foreground hover:text-foreground">
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
-            </a>
+            </Link>
           ) : (
             <div className="flex gap-1">
               <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>
