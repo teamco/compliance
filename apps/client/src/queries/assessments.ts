@@ -10,6 +10,7 @@ import type {
   AssessmentItemControlMapping,
   AssessmentItemControlMappingInput,
   RequirementEvidence,
+  Risk,
 } from '@icore/shared';
 
 export type {
@@ -243,5 +244,43 @@ export function useCreateAssessmentItemEvidence(orgId: string, itemId: string) {
       ),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: ['assessments', 'items', itemId, 'evidence'] }),
+  });
+}
+
+export function useCreateRiskFromAssessmentItem(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation<Risk, Error, { taxonomyCategoryId: string }>({
+    mutationFn: (data) =>
+      api<Risk>(`/notes/assessments/items/${itemId}/create-risk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assessments'] });
+      qc.invalidateQueries({ queryKey: ['risks'] });
+    },
+  });
+}
+
+export function useLinkAssessmentItemToRisk(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation<AssessmentItem, Error, { riskId: string }>({
+    mutationFn: (data) =>
+      api<AssessmentItem>(`/notes/assessments/items/${itemId}/link-risk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assessments'] }),
+  });
+}
+
+export function useUnlinkAssessmentItemFromRisk(itemId: string) {
+  const qc = useQueryClient();
+  return useMutation<AssessmentItem, Error, void>({
+    mutationFn: () =>
+      api<AssessmentItem>(`/notes/assessments/items/${itemId}/link-risk`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assessments'] }),
   });
 }
