@@ -292,7 +292,7 @@ export function RequirementDrawer({
           </div>
 
           {/* 6 Core Areas Navigation Tabs */}
-          <div className="flex items-center gap-1 overflow-x-auto pt-4 border-t border-border mt-3 scrollbar-none">
+          <div className="flex flex-wrap items-center gap-1 pt-4 border-t border-border mt-3">
             {[
               {
                 id: 'requirement' as const,
