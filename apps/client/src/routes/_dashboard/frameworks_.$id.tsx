@@ -16,6 +16,7 @@ import {
   Download,
   ArrowRight,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { useNotify } from '@icore/template-shared';
 import {
