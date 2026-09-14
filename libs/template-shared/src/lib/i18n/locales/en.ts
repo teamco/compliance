@@ -664,6 +664,7 @@ export const en = {
     compensatingControlsPlaceholder: 'Compensating controls in place, if any',
     approve: 'Approve',
     reject: 'Reject',
+    linkedFinding: 'From Finding {{code}}',
     status: {
       pending: 'Pending',
       approved: 'Approved',
