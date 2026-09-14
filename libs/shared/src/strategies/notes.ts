@@ -1183,6 +1183,7 @@ export interface NotesStrategy {
     data: Omit<RequirementEvidence, 'id'>,
   ): Promise<RequirementEvidence>;
   listFrameworkAssessments(frameworkId: string, orgId?: string): Promise<RequirementAssessment[]>;
+  getRequirementAssessment(id: string): Promise<RequirementAssessment | null>;
   createAssessmentFinding(
     orgId: string,
     assessmentId: string,

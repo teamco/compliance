@@ -359,6 +359,16 @@ export class NotesClientService {
     });
   }
 
+  getRequirementAssessment(id: string): Promise<RequirementAssessment | null> {
+    return signedSend<RequirementAssessment | null>(
+      this.client,
+      'notes.frameworks.assessments.get',
+      {
+        id,
+      },
+    );
+  }
+
   createAssessmentFinding(
     orgId: string,
     assessmentId: string,

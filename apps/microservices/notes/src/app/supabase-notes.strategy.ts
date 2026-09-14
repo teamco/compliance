@@ -557,6 +557,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map((row) => this.toRequirementAssessment(row));
   }
 
+  async getRequirementAssessment(id: string): Promise<RequirementAssessment | null> {
+    const { data, error } = await this.db
+      .from('requirement_assessments')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRequirementAssessment(data) : null;
+  }
+
   async createAssessmentFinding(
     orgId: string,
     assessmentId: string,
@@ -568,24 +578,32 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   ): Promise<{ findingId: string }> {
     const { data: asmRow, error: asmError } = await this.db
       .from('requirement_assessments')
-      .select('control_id, framework_id')
+      .select('control_id, framework_id, org_id')
       .eq('id', assessmentId)
       .single();
-    if (asmError || !asmRow?.['control_id']) {
+    if (asmError || !asmRow) {
+      throw new Error(`requirement_assessment_not_found: ${assessmentId}`);
+    }
+    if (asmRow['org_id'] && asmRow['org_id'] !== orgId) {
+      throw new Error('requirement_assessment_belongs_to_different_org');
+    }
+    if (!asmRow['control_id']) {
       throw new Error(`requirement_assessment_missing_control: ${assessmentId}`);
     }
 
-    const { data: existing, error: countError } = await this.db
+    const { data: recentCodes, error: countError } = await this.db
       .from('findings')
       .select('code')
       .eq('org_id', orgId)
       .order('code', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+      .limit(20);
     if (countError) throw new Error(countError.message);
-    const maxSuffix = existing?.code
-      ? parseInt(String(existing.code).replace('FIND-', ''), 10)
-      : 100;
+    const maxSuffix = (recentCodes ?? []).reduce((max, row) => {
+      const match = /^FIND-(\d{6})$/.exec(String(row['code']));
+      const suffix = match?.[1];
+      if (!suffix) return max;
+      return Math.max(max, parseInt(suffix, 10));
+    }, 100);
     const code = `FIND-${String(maxSuffix + 1).padStart(6, '0')}`;
 
     const { data: row, error } = await this.db

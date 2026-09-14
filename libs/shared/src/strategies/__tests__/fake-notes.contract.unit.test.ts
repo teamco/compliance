@@ -1290,6 +1290,25 @@ describe('framework workspace & GRC hierarchy', () => {
     ).rejects.toThrow('requirement_assessment_missing_control');
   });
 
+  it('rejects createAssessmentFinding when the assessment belongs to a different org', async () => {
+    const asm = await s.getRequirementAssessment('asm-nist-2026');
+    expect(asm?.orgId).toBe('org1');
+
+    await expect(
+      s.createAssessmentFinding('org-2', 'asm-nist-2026', {
+        title: 'x',
+        severity: 'low',
+        description: 'y',
+      }),
+    ).rejects.toThrow('requirement_assessment_belongs_to_different_org');
+  });
+
+  it('getRequirementAssessment returns null for an unknown id, and the real record otherwise', async () => {
+    expect(await s.getRequirementAssessment('nope')).toBeNull();
+    const found = await s.getRequirementAssessment('asm-nist-2026');
+    expect(found?.cycleName).toBe('2026 NIST CSF Assessment');
+  });
+
   it('getFinding returns null for an unknown id, and the real record otherwise', async () => {
     expect(await s.getFinding('nope')).toBeNull();
     const found = await s.getFinding('finding-nist-gvpo01');
