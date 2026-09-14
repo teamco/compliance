@@ -168,21 +168,11 @@ export function LinkedFindingSection({
               {t('frameworks.drawer.findingBridge.linked', 'Linked')}
             </Link>
           ) : (
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setCreateIssueOpen(true)}
-              >
+            <div className="flex flex-col gap-1">
+              <Button size="sm" variant="outline" onClick={() => setCreateIssueOpen(true)}>
                 {t('frameworks.drawer.findingBridge.createIssue', 'Create New Issue')}
               </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => setLinkIssueOpen(true)}
-              >
+              <Button size="sm" variant="outline" onClick={() => setLinkIssueOpen(true)}>
                 {t('frameworks.drawer.findingBridge.linkIssue', 'Link Existing')}
               </Button>
             </div>
