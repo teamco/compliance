@@ -43,6 +43,7 @@ import type {
   AssessmentItem,
   AssessmentItemInput,
   AssessmentItemPatch,
+  AssessmentItemWithContext,
   AssessmentType,
   AssessmentTypeInput,
   AssessmentItemControlMapping,
@@ -713,6 +714,13 @@ export class NotesController {
     return this.strategy.createRiskEvidence(payload.orgId, payload.riskId, payload.data);
   }
 
+  @MessagePattern('notes.risks.assessment-items.list')
+  listAssessmentItemsForRisk(
+    @Payload() payload: { riskId: string },
+  ): Promise<AssessmentItemWithContext[]> {
+    return this.strategy.listAssessmentItemsForRisk(payload.riskId);
+  }
+
   @MessagePattern('notes.assessments.items.evidence.list')
   listAssessmentItemEvidence(
     @Payload() payload: { itemId: string },
@@ -851,6 +859,36 @@ export class NotesController {
   @MessagePattern('notes.assessments.items.mappings.remove')
   removeAssessmentItemControlMapping(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.removeAssessmentItemControlMapping(payload.id);
+  }
+
+  @MessagePattern('notes.assessments.items.risk.create')
+  createRiskFromAssessmentItem(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      itemId: string;
+      data: { taxonomyCategoryId: string };
+    },
+  ): Promise<Risk> {
+    return this.strategy.createRiskFromAssessmentItem(
+      payload.orgId,
+      payload.userId,
+      payload.itemId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.assessments.items.risk.link')
+  linkAssessmentItemToRisk(
+    @Payload() payload: { itemId: string; riskId: string },
+  ): Promise<AssessmentItem> {
+    return this.strategy.linkAssessmentItemToRisk(payload.itemId, payload.riskId);
+  }
+
+  @MessagePattern('notes.assessments.items.risk.unlink')
+  unlinkAssessmentItemFromRisk(@Payload() payload: { itemId: string }): Promise<AssessmentItem> {
+    return this.strategy.unlinkAssessmentItemFromRisk(payload.itemId);
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────
