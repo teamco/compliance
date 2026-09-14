@@ -148,4 +148,21 @@ describe('NotesClientService', () => {
       },
     });
   });
+
+  it('createRiskFromFinding() sends the combo create-and-link over RPC', async () => {
+    const send = vi.fn().mockReturnValue(of({ id: 'risk1', title: 't' }));
+    const service = new NotesClientService(makeClient(send));
+    await service.createRiskFromFinding('org1', 'user1', 'finding1', {
+      title: 't',
+      description: 'd',
+      taxonomyCategoryId: 'cat1',
+      ownerId: 'user1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    expect(send).toHaveBeenCalledWith(
+      'notes.internal-controls.findings.create-risk',
+      expect.objectContaining({ findingId: 'finding1' }),
+    );
+  });
 });

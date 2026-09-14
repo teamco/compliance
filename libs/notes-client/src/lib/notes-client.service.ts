@@ -47,6 +47,7 @@ import type {
   Issue,
   IssueInput,
   IssuePatch,
+  IssueSeverity,
   Organization,
   OrganizationInput,
   Policy,
@@ -255,6 +256,77 @@ export class NotesClientService {
       'notes.internal-controls.findings.resolve-via-exception',
       { findingId, exceptionId },
     );
+  }
+
+  getFinding(id: string): Promise<Finding | null> {
+    return signedSend<Finding | null>(this.client, 'notes.internal-controls.findings.get', {
+      id,
+    });
+  }
+
+  listFindingsByLink(params: {
+    issueId?: string;
+    riskId?: string;
+    exceptionId?: string;
+  }): Promise<Finding[]> {
+    return signedSend<Finding[]>(this.client, 'notes.internal-controls.findings.by-link', params);
+  }
+
+  createIssueFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ): Promise<Issue> {
+    return signedSend<Issue>(this.client, 'notes.internal-controls.findings.create-issue', {
+      orgId,
+      userId,
+      findingId,
+      data,
+    });
+  }
+
+  createRiskFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ): Promise<Risk> {
+    return signedSend<Risk>(this.client, 'notes.internal-controls.findings.create-risk', {
+      orgId,
+      userId,
+      findingId,
+      data,
+    });
+  }
+
+  createExceptionFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ): Promise<Exception> {
+    return signedSend<Exception>(this.client, 'notes.internal-controls.findings.create-exception', {
+      orgId,
+      userId,
+      findingId,
+      data,
+    });
   }
 
   listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
