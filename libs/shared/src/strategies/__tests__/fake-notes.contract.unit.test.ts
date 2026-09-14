@@ -1249,21 +1249,137 @@ describe('framework workspace & GRC hierarchy', () => {
     );
   });
 
-  it('logs assessment findings connecting requirement to issues', async () => {
+  it('logs a real Finding row connecting a control to a requirement assessment', async () => {
     const nistId = '00000000-0000-0000-0000-000000000003';
     const assessments = await s.listFrameworkAssessments(nistId, 'org1');
-    expect(assessments.length).toBeGreaterThanOrEqual(1);
+    const asm = assessments.find((a) => a.id === 'asm-nist-2026');
+    expect(asm?.controlId).toBe('ctrl-pol-001');
 
-    const finding = await s.createAssessmentFinding('org1', assessments[0].id, {
+    const { findingId } = await s.createAssessmentFinding('org1', asm!.id, {
       title: 'Missing DR tabletop exercise minutes',
       severity: 'high',
       description: 'DR test conducted without recorded minutes',
     });
 
-    expect(finding.findingId).toMatch(/^FIND-\d{4}-\d+/);
+    const findings = await s.listControlFindings('ctrl-pol-001');
+    const finding = findings.find((f) => f.id === findingId);
+    expect(finding).toBeDefined();
+    expect(finding?.code).toMatch(/^FIND-\d{6}$/);
+    expect(finding?.status).toBe('open');
+    expect(finding?.orgId).toBe('org1');
+    expect(finding?.controlId).toBe('ctrl-pol-001');
+    expect(finding?.assessmentId).toBe('asm-nist-2026');
 
+    // createAssessmentFinding no longer auto-creates an unrelated Issue as a side effect
     const issues = await s.listIssues('org1');
-    expect(issues.some((i) => i.title === 'Missing DR tabletop exercise minutes')).toBe(true);
+    expect(issues.some((i) => i.title === 'Missing DR tabletop exercise minutes')).toBe(false);
+  });
+
+  it('rejects createAssessmentFinding for an assessment with no controlId', async () => {
+    const isoId = '00000000-0000-0000-0000-000000000002';
+    const assessments = await s.listFrameworkAssessments(isoId, 'org1');
+    const asmWithoutControl = assessments.find((a) => !a.controlId);
+    expect(asmWithoutControl).toBeDefined();
+
+    await expect(
+      s.createAssessmentFinding('org1', asmWithoutControl!.id, {
+        title: 'x',
+        severity: 'low',
+        description: 'y',
+      }),
+    ).rejects.toThrow('requirement_assessment_missing_control');
+  });
+
+  it('getFinding returns null for an unknown id, and the real record otherwise', async () => {
+    expect(await s.getFinding('nope')).toBeNull();
+    const found = await s.getFinding('finding-nist-gvpo01');
+    expect(found?.title).toBe('Missing Q2 Access Review Evidence');
+  });
+
+  it('createRiskFromFinding creates a Risk with gap_analysis provenance and links it back', async () => {
+    const risk = await s.createRiskFromFinding('org1', 'user1', 'finding-nist-gvpo01', {
+      title: 'Policy governance gap',
+      description: 'Access re-certification evidence gap',
+      taxonomyCategoryId: (await s.listRiskTaxonomy('org1'))[0]!.id,
+      ownerId: 'user1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    expect(risk.source).toBe('gap_analysis');
+    expect(risk.sourceRef).toBe('finding-nist-gvpo01');
+    const finding = await s.getFinding('finding-nist-gvpo01');
+    expect(finding?.linkedRiskId).toBe(risk.id);
+  });
+
+  it('createIssueFromFinding creates an Issue with gap_analysis provenance and links it back', async () => {
+    const issue = await s.createIssueFromFinding('org1', 'user1', 'finding-nist-gvpo01', {
+      title: 'Policy governance gap',
+      description: 'Access re-certification evidence gap',
+      severity: 'high',
+      ownerId: 'user1',
+    });
+    expect(issue.source).toBe('gap_analysis');
+    expect(issue.sourceId).toBe('finding-nist-gvpo01');
+    const finding = await s.getFinding('finding-nist-gvpo01');
+    expect(finding?.linkedIssueId).toBe(issue.id);
+  });
+
+  it('createExceptionFromFinding creates a pending Exception and does NOT resolve the finding', async () => {
+    const exc = await s.createExceptionFromFinding('org1', 'user1', 'finding-nist-gvpo01', {
+      controlCode: 'POL-001',
+      frameworkId: '00000000-0000-0000-0000-000000000003',
+      title: 'Temporary policy exception',
+      statement: 'stmt',
+      justification: 'just',
+      ownerId: 'user1',
+    });
+    expect(exc.status).toBe('pending');
+    const finding = await s.getFinding('finding-nist-gvpo01');
+    expect(finding?.linkedExceptionId).toBeUndefined();
+    expect(finding?.status).toBe('open');
+  });
+
+  it('resolveFindingViaException rejects a non-approved exception', async () => {
+    const exc = await s.createException('org1', 'user1', {
+      controlCode: 'POL-001',
+      frameworkId: '00000000-0000-0000-0000-000000000003',
+      title: 'Pending exception',
+      statement: 'stmt',
+      justification: 'just',
+      ownerId: 'user1',
+    });
+    await expect(s.resolveFindingViaException('finding-nist-gvpo01', exc.id)).rejects.toThrow(
+      'exception_not_approved',
+    );
+  });
+
+  it('resolveFindingViaException accepts an approved exception and closes the finding', async () => {
+    const exc = await s.createException('org1', 'user1', {
+      controlCode: 'POL-001',
+      frameworkId: '00000000-0000-0000-0000-000000000003',
+      title: 'Approved exception',
+      statement: 'stmt',
+      justification: 'just',
+      ownerId: 'user1',
+    });
+    await s.approveException(exc.id);
+    const finding = await s.resolveFindingViaException('finding-nist-gvpo01', exc.id);
+    expect(finding.status).toBe('accepted');
+    expect(finding.linkedExceptionId).toBe(exc.id);
+  });
+
+  it('listFindingsByLink filters findings by linked entity', async () => {
+    const risk = await s.createRiskFromFinding('org1', 'user1', 'finding-nist-gvpo01', {
+      title: 'x',
+      description: 'y',
+      taxonomyCategoryId: (await s.listRiskTaxonomy('org1'))[0]!.id,
+      ownerId: 'user1',
+      inherentLikelihood: 2,
+      inherentImpact: 2,
+    });
+    const byRisk = await s.listFindingsByLink({ riskId: risk.id });
+    expect(byRisk.map((f) => f.id)).toContain('finding-nist-gvpo01');
+    expect(await s.listFindingsByLink({ riskId: 'nope' })).toEqual([]);
   });
 
   it('tracks framework audit activities', async () => {
@@ -1353,9 +1469,19 @@ describe('InternalControl lifecycle', () => {
     const linkedIssue = await strategy.linkFindingToIssue(findings[0]!.id, 'issue-7');
     expect(linkedIssue.linkedIssueId).toBe('issue-7');
 
-    const resolved = await strategy.resolveFindingViaException(findings[0]!.id, 'exc-9');
+    const exc = await strategy.createException('org-1', 'user1', {
+      controlCode: 'BCM-003',
+      frameworkId: '00000000-0000-0000-0000-000000000003',
+      title: 'Backup restoration exception',
+      statement: 'stmt',
+      justification: 'just',
+      ownerId: 'user1',
+    });
+    await strategy.approveException(exc.id);
+
+    const resolved = await strategy.resolveFindingViaException(findings[0]!.id, exc.id);
     expect(resolved.status).toBe('accepted');
-    expect(resolved.linkedExceptionId).toBe('exc-9');
+    expect(resolved.linkedExceptionId).toBe(exc.id);
   });
 
   it('attaches evidence to a control and increments its evidence count', async () => {
