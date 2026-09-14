@@ -1036,6 +1036,11 @@ export const en = {
     residual: 'Residual',
     linkedControls: 'Linked Controls',
     selectControl: 'Select a control…',
+    evidence: 'Evidence',
+    addEvidence: 'Add Evidence',
+    evidenceTitlePlaceholder: 'Evidence title…',
+    evidenceUrlPlaceholder: 'Evidence URL (optional)…',
+    evidenceUrlUnsafe: 'Enter a valid http(s) URL',
     subject: 'Subject',
     description: 'Description',
     inherentLikelihood: 'Inherent Likelihood',
@@ -1050,6 +1055,20 @@ export const en = {
     deleteItemConfirmTitle: 'Delete this item?',
     deleteItemConfirmDescription:
       'This will permanently delete the item and its linked controls. This action cannot be undone.',
+    wizard: {
+      step: {
+        details: 'Details',
+        items: 'Items',
+        review: 'Review',
+      },
+      next: 'Next',
+      back: 'Back',
+      finish: 'Finish',
+      needOneItemHint: 'Add at least one item to continue',
+      reviewIntro: 'Review the items below, then finish to save this assessment.',
+      detailsLockedNote:
+        'Type, owner, and approver cannot be changed after the assessment is created.',
+    },
     status: {
       draft: 'Draft',
       in_progress: 'In Progress',

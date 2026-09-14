@@ -777,6 +777,24 @@ export class NotesClientService {
     });
   }
 
+  listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]> {
+    return signedSend<RequirementEvidence[]>(this.client, 'notes.assessments.items.evidence.list', {
+      itemId,
+    });
+  }
+
+  createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.assessments.items.evidence.create', {
+      orgId,
+      itemId,
+      data,
+    });
+  }
+
   // ─── Risk Assessments ────────────────────────────────────────────────────
 
   listAssessments(orgId: string): Promise<Assessment[]> {

@@ -515,9 +515,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       owner: data.owner,
       evidence_type: data.evidenceType,
       source: data.source,
-      collection_date: data.collectionDate,
+      collection_date: data.collectionDate || new Date().toISOString(),
       period_covered: data.periodCovered,
-      expiration_date: data.expirationDate,
+      expiration_date: data.expirationDate || null,
       verification_status: data.verificationStatus,
       url: data.url ?? null,
     };
@@ -531,6 +531,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       frameworkId: row['framework_id'] as string | undefined,
       requirementId: row['requirement_id'] as string | undefined,
       riskId: row['risk_id'] as string | undefined,
+      assessmentItemId: row['assessment_item_id'] as string | undefined,
       title: row['title'] as string,
       owner: row['owner'] as string,
       evidenceType: row['evidence_type'] as string,
@@ -2441,7 +2442,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         business_unit: data.businessUnit ?? null,
         asset_ids: data.assetIds ?? [],
         vendor_ids: data.vendorIds ?? [],
-        due_date: data.dueDate ?? null,
+        due_date: data.dueDate || null,
         approver_id: data.approverId ?? null,
         methodology_id: methodology.id,
         status: 'draft',
@@ -2467,7 +2468,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
     if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
     if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
-    if (patch.dueDate !== undefined) update['due_date'] = patch.dueDate;
+    if (patch.dueDate !== undefined) update['due_date'] = patch.dueDate || null;
 
     const { data, error } = await this.db
       .from('risk_assessments')
@@ -2836,6 +2837,27 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const { data: row, error } = await this.db
       .from('requirement_evidence')
       .insert({ ...this.evidenceInsertPayload(orgId, data), risk_id: riskId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('assessment_item_id', itemId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), assessment_item_id: itemId })
       .select()
       .single();
     return this.toRequirementEvidence(ok(row, error));

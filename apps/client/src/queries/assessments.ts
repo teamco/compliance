@@ -9,6 +9,7 @@ import type {
   AssessmentItemPatch,
   AssessmentItemControlMapping,
   AssessmentItemControlMappingInput,
+  RequirementEvidence,
 } from '@icore/shared';
 
 export type {
@@ -213,5 +214,34 @@ export function useRemoveAssessmentItemControlMapping(itemId: string) {
     mutationFn: (mappingId) =>
       api<void>(`/notes/assessments/items/mappings/${mappingId}`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assessment-items', itemId, 'mappings'] }),
+  });
+}
+
+export function useAssessmentItemEvidence(itemId: string) {
+  return useQuery<RequirementEvidence[]>({
+    queryKey: ['assessments', 'items', itemId, 'evidence'],
+    queryFn: () => api<RequirementEvidence[]>(`/notes/assessments/items/${itemId}/evidence`),
+    enabled: !!itemId,
+  });
+}
+
+export function useCreateAssessmentItemEvidence(orgId: string, itemId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    RequirementEvidence,
+    Error,
+    Omit<RequirementEvidence, 'id' | 'assessmentItemId'>
+  >({
+    mutationFn: (data) =>
+      api<RequirementEvidence>(
+        `/notes/assessments/items/${itemId}/evidence?orgId=${encodeURIComponent(orgId)}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        },
+      ),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ['assessments', 'items', itemId, 'evidence'] }),
   });
 }

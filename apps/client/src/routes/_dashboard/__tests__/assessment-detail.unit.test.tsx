@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -150,8 +150,6 @@ const mockArchiveMutate = vi.fn();
 const mockCreateItemMutate = vi.fn();
 const mockUpdateItemMutate = vi.fn();
 const mockDeleteItemMutate = vi.fn();
-const mockAddMappingMutate = vi.fn();
-const mockRemoveMappingMutate = vi.fn();
 
 vi.mock('@/queries/assessments', () => ({
   useAssessment: () => ({ data: mockAssessment, isPending: false }),
@@ -166,11 +164,6 @@ vi.mock('@/queries/assessments', () => ({
   useCompleteAssessment: () => ({ mutate: mockCompleteMutate, isPending: false }),
   useArchiveAssessment: () => ({ mutate: mockArchiveMutate, isPending: false }),
   useAssessmentItemControlMappings: () => ({ data: mockMappings }),
-  useAddAssessmentItemControlMapping: () => ({ mutate: mockAddMappingMutate, isPending: false }),
-  useRemoveAssessmentItemControlMapping: () => ({
-    mutate: mockRemoveMappingMutate,
-    isPending: false,
-  }),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
@@ -281,68 +274,15 @@ describe('AssessmentDetailPage', () => {
     expect(mockArchiveMutate).toHaveBeenCalled();
   });
 
-  it('renders Items tab fixture rows and expands to show AssessmentItemControls', async () => {
+  it('renders AssessmentItemsPanel when the Items tab is active', async () => {
     await renderDetailPage();
+
+    expect(screen.queryByText('Unpatched endpoints')).toBeNull();
 
     fireEvent.click(screen.getByText('Items'));
 
+    // AssessmentItemsPanel's internals (expand, link control, residual scoring,
+    // delete, evidence) are covered by AssessmentItemsPanel.unit.test.tsx.
     expect(screen.getByText('Unpatched endpoints')).toBeDefined();
-    expect(screen.queryByText('Linked Controls')).toBeNull();
-
-    fireEvent.click(screen.getByText('Unpatched endpoints'));
-
-    expect(screen.getByText('Linked Controls')).toBeDefined();
-    expect(screen.getByText('Select a control…')).toBeDefined();
-  });
-
-  it('blocks Add Item submission without likelihood/impact selected', async () => {
-    mockCurrentUserId = 'Alice';
-    mockAssessment = { ...mockAssessment, status: 'draft', ownerId: 'Alice' };
-    await renderDetailPage();
-
-    fireEvent.click(screen.getByText('Items'));
-    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
-
-    const dialog = screen.getByRole('dialog');
-    // The Subject Label isn't associated via htmlFor/id, so select the input directly.
-    const [subjectInput] = dialog.querySelectorAll('input');
-    fireEvent.change(subjectInput, {
-      target: { value: 'New risk item' },
-    });
-    // likelihood and impact left unselected
-
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add Item' }));
-
-    expect(mockCreateItemMutate).not.toHaveBeenCalled();
-  });
-
-  it('submits Add Item with likelihood and impact selected', async () => {
-    mockCurrentUserId = 'Alice';
-    mockAssessment = { ...mockAssessment, status: 'draft', ownerId: 'Alice' };
-    await renderDetailPage();
-
-    fireEvent.click(screen.getByText('Items'));
-    fireEvent.click(screen.getByRole('button', { name: 'Add Item' }));
-
-    const dialog = screen.getByRole('dialog');
-    const [likelihoodSelect, impactSelect] = within(dialog).getAllByRole('combobox');
-    const [subjectInput] = dialog.querySelectorAll('input');
-
-    fireEvent.change(subjectInput, {
-      target: { value: 'New risk item' },
-    });
-    fireEvent.change(likelihoodSelect, { target: { value: '3' } });
-    fireEvent.change(impactSelect, { target: { value: '4' } });
-
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Add Item' }));
-
-    expect(mockCreateItemMutate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        subject: 'New risk item',
-        inherentLikelihood: 3,
-        inherentImpact: 4,
-      }),
-      expect.any(Object),
-    );
   });
 });

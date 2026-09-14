@@ -233,6 +233,7 @@ export interface RequirementEvidence {
   orgId?: string;
   controlId?: string;
   riskId?: string;
+  assessmentItemId?: string;
   frameworkId?: string;
   requirementId?: string;
   title: string;
@@ -1108,6 +1109,12 @@ export interface NotesStrategy {
     orgId: string,
     riskId: string,
     data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence>;
+  listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]>;
+  createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
   ): Promise<RequirementEvidence>;
 
   listControlAssessments(controlId: string): Promise<RequirementAssessment[]>;
