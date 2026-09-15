@@ -3585,6 +3585,12 @@ export class FakeNotesStrategy implements NotesStrategy {
     if (data.validatorId === ownerId) {
       throw new Error('issue_validation_self_validation_forbidden');
     }
+    const activePending = this.issueValidations.find(
+      (v) => v.issueId === id && v.status === 'pending',
+    );
+    if (activePending) {
+      throw new Error('issue_validation_already_pending');
+    }
     const updated: Issue = {
       ...issue,
       status: 'pending_validation',

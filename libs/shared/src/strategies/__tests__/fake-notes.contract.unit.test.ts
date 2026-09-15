@@ -202,6 +202,28 @@ describe('issues', () => {
     ).rejects.toThrow('issue_validation_self_validation_forbidden');
   });
 
+  it('prevents duplicate concurrent pending validations', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'First submission',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Second submission',
+        rootCauseCategory: 'human_error',
+        validatorId: 'validator-1',
+      }),
+    ).rejects.toThrow('issue_validation_already_pending');
+  });
+
   it('rejects a validation with notes, returns issue to in_progress, and preserves history on resubmit', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',

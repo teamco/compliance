@@ -41,9 +41,17 @@ alter table public.issue_validations enable row level security;
 
 create policy "org members read issue validations"
   on public.issue_validations for select
-  using (true);
+  using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+  );
 
 create policy "requester or validator manage issue validations"
   on public.issue_validations for all
-  using (true)
-  with check (true);
+  using (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (requested_by = auth.uid() or validator_id = auth.uid())
+  )
+  with check (
+    exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
+    and (requested_by = auth.uid() or validator_id = auth.uid())
+  );
