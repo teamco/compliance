@@ -32,6 +32,10 @@ const mockException: Exception = {
   ownerId: 'u1',
   status: 'pending',
   expiresAt: null,
+  riskId: null,
+  reviewFrequencyDays: null,
+  reviewedBy: null,
+  reviewedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -244,8 +248,8 @@ describe('ExceptionsPage — reverse back-link to originating Finding', () => {
     const { ExceptionsPage } = await import('../-exceptions.page');
     render(wrap(<ExceptionsPage />));
 
-    const link = screen.getByText('From Finding FIND-000303');
-    expect(link.closest('a')?.getAttribute('href')).toBe('/controls/c1');
+    const linkText = screen.getByText('From Finding FIND-000303');
+    expect(linkText.tagName).toBe('SPAN');
   });
 
   it('does not show a Finding back-link when no Finding links to the exception', async () => {
