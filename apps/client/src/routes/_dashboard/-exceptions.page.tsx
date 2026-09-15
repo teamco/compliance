@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearch } from '@tanstack/react-router';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { useDraft } from '@icore/template-shared';
 import { effectiveExceptionStatus } from '@icore/shared/client';
@@ -119,6 +120,10 @@ export function ExceptionsPage() {
 
   const [open, setOpen] = useState(false);
   const [selectedExceptionId, setSelectedExceptionId] = useState<string | null>(null);
+  const search = useSearch({ from: '/_dashboard/exceptions' });
+  useEffect(() => {
+    if (search.open) setSelectedExceptionId(search.open);
+  }, [search.open]);
   const [form, setForm] = useState<ExceptionInput>(EMPTY_FORM);
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
   const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);

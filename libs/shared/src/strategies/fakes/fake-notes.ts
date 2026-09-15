@@ -3603,6 +3603,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return this.exceptionRenewals.filter((r) => r.exceptionId === exceptionId);
   }
 
+  async listPendingExceptionRenewals(orgId: string): Promise<ExceptionRenewal[]> {
+    return this.exceptionRenewals.filter((r) => r.orgId === orgId && r.status === 'pending');
+  }
+
   // ─── Issues ────────────────────────────────────────────────────────────────
 
   async listIssues(orgId: string): Promise<Issue[]> {
@@ -3756,6 +3760,10 @@ export class FakeNotesStrategy implements NotesStrategy {
 
   async listIssueValidations(issueId: string): Promise<IssueValidation[]> {
     return this.issueValidations.filter((v) => v.issueId === issueId);
+  }
+
+  async listPendingIssueValidations(orgId: string): Promise<IssueValidation[]> {
+    return this.issueValidations.filter((v) => v.orgId === orgId && v.status === 'pending');
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────

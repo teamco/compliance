@@ -67,6 +67,7 @@ export const en = {
   },
   nav: {
     dashboard: 'Dashboard',
+    myWork: 'My Work',
     analytics: 'Analytics',
     profile: 'Profile',
     settings: 'Settings',
@@ -671,6 +672,22 @@ export const en = {
       high: 'High',
       medium: 'Medium',
       low: 'Low',
+    },
+  },
+  myWork: {
+    subtitle: 'Overdue items, upcoming deadlines, and reviews waiting on you',
+    noOrg: 'Select an organization to see your work',
+    empty: "You're all caught up — nothing overdue, due soon, or waiting on your review",
+    overdue: 'Overdue',
+    emptyOverdue: 'Nothing overdue',
+    dueSoon: 'Due Soon',
+    emptyDueSoon: 'Nothing due in the next 7 days',
+    pendingReview: 'Pending My Review',
+    emptyPendingReview: 'Nothing waiting on your review',
+    type: {
+      issue: 'Issue',
+      exception: 'Exception',
+      assessment: 'Assessment',
     },
   },
   exceptions: {

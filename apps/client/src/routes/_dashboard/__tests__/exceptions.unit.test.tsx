@@ -56,6 +56,7 @@ const mockLinkedFinding: Finding = {
 
 let mockExceptionsData: Exception[] = [];
 let mockLinkedFindingsData: Finding[] = [];
+let mockSearchOpen: string | undefined;
 
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
@@ -137,6 +138,7 @@ vi.mock('@/stores/active-org', () => ({
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (opts: { component: React.ComponentType }) => ({ options: opts }),
   lazyRouteComponent: (importer: () => unknown) => importer,
+  useSearch: () => ({ open: mockSearchOpen }),
   Link: ({
     children,
     to,
@@ -173,6 +175,7 @@ describe('ExceptionsPage — New Exception dialog', () => {
     createMutate.mockClear();
     mockExceptionsData = [];
     mockLinkedFindingsData = [];
+    mockSearchOpen = undefined;
   });
 
   it('renders all 8 fields in order when the dialog opens', async () => {
@@ -277,6 +280,7 @@ describe('ExceptionsPage — reverse back-link to originating Finding', () => {
     createMutate.mockClear();
     mockExceptionsData = [mockException];
     mockLinkedFindingsData = [];
+    mockSearchOpen = undefined;
   });
 
   it('shows a link back to the originating control when a Finding links to the exception', async () => {
@@ -293,5 +297,36 @@ describe('ExceptionsPage — reverse back-link to originating Finding', () => {
     render(wrap(<ExceptionsPage />));
 
     expect(screen.queryByText(/From Finding/)).toBeNull();
+  });
+});
+
+vi.mock('@/components/exceptions/ExceptionDetailSheet', () => ({
+  ExceptionDetailSheet: ({ exception }: { exception: Exception }) => (
+    <div data-testid="exception-detail-sheet">{exception.title}</div>
+  ),
+}));
+
+describe('ExceptionsPage — deep link via ?open=', () => {
+  beforeEach(() => {
+    createMutate.mockClear();
+    mockExceptionsData = [mockException];
+    mockLinkedFindingsData = [];
+    mockSearchOpen = undefined;
+  });
+
+  it('opens the detail sheet for the exception named by the open search param', async () => {
+    mockSearchOpen = mockException.id;
+    const { ExceptionsPage } = await import('../-exceptions.page');
+    render(wrap(<ExceptionsPage />));
+
+    expect(screen.getByTestId('exception-detail-sheet').textContent).toBe(mockException.title);
+  });
+
+  it('does not open any sheet when the open id does not match a loaded exception', async () => {
+    mockSearchOpen = 'not-a-real-id';
+    const { ExceptionsPage } = await import('../-exceptions.page');
+    render(wrap(<ExceptionsPage />));
+
+    expect(screen.queryByTestId('exception-detail-sheet')).toBeNull();
   });
 });

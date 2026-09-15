@@ -82,6 +82,15 @@ export function useExceptionRenewals(exceptionId: string) {
   });
 }
 
+export function usePendingExceptionRenewals(orgId: string) {
+  return useQuery<ExceptionRenewal[]>({
+    queryKey: ['exception-renewals', orgId, 'pending'],
+    queryFn: () =>
+      api<ExceptionRenewal[]>(`/notes/exception-renewals?orgId=${encodeURIComponent(orgId)}`),
+    enabled: !!orgId,
+  });
+}
+
 export function useRequestExceptionRenewal(orgId: string) {
   const qc = useQueryClient();
   return useMutation<ExceptionRenewal, Error, { id: string; data: ExceptionRenewalRequestInput }>({

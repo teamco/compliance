@@ -60,6 +60,15 @@ export function useIssueValidations(issueId: string) {
   });
 }
 
+export function usePendingIssueValidations(orgId: string) {
+  return useQuery<IssueValidation[]>({
+    queryKey: ['issue-validations', orgId, 'pending'],
+    queryFn: () =>
+      api<IssueValidation[]>(`/notes/issue-validations?orgId=${encodeURIComponent(orgId)}`),
+    enabled: !!orgId,
+  });
+}
+
 export function useSubmitIssueForValidation(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Issue, Error, { id: string; data: IssueValidationSubmitInput }>({

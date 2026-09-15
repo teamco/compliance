@@ -44,6 +44,7 @@ const mockLinkedFinding: Finding = {
 };
 
 let mockIssuesData: Issue[] = [];
+let mockSearchOpen: string | undefined;
 
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
@@ -87,6 +88,7 @@ vi.mock('@/stores/active-org', () => ({
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (opts: { component: React.ComponentType }) => ({ options: opts }),
+  useSearch: () => ({ open: mockSearchOpen }),
   Link: ({
     children,
     to,
@@ -122,6 +124,7 @@ describe('IssuesPage — New Issue dialog', () => {
   beforeEach(() => {
     createMutate.mockClear();
     mockIssuesData = [];
+    mockSearchOpen = undefined;
   });
 
   it('renders all 6 fields in order when the dialog opens', async () => {
@@ -163,6 +166,7 @@ describe('IssuesPage — deleting the currently-open issue', () => {
   beforeEach(() => {
     deleteMutate.mockClear();
     mockIssuesData = [mockGapIssue];
+    mockSearchOpen = undefined;
   });
 
   it('closes the detail sheet instead of crashing when the open issue is deleted', async () => {
@@ -182,6 +186,7 @@ describe('IssuesPage — deleting the currently-open issue', () => {
 describe('IssuesPage — reverse back-link to originating Finding', () => {
   beforeEach(() => {
     mockIssuesData = [mockGapIssue];
+    mockSearchOpen = undefined;
   });
 
   it('shows the originating Finding code as text for a gap_analysis issue', async () => {
@@ -189,5 +194,28 @@ describe('IssuesPage — reverse back-link to originating Finding', () => {
     render(wrap(<IssuesPage />));
 
     expect(screen.getByText('From Finding FIND-000101').tagName).toBe('SPAN');
+  });
+});
+
+describe('IssuesPage — deep link via ?open=', () => {
+  beforeEach(() => {
+    mockIssuesData = [mockGapIssue];
+    mockSearchOpen = undefined;
+  });
+
+  it('opens the detail sheet for the issue named by the open search param', async () => {
+    mockSearchOpen = mockGapIssue.id;
+    const { IssuesPage } = await import('../-issues.page');
+    render(wrap(<IssuesPage />));
+
+    expect(screen.getByTestId('issue-detail-sheet').textContent).toBe(mockGapIssue.title);
+  });
+
+  it('does not open any sheet when the open id does not match a loaded issue', async () => {
+    mockSearchOpen = 'not-a-real-id';
+    const { IssuesPage } = await import('../-issues.page');
+    render(wrap(<IssuesPage />));
+
+    expect(screen.queryByTestId('issue-detail-sheet')).toBeNull();
   });
 });

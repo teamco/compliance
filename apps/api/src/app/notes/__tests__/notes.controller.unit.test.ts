@@ -50,6 +50,7 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     getIssue: vi.fn().mockResolvedValue(ISSUE),
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
     listIssueValidations: vi.fn().mockResolvedValue([]),
+    listPendingIssueValidations: vi.fn().mockResolvedValue([]),
     submitIssueForValidation: vi.fn().mockResolvedValue(ISSUE),
     reviewIssueValidation: vi.fn().mockResolvedValue(PENDING_VALIDATION),
     ...overrides,
@@ -67,6 +68,10 @@ function makeController(notes: NotesClientService): NotesController {
 
 function reqAs(uid: string): Request & { user?: VerifiedToken } {
   return { user: { uid } as VerifiedToken } as Request & { user?: VerifiedToken };
+}
+
+function reqAsAdmin(uid: string): Request & { user?: VerifiedToken } {
+  return { user: { uid, role: 'admin' } as VerifiedToken } as Request & { user?: VerifiedToken };
 }
 
 describe('NotesController — issue validation authorization', () => {
@@ -172,6 +177,48 @@ describe('NotesController — issue validation authorization', () => {
       const notes = makeNotes({ getIssue: vi.fn().mockResolvedValue(null) });
       await expect(
         makeController(notes).listIssueValidations(reqAs('owner-1'), 'missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('listPendingIssueValidations', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listPendingIssueValidations(reqAs('outsider'), 'org-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(notes.listPendingIssueValidations).not.toHaveBeenCalled();
+    });
+
+    it('allows the org creator', async () => {
+      const notes = makeNotes({
+        listPendingIssueValidations: vi.fn().mockResolvedValue([PENDING_VALIDATION]),
+      });
+      await expect(
+        makeController(notes).listPendingIssueValidations(reqAs('org-creator'), 'org-1'),
+      ).resolves.toEqual([PENDING_VALIDATION]);
+    });
+
+    it('allows an admin who is not the org creator', async () => {
+      const notes = makeNotes({
+        listPendingIssueValidations: vi.fn().mockResolvedValue([PENDING_VALIDATION]),
+      });
+      await expect(
+        makeController(notes).listPendingIssueValidations(reqAsAdmin('platform-admin'), 'org-1'),
+      ).resolves.toEqual([PENDING_VALIDATION]);
+    });
+
+    it('throws BadRequest when orgId is missing', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listPendingIssueValidations(reqAs('org-creator'), ''),
+      ).rejects.toThrow('orgId required');
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).listPendingIssueValidations(reqAs('org-creator'), 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
   });

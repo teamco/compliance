@@ -1378,6 +1378,7 @@ export interface NotesStrategy {
   getExceptionRenewal(id: string): Promise<ExceptionRenewal | null>;
   getActiveExceptionRenewal(exceptionId: string): Promise<ExceptionRenewal | null>;
   listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]>;
+  listPendingExceptionRenewals(orgId: string): Promise<ExceptionRenewal[]>;
   deleteException(id: string): Promise<void>;
 
   // Issues
@@ -1400,6 +1401,7 @@ export interface NotesStrategy {
   getIssueValidation(id: string): Promise<IssueValidation | null>;
   getActiveIssueValidation(issueId: string): Promise<IssueValidation | null>;
   listIssueValidations(issueId: string): Promise<IssueValidation[]>;
+  listPendingIssueValidations(orgId: string): Promise<IssueValidation[]>;
 
   // Assets
   listAssets(orgId: string): Promise<Asset[]>;

@@ -865,6 +865,20 @@ export class NotesController {
     return renewals;
   }
 
+  @Get('exception-renewals')
+  @ApiOperation({ summary: 'List all pending exception renewals for an org' })
+  async listPendingExceptionRenewals(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listPendingExceptionRenewals(orgId);
+  }
+
   // ─── Issues ──────────────────────────────────────────────────────────────
 
   @Get('issues')
@@ -957,6 +971,20 @@ export class NotesController {
       validations.some((v) => v.requestedBy === userId || v.validatorId === userId);
     if (org.userId !== userId && !isPartyToIssue) throw new ForbiddenException();
     return validations;
+  }
+
+  @Get('issue-validations')
+  @ApiOperation({ summary: 'List all pending issue validations for an org' })
+  async listPendingIssueValidations(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listPendingIssueValidations(orgId);
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────
