@@ -155,11 +155,10 @@ describe('IssuesPage — reverse back-link to originating Finding', () => {
     mockIssuesData = [mockGapIssue];
   });
 
-  it('shows a link back to the originating control for a gap_analysis issue', async () => {
+  it('shows the originating Finding code as text for a gap_analysis issue', async () => {
     const { IssuesPage } = await import('../-issues.page');
     render(wrap(<IssuesPage />));
 
-    const link = screen.getByText('From Finding FIND-000101');
-    expect(link.closest('a')?.getAttribute('href')).toBe('/controls/c1');
+    expect(screen.getByText('From Finding FIND-000101').tagName).toBe('SPAN');
   });
 });

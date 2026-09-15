@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
 import { Plus, Bug } from 'lucide-react';
 import { useDraft, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
@@ -40,12 +39,17 @@ const SEVERITY_COLORS: Record<Issue['severity'], string> = {
 const STATUS_COLORS: Record<Issue['status'], string> = {
   open: 'bg-red-500/10 text-red-400 border-red-500/20',
   in_progress: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  resolved: 'bg-green-500/10 text-green-400 border-green-500/20',
+  pending_validation: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  closed: 'bg-green-500/10 text-green-400 border-green-500/20',
   wont_fix: 'bg-muted text-muted-foreground border-border',
 };
 
 const SEVERITY_OPTIONS: Array<Issue['severity']> = ['critical', 'high', 'medium', 'low', 'info'];
-const STATUS_OPTIONS: Array<Issue['status']> = ['open', 'in_progress', 'resolved', 'wont_fix'];
+const MANUAL_STATUS_OPTIONS: Array<Exclude<Issue['status'], 'pending_validation' | 'closed'>> = [
+  'open',
+  'in_progress',
+  'wont_fix',
+];
 
 const EMPTY_FORM: IssueInput = {
   title: '',
@@ -60,10 +64,12 @@ function IssueRow({
   issue,
   onStatusChange,
   onDelete,
+  onOpen,
 }: {
   issue: Issue;
-  onStatusChange: (status: Issue['status']) => void;
+  onStatusChange: (status: Exclude<Issue['status'], 'pending_validation' | 'closed'>) => void;
   onDelete: () => void;
+  onOpen: () => void;
 }) {
   const { t } = useTranslation();
   const { data: linkedFindings = [] } = useFindingsByLink({
@@ -73,7 +79,7 @@ function IssueRow({
 
   return (
     <div className="flex items-start gap-4 bg-surface border border-border rounded-xl p-4">
-      <div className="flex-1 min-w-0">
+      <button type="button" onClick={onOpen} className="flex-1 min-w-0 text-left cursor-pointer">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className="font-medium text-sm text-foreground truncate">{issue.title}</span>
           <span
@@ -89,22 +95,29 @@ function IssueRow({
         </div>
         <p className="text-xs text-muted-foreground line-clamp-2">{issue.description}</p>
         {linkedFinding && (
-          <Link
-            to="/controls/$id"
-            params={{ id: linkedFinding.controlId }}
-            className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
-          >
+          <span className="font-mono text-xs underline text-muted-foreground">
             {t('issues.linkedFinding', { code: linkedFinding.code })}
-          </Link>
+          </span>
         )}
-      </div>
+      </button>
       <div className="flex gap-1.5 shrink-0">
         <select
-          value={issue.status}
-          onChange={(e) => onStatusChange(e.target.value as Issue['status'])}
-          className="text-xs h-7 rounded border border-border bg-surface px-1 text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40"
+          value={
+            issue.status === 'pending_validation' || issue.status === 'closed' ? '' : issue.status
+          }
+          onChange={(e) =>
+            onStatusChange(
+              e.target.value as Exclude<Issue['status'], 'pending_validation' | 'closed'>,
+            )
+          }
+          disabled={issue.status === 'pending_validation' || issue.status === 'closed'}
+          className="text-xs h-7 rounded border border-border bg-surface px-1 text-foreground focus:outline-none focus:ring-1 focus:ring-green-500/40 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {STATUS_OPTIONS.map((s) => (
+          {issue.status === 'pending_validation' && (
+            <option value="">{t('issues.status.pending_validation')}</option>
+          )}
+          {issue.status === 'closed' && <option value="">{t('issues.status.closed')}</option>}
+          {MANUAL_STATUS_OPTIONS.map((s) => (
             <option key={s} value={s}>
               {t(`issues.status.${s}`)}
             </option>
@@ -135,6 +148,8 @@ export function IssuesPage() {
   const notify = useNotify();
 
   const [open, setOpen] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by Task 5's IssueDetailSheet
+  const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [form, setForm] = useState<IssueInput>(EMPTY_FORM);
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
   const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
@@ -189,6 +204,7 @@ export function IssuesPage() {
               issue={issue}
               onStatusChange={(status) => updateMut.mutate({ id: issue.id, patch: { status } })}
               onDelete={() => deleteMut.mutate(issue.id)}
+              onOpen={() => setSelectedIssueId(issue.id)}
             />
           ))}
         </div>
