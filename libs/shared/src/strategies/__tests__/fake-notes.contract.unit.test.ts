@@ -3,6 +3,7 @@ import type {
   AssessmentItemControlMappingInput,
   AssessmentItemPatch,
   AssessmentPatch,
+  IssuePatch,
 } from '../notes';
 import { runNotesContract } from './notes.contract.unit.test';
 
@@ -144,7 +145,7 @@ describe('issues', () => {
     expect(issue.affectedAssets).toBe('Payment API, Customer DB');
   });
 
-  it('updates issue status to resolved and sets resolvedAt', async () => {
+  it('closes an issue through the validation workflow and sets resolvedAt', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',
       description: 'D',
@@ -152,12 +153,20 @@ describe('issues', () => {
       reporterId: 'reporter-1',
       ownerId: 'owner-1',
     });
-    const updated = await s.updateIssue(issue.id, { status: 'resolved' });
-    expect(updated.status).toBe('resolved');
-    expect(updated.resolvedAt).not.toBeNull();
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    const closed = await s.reviewIssueValidation(validation!.id, 'validator-1', 'approved');
+    expect(closed.status).toBe('approved');
+    const updatedIssue = await s.getIssue(issue.id);
+    expect(updatedIssue!.status).toBe('closed');
+    expect(updatedIssue!.resolvedAt).not.toBeNull();
   });
 
-  it('clears resolvedAt when status changes away from resolved', async () => {
+  it('clears resolvedAt when a closed issue is reopened via generic update', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',
       description: 'D',
@@ -165,9 +174,187 @@ describe('issues', () => {
       reporterId: 'reporter-1',
       ownerId: 'owner-1',
     });
-    await s.updateIssue(issue.id, { status: 'resolved' });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await s.reviewIssueValidation(validation!.id, 'validator-1', 'approved');
     const reopened = await s.updateIssue(issue.id, { status: 'open' });
     expect(reopened.resolvedAt).toBeNull();
+  });
+
+  it('rejects self-validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Root cause',
+        rootCauseCategory: 'human_error',
+        validatorId: 'owner-1',
+      }),
+    ).rejects.toThrow('issue_validation_self_validation_forbidden');
+  });
+
+  it('prevents duplicate concurrent pending validations', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'First submission',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Second submission',
+        rootCauseCategory: 'human_error',
+        validatorId: 'validator-1',
+      }),
+    ).rejects.toThrow('issue_validation_already_pending');
+  });
+
+  it('refuses to submit a closed issue for validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await s.reviewIssueValidation(validation!.id, 'validator-1', 'approved');
+    expect((await s.getIssue(issue.id))!.status).toBe('closed');
+
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Reopening through the back door',
+        rootCauseCategory: 'human_error',
+        validatorId: 'validator-1',
+      }),
+    ).rejects.toThrow('issue_status_invalid_for_submission');
+  });
+
+  it('refuses to submit a wont_fix issue for validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.updateIssue(issue.id, { status: 'wont_fix' });
+
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Should not be submittable',
+        rootCauseCategory: 'other',
+        validatorId: 'validator-1',
+      }),
+    ).rejects.toThrow('issue_status_invalid_for_submission');
+  });
+
+  it('rejects a validation with notes, returns issue to in_progress, and preserves history on resubmit', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'First attempt',
+      rootCauseCategory: 'human_error',
+      validatorId: 'validator-1',
+    });
+    const firstValidation = await s.getActiveIssueValidation(issue.id);
+    const rejected = await s.reviewIssueValidation(
+      firstValidation!.id,
+      'validator-1',
+      'rejected',
+      'Fix does not address the root cause',
+    );
+    expect(rejected.status).toBe('rejected');
+    const afterReject = await s.getIssue(issue.id);
+    expect(afterReject!.status).toBe('in_progress');
+
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Second attempt',
+      rootCauseCategory: 'control_design_failure',
+      validatorId: 'validator-1',
+    });
+    const secondValidation = await s.getActiveIssueValidation(issue.id);
+    expect(secondValidation!.id).not.toBe(firstValidation!.id);
+
+    const history = await s.listIssueValidations(issue.id);
+    expect(history).toHaveLength(2);
+    expect(history.find((v) => v.id === firstValidation!.id)?.status).toBe('rejected');
+  });
+
+  it('rejects review from someone other than the assigned validator', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Root cause',
+      rootCauseCategory: 'other',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await expect(
+      s.reviewIssueValidation(validation!.id, 'someone-else', 'approved'),
+    ).rejects.toThrow('issue_validation_not_authorized_validator');
+  });
+
+  it('requires reviewNotes on rejection', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Root cause',
+      rootCauseCategory: 'other',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await expect(
+      s.reviewIssueValidation(validation!.id, 'validator-1', 'rejected'),
+    ).rejects.toThrow('issue_validation_review_notes_required');
+  });
+
+  it('bypassing the type system to set status directly to closed via updateIssue throws', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await expect(
+      s.updateIssue(issue.id, { status: 'closed' as unknown as IssuePatch['status'] }),
+    ).rejects.toThrow('issue_status_change_requires_workflow');
   });
 
   it('deletes an issue', async () => {

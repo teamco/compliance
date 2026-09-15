@@ -45,6 +45,8 @@ import type {
   IssueInput,
   IssuePatch,
   IssueSeverity,
+  IssueValidation,
+  IssueValidationSubmitInput,
   Asset,
   AssetInput,
   AssetPatch,
@@ -122,6 +124,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   private reportTemplates: ReportTemplate[] = [];
   private exceptions = new Map<string, Exception>();
   private issues = new Map<string, Issue>();
+  private issueValidations: IssueValidation[] = [];
 
   constructor() {
     this.initDefaultSeedData();
@@ -3529,6 +3532,8 @@ export class FakeNotesStrategy implements NotesStrategy {
       sourceId: data.sourceId ?? null,
       dueDate: data.dueDate ?? null,
       resolvedAt: null,
+      rootCause: null,
+      rootCauseCategory: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -3543,14 +3548,18 @@ export class FakeNotesStrategy implements NotesStrategy {
   async updateIssue(id: string, patch: IssuePatch): Promise<Issue> {
     const existing = this.issues.get(id);
     if (!existing) throw new Error('issue_not_found');
+    if (
+      (patch.status as string) === 'pending_validation' ||
+      (patch.status as string) === 'closed'
+    ) {
+      throw new Error('issue_status_change_requires_workflow');
+    }
     const resolvedAt: string | null =
       'resolvedAt' in patch
         ? (patch.resolvedAt ?? null)
-        : patch.status === 'resolved'
-          ? new Date().toISOString()
-          : patch.status !== undefined
-            ? null
-            : existing.resolvedAt;
+        : patch.status !== undefined
+          ? null
+          : existing.resolvedAt;
     const updated: Issue = {
       ...existing,
       ...patch,
@@ -3564,6 +3573,95 @@ export class FakeNotesStrategy implements NotesStrategy {
   async deleteIssue(id: string): Promise<void> {
     if (!this.issues.has(id)) throw new Error(`issue_not_found: ${id}`);
     this.issues.delete(id);
+  }
+
+  async submitIssueForValidation(
+    id: string,
+    ownerId: string,
+    data: IssueValidationSubmitInput,
+  ): Promise<Issue> {
+    const issue = this.issues.get(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    if (data.validatorId === ownerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const activePending = this.issueValidations.find(
+      (v) => v.issueId === id && v.status === 'pending',
+    );
+    if (activePending) {
+      throw new Error('issue_validation_already_pending');
+    }
+    if (issue.status !== 'open' && issue.status !== 'in_progress') {
+      throw new Error('issue_status_invalid_for_submission');
+    }
+    const updated: Issue = {
+      ...issue,
+      status: 'pending_validation',
+      rootCause: data.rootCause,
+      rootCauseCategory: data.rootCauseCategory,
+      updatedAt: new Date().toISOString(),
+    };
+    this.issues.set(id, updated);
+    this.issueValidations.unshift({
+      id: globalThis.crypto.randomUUID(),
+      issueId: id,
+      orgId: issue.orgId,
+      requestedBy: ownerId,
+      validatorId: data.validatorId,
+      status: 'pending',
+      reviewNotes: null,
+      reviewedAt: null,
+      createdAt: new Date().toISOString(),
+    });
+    return updated;
+  }
+
+  async reviewIssueValidation(
+    id: string,
+    validatorId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<IssueValidation> {
+    const validation = this.issueValidations.find((v) => v.id === id);
+    if (!validation) throw new Error(`issue_validation_not_found: ${id}`);
+    if (validation.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${id}`);
+    }
+    if (validation.validatorId !== validatorId) {
+      throw new Error('issue_validation_not_authorized_validator');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('issue_validation_review_notes_required');
+    }
+    validation.status = decision;
+    validation.reviewNotes = reviewNotes ?? null;
+    validation.reviewedAt = new Date().toISOString();
+
+    const issue = this.issues.get(validation.issueId);
+    if (issue) {
+      const updated: Issue = {
+        ...issue,
+        status: decision === 'approved' ? 'closed' : 'in_progress',
+        resolvedAt: decision === 'approved' ? new Date().toISOString() : issue.resolvedAt,
+        updatedAt: new Date().toISOString(),
+      };
+      this.issues.set(issue.id, updated);
+    }
+    return validation;
+  }
+
+  async getIssueValidation(id: string): Promise<IssueValidation | null> {
+    return this.issueValidations.find((v) => v.id === id) ?? null;
+  }
+
+  async getActiveIssueValidation(issueId: string): Promise<IssueValidation | null> {
+    return (
+      this.issueValidations.find((v) => v.issueId === issueId && v.status === 'pending') ?? null
+    );
+  }
+
+  async listIssueValidations(issueId: string): Promise<IssueValidation[]> {
+    return this.issueValidations.filter((v) => v.issueId === issueId);
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────

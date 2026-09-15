@@ -48,6 +48,8 @@ import type {
   IssueInput,
   IssuePatch,
   IssueSeverity,
+  IssueValidation,
+  IssueValidationSubmitInput,
   Organization,
   OrganizationInput,
   Policy,
@@ -711,6 +713,44 @@ export class NotesClientService {
 
   deleteIssue(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.issues.delete', { id });
+  }
+
+  submitIssueForValidation(
+    id: string,
+    ownerId: string,
+    data: IssueValidationSubmitInput,
+  ): Promise<Issue> {
+    return signedSend<Issue>(this.client, 'notes.issues.submit-for-validation', {
+      id,
+      ownerId,
+      data,
+    });
+  }
+
+  reviewIssueValidation(
+    id: string,
+    validatorId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<IssueValidation> {
+    return signedSend<IssueValidation>(this.client, 'notes.issues.review-validation', {
+      id,
+      validatorId,
+      decision,
+      reviewNotes,
+    });
+  }
+
+  getIssueValidation(id: string): Promise<IssueValidation | null> {
+    return signedSend<IssueValidation | null>(this.client, 'notes.issues.validations.get', {
+      id,
+    });
+  }
+
+  listIssueValidations(issueId: string): Promise<IssueValidation[]> {
+    return signedSend<IssueValidation[]>(this.client, 'notes.issues.validations.list', {
+      issueId,
+    });
   }
 
   listAssets(orgId: string): Promise<Asset[]> {

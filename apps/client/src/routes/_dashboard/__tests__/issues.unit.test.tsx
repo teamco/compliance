@@ -7,6 +7,9 @@ import type { Issue } from '@/queries/issues';
 import type { Finding } from '@/queries/frameworks';
 
 const createMutate = vi.fn();
+const deleteMutate = vi.fn((id: string) => {
+  mockIssuesData = mockIssuesData.filter((i) => i.id !== id);
+});
 
 const mockGapIssue: Issue = {
   id: 'i1',
@@ -54,7 +57,13 @@ vi.mock('@/queries/issues', () => ({
   useIssues: () => ({ data: mockIssuesData, isPending: false }),
   useCreateIssue: () => ({ mutate: createMutate, isPending: false }),
   useUpdateIssue: () => ({ mutate: vi.fn() }),
-  useDeleteIssue: () => ({ mutate: vi.fn() }),
+  useDeleteIssue: () => ({ mutate: deleteMutate }),
+}));
+
+vi.mock('@/components/issues/IssueDetailSheet', () => ({
+  IssueDetailSheet: ({ issue }: { issue: Issue }) => (
+    <div data-testid="issue-detail-sheet">{issue.title}</div>
+  ),
 }));
 
 vi.mock('@/queries/frameworks', () => ({
@@ -150,16 +159,35 @@ describe('IssuesPage — New Issue dialog', () => {
   });
 });
 
+describe('IssuesPage — deleting the currently-open issue', () => {
+  beforeEach(() => {
+    deleteMutate.mockClear();
+    mockIssuesData = [mockGapIssue];
+  });
+
+  it('closes the detail sheet instead of crashing when the open issue is deleted', async () => {
+    const { IssuesPage } = await import('../-issues.page');
+    const { rerender } = render(wrap(<IssuesPage />));
+
+    fireEvent.click(screen.getByText('Gap issue'));
+    expect(screen.getByTestId('issue-detail-sheet')).toBeDefined();
+
+    fireEvent.click(screen.getByText('Delete'));
+    rerender(wrap(<IssuesPage />));
+
+    expect(screen.queryByTestId('issue-detail-sheet')).toBeNull();
+  });
+});
+
 describe('IssuesPage — reverse back-link to originating Finding', () => {
   beforeEach(() => {
     mockIssuesData = [mockGapIssue];
   });
 
-  it('shows a link back to the originating control for a gap_analysis issue', async () => {
+  it('shows the originating Finding code as text for a gap_analysis issue', async () => {
     const { IssuesPage } = await import('../-issues.page');
     render(wrap(<IssuesPage />));
 
-    const link = screen.getByText('From Finding FIND-000101');
-    expect(link.closest('a')?.getAttribute('href')).toBe('/controls/c1');
+    expect(screen.getByText('From Finding FIND-000101').tagName).toBe('SPAN');
   });
 });

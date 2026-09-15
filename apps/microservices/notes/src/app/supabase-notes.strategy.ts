@@ -45,6 +45,9 @@ import type {
   Issue,
   IssueInput,
   IssuePatch,
+  IssueValidation,
+  IssueValidationStatus,
+  IssueValidationSubmitInput,
   IssueSeverity,
   NotesStrategy,
   Organization,
@@ -1959,9 +1962,15 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
     if (patch.affectedAssets !== undefined) update['affected_assets'] = patch.affectedAssets;
     if (patch.status !== undefined) {
+      if (
+        (patch.status as string) === 'pending_validation' ||
+        (patch.status as string) === 'closed'
+      ) {
+        throw new Error('issue_status_change_requires_workflow');
+      }
       update['status'] = patch.status;
       if (!('resolvedAt' in patch)) {
-        update['resolved_at'] = patch.status === 'resolved' ? new Date().toISOString() : null;
+        update['resolved_at'] = null;
       }
     }
     if ('resolvedAt' in patch) update['resolved_at'] = patch.resolvedAt;
@@ -1996,8 +2005,148 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       sourceId: row['source_id'] as string | null,
       dueDate: row['due_date'] as string | null,
       resolvedAt: row['resolved_at'] as string | null,
+      rootCause: row['root_cause'] as string | null,
+      rootCauseCategory: row['root_cause_category'] as Issue['rootCauseCategory'],
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Issue Validations ──────────────────────────────────────────────────
+
+  async submitIssueForValidation(
+    id: string,
+    ownerId: string,
+    data: IssueValidationSubmitInput,
+  ): Promise<Issue> {
+    if (data.validatorId === ownerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const issue = await this.getIssue(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    const activePending = await this.getActiveIssueValidation(id);
+    if (activePending) {
+      throw new Error('issue_validation_already_pending');
+    }
+    if (issue.status !== 'open' && issue.status !== 'in_progress') {
+      throw new Error('issue_status_invalid_for_submission');
+    }
+    const { error: validationError } = await this.db.from('issue_validations').insert({
+      issue_id: id,
+      org_id: issue.orgId,
+      requested_by: ownerId,
+      validator_id: data.validatorId,
+    });
+    if (validationError) throw new Error(validationError.message);
+
+    const { data: issueRow, error: issueError } = await this.db
+      .from('issues')
+      .update({
+        status: 'pending_validation',
+        root_cause: data.rootCause,
+        root_cause_category: data.rootCauseCategory,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toIssue(ok(issueRow, issueError));
+  }
+
+  private async getIssueValidationOrThrow(id: string): Promise<IssueValidation> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toIssueValidation(ok(data, error));
+  }
+
+  async getIssueValidation(id: string): Promise<IssueValidation | null> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toIssueValidation(data) : null;
+  }
+
+  async reviewIssueValidation(
+    id: string,
+    validatorId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<IssueValidation> {
+    const current = await this.getIssueValidationOrThrow(id);
+    if (current.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${id}`);
+    }
+    if (current.validatorId !== validatorId) {
+      throw new Error('issue_validation_not_authorized_validator');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('issue_validation_review_notes_required');
+    }
+
+    const { error: issueUpdateError } = await this.db
+      .from('issues')
+      .update({
+        status: decision === 'approved' ? 'closed' : 'in_progress',
+        ...(decision === 'approved' ? { resolved_at: new Date().toISOString() } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', current.issueId);
+    if (issueUpdateError) throw new Error(issueUpdateError.message);
+
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .update({
+        status: decision,
+        review_notes: reviewNotes ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('validator_id', validatorId)
+      .eq('status', 'pending')
+      .select()
+      .single();
+    return this.toIssueValidation(ok(data, error));
+  }
+
+  async getActiveIssueValidation(issueId: string): Promise<IssueValidation | null> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('issue_id', issueId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toIssueValidation(data) : null;
+  }
+
+  async listIssueValidations(issueId: string): Promise<IssueValidation[]> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('issue_id', issueId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toIssueValidation(row));
+  }
+
+  private toIssueValidation(row: Record<string, unknown>): IssueValidation {
+    return {
+      id: row['id'] as string,
+      issueId: row['issue_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      validatorId: row['validator_id'] as string,
+      status: row['status'] as IssueValidationStatus,
+      reviewNotes: row['review_notes'] as string | null,
+      reviewedAt: row['reviewed_at'] as string | null,
+      createdAt: row['created_at'] as string,
     };
   }
 

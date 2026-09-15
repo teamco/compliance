@@ -40,6 +40,7 @@ import type {
   IssueInput,
   IssuePatch,
   IssueSeverity,
+  IssueValidationSubmitInput,
   RiskInput,
   RiskPatch,
   AssessmentInput,
@@ -850,6 +851,50 @@ export class NotesController {
   deleteIssue(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     return this.notes.deleteIssue(id);
+  }
+
+  @Post('issues/:id/submit-for-validation')
+  @ApiOperation({ summary: 'Owner submits an issue fix for validator review' })
+  async submitIssueForValidation(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: IssueValidationSubmitInput,
+  ) {
+    const userId = this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    if (issue.ownerId !== userId) throw new ForbiddenException();
+    return this.notes.submitIssueForValidation(id, userId, body);
+  }
+
+  @Post('issue-validations/:id/review')
+  @ApiOperation({ summary: 'Validator approves or rejects a pending issue validation' })
+  async reviewIssueValidation(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
+  ) {
+    const userId = this.uid(req);
+    return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
+  }
+
+  @Get('issues/:id/validations')
+  @ApiOperation({ summary: 'List validation history for an issue' })
+  async listIssueValidations(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const userId = this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    const validations = await this.notes.listIssueValidations(id);
+    const isPartyToIssue =
+      issue.ownerId === userId ||
+      validations.some((v) => v.requestedBy === userId || v.validatorId === userId);
+    if (org.userId !== userId && !isPartyToIssue) throw new ForbiddenException();
+    return validations;
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────

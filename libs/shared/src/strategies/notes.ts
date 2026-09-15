@@ -466,8 +466,17 @@ export interface ExceptionPatch {
 // ─── Issues ────────────────────────────────────────────────────────────────
 
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
-export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'wont_fix';
+export type IssueStatus = 'open' | 'in_progress' | 'pending_validation' | 'closed' | 'wont_fix';
 export type IssueSource = 'manual' | 'gap_analysis' | 'vendor_risk';
+
+export type RootCauseCategory =
+  | 'process_gap'
+  | 'control_design_failure'
+  | 'control_operating_failure'
+  | 'human_error'
+  | 'system_technical_failure'
+  | 'third_party'
+  | 'other';
 
 export interface Issue {
   id: string;
@@ -484,6 +493,8 @@ export interface Issue {
   sourceId: string | null;
   dueDate: string | null;
   resolvedAt: string | null;
+  rootCause: string | null;
+  rootCauseCategory: RootCauseCategory | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -507,9 +518,29 @@ export interface IssuePatch {
   reporterId?: string;
   ownerId?: string;
   affectedAssets?: string;
-  status?: IssueStatus;
+  status?: Exclude<IssueStatus, 'pending_validation' | 'closed'>;
   dueDate?: string | null;
   resolvedAt?: string | null;
+}
+
+export type IssueValidationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface IssueValidation {
+  id: string;
+  issueId: string;
+  orgId: string;
+  requestedBy: string;
+  validatorId: string;
+  status: IssueValidationStatus;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface IssueValidationSubmitInput {
+  rootCause: string;
+  rootCauseCategory: RootCauseCategory;
+  validatorId: string;
 }
 
 // ─── Assets ────────────────────────────────────────────────────────────────
@@ -1304,6 +1335,20 @@ export interface NotesStrategy {
   getIssue(id: string): Promise<Issue | null>;
   updateIssue(id: string, patch: IssuePatch): Promise<Issue>;
   deleteIssue(id: string): Promise<void>;
+  submitIssueForValidation(
+    id: string,
+    ownerId: string,
+    data: IssueValidationSubmitInput,
+  ): Promise<Issue>;
+  reviewIssueValidation(
+    id: string,
+    validatorId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<IssueValidation>;
+  getIssueValidation(id: string): Promise<IssueValidation | null>;
+  getActiveIssueValidation(issueId: string): Promise<IssueValidation | null>;
+  listIssueValidations(issueId: string): Promise<IssueValidation[]>;
 
   // Assets
   listAssets(orgId: string): Promise<Asset[]>;
