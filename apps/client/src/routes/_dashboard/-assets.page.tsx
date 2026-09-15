@@ -1086,7 +1086,7 @@ export function AssetsPage() {
               <button
                 type="button"
                 onClick={() => setCreateTab('basic')}
-                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                   createTab === 'basic'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -1097,7 +1097,7 @@ export function AssetsPage() {
               <button
                 type="button"
                 onClick={() => setCreateTab('classification')}
-                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                   createTab === 'classification'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -1108,7 +1108,7 @@ export function AssetsPage() {
               <button
                 type="button"
                 onClick={() => setCreateTab('tech')}
-                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors ${
+                className={`text-xs px-3 py-1.5 rounded-md font-medium transition-colors cursor-pointer ${
                   createTab === 'tech'
                     ? 'bg-primary text-primary-foreground'
                     : 'bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -1426,7 +1426,7 @@ export function AssetsPage() {
                                 dataClassification: level,
                               }))
                             }
-                            className={`p-2.5 rounded-lg border text-left transition-all ${
+                            className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                               isSelected
                                 ? `${style.badge} ring-1 ring-primary/40 font-semibold`
                                 : 'bg-muted/40 text-muted-foreground border-border hover:bg-muted'
@@ -1460,7 +1460,7 @@ export function AssetsPage() {
                                 : [...curr, dt.id];
                               setCreateForm((f) => ({ ...f, dataTypes: next }));
                             }}
-                            className={`px-2.5 py-1 rounded-md text-xs border font-medium transition-all ${
+                            className={`px-2.5 py-1 rounded-md text-xs border font-medium transition-all cursor-pointer ${
                               isChecked
                                 ? `${dt.color} ring-1 ring-primary/30`
                                 : 'bg-muted/30 text-muted-foreground border-border hover:bg-muted/60'
@@ -1711,7 +1711,7 @@ export function AssetsPage() {
             <button
               type="button"
               onClick={() => setEditTab('basic')}
-              className={`text-xs px-2.5 py-1 rounded font-medium ${
+              className={`text-xs px-2.5 py-1 rounded font-medium cursor-pointer ${
                 editTab === 'basic'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted/70 text-muted-foreground'
@@ -1722,7 +1722,7 @@ export function AssetsPage() {
             <button
               type="button"
               onClick={() => setEditTab('classification')}
-              className={`text-xs px-2.5 py-1 rounded font-medium ${
+              className={`text-xs px-2.5 py-1 rounded font-medium cursor-pointer ${
                 editTab === 'classification'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted/70 text-muted-foreground'
@@ -1733,7 +1733,7 @@ export function AssetsPage() {
             <button
               type="button"
               onClick={() => setEditTab('tech')}
-              className={`text-xs px-2.5 py-1 rounded font-medium ${
+              className={`text-xs px-2.5 py-1 rounded font-medium cursor-pointer ${
                 editTab === 'tech'
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted/70 text-muted-foreground'
@@ -2000,7 +2000,7 @@ export function AssetsPage() {
                             : [...curr, dt.id];
                           setEditForm((f) => ({ ...f, dataTypes: next }));
                         }}
-                        className={`px-2 py-0.5 rounded text-xs border font-medium ${
+                        className={`px-2 py-0.5 rounded text-xs border font-medium cursor-pointer ${
                           isChecked
                             ? `${dt.color} ring-1 ring-primary/30`
                             : 'bg-muted/40 text-muted-foreground border-border'
@@ -2265,7 +2265,7 @@ export function AssetsPage() {
                       key={tab.id}
                       type="button"
                       onClick={() => setProfileTab(tab.id)}
-                      className={`px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors ${
+                      className={`px-3 py-1.5 rounded-md font-medium whitespace-nowrap transition-colors cursor-pointer ${
                         profileTab === tab.id
                           ? 'bg-primary text-primary-foreground font-semibold'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'

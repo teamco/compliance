@@ -113,7 +113,7 @@ function IssueRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors"
+          className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors cursor-pointer"
         >
           {t('common.delete')}
         </button>

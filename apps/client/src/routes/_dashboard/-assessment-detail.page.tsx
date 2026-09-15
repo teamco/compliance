@@ -65,7 +65,7 @@ export function AssessmentDetailPage() {
       <button
         type="button"
         onClick={() => void navigate({ to: '/assessments' })}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3 cursor-pointer"
       >
         <ArrowLeft size={14} />
         {t('assessments.backToList')}

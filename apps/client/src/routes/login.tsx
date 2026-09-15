@@ -167,7 +167,7 @@ function LoginPage() {
                   setStoredLocale(code);
                   window.location.reload();
                 }}
-                className="text-xs px-2 py-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
+                className="text-xs px-2 py-1 rounded text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 {label}
               </button>
@@ -194,7 +194,7 @@ function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setMode('password')}
-                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                   >
                     {t('auth.switchToLogin')}
                   </button>
@@ -202,7 +202,7 @@ function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setMode('register')}
-                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                   >
                     {t('auth.switchToRegister')}
                   </button>
@@ -253,7 +253,7 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setMode('password')}
-                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                     mode === 'password'
                       ? 'bg-[#1e293b] text-white'
                       : 'text-slate-500 hover:text-slate-300'
@@ -264,7 +264,7 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setMode('magicLinkRequest')}
-                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                     mode === 'magicLinkRequest'
                       ? 'bg-[#1e293b] text-white'
                       : 'text-slate-500 hover:text-slate-300'
@@ -418,7 +418,7 @@ function LoginPage() {
                     setPassword('');
                     setConfirmPassword('');
                   }}
-                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                 >
                   {t('auth.magicLinkUseDifferentEmail')}
                 </button>
@@ -443,7 +443,7 @@ function LoginPage() {
                     setEmail('');
                     setMode('magicLinkRequest');
                   }}
-                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                 >
                   {t('auth.magicLinkUseDifferentEmail')}
                 </button>

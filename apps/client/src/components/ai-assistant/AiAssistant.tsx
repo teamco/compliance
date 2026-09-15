@@ -334,7 +334,7 @@ export function AiAssistant() {
                                   href={href}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-green-500 underline underline-offset-2 hover:text-green-400"
+                                  className="text-green-500 underline underline-offset-2 hover:text-green-400 cursor-pointer"
                                 >
                                   {children}
                                 </a>

@@ -114,7 +114,7 @@ export function NotificationTab() {
               disabled={saving}
               onClick={() => toggleChannel('inApp', !notifPrefs.channels.inApp)}
               className={[
-                'relative h-5 w-9 rounded-full transition-colors',
+                'relative h-5 w-9 rounded-full transition-colors cursor-pointer disabled:cursor-not-allowed',
                 notifPrefs.channels.inApp ? 'bg-green-500' : 'bg-muted',
               ].join(' ')}
             >
@@ -139,7 +139,7 @@ export function NotificationTab() {
               <button
                 type="button"
                 onClick={handleDisablePush}
-                className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
               >
                 {t('settings.notifications.disablePush')}
               </button>
@@ -147,7 +147,7 @@ export function NotificationTab() {
               <button
                 type="button"
                 onClick={handleEnablePush}
-                className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-500 hover:bg-green-500/20 transition-colors"
+                className="rounded-md border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-500 hover:bg-green-500/20 transition-colors cursor-pointer"
               >
                 {t('settings.notifications.enablePush')}
               </button>

@@ -126,7 +126,7 @@ function FindingItem({ f }: { f: ScanFinding }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors cursor-pointer"
       >
         <span
           className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded border shrink-0 ${SEVERITY_COLOR[f.severity] ?? ''}`}
@@ -164,7 +164,7 @@ function ScanHistoryRow({ scan }: { scan: VendorScan }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-4 px-4 py-2.5 hover:bg-muted/20 text-left"
+        className="w-full flex items-center gap-4 px-4 py-2.5 hover:bg-muted/20 text-left cursor-pointer"
       >
         <span className={`font-bold text-sm w-6 ${color}`}>{scan.grade}</span>
         <span className="text-sm text-foreground">{scan.score}</span>

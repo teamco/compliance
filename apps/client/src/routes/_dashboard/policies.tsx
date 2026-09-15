@@ -132,7 +132,7 @@ function PoliciesPage() {
               <button
                 type="button"
                 onClick={() => deleteMut.mutate(policy.id)}
-                className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors shrink-0"
+                className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors shrink-0 cursor-pointer"
               >
                 {t('common.delete')}
               </button>
@@ -157,7 +157,7 @@ function PoliciesPage() {
                   key={m}
                   type="button"
                   onClick={() => setMode(m)}
-                  className={`flex-1 py-1.5 rounded border text-xs font-medium transition-colors ${
+                  className={`flex-1 py-1.5 rounded border text-xs font-medium transition-colors cursor-pointer ${
                     mode === m
                       ? 'border-green-500/40 bg-green-500/10 text-green-400'
                       : 'border-border text-muted-foreground hover:text-foreground'
