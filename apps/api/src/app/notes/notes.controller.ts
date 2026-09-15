@@ -790,7 +790,7 @@ export class NotesController {
     if (!exception) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exception.orgId);
     if (!org) throw new NotFoundException();
-    if (org.userId !== userId) throw new ForbiddenException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.approveException(id, userId);
   }
 
@@ -802,7 +802,7 @@ export class NotesController {
     if (!exception) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exception.orgId);
     if (!org) throw new NotFoundException();
-    if (org.userId !== userId) throw new ForbiddenException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.rejectException(id, userId);
   }
 
@@ -842,7 +842,7 @@ export class NotesController {
     if (!exception) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exception.orgId);
     if (!org) throw new NotFoundException();
-    if (org.userId !== userId) throw new ForbiddenException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.reviewExceptionRenewal(id, userId, body.decision, body.reviewNotes);
   }
 

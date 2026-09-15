@@ -75,6 +75,10 @@ function reqAs(uid: string): Request & { user?: VerifiedToken } {
   return { user: { uid } as VerifiedToken } as Request & { user?: VerifiedToken };
 }
 
+function reqAsAdmin(uid: string): Request & { user?: VerifiedToken } {
+  return { user: { uid, role: 'admin' } as VerifiedToken } as Request & { user?: VerifiedToken };
+}
+
 describe('NotesController — exception governance authorization', () => {
   describe('requestExceptionRenewal', () => {
     it('rejects a caller who is not the exception owner', async () => {
@@ -216,6 +220,12 @@ describe('NotesController — exception governance authorization', () => {
       await expect(
         makeController(notes).rejectException(reqAs('org-creator'), 'exception-1'),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('lets an admin approve an exception they neither own nor created the org for', async () => {
+      const notes = makeNotes();
+      await makeController(notes).approveException(reqAsAdmin('platform-admin'), 'exception-1');
+      expect(notes.approveException).toHaveBeenCalledWith('exception-1', 'platform-admin');
     });
   });
 
