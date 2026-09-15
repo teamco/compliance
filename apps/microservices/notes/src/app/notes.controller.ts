@@ -28,6 +28,8 @@ import type {
   IssueInput,
   IssuePatch,
   IssueSeverity,
+  IssueValidation,
+  IssueValidationSubmitInput,
   NotesStrategy,
   Policy,
   PolicyInput,
@@ -623,6 +625,41 @@ export class NotesController {
   @MessagePattern('notes.issues.delete')
   deleteIssue(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteIssue(payload.id);
+  }
+
+  @MessagePattern('notes.issues.submit-for-validation')
+  submitIssueForValidation(
+    @Payload() payload: { id: string; ownerId: string; data: IssueValidationSubmitInput },
+  ): Promise<Issue> {
+    return this.strategy.submitIssueForValidation(payload.id, payload.ownerId, payload.data);
+  }
+
+  @MessagePattern('notes.issues.review-validation')
+  reviewIssueValidation(
+    @Payload()
+    payload: {
+      id: string;
+      validatorId: string;
+      decision: 'approved' | 'rejected';
+      reviewNotes?: string;
+    },
+  ): Promise<IssueValidation> {
+    return this.strategy.reviewIssueValidation(
+      payload.id,
+      payload.validatorId,
+      payload.decision,
+      payload.reviewNotes,
+    );
+  }
+
+  @MessagePattern('notes.issues.validations.get')
+  getIssueValidation(@Payload() payload: { id: string }): Promise<IssueValidation | null> {
+    return this.strategy.getIssueValidation(payload.id);
+  }
+
+  @MessagePattern('notes.issues.validations.list')
+  listIssueValidations(@Payload() payload: { issueId: string }): Promise<IssueValidation[]> {
+    return this.strategy.listIssueValidations(payload.issueId);
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────
