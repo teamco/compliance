@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
+import { IssueDetailSheet } from '@/components/issues/IssueDetailSheet';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
   useIssues,
@@ -148,7 +149,6 @@ export function IssuesPage() {
   const notify = useNotify();
 
   const [open, setOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by Task 5's IssueDetailSheet
   const [selectedIssueId, setSelectedIssueId] = useState<string | null>(null);
   const [form, setForm] = useState<IssueInput>(EMPTY_FORM);
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
@@ -296,6 +296,14 @@ export function IssuesPage() {
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
+      {selectedIssueId && (
+        <IssueDetailSheet
+          issue={issues.find((i) => i.id === selectedIssueId)!}
+          orgId={orgId}
+          open={!!selectedIssueId}
+          onOpenChange={(o) => !o && setSelectedIssueId(null)}
+        />
+      )}
     </PageLayout>
   );
 }
