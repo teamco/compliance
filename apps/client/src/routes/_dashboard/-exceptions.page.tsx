@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from '@tanstack/react-router';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { useDraft } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
@@ -26,8 +27,11 @@ import {
   type Exception,
   type ExceptionInput,
 } from '@/queries/exceptions';
+import { useFindingsByLink } from '@/queries/frameworks';
 import { useFrameworks, useFrameworkStandards, useFrameworkControls } from '@/queries/notes';
 import { useOrgMembers } from '@/queries/org-members';
+
+type Framework = NonNullable<ReturnType<typeof useFrameworks>['data']>[number];
 
 const STATUS_COLORS: Record<Exception['status'], string> = {
   pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -46,6 +50,81 @@ const EMPTY_FORM: ExceptionInput = {
   ownerId: '',
   compensatingControls: '',
 };
+
+function ExceptionRow({
+  exception,
+  frameworks,
+  onApprove,
+  onReject,
+  onDelete,
+}: {
+  exception: Exception;
+  frameworks: Framework[];
+  onApprove: () => void;
+  onReject: () => void;
+  onDelete: () => void;
+}) {
+  const { t } = useTranslation();
+  const { data: linkedFindings = [] } = useFindingsByLink({ exceptionId: exception.id });
+  const linkedFinding = linkedFindings[0];
+
+  return (
+    <div className="flex items-start gap-4 bg-surface border border-border rounded-xl p-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="font-medium text-sm text-foreground truncate">{exception.title}</span>
+          <span
+            className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[exception.status]}`}
+          >
+            {t(`exceptions.status.${exception.status}`)}
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2">{exception.justification}</p>
+        <p className="text-[11px] text-muted-foreground/60 mt-1">
+          {exception.controlCode} ·{' '}
+          {frameworks.find((f) => f.id === exception.frameworkId)?.slug.toUpperCase() ??
+            exception.frameworkId}
+        </p>
+        {linkedFinding && (
+          <Link
+            to="/controls/$id"
+            params={{ id: linkedFinding.controlId }}
+            className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
+          >
+            {t('exceptions.linkedFinding', { code: linkedFinding.code })}
+          </Link>
+        )}
+      </div>
+      <div className="flex gap-1.5 shrink-0">
+        {exception.status === 'pending' && (
+          <>
+            <button
+              type="button"
+              onClick={onApprove}
+              className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+            >
+              {t('exceptions.approve')}
+            </button>
+            <button
+              type="button"
+              onClick={onReject}
+              className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+            >
+              {t('exceptions.reject')}
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={onDelete}
+          className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors"
+        >
+          {t('common.delete')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export function ExceptionsPage() {
   const { t } = useTranslation();
@@ -132,54 +211,14 @@ export function ExceptionsPage() {
       ) : (
         <div className="space-y-2">
           {exceptions.map((exc) => (
-            <div
+            <ExceptionRow
               key={exc.id}
-              className="flex items-start gap-4 bg-surface border border-border rounded-xl p-4"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm text-foreground truncate">{exc.title}</span>
-                  <span
-                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[exc.status]}`}
-                  >
-                    {t(`exceptions.status.${exc.status}`)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2">{exc.justification}</p>
-                <p className="text-[11px] text-muted-foreground/60 mt-1">
-                  {exc.controlCode} ·{' '}
-                  {frameworks.find((f) => f.id === exc.frameworkId)?.slug.toUpperCase() ??
-                    exc.frameworkId}
-                </p>
-              </div>
-              <div className="flex gap-1.5 shrink-0">
-                {exc.status === 'pending' && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => approveMut.mutate(exc.id)}
-                      className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
-                    >
-                      {t('exceptions.approve')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => rejectMut.mutate(exc.id)}
-                      className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
-                    >
-                      {t('exceptions.reject')}
-                    </button>
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => deleteMut.mutate(exc.id)}
-                  className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors"
-                >
-                  {t('common.delete')}
-                </button>
-              </div>
-            </div>
+              exception={exc}
+              frameworks={frameworks}
+              onApprove={() => approveMut.mutate(exc.id)}
+              onReject={() => rejectMut.mutate(exc.id)}
+              onDelete={() => deleteMut.mutate(exc.id)}
+            />
           ))}
         </div>
       )}

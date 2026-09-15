@@ -16,6 +16,7 @@ import {
   Download,
   ArrowRight,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { useNotify } from '@icore/template-shared';
 import {
@@ -986,7 +987,7 @@ function FrameworkWorkspacePage() {
             </div>
             <Button
               size="sm"
-              onClick={() => notify.info('Assessment cycle creation scheduled')}
+              onClick={() => notify.info('Assessment cycle creation is not available yet')}
               className="h-8 text-xs bg-green-600 text-white gap-1"
             >
               <Plus size={13} />

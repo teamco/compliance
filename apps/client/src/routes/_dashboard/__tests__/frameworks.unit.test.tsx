@@ -95,6 +95,20 @@ const mockFrameworksList: Framework[] = [
   },
 ];
 
+const mockFindingForBridge = {
+  id: 'FIND-2026-0042',
+  orgId: 'org1',
+  code: 'FIND-2026-0042',
+  controlId: 'ctrl-1',
+  assessmentId: 'asm-1',
+  title: 'Missing Q2 Review',
+  description: 'Quarterly review evidence unavailable for Q2.',
+  severity: 'high' as const,
+  status: 'open' as const,
+  createdAt: '2026-09-08T00:00:00Z',
+  updatedAt: '2026-09-08T00:00:00Z',
+};
+
 vi.mock('@/queries/frameworks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/queries/frameworks')>();
   return {
@@ -105,8 +119,23 @@ vi.mock('@/queries/frameworks', async (importOriginal) => {
     useUpdateRequirement: () => ({ mutate: mockUpdateRequirement, isPending: false }),
     useCreateFrameworkEvidence: () => ({ mutate: mockCreateEvidence, isPending: false }),
     useCreateAssessmentFinding: () => ({ mutate: mockCreateFinding, isPending: false }),
+    useControlFindings: () => ({ data: [mockFindingForBridge] }),
+    useCreateIssueFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
+    useLinkFindingToIssue: () => ({ mutate: vi.fn(), isPending: false }),
+    useCreateRiskFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
+    useLinkFindingToRisk: () => ({ mutate: vi.fn(), isPending: false }),
+    useCreateExceptionFromFinding: () => ({ mutate: vi.fn(), isPending: false }),
+    useResolveFindingViaException: () => ({ mutate: vi.fn(), isPending: false }),
   };
 });
+
+vi.mock('@/queries/issues', () => ({
+  useIssues: () => ({ data: [] }),
+}));
+
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({ data: [] }),
+}));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
 
@@ -212,6 +241,7 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
       assessor: 'John Smith',
       assessmentDate: '2026-09-08',
       observation: 'Quarterly review evidence unavailable for Q2.',
+      controlId: 'ctrl-1',
       findingId: 'FIND-2026-0042',
       findingTitle: 'Missing Q2 Review',
       findingSeverity: 'high' as const,
