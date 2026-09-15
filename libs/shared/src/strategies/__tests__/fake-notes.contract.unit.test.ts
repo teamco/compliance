@@ -5,6 +5,7 @@ import type {
   AssessmentPatch,
   IssuePatch,
 } from '../notes';
+import { effectiveExceptionStatus } from '../notes';
 import { runNotesContract } from './notes.contract.unit.test';
 
 runNotesContract('FakeNotesStrategy', () => new FakeNotesStrategy());
@@ -54,8 +55,9 @@ describe('exceptions', () => {
       statement: 'S',
       ownerId: 'owner-1',
     });
-    const approved = await s.approveException(exc.id);
+    const approved = await s.approveException(exc.id, 'approver-1');
     expect(approved.status).toBe('approved');
+    expect(approved.reviewedBy).toBe('approver-1');
   });
 
   it('rejects an exception', async () => {
@@ -67,8 +69,9 @@ describe('exceptions', () => {
       statement: 'S',
       ownerId: 'owner-1',
     });
-    const rejected = await s.rejectException(exc.id);
+    const rejected = await s.rejectException(exc.id, 'approver-1');
     expect(rejected.status).toBe('rejected');
+    expect(rejected.reviewedBy).toBe('approver-1');
   });
 
   it('updates exception fields', async () => {
@@ -107,6 +110,144 @@ describe('exceptions', () => {
       ownerId: 'owner-1',
     });
     expect(await s.listExceptions('org2')).toHaveLength(0);
+  });
+
+  it('rejects self-approval', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    await expect(s.approveException(exc.id, 'owner-1')).rejects.toThrow(
+      'exception_self_approval_forbidden',
+    );
+    await expect(s.rejectException(exc.id, 'owner-1')).rejects.toThrow(
+      'exception_self_approval_forbidden',
+    );
+  });
+});
+
+describe('effectiveExceptionStatus', () => {
+  it('returns approved when expiresAt is in the future', () => {
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    expect(effectiveExceptionStatus({ status: 'approved', expiresAt: future })).toBe('approved');
+  });
+
+  it('returns expired when an approved exception has lapsed', () => {
+    const past = new Date(Date.now() - 86400_000).toISOString();
+    expect(effectiveExceptionStatus({ status: 'approved', expiresAt: past })).toBe('expired');
+  });
+
+  it('leaves pending and rejected unaffected by expiresAt', () => {
+    const past = new Date(Date.now() - 86400_000).toISOString();
+    expect(effectiveExceptionStatus({ status: 'pending', expiresAt: past })).toBe('pending');
+    expect(effectiveExceptionStatus({ status: 'rejected', expiresAt: past })).toBe('rejected');
+  });
+
+  it('returns approved when expiresAt is null', () => {
+    expect(effectiveExceptionStatus({ status: 'approved', expiresAt: null })).toBe('approved');
+  });
+});
+
+describe('exception renewals', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('runs a renewal through request -> approve, extending expiresAt', async () => {
+    const oldExpiry = new Date(Date.now() - 1000).toISOString();
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+      expiresAt: oldExpiry,
+    });
+    await s.approveException(exc.id, 'approver-1');
+
+    const newExpiry = new Date(Date.now() + 86400_000 * 30).toISOString();
+    const renewal = await s.requestExceptionRenewal(exc.id, 'owner-1', {
+      proposedExpiresAt: newExpiry,
+      justification: 'Compensating control still in place, extending review window',
+    });
+    expect(renewal.status).toBe('pending');
+
+    const reviewed = await s.reviewExceptionRenewal(renewal.id, 'reviewer-1', 'approved');
+    expect(reviewed.status).toBe('approved');
+
+    const updated = await s.getException(exc.id);
+    expect(updated!.expiresAt).toBe(newExpiry);
+    expect(updated!.status).toBe('approved');
+  });
+
+  it('rejects a request from someone other than the exception owner', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    await expect(
+      s.requestExceptionRenewal(exc.id, 'not-the-owner', {
+        proposedExpiresAt: new Date().toISOString(),
+        justification: 'J',
+      }),
+    ).rejects.toThrow('exception_renewal_only_owner_can_request');
+  });
+
+  it('rejects self-review of a renewal request', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    const renewal = await s.requestExceptionRenewal(exc.id, 'owner-1', {
+      proposedExpiresAt: new Date().toISOString(),
+      justification: 'J',
+    });
+    await expect(s.reviewExceptionRenewal(renewal.id, 'owner-1', 'approved')).rejects.toThrow(
+      'exception_renewal_self_review_forbidden',
+    );
+  });
+
+  it('requires reviewNotes on rejection and preserves history on re-request', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    const first = await s.requestExceptionRenewal(exc.id, 'owner-1', {
+      proposedExpiresAt: new Date().toISOString(),
+      justification: 'First attempt',
+    });
+    await expect(s.reviewExceptionRenewal(first.id, 'reviewer-1', 'rejected')).rejects.toThrow(
+      'exception_renewal_review_notes_required',
+    );
+    await s.reviewExceptionRenewal(first.id, 'reviewer-1', 'rejected', 'Not enough justification');
+
+    const second = await s.requestExceptionRenewal(exc.id, 'owner-1', {
+      proposedExpiresAt: new Date().toISOString(),
+      justification: 'Second attempt with more detail',
+    });
+    expect(second.id).not.toBe(first.id);
+
+    const history = await s.listExceptionRenewals(exc.id);
+    expect(history).toHaveLength(2);
+    expect(history.find((r) => r.id === first.id)?.status).toBe('rejected');
   });
 });
 

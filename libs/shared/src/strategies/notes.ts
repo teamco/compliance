@@ -438,6 +438,10 @@ export interface Exception {
   compensatingControls?: string;
   status: ExceptionStatus;
   expiresAt: string | null;
+  riskId: string | null;
+  reviewFrequencyDays: number | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -452,6 +456,8 @@ export interface ExceptionInput {
   ownerId: string;
   compensatingControls?: string;
   expiresAt?: string;
+  riskId?: string;
+  reviewFrequencyDays?: number;
 }
 
 export interface ExceptionPatch {
@@ -461,6 +467,37 @@ export interface ExceptionPatch {
   ownerId?: string;
   compensatingControls?: string;
   expiresAt?: string | null;
+  riskId?: string | null;
+  reviewFrequencyDays?: number | null;
+}
+
+export function effectiveExceptionStatus(
+  exception: Pick<Exception, 'status' | 'expiresAt'>,
+): ExceptionStatus {
+  const isLapsed =
+    exception.expiresAt !== null && new Date(exception.expiresAt).getTime() < Date.now();
+  return exception.status === 'approved' && isLapsed ? 'expired' : exception.status;
+}
+
+export type ExceptionRenewalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ExceptionRenewal {
+  id: string;
+  exceptionId: string;
+  orgId: string;
+  requestedBy: string;
+  proposedExpiresAt: string;
+  justification: string;
+  status: ExceptionRenewalStatus;
+  reviewedBy: string | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface ExceptionRenewalRequestInput {
+  proposedExpiresAt: string;
+  justification: string;
 }
 
 // ─── Issues ────────────────────────────────────────────────────────────────
@@ -1325,8 +1362,22 @@ export interface NotesStrategy {
   createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception>;
   getException(id: string): Promise<Exception | null>;
   updateException(id: string, patch: ExceptionPatch): Promise<Exception>;
-  approveException(id: string): Promise<Exception>;
-  rejectException(id: string): Promise<Exception>;
+  approveException(id: string, approverId: string): Promise<Exception>;
+  rejectException(id: string, approverId: string): Promise<Exception>;
+  requestExceptionRenewal(
+    exceptionId: string,
+    requestedBy: string,
+    data: ExceptionRenewalRequestInput,
+  ): Promise<ExceptionRenewal>;
+  reviewExceptionRenewal(
+    id: string,
+    reviewerId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<ExceptionRenewal>;
+  getExceptionRenewal(id: string): Promise<ExceptionRenewal | null>;
+  getActiveExceptionRenewal(exceptionId: string): Promise<ExceptionRenewal | null>;
+  listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]>;
   deleteException(id: string): Promise<void>;
 
   // Issues

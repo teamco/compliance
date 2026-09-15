@@ -41,6 +41,8 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewal,
+  ExceptionRenewalRequestInput,
   Issue,
   IssueInput,
   IssuePatch,
@@ -123,6 +125,7 @@ export class FakeNotesStrategy implements NotesStrategy {
   private retentionPrefs = new Map<string, RetentionPrefsPayload>();
   private reportTemplates: ReportTemplate[] = [];
   private exceptions = new Map<string, Exception>();
+  private exceptionRenewals: ExceptionRenewal[] = [];
   private issues = new Map<string, Issue>();
   private issueValidations: IssueValidation[] = [];
 
@@ -3461,6 +3464,10 @@ export class FakeNotesStrategy implements NotesStrategy {
       compensatingControls: data.compensatingControls,
       status: 'pending',
       expiresAt: data.expiresAt ?? null,
+      riskId: data.riskId ?? null,
+      reviewFrequencyDays: data.reviewFrequencyDays ?? null,
+      reviewedBy: null,
+      reviewedAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -3480,24 +3487,34 @@ export class FakeNotesStrategy implements NotesStrategy {
     return updated;
   }
 
-  async approveException(id: string): Promise<Exception> {
+  async approveException(id: string, approverId: string): Promise<Exception> {
     const existing = this.exceptions.get(id);
     if (!existing) throw new Error('exception_not_found');
+    if (existing.ownerId === approverId) {
+      throw new Error('exception_self_approval_forbidden');
+    }
     const approved: Exception = {
       ...existing,
       status: 'approved',
+      reviewedBy: approverId,
+      reviewedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     this.exceptions.set(id, approved);
     return approved;
   }
 
-  async rejectException(id: string): Promise<Exception> {
+  async rejectException(id: string, approverId: string): Promise<Exception> {
     const existing = this.exceptions.get(id);
     if (!existing) throw new Error(`exception_not_found: ${id}`);
+    if (existing.ownerId === approverId) {
+      throw new Error('exception_self_approval_forbidden');
+    }
     const rejected: Exception = {
       ...existing,
       status: 'rejected',
+      reviewedBy: approverId,
+      reviewedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     this.exceptions.set(id, rejected);
@@ -3507,6 +3524,83 @@ export class FakeNotesStrategy implements NotesStrategy {
   async deleteException(id: string): Promise<void> {
     if (!this.exceptions.has(id)) throw new Error(`exception_not_found: ${id}`);
     this.exceptions.delete(id);
+  }
+
+  async requestExceptionRenewal(
+    exceptionId: string,
+    requestedBy: string,
+    data: ExceptionRenewalRequestInput,
+  ): Promise<ExceptionRenewal> {
+    const exception = this.exceptions.get(exceptionId);
+    if (!exception) throw new Error(`exception_not_found: ${exceptionId}`);
+    if (exception.ownerId !== requestedBy) {
+      throw new Error('exception_renewal_only_owner_can_request');
+    }
+    const renewal: ExceptionRenewal = {
+      id: globalThis.crypto.randomUUID(),
+      exceptionId,
+      orgId: exception.orgId,
+      requestedBy,
+      proposedExpiresAt: data.proposedExpiresAt,
+      justification: data.justification,
+      status: 'pending',
+      reviewedBy: null,
+      reviewNotes: null,
+      reviewedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    this.exceptionRenewals.unshift(renewal);
+    return renewal;
+  }
+
+  async reviewExceptionRenewal(
+    id: string,
+    reviewerId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<ExceptionRenewal> {
+    const renewal = this.exceptionRenewals.find((r) => r.id === id);
+    if (!renewal) throw new Error(`exception_renewal_not_found: ${id}`);
+    if (renewal.status !== 'pending') {
+      throw new Error(`exception_renewal_already_decided: ${id}`);
+    }
+    if (renewal.requestedBy === reviewerId) {
+      throw new Error('exception_renewal_self_review_forbidden');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('exception_renewal_review_notes_required');
+    }
+    renewal.status = decision;
+    renewal.reviewedBy = reviewerId;
+    renewal.reviewNotes = reviewNotes ?? null;
+    renewal.reviewedAt = new Date().toISOString();
+
+    if (decision === 'approved') {
+      const exception = this.exceptions.get(renewal.exceptionId);
+      if (exception) {
+        this.exceptions.set(renewal.exceptionId, {
+          ...exception,
+          expiresAt: renewal.proposedExpiresAt,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }
+    return renewal;
+  }
+
+  async getExceptionRenewal(id: string): Promise<ExceptionRenewal | null> {
+    return this.exceptionRenewals.find((r) => r.id === id) ?? null;
+  }
+
+  async getActiveExceptionRenewal(exceptionId: string): Promise<ExceptionRenewal | null> {
+    return (
+      this.exceptionRenewals.find((r) => r.exceptionId === exceptionId && r.status === 'pending') ??
+      null
+    );
+  }
+
+  async listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]> {
+    return this.exceptionRenewals.filter((r) => r.exceptionId === exceptionId);
   }
 
   // ─── Issues ────────────────────────────────────────────────────────────────
