@@ -11,6 +11,8 @@ import {
 } from '@/queries/controls';
 import { PageLayout } from '@/components/PageLayout';
 import { ScrollableRow } from '@/components/ui/scrollable-row';
+import { Button } from '@/components/ui/button';
+import { CreateAssessmentDialog } from '@/components/frameworks/CreateAssessmentDialog';
 
 type Tab =
   'overview' | 'implementation' | 'mapping' | 'evidence' | 'assessments' | 'findings' | 'history';
@@ -25,6 +27,7 @@ export function ControlDetailPage() {
   const { data: findings = [] } = useControlFindings(id);
   const { data: activity = [] } = useControlActivity(id);
   const [tab, setTab] = useState<Tab>('overview');
+  const [createAssessmentOpen, setCreateAssessmentOpen] = useState(false);
 
   if (isPending || !control) {
     return (
@@ -179,22 +182,35 @@ export function ControlDetailPage() {
       )}
 
       {tab === 'assessments' && (
-        <div className="space-y-2 text-sm">
-          {assessments.map((a) => (
-            <div key={a.id} className="border border-border rounded-lg p-3">
-              <div className="font-medium">{a.cycleName}</div>
-              <div className="text-xs text-muted-foreground">
-                {t('controls.fieldDesignEffectiveness')}: {a.designEffectiveness} ·{' '}
-                {t('controls.fieldOperatingEffectiveness')}: {a.operatingEffectiveness}
+        <div className="space-y-3 text-sm">
+          <div className="flex justify-end">
+            <Button size="sm" onClick={() => setCreateAssessmentOpen(true)}>
+              {t('controls.assessmentDialog.title', 'New Assessment')}
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {assessments.map((a) => (
+              <div key={a.id} className="border border-border rounded-lg p-3">
+                <div className="font-medium">{a.cycleName}</div>
+                <div className="text-xs text-muted-foreground">
+                  {t('controls.fieldDesignEffectiveness')}: {a.designEffectiveness} ·{' '}
+                  {t('controls.fieldOperatingEffectiveness')}: {a.operatingEffectiveness}
+                </div>
+                <div className="text-xs text-muted-foreground">{a.observation}</div>
               </div>
-              <div className="text-xs text-muted-foreground">{a.observation}</div>
-            </div>
-          ))}
-          {assessments.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground">
-              {t('controls.noAssessments')}
-            </div>
-          )}
+            ))}
+            {assessments.length === 0 && (
+              <div className="py-8 text-center text-muted-foreground">
+                {t('controls.noAssessments')}
+              </div>
+            )}
+          </div>
+          <CreateAssessmentDialog
+            open={createAssessmentOpen}
+            onOpenChange={setCreateAssessmentOpen}
+            orgId={control.orgId ?? ''}
+            controlId={control.id}
+          />
         </div>
       )}
 
