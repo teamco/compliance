@@ -17,6 +17,9 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewal,
+  ExceptionRenewalStatus,
+  ExceptionRenewalRequestInput,
   Framework,
   FrameworkControl,
   FrameworkRequirement,
@@ -1840,6 +1843,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         owner_id: data.ownerId,
         compensating_controls: data.compensatingControls ?? null,
         expires_at: data.expiresAt ?? null,
+        risk_id: data.riskId ?? null,
+        review_frequency_days: data.reviewFrequencyDays ?? null,
       })
       .select()
       .single();
@@ -1861,6 +1866,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.compensatingControls !== undefined)
       update['compensating_controls'] = patch.compensatingControls;
     if ('expiresAt' in patch) update['expires_at'] = patch.expiresAt;
+    if ('riskId' in patch) update['risk_id'] = patch.riskId;
+    if ('reviewFrequencyDays' in patch) update['review_frequency_days'] = patch.reviewFrequencyDays;
     const { data, error } = await this.db
       .from('exceptions')
       .update(update)
@@ -1870,20 +1877,43 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toException(ok(data, error));
   }
 
-  async approveException(id: string): Promise<Exception> {
+  private async getExceptionOrThrow(id: string): Promise<Exception> {
+    const { data, error } = await this.db.from('exceptions').select('*').eq('id', id).single();
+    return this.toException(ok(data, error));
+  }
+
+  async approveException(id: string, approverId: string): Promise<Exception> {
+    const current = await this.getExceptionOrThrow(id);
+    if (current.ownerId === approverId) {
+      throw new Error('exception_self_approval_forbidden');
+    }
     const { data, error } = await this.db
       .from('exceptions')
-      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .update({
+        status: 'approved',
+        reviewed_by: approverId,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
       .select()
       .single();
     return this.toException(ok(data, error));
   }
 
-  async rejectException(id: string): Promise<Exception> {
+  async rejectException(id: string, approverId: string): Promise<Exception> {
+    const current = await this.getExceptionOrThrow(id);
+    if (current.ownerId === approverId) {
+      throw new Error('exception_self_approval_forbidden');
+    }
     const { data, error } = await this.db
       .from('exceptions')
-      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .update({
+        status: 'rejected',
+        reviewed_by: approverId,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
       .select()
       .single();
@@ -1910,8 +1940,136 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       compensatingControls: row['compensating_controls'] as string | undefined,
       status: row['status'] as Exception['status'],
       expiresAt: row['expires_at'] as string | null,
+      riskId: row['risk_id'] as string | null,
+      reviewFrequencyDays: row['review_frequency_days'] as number | null,
+      reviewedBy: row['reviewed_by'] as string | null,
+      reviewedAt: row['reviewed_at'] as string | null,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Exception Renewals ──────────────────────────────────────────────────
+
+  async requestExceptionRenewal(
+    exceptionId: string,
+    requestedBy: string,
+    data: ExceptionRenewalRequestInput,
+  ): Promise<ExceptionRenewal> {
+    const exception = await this.getExceptionOrThrow(exceptionId);
+    if (exception.ownerId !== requestedBy) {
+      throw new Error('exception_renewal_only_owner_can_request');
+    }
+    const { data: row, error } = await this.db
+      .from('exception_renewals')
+      .insert({
+        exception_id: exceptionId,
+        org_id: exception.orgId,
+        requested_by: requestedBy,
+        proposed_expires_at: data.proposedExpiresAt,
+        justification: data.justification,
+      })
+      .select()
+      .single();
+    return this.toExceptionRenewal(ok(row, error));
+  }
+
+  private async getExceptionRenewalOrThrow(id: string): Promise<ExceptionRenewal> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toExceptionRenewal(ok(data, error));
+  }
+
+  async reviewExceptionRenewal(
+    id: string,
+    reviewerId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<ExceptionRenewal> {
+    const current = await this.getExceptionRenewalOrThrow(id);
+    if (current.status !== 'pending') {
+      throw new Error(`exception_renewal_already_decided: ${id}`);
+    }
+    if (current.requestedBy === reviewerId) {
+      throw new Error('exception_renewal_self_review_forbidden');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('exception_renewal_review_notes_required');
+    }
+
+    if (decision === 'approved') {
+      const { error: exceptionUpdateError } = await this.db
+        .from('exceptions')
+        .update({
+          expires_at: current.proposedExpiresAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', current.exceptionId);
+      if (exceptionUpdateError) throw new Error(exceptionUpdateError.message);
+    }
+
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .update({
+        status: decision,
+        review_notes: reviewNotes ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'pending')
+      .select()
+      .single();
+    return this.toExceptionRenewal(ok(data, error));
+  }
+
+  async getExceptionRenewal(id: string): Promise<ExceptionRenewal | null> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toExceptionRenewal(data) : null;
+  }
+
+  async getActiveExceptionRenewal(exceptionId: string): Promise<ExceptionRenewal | null> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('exception_id', exceptionId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toExceptionRenewal(data) : null;
+  }
+
+  async listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('exception_id', exceptionId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toExceptionRenewal(row));
+  }
+
+  private toExceptionRenewal(row: Record<string, unknown>): ExceptionRenewal {
+    return {
+      id: row['id'] as string,
+      exceptionId: row['exception_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      proposedExpiresAt: row['proposed_expires_at'] as string,
+      justification: row['justification'] as string,
+      status: row['status'] as ExceptionRenewalStatus,
+      reviewedBy: row['reviewed_by'] as string | null,
+      reviewNotes: row['review_notes'] as string | null,
+      reviewedAt: row['reviewed_at'] as string | null,
+      createdAt: row['created_at'] as string,
     };
   }
 
