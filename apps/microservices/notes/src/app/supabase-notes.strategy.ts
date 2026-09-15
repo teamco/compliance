@@ -2015,6 +2015,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('exception_renewals')
       .update({
         status: decision,
+        reviewed_by: reviewerId,
         review_notes: reviewNotes ?? null,
         reviewed_at: new Date().toISOString(),
       })
