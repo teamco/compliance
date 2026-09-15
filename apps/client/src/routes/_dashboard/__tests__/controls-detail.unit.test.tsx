@@ -159,6 +159,7 @@ vi.mock('@/queries/controls', () => ({
   useControlAssessments: () => ({ data: mockAssessments }),
   useControlFindings: () => ({ data: mockFindings }),
   useControlActivity: () => ({ data: mockActivity }),
+  useCreateControlAssessment: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });

@@ -36,6 +36,7 @@ import { useActiveOrgStore } from '@/stores/active-org';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RequirementDrawer } from '@/components/frameworks/RequirementDrawer';
+import { CreateAssessmentDialog } from '@/components/frameworks/CreateAssessmentDialog';
 
 export const Route = createFileRoute('/_dashboard/frameworks_/$id')({
   component: FrameworkWorkspacePage,
@@ -127,6 +128,7 @@ function FrameworkWorkspacePage() {
 
   // Selected Requirement for Drawer (Edit/Detail Sheet Pattern)
   const [selectedReqId, setSelectedReqId] = useState<string | null>(null);
+  const [createAssessmentOpen, setCreateAssessmentOpen] = useState(false);
 
   // Requirements Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -987,13 +989,20 @@ function FrameworkWorkspacePage() {
             </div>
             <Button
               size="sm"
-              onClick={() => notify.info('Assessment cycle creation is not available yet')}
+              onClick={() => setCreateAssessmentOpen(true)}
               className="h-8 text-xs bg-green-600 text-white gap-1"
             >
               <Plus size={13} />
               New Assessment Cycle
             </Button>
           </div>
+
+          <CreateAssessmentDialog
+            open={createAssessmentOpen}
+            onOpenChange={setCreateAssessmentOpen}
+            orgId={orgId}
+            controls={internalControls}
+          />
 
           <div className="space-y-4">
             {assessmentsList.map((asm) => (
