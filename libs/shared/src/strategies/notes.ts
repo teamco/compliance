@@ -284,7 +284,7 @@ export type FindingStatus = 'open' | 'remediated' | 'accepted';
 
 export interface Finding {
   id: string;
-  orgId?: string;
+  orgId: string;
   code: string;
   controlId: string;
   assessmentId: string;
@@ -1136,6 +1136,46 @@ export interface NotesStrategy {
   linkFindingToIssue(findingId: string, issueId: string): Promise<Finding>;
   resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding>;
 
+  getFinding(id: string): Promise<Finding | null>;
+  listFindingsByLink(params: {
+    issueId?: string;
+    riskId?: string;
+    exceptionId?: string;
+  }): Promise<Finding[]>;
+  createIssueFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ): Promise<Issue>;
+  createRiskFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ): Promise<Risk>;
+  createExceptionFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ): Promise<Exception>;
+
   listControlActivity(controlId: string): Promise<FrameworkActivity[]>;
   listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]>;
   createFrameworkEvidence(
@@ -1143,6 +1183,7 @@ export interface NotesStrategy {
     data: Omit<RequirementEvidence, 'id'>,
   ): Promise<RequirementEvidence>;
   listFrameworkAssessments(frameworkId: string, orgId?: string): Promise<RequirementAssessment[]>;
+  getRequirementAssessment(id: string): Promise<RequirementAssessment | null>;
   createAssessmentFinding(
     orgId: string,
     assessmentId: string,

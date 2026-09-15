@@ -14,6 +14,11 @@ import type {
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
+  Finding,
+  Issue,
+  Risk,
+  Exception,
+  IssueSeverity,
 } from '@icore/shared';
 
 export type {
@@ -30,6 +35,7 @@ export type {
   RequirementEvidence,
   RequirementAssessment,
   FrameworkActivity,
+  Finding,
 };
 
 export function useFrameworks(orgId?: string) {
@@ -266,5 +272,165 @@ export function useFrameworkActivities(frameworkId: string, orgId?: string) {
       return api<FrameworkActivity[]>(url);
     },
     enabled: !!frameworkId,
+  });
+}
+
+export function useControlFindings(controlId: string, orgId?: string) {
+  return useQuery<Finding[]>({
+    queryKey: ['controls', controlId, 'findings', orgId ?? 'all'],
+    queryFn: () =>
+      api<Finding[]>(
+        `/notes/internal-controls/${encodeURIComponent(controlId)}/findings?orgId=${encodeURIComponent(orgId ?? '')}`,
+      ),
+    enabled: !!controlId && !!orgId,
+  });
+}
+
+export function useFindingsByLink(params: {
+  issueId?: string;
+  riskId?: string;
+  exceptionId?: string;
+}) {
+  const key = params.issueId
+    ? `issue:${params.issueId}`
+    : params.riskId
+      ? `risk:${params.riskId}`
+      : params.exceptionId
+        ? `exception:${params.exceptionId}`
+        : 'none';
+  const qs = new URLSearchParams();
+  if (params.issueId) qs.set('issueId', params.issueId);
+  if (params.riskId) qs.set('riskId', params.riskId);
+  if (params.exceptionId) qs.set('exceptionId', params.exceptionId);
+  return useQuery<Finding[]>({
+    queryKey: ['findings', 'by-link', key],
+    queryFn: () => api<Finding[]>(`/notes/findings/by-link?${qs.toString()}`),
+    enabled: key !== 'none',
+  });
+}
+
+export function useLinkFindingToIssue(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation<Finding, Error, { issueId: string }>({
+    mutationFn: (data) =>
+      api<Finding>(`/notes/findings/${findingId}/link-issue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] });
+      qc.invalidateQueries({ queryKey: ['findings'] });
+    },
+  });
+}
+
+export function useLinkFindingToRisk(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation<Finding, Error, { riskId: string }>({
+    mutationFn: (data) =>
+      api<Finding>(`/notes/findings/${findingId}/link-risk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] });
+      qc.invalidateQueries({ queryKey: ['findings'] });
+    },
+  });
+}
+
+export function useResolveFindingViaException(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation<Finding, Error, { exceptionId: string }>({
+    mutationFn: (data) =>
+      api<Finding>(`/notes/findings/${findingId}/resolve-via-exception`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] });
+      qc.invalidateQueries({ queryKey: ['findings'] });
+    },
+  });
+}
+
+export function useCreateIssueFromFinding(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    Issue,
+    Error,
+    { title: string; description: string; severity: IssueSeverity; ownerId: string }
+  >({
+    mutationFn: (data) =>
+      api(`/notes/findings/${findingId}/create-issue`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: (_, __, ___) => {
+      qc.invalidateQueries({ queryKey: ['controls'] });
+      qc.invalidateQueries({ queryKey: ['findings'] });
+      qc.invalidateQueries({ queryKey: ['issues'] });
+    },
+  });
+}
+
+export function useCreateRiskFromFinding(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    Risk,
+    Error,
+    {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    }
+  >({
+    mutationFn: (data) =>
+      api(`/notes/findings/${findingId}/create-risk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] });
+      qc.invalidateQueries({ queryKey: ['findings'] });
+      qc.invalidateQueries({ queryKey: ['risks'] });
+    },
+  });
+}
+
+export function useCreateExceptionFromFinding(findingId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    Exception,
+    Error,
+    {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    }
+  >({
+    mutationFn: (data) =>
+      api(`/notes/findings/${findingId}/create-exception`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['controls'] });
+      qc.invalidateQueries({ queryKey: ['findings'] });
+      qc.invalidateQueries({ queryKey: ['exceptions'] });
+    },
   });
 }

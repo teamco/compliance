@@ -127,6 +127,16 @@ describe('NotesClientService', () => {
     });
   });
 
+  it('getRequirementAssessment() sends id over RPC', async () => {
+    const send = vi.fn().mockReturnValue(of({ id: 'asm1', cycleName: '2026 Assessment' }));
+    const service = new NotesClientService(makeClient(send));
+
+    const result = await service.getRequirementAssessment('asm1');
+
+    expect(result).toEqual({ id: 'asm1', cycleName: '2026 Assessment' });
+    expect(send).toHaveBeenCalledWith('notes.frameworks.assessments.get', { id: 'asm1' });
+  });
+
   it('createAssessmentFinding() sends finding creation over RPC', async () => {
     const send = vi.fn().mockReturnValue(of({ findingId: 'FIND-2026-0042' }));
     const service = new NotesClientService(makeClient(send));
@@ -147,5 +157,22 @@ describe('NotesClientService', () => {
         description: 'Missing evidence',
       },
     });
+  });
+
+  it('createRiskFromFinding() sends the combo create-and-link over RPC', async () => {
+    const send = vi.fn().mockReturnValue(of({ id: 'risk1', title: 't' }));
+    const service = new NotesClientService(makeClient(send));
+    await service.createRiskFromFinding('org1', 'user1', 'finding1', {
+      title: 't',
+      description: 'd',
+      taxonomyCategoryId: 'cat1',
+      ownerId: 'user1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    expect(send).toHaveBeenCalledWith(
+      'notes.internal-controls.findings.create-risk',
+      expect.objectContaining({ findingId: 'finding1' }),
+    );
   });
 });

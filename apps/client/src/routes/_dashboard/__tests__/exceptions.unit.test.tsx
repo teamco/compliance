@@ -3,6 +3,8 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { Exception } from '@/queries/exceptions';
+import type { Finding } from '@/queries/frameworks';
 
 // Mock ResizeObserver which cmdk (used by Combobox) requires
 class MockResizeObserver {
@@ -18,6 +20,39 @@ Element.prototype.scrollIntoView = vi.fn();
 
 const createMutate = vi.fn();
 
+const mockException: Exception = {
+  id: 'e1',
+  orgId: 'org1',
+  userId: 'u1',
+  controlCode: 'AC-1',
+  frameworkId: 'fw1',
+  title: 'Exception title',
+  statement: 'Statement',
+  justification: 'Justification',
+  ownerId: 'u1',
+  status: 'pending',
+  expiresAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const mockLinkedFinding: Finding = {
+  id: 'f1',
+  orgId: 'org1',
+  code: 'FIND-000303',
+  controlId: 'c1',
+  assessmentId: 'a1',
+  title: 'Finding title',
+  description: 'Finding description',
+  severity: 'high',
+  status: 'open',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+let mockExceptionsData: Exception[] = [];
+let mockLinkedFindingsData: Finding[] = [];
+
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
   return {
@@ -27,11 +62,15 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
 });
 
 vi.mock('@/queries/exceptions', () => ({
-  useExceptions: () => ({ data: [], isPending: false }),
+  useExceptions: () => ({ data: mockExceptionsData, isPending: false }),
   useCreateException: () => ({ mutate: createMutate, isPending: false }),
   useApproveException: () => ({ mutate: vi.fn() }),
   useRejectException: () => ({ mutate: vi.fn() }),
   useDeleteException: () => ({ mutate: vi.fn() }),
+}));
+
+vi.mock('@/queries/frameworks', () => ({
+  useFindingsByLink: () => ({ data: mockLinkedFindingsData }),
 }));
 
 vi.mock('@/queries/notes', () => ({
@@ -94,6 +133,24 @@ vi.mock('@/stores/active-org', () => ({
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (opts: { component: React.ComponentType }) => ({ options: opts }),
   lazyRouteComponent: (importer: () => unknown) => importer,
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params?: Record<string, string>;
+    className?: string;
+  }) => (
+    <a
+      href={Object.entries(params ?? {}).reduce((p, [k, v]) => p.replace(`$${k}`, v), to)}
+      className={className}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
@@ -110,6 +167,8 @@ function wrap(ui: React.ReactElement) {
 describe('ExceptionsPage — New Exception dialog', () => {
   beforeEach(() => {
     createMutate.mockClear();
+    mockExceptionsData = [];
+    mockLinkedFindingsData = [];
   });
 
   it('renders all 8 fields in order when the dialog opens', async () => {
@@ -170,5 +229,29 @@ describe('ExceptionsPage — New Exception dialog', () => {
     expect(screen.getByText('Select control…')).toBeTruthy();
     expect(screen.queryByText('STD-1 — Access Control')).toBeNull();
     expect(screen.queryByText('AC-1 — Access Control')).toBeNull();
+  });
+});
+
+describe('ExceptionsPage — reverse back-link to originating Finding', () => {
+  beforeEach(() => {
+    createMutate.mockClear();
+    mockExceptionsData = [mockException];
+    mockLinkedFindingsData = [];
+  });
+
+  it('shows a link back to the originating control when a Finding links to the exception', async () => {
+    mockLinkedFindingsData = [mockLinkedFinding];
+    const { ExceptionsPage } = await import('../-exceptions.page');
+    render(wrap(<ExceptionsPage />));
+
+    const link = screen.getByText('From Finding FIND-000303');
+    expect(link.closest('a')?.getAttribute('href')).toBe('/controls/c1');
+  });
+
+  it('does not show a Finding back-link when no Finding links to the exception', async () => {
+    const { ExceptionsPage } = await import('../-exceptions.page');
+    render(wrap(<ExceptionsPage />));
+
+    expect(screen.queryByText(/From Finding/)).toBeNull();
   });
 });
