@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
+import { ExceptionDetailSheet } from '@/components/exceptions/ExceptionDetailSheet';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
   useExceptions,
@@ -117,7 +118,6 @@ export function ExceptionsPage() {
   const deleteMut = useDeleteException(orgId);
 
   const [open, setOpen] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- consumed by Task 5's ExceptionDetailSheet
   const [selectedExceptionId, setSelectedExceptionId] = useState<string | null>(null);
   const [form, setForm] = useState<ExceptionInput>(EMPTY_FORM);
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
@@ -333,6 +333,14 @@ export function ExceptionsPage() {
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
+      {selectedExceptionId && exceptions.find((e) => e.id === selectedExceptionId) && (
+        <ExceptionDetailSheet
+          exception={exceptions.find((e) => e.id === selectedExceptionId)!}
+          orgId={orgId}
+          open={!!selectedExceptionId}
+          onOpenChange={(o) => !o && setSelectedExceptionId(null)}
+        />
+      )}
     </PageLayout>
   );
 }
