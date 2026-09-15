@@ -75,6 +75,15 @@ export function IssueDetailSheet({
 
   const tabs: DetailTab[] = ['overview', 'rootCause', 'validation'];
 
+  const rootCauseEditable =
+    isOwner &&
+    (issue.status === 'open' ||
+      issue.status === 'in_progress' ||
+      issue.status === 'pending_validation');
+  const canOpenValidation = isOwner && (issue.status === 'open' || issue.status === 'in_progress');
+  const showMissingRootCauseHint =
+    canOpenValidation && !pendingValidation && (!rootCause || !rootCauseCategory);
+
   function handleSubmit() {
     if (!canSubmit || !rootCauseCategory) return;
     submitMut.mutate(
@@ -118,12 +127,12 @@ export function IssueDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="flex flex-col p-0">
         <SheetHeader>
           <SheetTitle>{issue.title}</SheetTitle>
         </SheetHeader>
 
-        <div className="border-b border-border mb-4 flex gap-1">
+        <div className="border-b border-border flex gap-1 px-4">
           {tabs.map((tKey) => (
             <button
               key={tKey}
@@ -140,68 +149,70 @@ export function IssueDetailSheet({
           ))}
         </div>
 
-        {tab === 'overview' && (
-          <div className="space-y-3 text-sm">
-            <p className="text-muted-foreground">{issue.description}</p>
-            <p>
-              {t('issues.severity.label')}:{' '}
-              <strong>{t(`issues.severity.${issue.severity}`)}</strong>
-            </p>
-            <p>
-              {t('issues.detail.status')}: <strong>{t(`issues.status.${issue.status}`)}</strong>
-            </p>
-          </div>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          {tab === 'overview' && (
+            <div className="space-y-3 text-sm">
+              <p className="text-muted-foreground">{issue.description}</p>
+              <p>
+                {t('issues.severity.label')}:{' '}
+                <strong>{t(`issues.severity.${issue.severity}`)}</strong>
+              </p>
+              <p>
+                {t('issues.detail.status')}: <strong>{t(`issues.status.${issue.status}`)}</strong>
+              </p>
+            </div>
+          )}
 
-        {tab === 'rootCause' && (
-          <div className="space-y-4">
-            <label className="block space-y-1.5">
-              <span className="text-xs text-muted-foreground">
-                {t('issues.detail.rootCauseCategory')}
-              </span>
-              <Select
-                value={rootCauseCategory}
-                onValueChange={(v) => setRootCauseCategory(v as RootCauseCategory)}
-                disabled={!isOwner}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t('issues.detail.selectCategory')} />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROOT_CAUSE_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {t(`issues.detail.rootCauseCategoryOptions.${c}`)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="block space-y-1.5">
-              <span className="text-xs text-muted-foreground">{t('issues.detail.rootCause')}</span>
-              <textarea
-                value={rootCause}
-                onChange={(e) => setRootCause(e.target.value)}
-                disabled={!isOwner}
-                rows={4}
-                className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none disabled:opacity-50"
-              />
-            </label>
-          </div>
-        )}
+          {tab === 'rootCause' && (
+            <div className="space-y-4">
+              <label className="block space-y-1.5">
+                <span className="text-xs text-muted-foreground">
+                  {t('issues.detail.rootCauseCategory')}
+                </span>
+                <Select
+                  value={rootCauseCategory}
+                  onValueChange={(v) => setRootCauseCategory(v as RootCauseCategory)}
+                  disabled={!rootCauseEditable}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t('issues.detail.selectCategory')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROOT_CAUSE_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {t(`issues.detail.rootCauseCategoryOptions.${c}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </label>
+              <label className="block space-y-1.5">
+                <span className="text-xs text-muted-foreground">
+                  {t('issues.detail.rootCause')}
+                </span>
+                <textarea
+                  value={rootCause}
+                  onChange={(e) => setRootCause(e.target.value)}
+                  disabled={!rootCauseEditable}
+                  rows={4}
+                  className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm resize-none disabled:opacity-50"
+                />
+              </label>
+            </div>
+          )}
 
-        {tab === 'validation' && (
-          <div className="space-y-4">
-            {pendingValidation ? (
-              <div className="border border-border rounded-lg p-3 space-y-2 text-sm">
-                <p>
-                  {t('issues.detail.pendingValidationFor', {
-                    name:
-                      members.find((m) => m.userId === pendingValidation.validatorId)
-                        ?.displayName ?? pendingValidation.validatorId,
-                  })}
-                </p>
-                {isAssignedValidator && (
-                  <div className="space-y-2">
+          {tab === 'validation' && (
+            <div className="space-y-4">
+              {pendingValidation ? (
+                <div className="border border-border rounded-lg p-3 space-y-2 text-sm">
+                  <p>
+                    {t('issues.detail.pendingValidationFor', {
+                      name:
+                        members.find((m) => m.userId === pendingValidation.validatorId)
+                          ?.displayName ?? pendingValidation.validatorId,
+                    })}
+                  </p>
+                  {isAssignedValidator && (
                     <textarea
                       value={rejectNotes}
                       onChange={(e) => setRejectNotes(e.target.value)}
@@ -209,66 +220,89 @@ export function IssueDetailSheet({
                       rows={2}
                       className="w-full rounded-md border border-border bg-surface px-2 py-1.5 text-sm resize-none"
                     />
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleApprove} disabled={reviewMut.isPending}>
-                        {t('issues.detail.approve')}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleReject}
-                        disabled={reviewMut.isPending || !rejectNotes}
-                      >
-                        {t('issues.detail.reject')}
-                      </Button>
-                    </div>
+                  )}
+                </div>
+              ) : (
+                canOpenValidation && (
+                  <div className="space-y-2">
+                    <label className="block space-y-1.5">
+                      <span className="text-xs text-muted-foreground">
+                        {t('issues.detail.selectValidator')}
+                      </span>
+                      <Combobox
+                        options={validatorOptions}
+                        value={validatorId}
+                        onChange={setValidatorId}
+                        placeholder={t('issues.detail.selectValidator')}
+                        searchPlaceholder={t('issues.searchMembers')}
+                      />
+                    </label>
+                    {showMissingRootCauseHint && (
+                      <p className="text-xs text-amber-500">
+                        {t('issues.detail.missingRootCauseHint')}
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
-            ) : (
-              isOwner &&
-              (issue.status === 'open' || issue.status === 'in_progress') && (
-                <div className="space-y-2">
-                  <label className="block space-y-1.5">
-                    <span className="text-xs text-muted-foreground">
-                      {t('issues.detail.selectValidator')}
-                    </span>
-                    <Combobox
-                      options={validatorOptions}
-                      value={validatorId}
-                      onChange={setValidatorId}
-                      placeholder={t('issues.detail.selectValidator')}
-                      searchPlaceholder={t('issues.searchMembers')}
-                    />
-                  </label>
+                )
+              )}
+
+              {validations.length > 0 && (
+                <div className="pt-3 border-t border-border space-y-2">
+                  <h3 className="text-xs text-muted-foreground">{t('issues.detail.history')}</h3>
+                  {validations.map((v) => (
+                    <div
+                      key={v.id}
+                      className="text-xs border border-border rounded p-2 space-y-0.5"
+                    >
+                      <p>
+                        {t(`issues.detail.historyStatus.${v.status}`)} —{' '}
+                        {members.find((m) => m.userId === v.validatorId)?.displayName ??
+                          v.validatorId}
+                      </p>
+                      {v.reviewNotes && <p className="text-muted-foreground">{v.reviewNotes}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <footer className="border-t border-border p-4 flex gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
+            {t('common.cancel')}
+          </Button>
+          {tab === 'validation' &&
+            (pendingValidation
+              ? isAssignedValidator && (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleReject}
+                      disabled={reviewMut.isPending || !rejectNotes}
+                      className="flex-1"
+                    >
+                      {t('issues.detail.reject')}
+                    </Button>
+                    <Button
+                      onClick={handleApprove}
+                      disabled={reviewMut.isPending}
+                      className="flex-1"
+                    >
+                      {t('issues.detail.approve')}
+                    </Button>
+                  </>
+                )
+              : canOpenValidation && (
                   <Button
-                    size="sm"
                     onClick={handleSubmit}
                     disabled={!canSubmit || submitMut.isPending}
+                    className="flex-1"
                   >
                     {t('issues.detail.submitForValidation')}
                   </Button>
-                </div>
-              )
-            )}
-
-            {validations.length > 0 && (
-              <div className="pt-3 border-t border-border space-y-2">
-                <h3 className="text-xs text-muted-foreground">{t('issues.detail.history')}</h3>
-                {validations.map((v) => (
-                  <div key={v.id} className="text-xs border border-border rounded p-2 space-y-0.5">
-                    <p>
-                      {t(`issues.detail.historyStatus.${v.status}`)} —{' '}
-                      {members.find((m) => m.userId === v.validatorId)?.displayName ??
-                        v.validatorId}
-                    </p>
-                    {v.reviewNotes && <p className="text-muted-foreground">{v.reviewNotes}</p>}
-                  </div>
                 ))}
-              </div>
-            )}
-          </div>
-        )}
+        </footer>
       </SheetContent>
     </Sheet>
   );

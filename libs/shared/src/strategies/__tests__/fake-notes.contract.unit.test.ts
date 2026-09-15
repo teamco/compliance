@@ -224,6 +224,51 @@ describe('issues', () => {
     ).rejects.toThrow('issue_validation_already_pending');
   });
 
+  it('refuses to submit a closed issue for validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await s.reviewIssueValidation(validation!.id, 'validator-1', 'approved');
+    expect((await s.getIssue(issue.id))!.status).toBe('closed');
+
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Reopening through the back door',
+        rootCauseCategory: 'human_error',
+        validatorId: 'validator-1',
+      }),
+    ).rejects.toThrow('issue_status_invalid_for_submission');
+  });
+
+  it('refuses to submit a wont_fix issue for validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.updateIssue(issue.id, { status: 'wont_fix' });
+
+    await expect(
+      s.submitIssueForValidation(issue.id, 'owner-1', {
+        rootCause: 'Should not be submittable',
+        rootCauseCategory: 'other',
+        validatorId: 'validator-1',
+      }),
+    ).rejects.toThrow('issue_status_invalid_for_submission');
+  });
+
   it('rejects a validation with notes, returns issue to in_progress, and preserves history on resubmit', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',

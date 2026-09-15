@@ -2022,10 +2022,23 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (data.validatorId === ownerId) {
       throw new Error('issue_validation_self_validation_forbidden');
     }
+    const issue = await this.getIssue(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
     const activePending = await this.getActiveIssueValidation(id);
     if (activePending) {
       throw new Error('issue_validation_already_pending');
     }
+    if (issue.status !== 'open' && issue.status !== 'in_progress') {
+      throw new Error('issue_status_invalid_for_submission');
+    }
+    const { error: validationError } = await this.db.from('issue_validations').insert({
+      issue_id: id,
+      org_id: issue.orgId,
+      requested_by: ownerId,
+      validator_id: data.validatorId,
+    });
+    if (validationError) throw new Error(validationError.message);
+
     const { data: issueRow, error: issueError } = await this.db
       .from('issues')
       .update({
@@ -2037,16 +2050,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', id)
       .select()
       .single();
-    const issue = this.toIssue(ok(issueRow, issueError));
-
-    const { error: validationError } = await this.db.from('issue_validations').insert({
-      issue_id: id,
-      org_id: issue.orgId,
-      requested_by: ownerId,
-      validator_id: data.validatorId,
-    });
-    if (validationError) throw new Error(validationError.message);
-    return issue;
+    return this.toIssue(ok(issueRow, issueError));
   }
 
   private async getIssueValidationOrThrow(id: string): Promise<IssueValidation> {
@@ -2085,6 +2089,15 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       throw new Error('issue_validation_review_notes_required');
     }
 
+    await this.db
+      .from('issues')
+      .update({
+        status: decision === 'approved' ? 'closed' : 'in_progress',
+        ...(decision === 'approved' ? { resolved_at: new Date().toISOString() } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', current.issueId);
+
     const { data, error } = await this.db
       .from('issue_validations')
       .update({
@@ -2097,18 +2110,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('status', 'pending')
       .select()
       .single();
-    const validation = this.toIssueValidation(ok(data, error));
-
-    await this.db
-      .from('issues')
-      .update({
-        status: decision === 'approved' ? 'closed' : 'in_progress',
-        ...(decision === 'approved' ? { resolved_at: new Date().toISOString() } : {}),
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', current.issueId);
-
-    return validation;
+    return this.toIssueValidation(ok(data, error));
   }
 
   async getActiveIssueValidation(issueId: string): Promise<IssueValidation | null> {

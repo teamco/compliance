@@ -67,11 +67,11 @@ const baseIssue: Issue = {
   updatedAt: '2026-01-01T00:00:00Z',
 };
 
-function renderSheet(issue: Issue) {
+function renderSheet(issue: Issue, onOpenChange: (open: boolean) => void = vi.fn()) {
   const qc = new QueryClient();
   return render(
     <QueryClientProvider client={qc}>
-      <IssueDetailSheet issue={issue} orgId="org-1" open={true} onOpenChange={vi.fn()} />
+      <IssueDetailSheet issue={issue} orgId="org-1" open={true} onOpenChange={onOpenChange} />
     </QueryClientProvider>,
   );
 }
@@ -88,6 +88,43 @@ describe('IssueDetailSheet', () => {
     renderSheet(baseIssue);
     expect(screen.getByText('MFA not enforced')).toBeDefined();
     expect(screen.getByText('Admin accounts lack MFA')).toBeDefined();
+  });
+
+  it('closes the sheet from the footer Cancel button on every tab', () => {
+    const onOpenChange = vi.fn();
+    renderSheet(baseIssue, onOpenChange);
+
+    fireEvent.click(screen.getByText('common.cancel'));
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    fireEvent.click(screen.getByText('issues.detail.tab.validation'));
+    fireEvent.click(screen.getByText('common.cancel'));
+    expect(onOpenChange).toHaveBeenCalledTimes(2);
+  });
+
+  it('hints that root cause is missing when the owner has not filled it in', () => {
+    renderSheet(baseIssue);
+    fireEvent.click(screen.getByText('issues.detail.tab.validation'));
+    expect(screen.getByText('issues.detail.missingRootCauseHint')).toBeDefined();
+  });
+
+  it('hides the root cause hint once root cause and category are set', () => {
+    renderSheet({ ...baseIssue, rootCause: 'No change control', rootCauseCategory: 'process_gap' });
+    fireEvent.click(screen.getByText('issues.detail.tab.validation'));
+    expect(screen.queryByText('issues.detail.missingRootCauseHint')).toBeNull();
+  });
+
+  it('locks the root cause fields once the issue is closed', () => {
+    renderSheet({ ...baseIssue, status: 'closed' });
+    fireEvent.click(screen.getByText('issues.detail.tab.rootCause'));
+    expect((screen.getByRole('textbox') as HTMLTextAreaElement).disabled).toBe(true);
+    expect((screen.getByRole('combobox') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('keeps the root cause fields editable for the owner while validation is pending', () => {
+    renderSheet({ ...baseIssue, status: 'pending_validation' });
+    fireEvent.click(screen.getByText('issues.detail.tab.rootCause'));
+    expect((screen.getByRole('textbox') as HTMLTextAreaElement).disabled).toBe(false);
   });
 
   it('excludes the issue owner from the validator picker', () => {

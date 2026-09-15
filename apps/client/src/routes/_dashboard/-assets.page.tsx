@@ -350,7 +350,7 @@ export function AssetsPage() {
     const withOpenIssues = assets.filter((a) => {
       return issues.some(
         (i) =>
-          i.status !== 'resolved' &&
+          i.status !== 'closed' &&
           i.status !== 'wont_fix' &&
           (i.affectedAssets?.includes(a.name) || (a.code && i.affectedAssets?.includes(a.code))),
       );
@@ -833,7 +833,7 @@ export function AssetsPage() {
                     const assetRisks = risks.filter((r) => r.assetIds.includes(asset.id));
                     const assetIssues = issues.filter(
                       (i) =>
-                        i.status !== 'resolved' &&
+                        i.status !== 'closed' &&
                         i.status !== 'wont_fix' &&
                         (i.affectedAssets?.includes(asset.name) ||
                           (asset.code && i.affectedAssets?.includes(asset.code))),
@@ -2312,7 +2312,7 @@ export function AssetsPage() {
                           {
                             issues.filter(
                               (i) =>
-                                i.status !== 'resolved' &&
+                                i.status !== 'closed' &&
                                 i.status !== 'wont_fix' &&
                                 (i.affectedAssets?.includes(viewingAsset.name) ||
                                   (viewingAsset.code &&

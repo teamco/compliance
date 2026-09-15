@@ -863,9 +863,7 @@ export class NotesController {
     const userId = this.uid(req);
     const issue = await this.notes.getIssue(id);
     if (!issue) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(issue.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    if (issue.ownerId !== userId) throw new ForbiddenException();
     return this.notes.submitIssueForValidation(id, userId, body);
   }
 
@@ -877,11 +875,6 @@ export class NotesController {
     @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
   ) {
     const userId = this.uid(req);
-    const validation = await this.notes.getIssueValidation(id);
-    if (!validation) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(validation.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
     return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
   }
 
@@ -891,8 +884,17 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
   ) {
-    this.uid(req);
-    return this.notes.listIssueValidations(id);
+    const userId = this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    const validations = await this.notes.listIssueValidations(id);
+    const isPartyToIssue =
+      issue.ownerId === userId ||
+      validations.some((v) => v.requestedBy === userId || v.validatorId === userId);
+    if (org.userId !== userId && !isPartyToIssue) throw new ForbiddenException();
+    return validations;
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────

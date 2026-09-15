@@ -727,6 +727,8 @@ export const ru = {
         other: 'Другое',
       },
       selectValidator: 'Выберите проверяющего…',
+      missingRootCauseHint:
+        'Заполните коренную причину и категорию на вкладке «Коренная причина» перед отправкой.',
       submitForValidation: 'Отправить на проверку',
       submitted: 'Отправлено на проверку',
       pendingValidationFor: 'Ожидает проверки от {{name}}',

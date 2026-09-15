@@ -3591,6 +3591,9 @@ export class FakeNotesStrategy implements NotesStrategy {
     if (activePending) {
       throw new Error('issue_validation_already_pending');
     }
+    if (issue.status !== 'open' && issue.status !== 'in_progress') {
+      throw new Error('issue_status_invalid_for_submission');
+    }
     const updated: Issue = {
       ...issue,
       status: 'pending_validation',

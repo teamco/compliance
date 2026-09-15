@@ -740,6 +740,8 @@ export const es = {
         other: 'Otro',
       },
       selectValidator: 'Seleccionar validador…',
+      missingRootCauseHint:
+        'Completa la causa raíz y la categoría en la pestaña Causa raíz antes de enviar.',
       submitForValidation: 'Enviar a validación',
       submitted: 'Enviado a validación',
       pendingValidationFor: 'Pendiente de validación de {{name}}',

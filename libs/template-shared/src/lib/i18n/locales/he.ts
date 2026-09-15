@@ -712,6 +712,7 @@ export const he = {
         other: 'אחר',
       },
       selectValidator: 'בחר מאמת…',
+      missingRootCauseHint: 'מלא את גורם השורש והקטגוריה בלשונית "גורם שורש" לפני ההגשה.',
       submitForValidation: 'הגש לאימות',
       submitted: 'הוגש לאימות',
       pendingValidationFor: 'ממתין לבדיקה של {{name}}',

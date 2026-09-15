@@ -761,6 +761,8 @@ export const en = {
         other: 'Other',
       },
       selectValidator: 'Select a validator…',
+      missingRootCauseHint:
+        'Fill in the root cause and category on the Root Cause tab before submitting.',
       submitForValidation: 'Submit for Validation',
       submitted: 'Submitted for validation',
       pendingValidationFor: 'Pending review by {{name}}',
