@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   ClipboardList,
   FileText,
+  Inbox,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -32,6 +33,7 @@ interface NavSection {
 
 type NavKey =
   | 'nav.dashboard'
+  | 'nav.myWork'
   | 'nav.analytics'
   | 'nav.frameworks'
   | 'nav.org'
@@ -70,6 +72,7 @@ const NAV: NavSection[] = [
     titleKey: 'nav.sectionPlatform',
     items: [
       { labelKey: 'nav.dashboard', to: '/dashboard', icon: LayoutDashboard },
+      { labelKey: 'nav.myWork', to: '/my-work', icon: Inbox },
       { labelKey: 'nav.analytics', to: '/analytics', icon: BarChart3, soon: true },
     ],
   },

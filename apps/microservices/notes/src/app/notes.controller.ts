@@ -644,6 +644,11 @@ export class NotesController {
     return this.strategy.listExceptionRenewals(payload.exceptionId);
   }
 
+  @MessagePattern('notes.exceptions.renewals.pending')
+  listPendingExceptionRenewals(@Payload() payload: { orgId: string }): Promise<ExceptionRenewal[]> {
+    return this.strategy.listPendingExceptionRenewals(payload.orgId);
+  }
+
   // ─── Issues ──────────────────────────────────────────────────────────────
 
   @MessagePattern('notes.issues.list')
@@ -706,6 +711,11 @@ export class NotesController {
   @MessagePattern('notes.issues.validations.list')
   listIssueValidations(@Payload() payload: { issueId: string }): Promise<IssueValidation[]> {
     return this.strategy.listIssueValidations(payload.issueId);
+  }
+
+  @MessagePattern('notes.issues.validations.pending')
+  listPendingIssueValidations(@Payload() payload: { orgId: string }): Promise<IssueValidation[]> {
+    return this.strategy.listPendingIssueValidations(payload.orgId);
   }
 
   // ─── Assets ──────────────────────────────────────────────────────────────

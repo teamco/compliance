@@ -249,6 +249,41 @@ describe('exception renewals', () => {
     expect(history).toHaveLength(2);
     expect(history.find((r) => r.id === first.id)?.status).toBe('rejected');
   });
+
+  it('lists only pending renewals for an org, excluding other orgs and resolved renewals', async () => {
+    const excOrg1 = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T1',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    const excOrg2 = await s.createException('org2', 'u2', {
+      controlCode: 'AC-2',
+      frameworkId: 'fw1',
+      title: 'T2',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-2',
+    });
+    const pendingOrg1 = await s.requestExceptionRenewal(excOrg1.id, 'owner-1', {
+      proposedExpiresAt: new Date().toISOString(),
+      justification: 'Still needed',
+    });
+    await s.requestExceptionRenewal(excOrg2.id, 'owner-2', {
+      proposedExpiresAt: new Date().toISOString(),
+      justification: 'Different org',
+    });
+    const resolvedOrg1 = await s.requestExceptionRenewal(excOrg1.id, 'owner-1', {
+      proposedExpiresAt: new Date().toISOString(),
+      justification: 'Will be resolved',
+    });
+    await s.reviewExceptionRenewal(resolvedOrg1.id, 'reviewer-1', 'rejected', 'no');
+
+    const pending = await s.listPendingExceptionRenewals('org1');
+    expect(pending.map((r) => r.id)).toEqual([pendingOrg1.id]);
+  });
 });
 
 describe('issues', () => {
@@ -519,6 +554,51 @@ describe('issues', () => {
       ownerId: 'owner-1',
     });
     expect(await s.listIssues('org2')).toHaveLength(0);
+  });
+
+  it('lists only pending validations for an org, excluding other orgs and resolved validations', async () => {
+    const issuePendingOrg1 = await s.createIssue('org1', 'u1', {
+      title: 'Pending in org1',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    const issueResolvedOrg1 = await s.createIssue('org1', 'u1', {
+      title: 'Resolved in org1',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    const issueOrg2 = await s.createIssue('org2', 'u2', {
+      title: 'Pending in org2',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-2',
+      ownerId: 'owner-2',
+    });
+    await s.submitIssueForValidation(issuePendingOrg1.id, 'owner-1', {
+      rootCause: 'Root cause',
+      rootCauseCategory: 'other',
+      validatorId: 'validator-1',
+    });
+    const pendingValidation = await s.getActiveIssueValidation(issuePendingOrg1.id);
+    await s.submitIssueForValidation(issueResolvedOrg1.id, 'owner-1', {
+      rootCause: 'Root cause',
+      rootCauseCategory: 'other',
+      validatorId: 'validator-1',
+    });
+    const resolvedValidation = await s.getActiveIssueValidation(issueResolvedOrg1.id);
+    await s.reviewIssueValidation(resolvedValidation!.id, 'validator-1', 'approved');
+    await s.submitIssueForValidation(issueOrg2.id, 'owner-2', {
+      rootCause: 'Root cause',
+      rootCauseCategory: 'other',
+      validatorId: 'validator-2',
+    });
+
+    const pending = await s.listPendingIssueValidations('org1');
+    expect(pending.map((v) => v.id)).toEqual([pendingValidation!.id]);
   });
 });
 

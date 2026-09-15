@@ -52,6 +52,7 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
     getExceptionRenewal: vi.fn().mockResolvedValue(PENDING_RENEWAL),
     listExceptionRenewals: vi.fn().mockResolvedValue([]),
+    listPendingExceptionRenewals: vi.fn().mockResolvedValue([]),
     requestExceptionRenewal: vi.fn().mockResolvedValue(PENDING_RENEWAL),
     reviewExceptionRenewal: vi
       .fn()
@@ -274,6 +275,48 @@ describe('NotesController — exception governance authorization', () => {
       const notes = makeNotes({ getException: vi.fn().mockResolvedValue(null) });
       await expect(
         makeController(notes).listExceptionRenewals(reqAs('owner-1'), 'missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('listPendingExceptionRenewals', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listPendingExceptionRenewals(reqAs('outsider'), 'org-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(notes.listPendingExceptionRenewals).not.toHaveBeenCalled();
+    });
+
+    it('allows the org creator', async () => {
+      const notes = makeNotes({
+        listPendingExceptionRenewals: vi.fn().mockResolvedValue([PENDING_RENEWAL]),
+      });
+      await expect(
+        makeController(notes).listPendingExceptionRenewals(reqAs('org-creator'), 'org-1'),
+      ).resolves.toEqual([PENDING_RENEWAL]);
+    });
+
+    it('allows an admin who is not the org creator', async () => {
+      const notes = makeNotes({
+        listPendingExceptionRenewals: vi.fn().mockResolvedValue([PENDING_RENEWAL]),
+      });
+      await expect(
+        makeController(notes).listPendingExceptionRenewals(reqAsAdmin('platform-admin'), 'org-1'),
+      ).resolves.toEqual([PENDING_RENEWAL]);
+    });
+
+    it('throws BadRequest when orgId is missing', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listPendingExceptionRenewals(reqAs('org-creator'), ''),
+      ).rejects.toThrow('orgId required');
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).listPendingExceptionRenewals(reqAs('org-creator'), 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
   });

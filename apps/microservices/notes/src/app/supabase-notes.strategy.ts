@@ -2058,6 +2058,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map((row) => this.toExceptionRenewal(row));
   }
 
+  async listPendingExceptionRenewals(orgId: string): Promise<ExceptionRenewal[]> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toExceptionRenewal(row));
+  }
+
   private toExceptionRenewal(row: Record<string, unknown>): ExceptionRenewal {
     return {
       id: row['id'] as string,
@@ -2291,6 +2301,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('issue_validations')
       .select('*')
       .eq('issue_id', issueId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toIssueValidation(row));
+  }
+
+  async listPendingIssueValidations(orgId: string): Promise<IssueValidation[]> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'pending')
       .order('created_at', { ascending: false });
     return ok(data, error).map((row) => this.toIssueValidation(row));
   }

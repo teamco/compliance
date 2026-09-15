@@ -66,6 +66,7 @@ export const es = {
   },
   nav: {
     dashboard: 'Panel',
+    myWork: 'Mi Trabajo',
     analytics: 'Análisis',
     profile: 'Perfil',
     settings: 'Configuración',
@@ -649,6 +650,22 @@ export const es = {
       high: 'Alto',
       medium: 'Medio',
       low: 'Bajo',
+    },
+  },
+  myWork: {
+    subtitle: 'Elementos vencidos, próximos plazos y revisiones pendientes de ti',
+    noOrg: 'Selecciona una organización para ver tu trabajo',
+    empty: 'Estás al día — nada vencido, próximo o pendiente de tu revisión',
+    overdue: 'Vencidos',
+    emptyOverdue: 'Nada vencido',
+    dueSoon: 'Próximos a vencer',
+    emptyDueSoon: 'Nada vence en los próximos 7 días',
+    pendingReview: 'Pendiente de tu revisión',
+    emptyPendingReview: 'Nada pendiente de tu revisión',
+    type: {
+      issue: 'Problema',
+      exception: 'Excepción',
+      assessment: 'Evaluación',
     },
   },
   exceptions: {

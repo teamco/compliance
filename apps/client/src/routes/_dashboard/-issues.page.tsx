@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearch } from '@tanstack/react-router';
 import { Plus, Bug } from 'lucide-react';
 import { useDraft, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
@@ -154,11 +155,16 @@ export function IssuesPage() {
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
   const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
+  const search = useSearch({ from: '/_dashboard/issues' });
+  useEffect(() => {
+    if (search.open) setSelectedIssueId(search.open);
+  }, [search.open]);
+
   const selectedIssue = selectedIssueId ? issues.find((i) => i.id === selectedIssueId) : undefined;
 
   useEffect(() => {
-    if (selectedIssueId && !selectedIssue) setSelectedIssueId(null);
-  }, [selectedIssueId, selectedIssue]);
+    if (!isPending && selectedIssueId && !selectedIssue) setSelectedIssueId(null);
+  }, [isPending, selectedIssueId, selectedIssue]);
 
   const memberOptions = members.map((m) => ({
     value: m.userId,

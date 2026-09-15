@@ -57,6 +57,7 @@ export const he = {
   },
   nav: {
     dashboard: 'לוח בקרה',
+    myWork: 'העבודה שלי',
     analytics: 'אנליטיקה',
     profile: 'פרופיל',
     settings: 'הגדרות',
@@ -627,6 +628,22 @@ export const he = {
       high: 'גבוה',
       medium: 'בינוני',
       low: 'נמוך',
+    },
+  },
+  myWork: {
+    subtitle: 'פריטים באיחור, מועדים קרובים וביקורות הממתינות לך',
+    noOrg: 'בחר ארגון כדי לראות את העבודה שלך',
+    empty: 'הכול מעודכן — אין באיחור, קרוב למועד או ממתין לביקורת שלך',
+    overdue: 'באיחור',
+    emptyOverdue: 'אין פריטים באיחור',
+    dueSoon: 'מועד קרוב',
+    emptyDueSoon: 'אין פריטים עם מועד ב-7 הימים הקרובים',
+    pendingReview: 'ממתין לביקורת שלך',
+    emptyPendingReview: 'אין פריטים הממתינים לביקורת שלך',
+    type: {
+      issue: 'ממצא',
+      exception: 'חריגה',
+      assessment: 'הערכה',
     },
   },
   exceptions: {

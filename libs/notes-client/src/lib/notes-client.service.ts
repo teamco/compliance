@@ -733,6 +733,12 @@ export class NotesClientService {
     });
   }
 
+  listPendingExceptionRenewals(orgId: string): Promise<ExceptionRenewal[]> {
+    return signedSend<ExceptionRenewal[]>(this.client, 'notes.exceptions.renewals.pending', {
+      orgId,
+    });
+  }
+
   // ─── Issues ──────────────────────────────────────────────────────────────
 
   listIssues(orgId: string): Promise<Issue[]> {
@@ -790,6 +796,12 @@ export class NotesClientService {
   listIssueValidations(issueId: string): Promise<IssueValidation[]> {
     return signedSend<IssueValidation[]>(this.client, 'notes.issues.validations.list', {
       issueId,
+    });
+  }
+
+  listPendingIssueValidations(orgId: string): Promise<IssueValidation[]> {
+    return signedSend<IssueValidation[]>(this.client, 'notes.issues.validations.pending', {
+      orgId,
     });
   }
 
