@@ -2089,7 +2089,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       throw new Error('issue_validation_review_notes_required');
     }
 
-    await this.db
+    const { error: issueUpdateError } = await this.db
       .from('issues')
       .update({
         status: decision === 'approved' ? 'closed' : 'in_progress',
@@ -2097,6 +2097,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         updated_at: new Date().toISOString(),
       })
       .eq('id', current.issueId);
+    if (issueUpdateError) throw new Error(issueUpdateError.message);
 
     const { data, error } = await this.db
       .from('issue_validations')
