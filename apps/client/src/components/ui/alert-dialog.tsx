@@ -1,5 +1,6 @@
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/button';
 
 export const AlertDialog = AlertDialogPrimitive.Root;
 export const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
@@ -74,5 +75,26 @@ export function AlertDialogFooter({ className, ...props }: React.HTMLAttributes<
   return <div className={cn('mt-6 flex justify-end gap-3', className)} {...props} />;
 }
 
-export const AlertDialogCancel = AlertDialogPrimitive.Cancel;
-export const AlertDialogAction = AlertDialogPrimitive.Action;
+export function AlertDialogCancel({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>) {
+  return (
+    <AlertDialogPrimitive.Cancel
+      className={cn(buttonVariants({ variant: 'outline' }), className)}
+      {...props}
+    />
+  );
+}
+
+export function AlertDialogAction({
+  className,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action>) {
+  return (
+    <AlertDialogPrimitive.Action
+      className={cn(buttonVariants({ variant: 'destructive' }), className)}
+      {...props}
+    />
+  );
+}

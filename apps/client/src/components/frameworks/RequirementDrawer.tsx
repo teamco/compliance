@@ -945,7 +945,7 @@ export function RequirementDrawer({
                               href={safeHref(ev.url)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-xs text-green-500 hover:underline inline-flex items-center gap-1"
+                              className="text-xs text-green-500 hover:underline inline-flex items-center gap-1 cursor-pointer"
                             >
                               View Evidence Artifact <ExternalLink size={11} />
                             </a>

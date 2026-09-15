@@ -428,7 +428,7 @@ function StandardsDetailPage() {
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         >
                           <X size={13} />
                         </button>
@@ -448,7 +448,7 @@ function StandardsDetailPage() {
                       type="button"
                       disabled={isSaving}
                       onClick={() => startEdit(std.code, 'objective', std.objective)}
-                      className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text"
+                      className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text cursor-pointer"
                     >
                       <span className="flex items-start gap-1.5">
                         <span className="flex-1">{std.objective}</span>
@@ -485,7 +485,7 @@ function StandardsDetailPage() {
                         <button
                           type="button"
                           onClick={cancelEdit}
-                          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                         >
                           <X size={13} />
                         </button>
@@ -505,7 +505,7 @@ function StandardsDetailPage() {
                       type="button"
                       disabled={isSaving}
                       onClick={() => startEdit(std.code, 'scope', std.scope)}
-                      className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text"
+                      className="group w-full text-left text-xs text-foreground/80 leading-relaxed hover:text-foreground transition-colors cursor-text cursor-pointer"
                     >
                       <span className="flex items-start gap-1.5">
                         <span className="flex-1">{std.scope}</span>
