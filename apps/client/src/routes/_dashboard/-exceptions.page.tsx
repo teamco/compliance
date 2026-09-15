@@ -101,14 +101,14 @@ function ExceptionRow({
             <button
               type="button"
               onClick={onApprove}
-              className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors"
+              className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
             >
               {t('exceptions.approve')}
             </button>
             <button
               type="button"
               onClick={onReject}
-              className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+              className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer"
             >
               {t('exceptions.reject')}
             </button>
@@ -117,7 +117,7 @@ function ExceptionRow({
         <button
           type="button"
           onClick={onDelete}
-          className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors"
+          className="text-xs px-2 py-1 rounded text-muted-foreground border border-border hover:text-destructive hover:border-destructive/50 transition-colors cursor-pointer"
         >
           {t('common.delete')}
         </button>

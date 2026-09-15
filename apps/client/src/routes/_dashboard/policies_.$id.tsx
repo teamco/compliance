@@ -93,7 +93,7 @@ function PolicyDetailPage() {
         <button
           type="button"
           onClick={() => void navigate({ to: '/policies' })}
-          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
         >
           <ArrowLeft size={14} />
           {t('policies.backToList')}
@@ -125,7 +125,7 @@ function PolicyDetailPage() {
           <button
             type="button"
             onClick={handleDelete}
-            className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors"
+            className="text-xs text-muted-foreground/50 hover:text-destructive transition-colors cursor-pointer"
           >
             {t('common.delete')}
           </button>
@@ -176,7 +176,7 @@ function PolicyDetailPage() {
                 <button
                   type="button"
                   onClick={() => removeControlMut.mutate(pc.id)}
-                  className="text-muted-foreground/30 hover:text-destructive transition-colors ml-1"
+                  className="text-muted-foreground/30 hover:text-destructive transition-colors ml-1 cursor-pointer"
                 >
                   ×
                 </button>

@@ -57,7 +57,7 @@ export function AppearanceTab() {
               type="button"
               onClick={() => handleThemeChange(value)}
               className={[
-                'rounded-md border px-4 py-2 text-sm font-medium transition-colors',
+                'rounded-md border px-4 py-2 text-sm font-medium transition-colors cursor-pointer',
                 currentTheme === value
                   ? 'border-green-500/40 bg-green-500/10 text-green-500'
                   : 'border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground',
@@ -81,7 +81,7 @@ export function AppearanceTab() {
               type="button"
               onClick={() => handleLanguageChange(value)}
               className={[
-                'rounded-md border px-4 py-2 text-sm font-medium transition-colors',
+                'rounded-md border px-4 py-2 text-sm font-medium transition-colors cursor-pointer',
                 currentLang === value
                   ? 'border-green-500/40 bg-green-500/10 text-green-500'
                   : 'border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground',

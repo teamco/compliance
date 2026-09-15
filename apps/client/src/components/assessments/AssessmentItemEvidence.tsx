@@ -59,7 +59,7 @@ export function AssessmentItemEvidence({ orgId, itemId }: AssessmentItemEvidence
                   href={href}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muted-foreground/70 underline"
+                  className="text-muted-foreground/70 underline cursor-pointer"
                 >
                   {e.url}
                 </a>
