@@ -8,6 +8,8 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewal,
+  ExceptionRenewalRequestInput,
   ControlFrameworkMappingInput,
   Finding,
   Framework,
@@ -584,18 +586,62 @@ export class NotesController {
   }
 
   @MessagePattern('notes.exceptions.approve')
-  approveException(@Payload() payload: { id: string }): Promise<Exception> {
-    return this.strategy.approveException(payload.id);
+  approveException(@Payload() payload: { id: string; approverId: string }): Promise<Exception> {
+    return this.strategy.approveException(payload.id, payload.approverId);
   }
 
   @MessagePattern('notes.exceptions.reject')
-  rejectException(@Payload() payload: { id: string }): Promise<Exception> {
-    return this.strategy.rejectException(payload.id);
+  rejectException(@Payload() payload: { id: string; approverId: string }): Promise<Exception> {
+    return this.strategy.rejectException(payload.id, payload.approverId);
   }
 
   @MessagePattern('notes.exceptions.delete')
   deleteException(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteException(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.renewals.request')
+  requestExceptionRenewal(
+    @Payload()
+    payload: {
+      exceptionId: string;
+      requestedBy: string;
+      data: ExceptionRenewalRequestInput;
+    },
+  ): Promise<ExceptionRenewal> {
+    return this.strategy.requestExceptionRenewal(
+      payload.exceptionId,
+      payload.requestedBy,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.exceptions.renewals.review')
+  reviewExceptionRenewal(
+    @Payload()
+    payload: {
+      id: string;
+      reviewerId: string;
+      decision: 'approved' | 'rejected';
+      reviewNotes?: string;
+    },
+  ): Promise<ExceptionRenewal> {
+    return this.strategy.reviewExceptionRenewal(
+      payload.id,
+      payload.reviewerId,
+      payload.decision,
+      payload.reviewNotes,
+    );
+  }
+
+  @MessagePattern('notes.exceptions.renewals.get')
+  getExceptionRenewal(@Payload() payload: { id: string }): Promise<ExceptionRenewal | null> {
+    return this.strategy.getExceptionRenewal(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.renewals.list')
+  listExceptionRenewals(@Payload() payload: { exceptionId: string }): Promise<ExceptionRenewal[]> {
+    return this.strategy.listExceptionRenewals(payload.exceptionId);
   }
 
   // ─── Issues ──────────────────────────────────────────────────────────────
