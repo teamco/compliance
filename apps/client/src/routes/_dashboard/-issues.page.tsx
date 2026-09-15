@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Bug } from 'lucide-react';
 import { useDraft, useNotify } from '@icore/template-shared';
@@ -154,6 +154,12 @@ export function IssuesPage() {
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
   const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
 
+  const selectedIssue = selectedIssueId ? issues.find((i) => i.id === selectedIssueId) : undefined;
+
+  useEffect(() => {
+    if (selectedIssueId && !selectedIssue) setSelectedIssueId(null);
+  }, [selectedIssueId, selectedIssue]);
+
   const memberOptions = members.map((m) => ({
     value: m.userId,
     label: m.displayName ?? m.email ?? m.userId,
@@ -296,9 +302,9 @@ export function IssuesPage() {
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
-      {selectedIssueId && (
+      {selectedIssue && (
         <IssueDetailSheet
-          issue={issues.find((i) => i.id === selectedIssueId)!}
+          issue={selectedIssue}
           orgId={orgId}
           open={!!selectedIssueId}
           onOpenChange={(o) => !o && setSelectedIssueId(null)}
