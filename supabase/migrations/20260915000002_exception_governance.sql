@@ -31,6 +31,9 @@ create policy "org members read exception renewals"
     exists (select 1 from public.org_profiles o where o.id = org_id and o.user_id = auth.uid())
   );
 
+-- reviewed_by is NULL until review completes, so this USING clause matches only requested_by
+-- pre-review. Inert today (the notes MS uses the service-role key and bypasses RLS), but a
+-- user-scoped Supabase client against this table would need the policy widened.
 create policy "requester or reviewer manage exception renewals"
   on public.exception_renewals for all
   using (

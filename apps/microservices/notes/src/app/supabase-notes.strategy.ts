@@ -1843,7 +1843,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         owner_id: data.ownerId,
         compensating_controls: data.compensatingControls ?? null,
         expires_at: data.expiresAt ?? null,
-        risk_id: data.riskId ?? null,
+        risk_id: data.riskId || null,
         review_frequency_days: data.reviewFrequencyDays ?? null,
       })
       .select()

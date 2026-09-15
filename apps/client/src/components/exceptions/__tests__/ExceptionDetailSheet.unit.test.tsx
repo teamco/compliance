@@ -116,6 +116,31 @@ describe('ExceptionDetailSheet', () => {
 
       expect(screen.getByText('exceptions.detail.requestRenewal')).toBeDefined();
     });
+
+    it('calls the request mutation with the proposed expiry and justification', () => {
+      renderSheet({
+        ...baseException,
+        status: 'approved',
+        expiresAt: '2020-01-01T00:00:00Z',
+      });
+      fireEvent.click(screen.getByText('exceptions.detail.tab.renewal'));
+
+      fireEvent.change(screen.getByLabelText('exceptions.detail.proposedExpiresAt'), {
+        target: { value: '2026-12-01' },
+      });
+      fireEvent.change(screen.getByLabelText('exceptions.detail.renewalJustification'), {
+        target: { value: 'Vendor migration delayed' },
+      });
+      fireEvent.click(screen.getByText('exceptions.detail.requestRenewal'));
+
+      expect(mockRequest).toHaveBeenCalledWith(
+        {
+          id: 'exception-1',
+          data: { proposedExpiresAt: '2026-12-01', justification: 'Vendor migration delayed' },
+        },
+        expect.anything(),
+      );
+    });
   });
 
   describe('as a different user with a pending renewal', () => {
@@ -161,6 +186,73 @@ describe('ExceptionDetailSheet', () => {
         { id: 'renewal-1', exceptionId: 'exception-1', decision: 'approved' },
         expect.anything(),
       );
+    });
+
+    it('calls the review mutation with a rejected decision and the typed notes', () => {
+      renderSheet({ ...baseException, status: 'approved' });
+      fireEvent.click(screen.getByText('exceptions.detail.tab.renewal'));
+      fireEvent.change(screen.getByPlaceholderText('exceptions.detail.rejectNotesPlaceholder'), {
+        target: { value: 'Compensating controls are insufficient' },
+      });
+      fireEvent.click(screen.getByText('exceptions.detail.rejectRenewal'));
+
+      expect(mockReview).toHaveBeenCalledWith(
+        {
+          id: 'renewal-1',
+          exceptionId: 'exception-1',
+          decision: 'rejected',
+          reviewNotes: 'Compensating controls are insufficient',
+        },
+        expect.anything(),
+      );
+    });
+  });
+
+  describe('renewal history with resolved entries', () => {
+    beforeEach(() => {
+      mockCurrentUserId = 'reviewer-1';
+      mockRenewals = [
+        {
+          id: 'renewal-2',
+          exceptionId: 'exception-1',
+          orgId: 'org-1',
+          requestedBy: 'owner-1',
+          proposedExpiresAt: '2026-06-01T00:00:00Z',
+          justification: 'Second extension',
+          status: 'rejected',
+          reviewedBy: 'reviewer-1',
+          reviewNotes: 'Vendor migration should have completed by now',
+          reviewedAt: '2026-02-01T00:00:00Z',
+          createdAt: '2026-01-15T00:00:00Z',
+        },
+        {
+          id: 'renewal-1',
+          exceptionId: 'exception-1',
+          orgId: 'org-1',
+          requestedBy: 'owner-1',
+          proposedExpiresAt: '2026-03-01T00:00:00Z',
+          justification: 'First extension',
+          status: 'approved',
+          reviewedBy: 'reviewer-1',
+          reviewNotes: null,
+          reviewedAt: '2026-01-10T00:00:00Z',
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+      ];
+    });
+
+    it('renders every resolved entry with its status, date and review notes', () => {
+      renderSheet({ ...baseException, status: 'approved' });
+      fireEvent.click(screen.getByText('exceptions.detail.tab.renewal'));
+
+      expect(screen.getByText('exceptions.detail.renewalHistory')).toBeDefined();
+      expect(
+        screen.getByText(/exceptions\.detail\.renewalHistoryStatus\.rejected — 2026-06-01/),
+      ).toBeDefined();
+      expect(
+        screen.getByText(/exceptions\.detail\.renewalHistoryStatus\.approved — 2026-03-01/),
+      ).toBeDefined();
+      expect(screen.getByText('Vendor migration should have completed by now')).toBeDefined();
     });
   });
 

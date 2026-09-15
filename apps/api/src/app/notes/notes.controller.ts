@@ -784,15 +784,25 @@ export class NotesController {
 
   @Post('exceptions/:id/approve')
   @ApiOperation({ summary: 'Approve exception' })
-  approveException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async approveException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    if (org.userId !== userId) throw new ForbiddenException();
     return this.notes.approveException(id, userId);
   }
 
   @Post('exceptions/:id/reject')
   @ApiOperation({ summary: 'Reject exception' })
-  rejectException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async rejectException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    if (org.userId !== userId) throw new ForbiddenException();
     return this.notes.rejectException(id, userId);
   }
 
@@ -826,6 +836,13 @@ export class NotesController {
     @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
   ) {
     const userId = this.uid(req);
+    const renewal = await this.notes.getExceptionRenewal(id);
+    if (!renewal) throw new NotFoundException();
+    const exception = await this.notes.getException(renewal.exceptionId);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    if (org.userId !== userId) throw new ForbiddenException();
     return this.notes.reviewExceptionRenewal(id, userId, body.decision, body.reviewNotes);
   }
 

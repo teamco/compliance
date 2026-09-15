@@ -3464,7 +3464,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       compensatingControls: data.compensatingControls,
       status: 'pending',
       expiresAt: data.expiresAt ?? null,
-      riskId: data.riskId ?? null,
+      riskId: data.riskId || null,
       reviewFrequencyDays: data.reviewFrequencyDays ?? null,
       reviewedBy: null,
       reviewedAt: null,

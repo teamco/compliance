@@ -157,12 +157,15 @@ export function ExceptionsPage() {
       !form.expiresAt
     )
       return;
-    createMut.mutate(form, {
-      onSuccess: () => {
-        setOpen(false);
-        setForm(EMPTY_FORM);
+    createMut.mutate(
+      { ...form, riskId: form.riskId || undefined },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setForm(EMPTY_FORM);
+        },
       },
-    });
+    );
   }
 
   return (
