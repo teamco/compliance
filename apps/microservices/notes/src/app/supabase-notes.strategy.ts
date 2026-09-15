@@ -591,19 +591,19 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       throw new Error(`requirement_assessment_missing_control: ${assessmentId}`);
     }
 
-    const { data: recentCodes, error: countError } = await this.db
+    const { data: latestFinding, error: countError } = await this.db
       .from('findings')
       .select('code')
       .eq('org_id', orgId)
+      .like('code', 'FIND-______')
       .order('code', { ascending: false })
-      .limit(20);
+      .limit(1)
+      .maybeSingle();
     if (countError) throw new Error(countError.message);
-    const maxSuffix = (recentCodes ?? []).reduce((max, row) => {
-      const match = /^FIND-(\d{6})$/.exec(String(row['code']));
-      const suffix = match?.[1];
-      if (!suffix) return max;
-      return Math.max(max, parseInt(suffix, 10));
-    }, 100);
+    const latestSuffix = latestFinding?.['code']
+      ? /^FIND-(\d{6})$/.exec(String(latestFinding['code']))?.[1]
+      : undefined;
+    const maxSuffix = latestSuffix ? parseInt(latestSuffix, 10) : 100;
     const code = `FIND-${String(maxSuffix + 1).padStart(6, '0')}`;
 
     const { data: row, error } = await this.db
