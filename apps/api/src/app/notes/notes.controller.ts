@@ -37,6 +37,7 @@ import type {
   AssetPatch,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewalRequestInput,
   IssueInput,
   IssuePatch,
   IssueSeverity,
@@ -783,16 +784,26 @@ export class NotesController {
 
   @Post('exceptions/:id/approve')
   @ApiOperation({ summary: 'Approve exception' })
-  approveException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
-    return this.notes.approveException(id);
+  async approveException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.approveException(id, userId);
   }
 
   @Post('exceptions/:id/reject')
   @ApiOperation({ summary: 'Reject exception' })
-  rejectException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
-    return this.notes.rejectException(id);
+  async rejectException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const userId = this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.rejectException(id, userId);
   }
 
   @Delete('exceptions/:id')
@@ -801,6 +812,57 @@ export class NotesController {
   deleteException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     return this.notes.deleteException(id);
+  }
+
+  @Post('exceptions/:id/renewals')
+  @ApiOperation({ summary: 'Owner requests a renewal (new expiry) for an exception' })
+  async requestExceptionRenewal(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: ExceptionRenewalRequestInput,
+  ) {
+    const userId = this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    if (exception.ownerId !== userId) throw new ForbiddenException();
+    return this.notes.requestExceptionRenewal(id, userId, body);
+  }
+
+  @Post('exception-renewals/:id/review')
+  @ApiOperation({ summary: 'A different user approves or rejects a pending exception renewal' })
+  async reviewExceptionRenewal(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
+  ) {
+    const userId = this.uid(req);
+    const renewal = await this.notes.getExceptionRenewal(id);
+    if (!renewal) throw new NotFoundException();
+    const exception = await this.notes.getException(renewal.exceptionId);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.reviewExceptionRenewal(id, userId, body.decision, body.reviewNotes);
+  }
+
+  @Get('exceptions/:id/renewals')
+  @ApiOperation({ summary: 'List renewal history for an exception' })
+  async listExceptionRenewals(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const userId = this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    const renewals = await this.notes.listExceptionRenewals(id);
+    const isPartyToException =
+      exception.ownerId === userId ||
+      renewals.some((r) => r.requestedBy === userId || r.reviewedBy === userId);
+    if (org.userId !== userId && !isPartyToException) throw new ForbiddenException();
+    return renewals;
   }
 
   // ─── Issues ──────────────────────────────────────────────────────────────

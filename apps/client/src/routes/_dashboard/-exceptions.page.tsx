@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
 import { Plus, ShieldAlert } from 'lucide-react';
 import { useDraft } from '@icore/template-shared';
+import { effectiveExceptionStatus } from '@icore/shared/client';
 import { Button } from '@/components/ui/button';
 import { Combobox } from '@/components/ui/combobox';
 import {
@@ -17,12 +17,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
+import { ExceptionDetailSheet } from '@/components/exceptions/ExceptionDetailSheet';
 import { useActiveOrgStore } from '@/stores/active-org';
 import {
   useExceptions,
   useCreateException,
-  useApproveException,
-  useRejectException,
   useDeleteException,
   type Exception,
   type ExceptionInput,
@@ -30,6 +29,7 @@ import {
 import { useFindingsByLink } from '@/queries/frameworks';
 import { useFrameworks, useFrameworkStandards, useFrameworkControls } from '@/queries/notes';
 import { useOrgMembers } from '@/queries/org-members';
+import { useRisks } from '@/queries/risks';
 
 type Framework = NonNullable<ReturnType<typeof useFrameworks>['data']>[number];
 
@@ -49,34 +49,35 @@ const EMPTY_FORM: ExceptionInput = {
   justification: '',
   ownerId: '',
   compensatingControls: '',
+  expiresAt: '',
+  riskId: '',
 };
 
 function ExceptionRow({
   exception,
   frameworks,
-  onApprove,
-  onReject,
+  onOpen,
   onDelete,
 }: {
   exception: Exception;
   frameworks: Framework[];
-  onApprove: () => void;
-  onReject: () => void;
+  onOpen: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
   const { data: linkedFindings = [] } = useFindingsByLink({ exceptionId: exception.id });
   const linkedFinding = linkedFindings[0];
+  const status = effectiveExceptionStatus(exception);
 
   return (
     <div className="flex items-start gap-4 bg-surface border border-border rounded-xl p-4">
-      <div className="flex-1 min-w-0">
+      <button type="button" onClick={onOpen} className="flex-1 min-w-0 text-left cursor-pointer">
         <div className="flex items-center gap-2 mb-1">
           <span className="font-medium text-sm text-foreground truncate">{exception.title}</span>
           <span
-            className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[exception.status]}`}
+            className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[status]}`}
           >
-            {t(`exceptions.status.${exception.status}`)}
+            {t(`exceptions.status.${status}`)}
           </span>
         </div>
         <p className="text-xs text-muted-foreground line-clamp-2">{exception.justification}</p>
@@ -86,34 +87,12 @@ function ExceptionRow({
             exception.frameworkId}
         </p>
         {linkedFinding && (
-          <Link
-            to="/controls/$id"
-            params={{ id: linkedFinding.controlId }}
-            className="font-mono text-xs underline text-muted-foreground hover:text-foreground"
-          >
+          <span className="font-mono text-xs underline text-muted-foreground">
             {t('exceptions.linkedFinding', { code: linkedFinding.code })}
-          </Link>
+          </span>
         )}
-      </div>
+      </button>
       <div className="flex gap-1.5 shrink-0">
-        {exception.status === 'pending' && (
-          <>
-            <button
-              type="button"
-              onClick={onApprove}
-              className="text-xs px-2 py-1 rounded bg-green-500/10 text-green-400 border border-green-500/20 hover:bg-green-500/20 transition-colors cursor-pointer"
-            >
-              {t('exceptions.approve')}
-            </button>
-            <button
-              type="button"
-              onClick={onReject}
-              className="text-xs px-2 py-1 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors cursor-pointer"
-            >
-              {t('exceptions.reject')}
-            </button>
-          </>
-        )}
         <button
           type="button"
           onClick={onDelete}
@@ -134,12 +113,12 @@ export function ExceptionsPage() {
   const { data: exceptions = [], isPending } = useExceptions(orgId);
   const { data: frameworks = [] } = useFrameworks();
   const { data: members = [] } = useOrgMembers(orgId);
+  const { data: risks = [] } = useRisks(orgId);
   const createMut = useCreateException(orgId);
-  const approveMut = useApproveException(orgId);
-  const rejectMut = useRejectException(orgId);
   const deleteMut = useDeleteException(orgId);
 
   const [open, setOpen] = useState(false);
+  const [selectedExceptionId, setSelectedExceptionId] = useState<string | null>(null);
   const [form, setForm] = useState<ExceptionInput>(EMPTY_FORM);
   const isDirty = open && JSON.stringify(form) !== JSON.stringify(EMPTY_FORM);
   const { showDialog, confirmLeave, cancelLeave } = useDraft(isDirty);
@@ -160,6 +139,7 @@ export function ExceptionsPage() {
     value: m.userId,
     label: m.displayName ?? m.email ?? m.userId,
   }));
+  const riskOptions = risks.map((r) => ({ value: r.id, label: r.title }));
 
   function handleFrameworkChange(frameworkId: string) {
     setForm((f) => ({ ...f, frameworkId, standardCode: '', controlCode: '' }));
@@ -173,15 +153,19 @@ export function ExceptionsPage() {
       !form.controlCode ||
       !form.statement ||
       !form.justification ||
-      !form.ownerId
+      !form.ownerId ||
+      !form.expiresAt
     )
       return;
-    createMut.mutate(form, {
-      onSuccess: () => {
-        setOpen(false);
-        setForm(EMPTY_FORM);
+    createMut.mutate(
+      { ...form, riskId: form.riskId || undefined },
+      {
+        onSuccess: () => {
+          setOpen(false);
+          setForm(EMPTY_FORM);
+        },
       },
-    });
+    );
   }
 
   return (
@@ -215,8 +199,7 @@ export function ExceptionsPage() {
               key={exc.id}
               exception={exc}
               frameworks={frameworks}
-              onApprove={() => approveMut.mutate(exc.id)}
-              onReject={() => rejectMut.mutate(exc.id)}
+              onOpen={() => setSelectedExceptionId(exc.id)}
               onDelete={() => deleteMut.mutate(exc.id)}
             />
           ))}
@@ -288,6 +271,27 @@ export function ExceptionsPage() {
                 />
               </div>
             </div>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>{t('exceptions.expiresAt')}</Label>
+                <Input
+                  type="date"
+                  value={form.expiresAt?.slice(0, 10) ?? ''}
+                  onChange={(e) => setForm((f) => ({ ...f, expiresAt: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('exceptions.linkedRisk')}</Label>
+                <Combobox
+                  options={riskOptions}
+                  value={form.riskId ?? ''}
+                  onChange={(v) => setForm((f) => ({ ...f, riskId: v }))}
+                  placeholder={t('exceptions.selectRisk')}
+                  searchPlaceholder={t('exceptions.searchRisk')}
+                />
+              </div>
+            </div>
             <div className="space-y-2">
               <Label>{t('exceptions.statement')}</Label>
               <textarea
@@ -332,6 +336,14 @@ export function ExceptionsPage() {
         </DialogContent>
       </Dialog>
       <UnsavedChangesDialog open={showDialog} onConfirm={confirmLeave} onCancel={cancelLeave} />
+      {selectedExceptionId && exceptions.find((e) => e.id === selectedExceptionId) && (
+        <ExceptionDetailSheet
+          exception={exceptions.find((e) => e.id === selectedExceptionId)!}
+          orgId={orgId}
+          open={!!selectedExceptionId}
+          onOpenChange={(o) => !o && setSelectedExceptionId(null)}
+        />
+      )}
     </PageLayout>
   );
 }

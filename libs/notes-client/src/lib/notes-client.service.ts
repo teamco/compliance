@@ -29,6 +29,8 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewal,
+  ExceptionRenewalRequestInput,
   Finding,
   Framework,
   FrameworkControl,
@@ -681,16 +683,54 @@ export class NotesClientService {
     return signedSend<Exception>(this.client, 'notes.exceptions.update', { id, patch });
   }
 
-  approveException(id: string): Promise<Exception> {
-    return signedSend<Exception>(this.client, 'notes.exceptions.approve', { id });
+  approveException(id: string, approverId: string): Promise<Exception> {
+    return signedSend<Exception>(this.client, 'notes.exceptions.approve', { id, approverId });
   }
 
-  rejectException(id: string): Promise<Exception> {
-    return signedSend<Exception>(this.client, 'notes.exceptions.reject', { id });
+  rejectException(id: string, approverId: string): Promise<Exception> {
+    return signedSend<Exception>(this.client, 'notes.exceptions.reject', { id, approverId });
   }
 
   deleteException(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.exceptions.delete', { id });
+  }
+
+  requestExceptionRenewal(
+    exceptionId: string,
+    requestedBy: string,
+    data: ExceptionRenewalRequestInput,
+  ): Promise<ExceptionRenewal> {
+    return signedSend<ExceptionRenewal>(this.client, 'notes.exceptions.renewals.request', {
+      exceptionId,
+      requestedBy,
+      data,
+    });
+  }
+
+  reviewExceptionRenewal(
+    id: string,
+    reviewerId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<ExceptionRenewal> {
+    return signedSend<ExceptionRenewal>(this.client, 'notes.exceptions.renewals.review', {
+      id,
+      reviewerId,
+      decision,
+      reviewNotes,
+    });
+  }
+
+  getExceptionRenewal(id: string): Promise<ExceptionRenewal | null> {
+    return signedSend<ExceptionRenewal | null>(this.client, 'notes.exceptions.renewals.get', {
+      id,
+    });
+  }
+
+  listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]> {
+    return signedSend<ExceptionRenewal[]>(this.client, 'notes.exceptions.renewals.list', {
+      exceptionId,
+    });
   }
 
   // ─── Issues ──────────────────────────────────────────────────────────────

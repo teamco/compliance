@@ -32,6 +32,10 @@ const mockException: Exception = {
   ownerId: 'u1',
   status: 'pending',
   expiresAt: null,
+  riskId: null,
+  reviewFrequencyDays: null,
+  reviewedBy: null,
+  reviewedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
@@ -230,6 +234,42 @@ describe('ExceptionsPage — New Exception dialog', () => {
     expect(screen.queryByText('STD-1 — Access Control')).toBeNull();
     expect(screen.queryByText('AC-1 — Access Control')).toBeNull();
   });
+
+  it('submits riskId as undefined, not an empty string, when no risk is picked', async () => {
+    const { ExceptionsPage } = await import('../-exceptions.page');
+    render(wrap(<ExceptionsPage />));
+    fireEvent.click(screen.getByText('New Exception'));
+
+    const comboboxes = () => screen.getAllByRole('combobox');
+
+    fireEvent.change(screen.getByPlaceholderText('Brief description of the exception'), {
+      target: { value: 'Legacy portal cannot do MFA' },
+    });
+    fireEvent.click(comboboxes()[0]);
+    fireEvent.click(screen.getByText('SOC2 — SOC 2'));
+    fireEvent.click(comboboxes()[2]);
+    fireEvent.click(screen.getByText('AC-1 — Access Control'));
+    fireEvent.click(comboboxes()[3]);
+    fireEvent.click(screen.getByText('Alice'));
+    fireEvent.change(document.querySelector('input[type="date"]') as HTMLInputElement, {
+      target: { value: '2026-12-31' },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText('Quote or paraphrase the standard text that is not met'),
+      { target: { value: 'Control AC-1 requires MFA' } },
+    );
+    fireEvent.change(screen.getByPlaceholderText('Why this control cannot be met'), {
+      target: { value: 'Vendor contract ends in Q2' },
+    });
+
+    // Linked Risk combobox is deliberately never touched.
+    fireEvent.click(screen.getByText('Create'));
+
+    expect(createMutate).toHaveBeenCalledTimes(1);
+    const payload = createMutate.mock.calls[0][0] as { riskId?: string; title: string };
+    expect(payload.title).toBe('Legacy portal cannot do MFA');
+    expect(payload.riskId).toBeUndefined();
+  });
 });
 
 describe('ExceptionsPage — reverse back-link to originating Finding', () => {
@@ -244,8 +284,8 @@ describe('ExceptionsPage — reverse back-link to originating Finding', () => {
     const { ExceptionsPage } = await import('../-exceptions.page');
     render(wrap(<ExceptionsPage />));
 
-    const link = screen.getByText('From Finding FIND-000303');
-    expect(link.closest('a')?.getAttribute('href')).toBe('/controls/c1');
+    const linkText = screen.getByText('From Finding FIND-000303');
+    expect(linkText.tagName).toBe('SPAN');
   });
 
   it('does not show a Finding back-link when no Finding links to the exception', async () => {
