@@ -40,6 +40,7 @@ const WORKFLOW_STEP_COLOR: Record<WorkflowStatus, string> = {
   in_review: 'text-amber-400',
   approved: 'text-blue-400',
   published: 'text-green-500',
+  superseded: 'text-slate-400',
 };
 
 const TRANSITION_FOR_STATUS: Record<WorkflowStatus, WorkflowTransition | null> = {
@@ -47,6 +48,7 @@ const TRANSITION_FOR_STATUS: Record<WorkflowStatus, WorkflowTransition | null> =
   in_review: 'approve',
   approved: 'publish',
   published: null,
+  superseded: null,
 };
 
 const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish'];
@@ -171,6 +173,7 @@ const SNAPSHOT_WORKFLOW_COLOR: Record<WorkflowStatus, string> = {
   in_review: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
   approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   published: 'bg-green-500/10 text-green-500 border-green-500/20',
+  superseded: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
 };
 
 function SnapshotRow({ snap }: { snap: StandardsSnapshot }) {

@@ -8,6 +8,8 @@ import type {
   StandardPatch,
   Framework,
   FrameworkControl,
+  WorkflowStatus,
+  WorkflowTransition,
 } from '@icore/shared';
 
 export type {
@@ -18,11 +20,11 @@ export type {
   StandardPatch,
   Framework,
   FrameworkControl,
+  WorkflowStatus,
+  WorkflowTransition,
 };
 
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
-export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
-export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
 
 export interface StandardsDocument {
   id: string;

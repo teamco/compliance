@@ -376,8 +376,8 @@ export interface DocumentStandard {
   frameworkMappings: { frameworkId: string; standardCode: string }[];
 }
 
-export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
-export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
+export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'superseded';
+export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish' | 'supersede';
 
 export const WORKFLOW_TRANSITIONS: Record<
   WorkflowTransition,
@@ -387,9 +387,15 @@ export const WORKFLOW_TRANSITIONS: Record<
   approve: { from: 'in_review', to: 'approved' },
   reject: { from: 'in_review', to: 'draft' },
   publish: { from: 'approved', to: 'published' },
+  supersede: { from: 'published', to: 'superseded' },
 };
 
-export const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish'];
+export const ADMIN_TRANSITIONS: WorkflowTransition[] = [
+  'approve',
+  'reject',
+  'publish',
+  'supersede',
+];
 
 export interface StandardsDocument {
   id: string;
