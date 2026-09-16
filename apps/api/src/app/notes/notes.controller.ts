@@ -173,13 +173,16 @@ export class NotesController {
 
   @Get('internal-controls')
   @ApiOperation({ summary: 'List internal controls for org' })
-  listInternalControls(
+  async listInternalControls(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId?: string,
     @Query('frameworkId') frameworkId?: string,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listInternalControls(orgId, frameworkId);
   }
 
@@ -205,61 +208,95 @@ export class NotesController {
   ) {
     this.uid(req);
     const control = await this.notes.getInternalControl(id);
-    if (!control) throw new NotFoundException();
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return control;
   }
 
   @Patch('internal-controls/:id')
   @ApiOperation({ summary: 'Update internal control' })
-  updateInternalControl(
+  async updateInternalControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: InternalControlPatch,
   ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateInternalControl(id, patch);
   }
 
   @Delete('internal-controls/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete internal control' })
-  deleteInternalControl(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteInternalControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteInternalControl(id);
   }
 
   @Post('internal-controls/:id/mappings')
   @ApiOperation({ summary: 'Add a framework mapping to an internal control' })
-  addControlFrameworkMapping(
+  async addControlFrameworkMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: ControlFrameworkMappingInput,
   ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.addControlFrameworkMapping(id, body);
   }
 
   @Delete('internal-controls/:id/mappings/:mappingId')
   @ApiOperation({ summary: 'Remove a framework mapping from an internal control' })
-  removeControlFrameworkMapping(
+  async removeControlFrameworkMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Param('mappingId') mappingId: string,
   ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.removeControlFrameworkMapping(id, mappingId);
   }
 
   @Get('internal-controls/:id/evidence')
   @ApiOperation({ summary: 'List evidence attached to an internal control' })
-  listControlEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlEvidence(id);
   }
 
   @Post('internal-controls/:id/evidence')
   @ApiOperation({ summary: 'Attach evidence to an internal control' })
-  createControlEvidence(
+  async createControlEvidence(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
@@ -277,6 +314,9 @@ export class NotesController {
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createControlEvidence(orgId, id, {
       ...body,
       createdBy: userId,
@@ -289,14 +329,22 @@ export class NotesController {
 
   @Get('internal-controls/:id/assessments')
   @ApiOperation({ summary: 'List assessments for an internal control' })
-  listControlAssessments(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlAssessments(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlAssessments(id);
   }
 
   @Post('internal-controls/:id/assessments')
   @ApiOperation({ summary: 'Record a control assessment (may generate a Finding)' })
-  createControlAssessment(
+  async createControlAssessment(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
@@ -304,6 +352,9 @@ export class NotesController {
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createControlAssessment(orgId, id, body);
   }
 
@@ -463,8 +514,16 @@ export class NotesController {
 
   @Get('internal-controls/:id/activity')
   @ApiOperation({ summary: 'List activity log for an internal control' })
-  listControlActivity(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlActivity(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlActivity(id);
   }
 
