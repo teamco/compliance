@@ -3,7 +3,7 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { NotesClientService } from '@icore/notes-client';
-import type { Organization, RequirementEvidence, VerifiedToken } from '@icore/shared';
+import type { Asset, Organization, RequirementEvidence, VerifiedToken } from '@icore/shared';
 import { NotesController } from '../notes.controller';
 import { AbilityFactory } from '../../abilities/ability.factory';
 import type { StandardsQueueService } from '../standards-queue.service';
@@ -31,13 +31,28 @@ const EVIDENCE: RequirementEvidence = {
   verifiedAt: null,
 } as unknown as RequirementEvidence;
 
+const ASSET: Asset = {
+  id: 'asset-1',
+  orgId: 'org-1',
+  userId: 'org-creator',
+  name: 'Prod DB',
+  type: 'system',
+  criticality: 'high',
+  description: '',
+  owner: 'IT',
+  status: 'active',
+} as unknown as Asset;
+
 function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientService {
   return {
     getEvidence: vi.fn().mockResolvedValue(EVIDENCE),
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
+    getAsset: vi.fn().mockResolvedValue(ASSET),
     updateEvidence: vi.fn().mockResolvedValue({ ...EVIDENCE, title: 'Updated' }),
     deleteEvidence: vi.fn().mockResolvedValue(undefined),
     reviewEvidence: vi.fn().mockResolvedValue({ ...EVIDENCE, verificationStatus: 'verified' }),
+    createControlEvidence: vi.fn().mockResolvedValue(EVIDENCE),
+    createAssetEvidence: vi.fn().mockResolvedValue(EVIDENCE),
     ...overrides,
   } as unknown as NotesClientService;
 }
@@ -144,6 +159,99 @@ describe('NotesController — evidence authorization', () => {
           decision: 'verified',
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createAssetEvidence', () => {
+    const body = {
+      title: 'DR runbook',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00Z',
+      url: 'https://example.com',
+    } as unknown as Omit<
+      RequirementEvidence,
+      'id' | 'assetId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >;
+
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).createAssetEvidence(reqAs('outsider'), 'org-1', 'asset-1', body),
+      ).rejects.toThrow(ForbiddenException);
+      expect(notes.createAssetEvidence).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the asset does not belong to the given org', async () => {
+      const notes = makeNotes({
+        getAsset: vi.fn().mockResolvedValue({ ...ASSET, orgId: 'org-2' }),
+      });
+      await expect(
+        makeController(notes).createAssetEvidence(reqAs('org-creator'), 'org-1', 'asset-1', body),
+      ).rejects.toThrow(NotFoundException);
+      expect(notes.createAssetEvidence).not.toHaveBeenCalled();
+    });
+
+    it('allows the org creator and always creates as pending_review', async () => {
+      const notes = makeNotes();
+      await makeController(notes).createAssetEvidence(
+        reqAs('org-creator'),
+        'org-1',
+        'asset-1',
+        body,
+      );
+      expect(notes.createAssetEvidence).toHaveBeenCalledWith(
+        'org-1',
+        'asset-1',
+        expect.objectContaining({
+          createdBy: 'org-creator',
+          verificationStatus: 'pending_review',
+          verifiedBy: null,
+          verifiedAt: null,
+        }),
+      );
+    });
+  });
+
+  describe('createControlEvidence', () => {
+    it('ignores a client-supplied verificationStatus and always creates as pending_review', async () => {
+      const notes = makeNotes();
+      const body = {
+        title: 'Firewall config',
+        owner: 'IT',
+        evidenceType: 'config',
+        source: 'internal',
+        collectionDate: '2026-09-01T00:00:00Z',
+        periodCovered: '2026-Q3',
+        expirationDate: '2027-09-01T00:00:00Z',
+        verificationStatus: 'verified',
+        verifiedBy: 'attacker',
+        verifiedAt: '2026-09-01T00:00:00Z',
+      } as unknown as Omit<
+        RequirementEvidence,
+        'id' | 'controlId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+      >;
+
+      await makeController(notes).createControlEvidence(
+        reqAs('some-user'),
+        'org-1',
+        'control-1',
+        body,
+      );
+
+      expect(notes.createControlEvidence).toHaveBeenCalledWith(
+        'org-1',
+        'control-1',
+        expect.objectContaining({
+          createdBy: 'some-user',
+          verificationStatus: 'pending_review',
+          verifiedBy: null,
+          verifiedAt: null,
+        }),
+      );
     });
   });
 });

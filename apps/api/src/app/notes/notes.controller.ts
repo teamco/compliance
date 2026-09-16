@@ -262,11 +262,21 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'controlId' | 'createdBy'>,
+    @Body()
+    body: Omit<
+      RequirementEvidence,
+      'id' | 'controlId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createControlEvidence(orgId, id, { ...body, createdBy: userId });
+    return this.notes.createControlEvidence(orgId, id, {
+      ...body,
+      createdBy: userId,
+      verificationStatus: 'pending_review',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
   }
 
   @Get('internal-controls/:id/assessments')
@@ -462,7 +472,11 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Query('orgId') orgId: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'createdBy'>,
+    @Body()
+    body: Omit<
+      RequirementEvidence,
+      'id' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
@@ -473,6 +487,9 @@ export class NotesController {
       ...body,
       frameworkId: id,
       createdBy: userId,
+      verificationStatus: 'pending_review',
+      verifiedBy: null,
+      verifiedAt: null,
     });
   }
 
@@ -1046,7 +1063,11 @@ export class NotesController {
   @Get('assets/:id/evidence')
   @ApiOperation({ summary: 'List evidence attached to an asset' })
   async listAssetEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
-    this.uid(req);
+    const asset = await this.notes.getAsset(id);
+    if (!asset) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(asset.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssetEvidence(id);
   }
 
@@ -1056,11 +1077,26 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'assetId' | 'createdBy'>,
+    @Body()
+    body: Omit<
+      RequirementEvidence,
+      'id' | 'assetId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createAssetEvidence(orgId, id, { ...body, createdBy: userId });
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    const asset = await this.notes.getAsset(id);
+    if (!asset || asset.orgId !== orgId) throw new NotFoundException();
+    return this.notes.createAssetEvidence(orgId, id, {
+      ...body,
+      createdBy: userId,
+      verificationStatus: 'pending_review',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
   }
 
   @Patch('evidence/:id')
@@ -1305,11 +1341,21 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'riskId' | 'createdBy'>,
+    @Body()
+    body: Omit<
+      RequirementEvidence,
+      'id' | 'riskId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createRiskEvidence(orgId, id, { ...body, createdBy: userId });
+    return this.notes.createRiskEvidence(orgId, id, {
+      ...body,
+      createdBy: userId,
+      verificationStatus: 'pending_review',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
   }
 
   @Get('risks/:id/assessment-items')
@@ -1515,14 +1561,24 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('itemId') itemId: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'assessmentItemId' | 'createdBy'>,
+    @Body()
+    body: Omit<
+      RequirementEvidence,
+      'id' | 'assessmentItemId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
-    return this.notes.createAssessmentItemEvidence(orgId, itemId, { ...body, createdBy: userId });
+    return this.notes.createAssessmentItemEvidence(orgId, itemId, {
+      ...body,
+      createdBy: userId,
+      verificationStatus: 'pending_review',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
   }
 
   @Patch('assessments/items/:itemId')
