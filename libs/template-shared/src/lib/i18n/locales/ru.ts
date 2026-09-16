@@ -668,6 +668,8 @@ export const ru = {
     verify: 'Подтвердить',
     reject: 'Отклонить',
     rejectedByReviewer: 'Отклонено при проверке',
+    deleteConfirmTitle: 'Удалить это доказательство?',
+    deleteConfirmDescription: 'Это действие нельзя отменить.',
     status: {
       verified: 'Подтверждено',
       pending_review: 'На проверке',

@@ -702,6 +702,8 @@ export const en = {
     verify: 'Verify',
     reject: 'Reject',
     rejectedByReviewer: 'Rejected during review',
+    deleteConfirmTitle: 'Delete this evidence?',
+    deleteConfirmDescription: 'This action cannot be undone.',
     status: {
       verified: 'Verified',
       pending_review: 'Pending Review',

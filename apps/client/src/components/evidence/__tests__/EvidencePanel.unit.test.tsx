@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ const createMutate = vi.fn();
 const updateMutate = vi.fn();
 const deleteMutate = vi.fn();
 const reviewMutate = vi.fn();
+const notifyError = vi.fn();
 
 vi.mock('@/queries/controls', () => ({
   useControlEvidence: () => ({ data: mockEvidence }),
@@ -21,6 +22,14 @@ vi.mock('@/queries/evidence', () => ({
   useDeleteEvidence: () => ({ mutate: deleteMutate, isPending: false }),
   useReviewEvidence: () => ({ mutate: reviewMutate, isPending: false }),
 }));
+
+vi.mock('@icore/template-shared', async () => {
+  const actual = await vi.importActual('@icore/template-shared');
+  return {
+    ...actual,
+    useNotify: () => ({ error: notifyError, success: vi.fn() }),
+  };
+});
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
 
@@ -53,10 +62,11 @@ const EVIDENCE: RequirementEvidence = {
 describe('EvidencePanel', () => {
   beforeEach(() => {
     mockEvidence = [];
-    createMutate.mockClear();
-    updateMutate.mockClear();
-    deleteMutate.mockClear();
-    reviewMutate.mockClear();
+    createMutate.mockReset();
+    updateMutate.mockReset();
+    deleteMutate.mockReset();
+    reviewMutate.mockReset();
+    notifyError.mockClear();
   });
 
   it('renders an empty state with no evidence', async () => {
@@ -131,7 +141,7 @@ describe('EvidencePanel', () => {
     expect(screen.getByText(/^verify$/i)).toBeTruthy();
   });
 
-  it('calls delete when the delete action is clicked', async () => {
+  it('does not delete immediately, requires confirming the AlertDialog first', async () => {
     mockEvidence = [EVIDENCE];
     const { EvidencePanel } = await import('../EvidencePanel');
     render(
@@ -140,6 +150,59 @@ describe('EvidencePanel', () => {
       ),
     );
     fireEvent.click(screen.getByText(/delete/i));
-    expect(deleteMutate).toHaveBeenCalledWith('ev-1');
+    expect(deleteMutate).not.toHaveBeenCalled();
+
+    const alertDialog = screen.getByRole('alertdialog');
+    fireEvent.click(within(alertDialog).getByRole('button', { name: /^delete$/i }));
+    expect(deleteMutate).toHaveBeenCalledWith('ev-1', expect.anything());
+  });
+
+  it('shows an empty create form after editing an item and cancelling', async () => {
+    mockEvidence = [EVIDENCE];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    fireEvent.click(screen.getByText(/^edit$/i));
+    expect((screen.getByPlaceholderText(/title/i) as HTMLInputElement).value).toBe(
+      EVIDENCE.title,
+    );
+    fireEvent.click(screen.getByText(/^cancel$/i));
+
+    fireEvent.click(screen.getByText(/add evidence/i));
+    expect((screen.getByPlaceholderText(/title/i) as HTMLInputElement).value).toBe('');
+  });
+
+  it('can open an item with an undefined expirationDate for edit, then the create form, without crashing', async () => {
+    mockEvidence = [{ ...EVIDENCE, expirationDate: undefined as unknown as string }];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    expect(() => fireEvent.click(screen.getByText(/^edit$/i))).not.toThrow();
+    fireEvent.click(screen.getByText(/^cancel$/i));
+
+    expect(() => fireEvent.click(screen.getByText(/add evidence/i))).not.toThrow();
+    expect((screen.getByPlaceholderText(/title/i) as HTMLInputElement).value).toBe('');
+  });
+
+  it('notifies on error when a mutation fails', async () => {
+    mockEvidence = [EVIDENCE];
+    createMutate.mockImplementation((_payload, opts) => opts.onError());
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    fireEvent.click(screen.getByText(/add evidence/i));
+    fireEvent.change(screen.getByPlaceholderText(/title/i), { target: { value: 'New evidence' } });
+    fireEvent.click(screen.getByText(/^save$/i));
+
+    expect(notifyError).toHaveBeenCalled();
   });
 });

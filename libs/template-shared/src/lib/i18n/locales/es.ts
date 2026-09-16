@@ -680,6 +680,8 @@ export const es = {
     verify: 'Verificar',
     reject: 'Rechazar',
     rejectedByReviewer: 'Rechazada durante la revisión',
+    deleteConfirmTitle: '¿Eliminar esta evidencia?',
+    deleteConfirmDescription: 'Esta acción no se puede deshacer.',
     status: {
       verified: 'Verificada',
       pending_review: 'Pendiente de revisión',

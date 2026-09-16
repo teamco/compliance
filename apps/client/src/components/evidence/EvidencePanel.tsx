@@ -4,7 +4,18 @@ import { CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { safeHref } from '@/lib/safe-href';
+import { useNotify } from '@icore/template-shared';
 import type { RequirementEvidence } from '@icore/shared';
 import { useControlEvidence, useCreateControlEvidence } from '@/queries/controls';
 import { useFrameworkEvidence, useCreateFrameworkEvidence } from '@/queries/frameworks';
@@ -86,6 +97,7 @@ function useCreateOwnerEvidence(props: EvidencePanelProps) {
 
 export function EvidencePanel(props: EvidencePanelProps) {
   const { t } = useTranslation();
+  const notify = useNotify();
   const evidence = useOwnerEvidence(props);
   const createMut = useCreateOwnerEvidence(props);
   const updateMut = useUpdateEvidence();
@@ -95,6 +107,8 @@ export function EvidencePanel(props: EvidencePanelProps) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function handleCreate() {
     if (!form.title.trim()) return;
@@ -120,6 +134,7 @@ export function EvidencePanel(props: EvidencePanelProps) {
         setForm(EMPTY_FORM);
         setOpen(false);
       },
+      onError: () => notify.error(t('error.unknown')),
     });
   }
 
@@ -128,32 +143,39 @@ export function EvidencePanel(props: EvidencePanelProps) {
       {
         id,
         patch: {
-          title: form.title,
-          owner: form.owner,
-          evidenceType: form.evidenceType,
-          source: form.source,
-          collectionDate: form.collectionDate,
-          periodCovered: form.periodCovered,
-          expirationDate: form.expirationDate,
-          url: form.url || undefined,
+          title: editForm.title,
+          owner: editForm.owner,
+          evidenceType: editForm.evidenceType,
+          source: editForm.source,
+          collectionDate: editForm.collectionDate,
+          periodCovered: editForm.periodCovered,
+          expirationDate: editForm.expirationDate,
+          url: editForm.url || undefined,
         },
       },
-      { onSuccess: () => setEditingId(null) },
+      {
+        onSuccess: () => setEditingId(null),
+        onError: () => notify.error(t('error.unknown')),
+      },
     );
   }
 
   function startEdit(e: RequirementEvidence) {
     setEditingId(e.id);
-    setForm({
+    setEditForm({
       title: e.title,
       owner: e.owner,
       evidenceType: e.evidenceType,
       source: e.source,
       collectionDate: e.collectionDate,
       periodCovered: e.periodCovered,
-      expirationDate: e.expirationDate,
+      expirationDate: e.expirationDate ?? '',
       url: e.url ?? '',
     });
+  }
+
+  function handleDelete(id: string) {
+    deleteMut.mutate(id, { onError: () => notify.error(t('error.unknown')) });
   }
 
   return (
@@ -172,14 +194,14 @@ export function EvidencePanel(props: EvidencePanelProps) {
               return (
                 <div key={e.id} className="space-y-1.5 border border-border rounded p-2">
                   <Input
-                    value={form.title}
-                    onChange={(ev) => setForm((f) => ({ ...f, title: ev.target.value }))}
+                    value={editForm.title}
+                    onChange={(ev) => setEditForm((f) => ({ ...f, title: ev.target.value }))}
                     placeholder={t('evidence.titlePlaceholder')}
                     className="h-8 text-xs"
                   />
                   <Input
-                    value={form.url}
-                    onChange={(ev) => setForm((f) => ({ ...f, url: ev.target.value }))}
+                    value={editForm.url}
+                    onChange={(ev) => setEditForm((f) => ({ ...f, url: ev.target.value }))}
                     placeholder={t('evidence.urlPlaceholder')}
                     className="h-8 text-xs"
                   />
@@ -228,7 +250,7 @@ export function EvidencePanel(props: EvidencePanelProps) {
                   </button>
                   <button
                     type="button"
-                    onClick={() => deleteMut.mutate(e.id)}
+                    onClick={() => setConfirmDeleteId(e.id)}
                     className="text-muted-foreground hover:text-destructive cursor-pointer"
                   >
                     <Trash2 size={12} className="inline mr-0.5" />
@@ -238,7 +260,12 @@ export function EvidencePanel(props: EvidencePanelProps) {
                     <>
                       <button
                         type="button"
-                        onClick={() => reviewMut.mutate({ id: e.id, decision: 'verified' })}
+                        onClick={() =>
+                          reviewMut.mutate(
+                            { id: e.id, decision: 'verified' },
+                            { onError: () => notify.error(t('error.unknown')) },
+                          )
+                        }
                         className="text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         <CheckCircle2 size={12} className="inline mr-0.5" />
@@ -247,11 +274,14 @@ export function EvidencePanel(props: EvidencePanelProps) {
                       <button
                         type="button"
                         onClick={() =>
-                          reviewMut.mutate({
-                            id: e.id,
-                            decision: 'rejected',
-                            reviewNotes: t('evidence.rejectedByReviewer'),
-                          })
+                          reviewMut.mutate(
+                            {
+                              id: e.id,
+                              decision: 'rejected',
+                              reviewNotes: t('evidence.rejectedByReviewer'),
+                            },
+                            { onError: () => notify.error(t('error.unknown')) },
+                          )
                         }
                         className="text-muted-foreground hover:text-destructive cursor-pointer"
                       >
@@ -338,11 +368,42 @@ export function EvidencePanel(props: EvidencePanelProps) {
           </div>
         </div>
       ) : (
-        <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setForm(EMPTY_FORM);
+            setOpen(true);
+          }}
+        >
           <Plus size={14} className="mr-1.5" />
           {t('evidence.addEvidence')}
         </Button>
       )}
+      <AlertDialog
+        open={!!confirmDeleteId}
+        onOpenChange={(isOpen) => !isOpen && setConfirmDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('evidence.deleteConfirmTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('evidence.deleteConfirmDescription')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (confirmDeleteId) handleDelete(confirmDeleteId);
+                setConfirmDeleteId(null);
+              }}
+            >
+              {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

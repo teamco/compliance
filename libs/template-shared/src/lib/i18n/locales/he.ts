@@ -658,6 +658,8 @@ export const he = {
     verify: 'אמת',
     reject: 'דחה',
     rejectedByReviewer: 'נדחה במהלך הביקורת',
+    deleteConfirmTitle: 'למחוק את הראיה הזו?',
+    deleteConfirmDescription: 'לא ניתן לבטל פעולה זו.',
     status: {
       verified: 'מאומת',
       pending_review: 'ממתין לבדיקה',
