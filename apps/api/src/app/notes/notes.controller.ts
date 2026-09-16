@@ -693,13 +693,21 @@ export class NotesController {
     @Query('orgId') orgId?: string,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listStandardsDocuments(orgId);
   }
 
   @Get('standards/:id')
   @ApiOperation({ summary: 'Get a standards document' })
-  getStandards(@Param('id') id: string) {
-    return this.notes.getStandardsDocument(id);
+  async getStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
+    return doc;
   }
 
   @Patch('standards/:id/workflow')
@@ -718,6 +726,11 @@ export class NotesController {
     @Param('id') id: string,
     @Body() body: { transition: WorkflowTransition },
   ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'update');
     const result = await this.notes.transitionWorkflow(id, body.transition);
     const uid = req.user?.uid;
     if (uid) {
@@ -729,24 +742,45 @@ export class NotesController {
   @Patch('standards/:id/standards/:code')
   @ApiOperation({ summary: 'Update a single generated standard (objective, scope)' })
   @ApiBody({ schema: { type: 'object' } })
-  updateStandard(
+  async updateStandard(
+    @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Param('code') code: string,
     @Body() patch: StandardPatch,
   ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateStandard(id, code, patch);
   }
 
   @Get('standards/:id/snapshots')
   @ApiOperation({ summary: 'List immutable approval snapshots for a standards document' })
-  listSnapshots(@Param('id') id: string) {
+  async listSnapshots(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listSnapshots(id);
   }
 
   @Get('standards/snapshots/:snapshotId')
   @ApiOperation({ summary: 'Get a single snapshot by ID' })
-  getSnapshot(@Param('snapshotId') snapshotId: string) {
-    return this.notes.getSnapshot(snapshotId);
+  async getSnapshot(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('snapshotId') snapshotId: string,
+  ) {
+    const snapshot = await this.notes.getSnapshot(snapshotId);
+    if (!snapshot) throw new NotFoundException('snapshot_not_found');
+    const doc = await this.notes.getStandardsDocument(snapshot.documentId);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
+    return snapshot;
   }
 
   @Post('standards/generate')
@@ -792,6 +826,9 @@ export class NotesController {
   async deleteStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'delete');
     if (doc.status === 'pending') {
       await this.notes.failStandardsDocument(id, 'cancelled');
     }
@@ -803,6 +840,9 @@ export class NotesController {
   async retryStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'update');
 
     const STUCK_MS = 5 * 60 * 1000;
     const isPendingTooLong =
@@ -811,9 +851,6 @@ export class NotesController {
     if (doc.status !== 'failed' && !isPendingTooLong) {
       throw new BadRequestException('doc_not_retryable');
     }
-
-    const org = await this.notes.getOrganizationById(doc.orgId);
-    if (!org) throw new NotFoundException('org_not_found');
 
     await this.notes.resetStandardsDocument(id);
 
