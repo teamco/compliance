@@ -1048,8 +1048,6 @@ export interface AssessmentItemControlMappingInput {
 
 // ─── Policies ──────────────────────────────────────────────────────────────
 
-export type PolicyStatus = 'draft' | 'approved';
-
 export interface Policy {
   id: string;
   orgId: string;
@@ -1057,7 +1055,7 @@ export interface Policy {
   frameworkId: string;
   title: string;
   content: string;
-  status: PolicyStatus;
+  workflowStatus: WorkflowStatus;
   version: number;
   templateId: string | null;
   createdAt: string;
@@ -1074,7 +1072,6 @@ export interface PolicyInput {
 export interface PolicyPatch {
   title?: string;
   content?: string;
-  status?: PolicyStatus;
 }
 
 // ─── Policy Templates ──────────────────────────────────────────────────────

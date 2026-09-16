@@ -1552,24 +1552,14 @@ describe('policies', () => {
     s = new FakeNotesStrategy();
   });
 
-  it('creates policy with draft status', async () => {
+  it('creates policy in draft workflow status', async () => {
     const p = await s.createPolicy('org1', 'u1', {
       frameworkId: 'fw1',
       title: 'Access Control Policy',
       content: '# Access Control\n\nAll systems require MFA.',
     });
-    expect(p.status).toBe('draft');
+    expect(p.workflowStatus).toBe('draft');
     expect(p.version).toBe(1);
-  });
-
-  it('approves policy', async () => {
-    const p = await s.createPolicy('org1', 'u1', {
-      frameworkId: 'fw1',
-      title: 'T',
-      content: 'C',
-    });
-    const approved = await s.updatePolicy(p.id, { status: 'approved' });
-    expect(approved.status).toBe('approved');
   });
 
   it('bumps version on content update', async () => {
@@ -1599,7 +1589,7 @@ describe('policies', () => {
   it('clones template into a new draft policy', async () => {
     const cloned = await s.cloneTemplate('org1', 'u1', 'tmpl-1');
     expect(cloned.templateId).toBe('tmpl-1');
-    expect(cloned.status).toBe('draft');
+    expect(cloned.workflowStatus).toBe('draft');
     expect(cloned.content).toContain('SOC 2');
   });
 

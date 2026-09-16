@@ -4779,7 +4779,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       frameworkId: data.frameworkId,
       title: data.title,
       content: data.content,
-      status: 'draft',
+      workflowStatus: 'draft',
       version: 1,
       templateId: data.templateId ?? null,
       createdAt: new Date().toISOString(),

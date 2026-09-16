@@ -3684,7 +3684,6 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.status !== undefined) update['status'] = patch.status;
     if (patch.content !== undefined) {
       update['content'] = patch.content;
       const cur = await this.db.from('policies').select('version').eq('id', id).single();
@@ -3781,7 +3780,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       frameworkId: row['framework_id'] as string,
       title: row['title'] as string,
       content: row['content'] as string,
-      status: row['status'] as Policy['status'],
+      workflowStatus: row['workflow_status'] as Policy['workflowStatus'],
       version: row['version'] as number,
       templateId: row['template_id'] as string | null,
       createdAt: row['created_at'] as string,
