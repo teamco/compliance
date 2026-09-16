@@ -928,21 +928,27 @@ export class NotesController {
 
   @Get('issues')
   @ApiOperation({ summary: 'List issues for org' })
-  listIssues(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listIssues(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listIssues(orgId);
   }
 
   @Post('issues')
   @ApiOperation({ summary: 'Create issue' })
-  createIssue(
+  async createIssue(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: IssueInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createIssue(orgId, userId, body);
   }
 
@@ -952,25 +958,38 @@ export class NotesController {
     this.uid(req);
     const issue = await this.notes.getIssue(id);
     if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return issue;
   }
 
   @Patch('issues/:id')
   @ApiOperation({ summary: 'Update issue status / severity' })
-  updateIssue(
+  async updateIssue(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: IssuePatch,
   ) {
     this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateIssue(id, patch);
   }
 
   @Delete('issues/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete issue' })
-  deleteIssue(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteIssue(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteIssue(id);
   }
 
