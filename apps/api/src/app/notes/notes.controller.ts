@@ -1992,6 +1992,48 @@ export class NotesController {
     return this.notes.removePolicyControl(mappingId);
   }
 
+  @Patch('policies/:id/workflow')
+  @ApiOperation({ summary: 'Transition a policy through its governance workflow' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['transition'],
+      properties: {
+        transition: {
+          type: 'string',
+          enum: ['submit', 'approve', 'reject', 'publish', 'supersede'],
+        },
+      },
+    },
+  })
+  async transitionPolicyWorkflow(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { transition: WorkflowTransition },
+  ) {
+    const userId = this.uid(req);
+    const policy = await this.notes.getPolicy(id);
+    if (!policy) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(policy.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.transitionPolicyWorkflow(id, body.transition, userId);
+  }
+
+  @Get('policies/:id/activity')
+  @ApiOperation({ summary: 'List activity log for a policy' })
+  async listPolicyActivity(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
+    const policy = await this.notes.getPolicy(id);
+    if (!policy) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(policy.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listPolicyActivity(id);
+  }
+
   @Get('policies/:id')
   @ApiOperation({ summary: 'Get policy' })
   async getPolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
