@@ -277,7 +277,7 @@ describe('NotesController — evidence authorization', () => {
       >;
 
       await makeController(notes).createControlEvidence(
-        reqAs('some-user'),
+        reqAs('org-creator'),
         'org-1',
         'control-1',
         body,
@@ -287,7 +287,7 @@ describe('NotesController — evidence authorization', () => {
         'org-1',
         'control-1',
         expect.objectContaining({
-          createdBy: 'some-user',
+          createdBy: 'org-creator',
           verificationStatus: 'pending_review',
           verifiedBy: null,
           verifiedAt: null,
