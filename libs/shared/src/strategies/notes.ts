@@ -288,6 +288,7 @@ export interface FrameworkActivity {
   id: string;
   frameworkId?: string;
   controlId?: string;
+  assetId?: string;
   action: string;
   details: string;
   actor: string;
@@ -1276,6 +1277,7 @@ export interface NotesStrategy {
   ): Promise<Exception>;
 
   listControlActivity(controlId: string): Promise<FrameworkActivity[]>;
+  listAssetActivity(assetId: string): Promise<FrameworkActivity[]>;
   listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]>;
   createFrameworkEvidence(
     orgId: string,

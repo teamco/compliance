@@ -2926,6 +2926,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return this.activities.filter((a) => a.controlId === controlId);
   }
 
+  async listAssetActivity(assetId: string): Promise<FrameworkActivity[]> {
+    return this.activities.filter((a) => a.assetId === assetId);
+  }
+
   async listFrameworkEvidence(
     frameworkId: string,
     _orgId?: string,
@@ -3831,6 +3835,14 @@ export class FakeNotesStrategy implements NotesStrategy {
       updatedAt: new Date().toISOString(),
     };
     this.assets.push(asset);
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      assetId: asset.id,
+      action: 'Asset Registered',
+      details: `Asset "${asset.name}" (${asset.code}) added to the catalog.`,
+      actor: asset.owner,
+      timestamp: asset.createdAt,
+    });
     return asset;
   }
 
@@ -3860,6 +3872,17 @@ export class FakeNotesStrategy implements NotesStrategy {
       updatedAt: new Date().toISOString(),
     };
     this.assets[idx] = updated;
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      assetId: id,
+      action: 'Asset Updated',
+      details:
+        patch.criticality !== undefined
+          ? `Criticality set to ${patch.criticality.toUpperCase()}.`
+          : `Asset "${updated.name}" details updated.`,
+      actor: updated.owner,
+      timestamp: updated.updatedAt,
+    });
     return updated;
   }
 
@@ -4666,6 +4689,14 @@ export class FakeNotesStrategy implements NotesStrategy {
       ...data,
     };
     this.evidence.unshift(ev);
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      assetId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+      timestamp: new Date().toISOString(),
+    });
     return ev;
   }
 

@@ -3,11 +3,12 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { Asset } from '@icore/shared';
+import type { Asset, FrameworkActivity } from '@icore/shared';
 
 const createMutate = vi.fn();
 const updateMutate = vi.fn();
 const deleteMutate = vi.fn();
+let activityMock: FrameworkActivity[] = [];
 
 const mockAssets: Asset[] = [
   {
@@ -90,6 +91,7 @@ vi.mock('@/queries/assets', () => ({
   useCreateAsset: () => ({ mutate: createMutate, isPending: false }),
   useUpdateAsset: () => ({ mutate: updateMutate, isPending: false }),
   useDeleteAsset: () => ({ mutate: deleteMutate, isPending: false }),
+  useAssetActivity: () => ({ data: activityMock }),
 }));
 
 vi.mock('@/queries/risks', () => ({
@@ -161,6 +163,7 @@ function wrap(ui: React.ReactElement) {
 describe('AssetsPage (Asset Catalog)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    activityMock = [];
   });
 
   it('renders KPI metric summary cards and asset table', async () => {
@@ -224,6 +227,40 @@ describe('AssetsPage (Asset Catalog)', () => {
     expect(screen.getByText('Controls')).toBeTruthy();
     expect(screen.getByText('Risks')).toBeTruthy();
     expect(screen.getByText('Issues')).toBeTruthy();
+  });
+
+  it('shows real activity entries on the Activity tab', async () => {
+    activityMock = [
+      {
+        id: 'act-1',
+        assetId: 'asset-1',
+        action: 'Asset Registered',
+        details: 'Asset "Customer Payment API" (AST-000101) added to the catalog.',
+        actor: 'Platform team',
+        timestamp: '2026-09-01T00:00:00.000Z',
+      },
+    ];
+    const { AssetsPage } = await import('../-assets.page');
+    render(wrap(<AssetsPage />));
+
+    fireEvent.click(screen.getByText('Customer Payment API'));
+    fireEvent.click(screen.getByText('Activity'));
+
+    expect(screen.getByText('Asset Registered')).toBeTruthy();
+    expect(
+      screen.getByText('Asset "Customer Payment API" (AST-000101) added to the catalog.'),
+    ).toBeTruthy();
+  });
+
+  it('shows the empty state on the Activity tab when there is no activity', async () => {
+    activityMock = [];
+    const { AssetsPage } = await import('../-assets.page');
+    render(wrap(<AssetsPage />));
+
+    fireEvent.click(screen.getByText('Customer Payment API'));
+    fireEvent.click(screen.getByText('Activity'));
+
+    expect(screen.getByText(/no recorded audit activity/i)).toBeTruthy();
   });
 
   it('opens bulk import dialog', async () => {

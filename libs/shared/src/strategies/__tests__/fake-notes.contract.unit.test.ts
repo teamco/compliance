@@ -656,6 +656,53 @@ describe('assets', () => {
     });
     expect(await s.listAssets('org2')).toHaveLength(0);
   });
+
+  it('logs an activity entry when an asset is registered', async () => {
+    const asset = await s.createAsset('org1', 'u1', {
+      name: 'Payment API',
+      type: 'service',
+      criticality: 'critical',
+      description: '',
+      owner: 'Platform team',
+    });
+    const activity = await s.listAssetActivity(asset.id);
+    expect(activity).toHaveLength(1);
+    expect(activity[0].action).toBe('Asset Registered');
+    expect(activity[0].assetId).toBe(asset.id);
+  });
+
+  it('logs an activity entry when an asset is updated', async () => {
+    const asset = await s.createAsset('org1', 'u1', {
+      name: 'DB',
+      type: 'infrastructure',
+      criticality: 'low',
+      description: '',
+      owner: '',
+    });
+    await s.updateAsset(asset.id, { criticality: 'high' });
+    const activity = await s.listAssetActivity(asset.id);
+    expect(activity.map((a) => a.action)).toEqual(['Asset Updated', 'Asset Registered']);
+    expect(activity[0].details).toContain('HIGH');
+  });
+
+  it("does not leak another asset's activity", async () => {
+    const asset1 = await s.createAsset('org1', 'u1', {
+      name: 'A',
+      type: 'other',
+      criticality: 'low',
+      description: '',
+      owner: '',
+    });
+    const asset2 = await s.createAsset('org1', 'u1', {
+      name: 'B',
+      type: 'other',
+      criticality: 'low',
+      description: '',
+      owner: '',
+    });
+    expect(await s.listAssetActivity(asset1.id)).toHaveLength(1);
+    expect(await s.listAssetActivity(asset2.id)).toHaveLength(1);
+  });
 });
 
 describe('risks', () => {
@@ -2489,6 +2536,27 @@ describe('unified evidence', () => {
     expect(ev.createdBy).toBe('user-1');
     const list = await s.listAssetEvidence('asset-1');
     expect(list.map((e) => e.id)).toEqual([ev.id]);
+  });
+
+  it('logs an activity entry when evidence is attached to an asset', async () => {
+    await s.createAssetEvidence('org1', 'asset-1', {
+      title: 'Firewall config export',
+      owner: 'Network Team',
+      evidenceType: 'config',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+      reviewNotes: null,
+    });
+    const activity = await s.listAssetActivity('asset-1');
+    expect(activity).toHaveLength(1);
+    expect(activity[0].action).toBe('Evidence Uploaded');
+    expect(activity[0].details).toContain('Firewall config export');
   });
 
   it('updates evidence metadata without touching verificationStatus', async () => {

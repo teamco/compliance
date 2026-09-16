@@ -926,11 +926,21 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map((row) => this.toFrameworkActivity(row));
   }
 
+  async listAssetActivity(assetId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('asset_id', assetId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
   private toFrameworkActivity(row: Record<string, unknown>): FrameworkActivity {
     return {
       id: row['id'] as string,
       frameworkId: row['framework_id'] as string | undefined,
       controlId: row['control_id'] as string | undefined,
+      assetId: row['asset_id'] as string | undefined,
       action: row['action'] as string,
       details: row['details'] as string,
       actor: row['actor'] as string,
@@ -2382,7 +2392,14 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       })
       .select()
       .single();
-    return this.toAsset(ok(row, error));
+    const asset = this.toAsset(ok(row, error));
+    await this.db.from('framework_activities').insert({
+      asset_id: asset.id,
+      action: 'Asset Registered',
+      details: `Asset "${asset.name}" (${asset.code}) added to the catalog.`,
+      actor: asset.owner,
+    });
+    return asset;
   }
 
   async getAsset(id: string): Promise<Asset | null> {
@@ -2427,7 +2444,17 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', id)
       .select()
       .single();
-    return this.toAsset(ok(data, error));
+    const asset = this.toAsset(ok(data, error));
+    await this.db.from('framework_activities').insert({
+      asset_id: id,
+      action: 'Asset Updated',
+      details:
+        patch.criticality !== undefined
+          ? `Criticality set to ${patch.criticality.toUpperCase()}.`
+          : `Asset "${asset.name}" details updated.`,
+      actor: asset.owner,
+    });
+    return asset;
   }
 
   async deleteAsset(id: string): Promise<void> {
@@ -3531,7 +3558,14 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .insert({ ...this.evidenceInsertPayload(orgId, data), asset_id: assetId })
       .select()
       .single();
-    return this.toRequirementEvidence(ok(row, error));
+    const evidence = this.toRequirementEvidence(ok(row, error));
+    await this.db.from('framework_activities').insert({
+      asset_id: assetId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+    });
+    return evidence;
   }
 
   private async getEvidenceOrThrow(id: string): Promise<RequirementEvidence> {

@@ -71,7 +71,13 @@ import {
 import { UnsavedChangesDialog } from '@/components/ui/unsaved-changes-dialog';
 import { PageLayout } from '@/components/PageLayout';
 import { useActiveOrgStore } from '@/stores/active-org';
-import { useAssets, useCreateAsset, useDeleteAsset, useUpdateAsset } from '@/queries/assets';
+import {
+  useAssetActivity,
+  useAssets,
+  useCreateAsset,
+  useDeleteAsset,
+  useUpdateAsset,
+} from '@/queries/assets';
 import { useRisks } from '@/queries/risks';
 import { useIssues } from '@/queries/issues';
 import { useVendors } from '@/queries/vendors';
@@ -323,6 +329,7 @@ export function AssetsPage() {
     () => assets.find((a) => a.id === viewingAssetId) || null,
     [assets, viewingAssetId],
   );
+  const { data: assetActivity = [] } = useAssetActivity(viewingAssetId ?? '');
   const [profileTab, setProfileTab] = useState<
     | 'overview'
     | 'relationships'
@@ -593,7 +600,7 @@ export function AssetsPage() {
             <div className="text-2xl font-bold mt-1.5">{metrics.total}</div>
           </div>
 
-          <div className="rounded-lg border bg-card/60 p-3.5 shadow-sm border-red-500/20">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3.5 shadow-sm">
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
                 {t('assets.summary.critical')}
@@ -1677,21 +1684,23 @@ export function AssetsPage() {
       {/* ─── 2. EDIT ASSET SHEET (Sheet) ─────────────────────────────────── */}
       <EditSheet
         open={editingId !== null}
-        onOpenChange={(isOpen) => {
-          if (!isOpen && isEditDirty) {
+        onClose={() => {
+          if (isEditDirty) {
             editDraft.requestClose(() => {
               setEditingId(null);
               setEditSnapshot(null);
             });
-          } else if (!isOpen) {
+          } else {
             setEditingId(null);
             setEditSnapshot(null);
           }
         }}
+        onSubmit={handleEditSubmit}
+        isPending={updateMut.isPending}
+        saveDisabled={!editForm.name?.trim()}
         title={t('assets.editTitle')}
-        description={editForm.code ? `Editing ${editForm.code}` : undefined}
       >
-        <form onSubmit={handleEditSubmit} className="space-y-5 pb-6">
+        <div className="space-y-5">
           {/* Retirement Checklist Banner if status is retiring / retired */}
           {(editForm.status === 'retiring' || editForm.status === 'retired') && (
             <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-3.5 space-y-2 text-xs">
@@ -2135,28 +2144,7 @@ export function AssetsPage() {
               </div>
             </div>
           )}
-
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingId(null);
-                setEditSnapshot(null);
-              }}
-            >
-              {t('common.cancel', { defaultValue: 'Cancel' })}
-            </Button>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={updateMut.isPending || !editForm.name?.trim()}
-            >
-              {updateMut.isPending ? 'Saving…' : t('common.save', { defaultValue: 'Save Changes' })}
-            </Button>
-          </div>
-        </form>
+        </div>
       </EditSheet>
 
       {/* ─── 3. ASSET PROFILE DRAWER / SHEET ─────────────────────────────── */}
@@ -2168,7 +2156,7 @@ export function AssetsPage() {
       >
         <SheetContent
           side="right"
-          className="sm:max-w-2xl lg:max-w-3xl overflow-y-auto p-0 flex flex-col"
+          className="w-full sm:w-[720px] lg:w-[960px] max-w-[95vw] overflow-y-auto p-0 flex flex-col"
         >
           {viewingAsset && (
             <>
@@ -2250,7 +2238,7 @@ export function AssetsPage() {
                 </div>
 
                 {/* Profile Navigation Tabs */}
-                <div className="flex items-center gap-1 overflow-x-auto pt-2 border-t text-xs">
+                <div className="flex flex-wrap items-center gap-1 pt-2 border-t text-xs">
                   {(
                     [
                       { id: 'overview', label: t('assets.tabs.overview') },
@@ -2723,27 +2711,23 @@ export function AssetsPage() {
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Audit Activity Trail
                     </h4>
-                    <div className="space-y-2 text-xs">
-                      <div className="p-3 rounded-lg border bg-card/30 space-y-0.5">
-                        <div className="font-medium text-foreground">
-                          Asset registered in catalog
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {new Date(viewingAsset.createdAt).toLocaleString()}
-                        </div>
+                    {assetActivity.length === 0 ? (
+                      <div className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded border text-center">
+                        {t('assets.profile.noActivity')}
                       </div>
-                      <div className="p-3 rounded-lg border bg-card/30 space-y-0.5">
-                        <div className="font-medium text-foreground">
-                          CIA criticality evaluated as{' '}
-                          <span className="font-bold">
-                            {viewingAsset.criticality.toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground">
-                          {new Date(viewingAsset.updatedAt).toLocaleString()}
-                        </div>
+                    ) : (
+                      <div className="space-y-2 text-xs">
+                        {assetActivity.map((a) => (
+                          <div key={a.id} className="p-3 rounded-lg border bg-card/40 space-y-0.5">
+                            <div className="font-medium text-foreground">{a.action}</div>
+                            <div className="text-muted-foreground">{a.details}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {new Date(a.timestamp).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </div>

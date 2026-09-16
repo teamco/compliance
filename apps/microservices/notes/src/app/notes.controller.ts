@@ -329,6 +329,11 @@ export class NotesController {
     return this.strategy.listControlActivity(payload.controlId);
   }
 
+  @MessagePattern('notes.assets.activity.list')
+  listAssetActivity(@Payload() payload: { assetId: string }): Promise<FrameworkActivity[]> {
+    return this.strategy.listAssetActivity(payload.assetId);
+  }
+
   @MessagePattern('notes.frameworks.evidence.list')
   listFrameworkEvidence(
     @Payload() payload: { frameworkId: string; orgId?: string },

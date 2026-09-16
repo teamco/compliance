@@ -1120,6 +1120,17 @@ export class NotesController {
     return this.notes.listAssetEvidence(id);
   }
 
+  @Get('assets/:id/activity')
+  @ApiOperation({ summary: 'List activity log for an asset' })
+  async listAssetActivity(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const asset = await this.notes.getAsset(id);
+    if (!asset) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(asset.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listAssetActivity(id);
+  }
+
   @Post('assets/:id/evidence')
   @ApiOperation({ summary: 'Attach evidence to an asset' })
   async createAssetEvidence(
