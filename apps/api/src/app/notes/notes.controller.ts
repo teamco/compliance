@@ -767,21 +767,30 @@ export class NotesController {
 
   @Get('exceptions')
   @ApiOperation({ summary: 'List exceptions for org' })
-  listExceptions(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listExceptions(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listExceptions(orgId);
   }
 
   @Post('exceptions')
   @ApiOperation({ summary: 'Create exception' })
-  createException(
+  async createException(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: ExceptionInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createException(orgId, userId, body);
   }
 
@@ -791,17 +800,25 @@ export class NotesController {
     this.uid(req);
     const exc = await this.notes.getException(id);
     if (!exc) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exc.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return exc;
   }
 
   @Patch('exceptions/:id')
   @ApiOperation({ summary: 'Update exception' })
-  updateException(
+  async updateException(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: ExceptionPatch,
   ) {
     this.uid(req);
+    const exc = await this.notes.getException(id);
+    if (!exc) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exc.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateException(id, patch);
   }
 
@@ -832,8 +849,13 @@ export class NotesController {
   @Delete('exceptions/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete exception' })
-  deleteException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteException(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const exc = await this.notes.getException(id);
+    if (!exc) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exc.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteException(id);
   }
 
@@ -848,6 +870,9 @@ export class NotesController {
     const exception = await this.notes.getException(id);
     if (!exception) throw new NotFoundException();
     if (exception.ownerId !== userId) throw new ForbiddenException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.requestExceptionRenewal(id, userId, body);
   }
 
