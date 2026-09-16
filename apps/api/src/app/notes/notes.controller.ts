@@ -60,6 +60,7 @@ import type {
   InternalControlInput,
   InternalControlPatch,
   RequirementEvidence,
+  EvidencePatch,
   RequirementAssessment,
   ControlFrameworkMappingInput,
 } from '@icore/shared';
@@ -261,11 +262,11 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'controlId'>,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'controlId' | 'createdBy'>,
   ) {
-    this.uid(req);
+    const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createControlEvidence(orgId, id, body);
+    return this.notes.createControlEvidence(orgId, id, { ...body, createdBy: userId });
   }
 
   @Get('internal-controls/:id/assessments')
@@ -461,13 +462,18 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Query('orgId') orgId: string,
-    @Body() body: Omit<RequirementEvidence, 'id'>,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'createdBy'>,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
-    return this.notes.createFrameworkEvidence(orgId, { ...body, frameworkId: id });
+    const userId = this.uid(req);
+    return this.notes.createFrameworkEvidence(orgId, {
+      ...body,
+      frameworkId: id,
+      createdBy: userId,
+    });
   }
 
   @Get('frameworks/:id/assessments')
@@ -1037,6 +1043,69 @@ export class NotesController {
     return this.notes.deleteAsset(id);
   }
 
+  @Get('assets/:id/evidence')
+  @ApiOperation({ summary: 'List evidence attached to an asset' })
+  async listAssetEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    this.uid(req);
+    return this.notes.listAssetEvidence(id);
+  }
+
+  @Post('assets/:id/evidence')
+  @ApiOperation({ summary: 'Attach evidence to an asset' })
+  async createAssetEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'assetId' | 'createdBy'>,
+  ) {
+    const userId = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    return this.notes.createAssetEvidence(orgId, id, { ...body, createdBy: userId });
+  }
+
+  @Patch('evidence/:id')
+  @ApiOperation({ summary: 'Edit evidence metadata' })
+  async updateEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() patch: EvidencePatch,
+  ) {
+    const evidence = await this.notes.getEvidence(id);
+    if (!evidence || !evidence.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(evidence.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.updateEvidence(id, patch);
+  }
+
+  @Delete('evidence/:id')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Delete evidence' })
+  async deleteEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const evidence = await this.notes.getEvidence(id);
+    if (!evidence || !evidence.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(evidence.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
+    return this.notes.deleteEvidence(id);
+  }
+
+  @Post('evidence/:id/review')
+  @ApiOperation({ summary: 'Verify or reject evidence' })
+  async reviewEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { decision: 'verified' | 'rejected'; reviewNotes?: string },
+  ) {
+    const userId = this.uid(req);
+    const evidence = await this.notes.getEvidence(id);
+    if (!evidence || !evidence.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(evidence.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.reviewEvidence(id, userId, body.decision, body.reviewNotes);
+  }
+
   // ─── Risks ───────────────────────────────────────────────────────────────
 
   @Get('risks')
@@ -1236,11 +1305,11 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'riskId'>,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'riskId' | 'createdBy'>,
   ) {
-    this.uid(req);
+    const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createRiskEvidence(orgId, id, body);
+    return this.notes.createRiskEvidence(orgId, id, { ...body, createdBy: userId });
   }
 
   @Get('risks/:id/assessment-items')
@@ -1446,14 +1515,14 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('itemId') itemId: string,
-    @Body() body: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+    @Body() body: Omit<RequirementEvidence, 'id' | 'assessmentItemId' | 'createdBy'>,
   ) {
-    this.uid(req);
+    const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
-    return this.notes.createAssessmentItemEvidence(orgId, itemId, body);
+    return this.notes.createAssessmentItemEvidence(orgId, itemId, { ...body, createdBy: userId });
   }
 
   @Patch('assessments/items/:itemId')
