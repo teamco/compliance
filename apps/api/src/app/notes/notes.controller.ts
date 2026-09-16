@@ -1500,21 +1500,30 @@ export class NotesController {
 
   @Get('assessments')
   @ApiOperation({ summary: 'List risk assessments for org' })
-  listAssessments(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listAssessments(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessments(orgId);
   }
 
   @Post('assessments')
   @ApiOperation({ summary: 'Create risk assessment' })
-  createAssessment(
+  async createAssessment(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: AssessmentInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessment(orgId, userId, body);
   }
 
@@ -1524,43 +1533,69 @@ export class NotesController {
     this.uid(req);
     const a = await this.notes.getAssessment(id);
     if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return a;
   }
 
   @Patch('assessments/:id')
   @ApiOperation({ summary: 'Update risk assessment' })
-  updateAssessment(
+  async updateAssessment(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: AssessmentPatch,
   ) {
     this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateAssessment(id, patch);
   }
 
   @Delete('assessments/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete risk assessment' })
-  deleteAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteAssessment(id, userId);
   }
 
   @Get('assessments/:id/items')
   @ApiOperation({ summary: 'List items for a risk assessment' })
-  listAssessmentItems(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listAssessmentItems(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItems(id);
   }
 
   @Post('assessments/:id/items')
   @ApiOperation({ summary: 'Add item to risk assessment' })
-  createAssessmentItem(
+  async createAssessmentItem(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') assessmentId: string,
     @Body() body: AssessmentItemInput,
   ) {
     this.uid(req);
+    const a = await this.notes.getAssessment(assessmentId);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessmentItem(assessmentId, body);
   }
 
@@ -1568,45 +1603,69 @@ export class NotesController {
 
   @Get('assessment-types')
   @ApiOperation({ summary: 'List assessment types for org' })
-  listAssessmentTypes(
+  async listAssessmentTypes(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentTypes(orgId);
   }
 
   @Post('assessment-types')
   @ApiOperation({ summary: 'Create an assessment type' })
-  createAssessmentType(
+  async createAssessmentType(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: AssessmentTypeInput,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessmentType(orgId, body);
   }
 
   @Patch('assessment-types/:id/archive')
   @ApiOperation({ summary: 'Archive an assessment type' })
-  archiveAssessmentType(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async archiveAssessmentType(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const type = await this.notes.getAssessmentType(id);
+    if (!type) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(type.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.archiveAssessmentType(id);
   }
 
   @Post('assessments/:id/start')
   @ApiOperation({ summary: 'Start an assessment (draft -> in_progress)' })
-  startAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async startAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.startAssessment(id, userId);
   }
 
   @Post('assessments/:id/submit-for-review')
   @ApiOperation({ summary: 'Submit an assessment for review' })
-  submitForReview(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async submitForReview(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.submitForReview(id, userId);
   }
 
@@ -1630,56 +1689,91 @@ export class NotesController {
 
   @Post('assessments/:id/complete')
   @ApiOperation({ summary: 'Complete an approved assessment' })
-  completeAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async completeAssessment(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.completeAssessment(id, userId);
   }
 
   @Post('assessments/:id/archive')
   @ApiOperation({ summary: 'Archive an assessment' })
-  archiveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async archiveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const a = await this.notes.getAssessment(id);
+    if (!a) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(a.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.archiveAssessment(id, userId);
   }
 
   @Get('assessments/items/:itemId/mappings')
   @ApiOperation({ summary: 'List controls mapped to an assessment item' })
-  listAssessmentItemControlMappings(
+  async listAssessmentItemControlMappings(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('itemId') itemId: string,
   ) {
     this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItemControlMappings(itemId);
   }
 
   @Post('assessments/items/:itemId/mappings')
   @ApiOperation({ summary: 'Map a control to an assessment item' })
-  addAssessmentItemControlMapping(
+  async addAssessmentItemControlMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('itemId') itemId: string,
     @Body() body: AssessmentItemControlMappingInput,
   ) {
     this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.addAssessmentItemControlMapping(itemId, body);
   }
 
   @Delete('assessments/items/mappings/:mappingId')
   @ApiOperation({ summary: 'Remove an assessment item-control mapping' })
-  removeAssessmentItemControlMapping(
+  async removeAssessmentItemControlMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('mappingId') mappingId: string,
   ) {
     this.uid(req);
+    const mapping = await this.notes.getAssessmentItemControlMapping(mappingId);
+    if (!mapping) throw new NotFoundException();
+    const item = await this.notes.getAssessmentItem(mapping.itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.removeAssessmentItemControlMapping(mappingId);
   }
 
   @Get('assessments/items/:itemId/evidence')
   @ApiOperation({ summary: 'List evidence attached to an assessment item' })
-  listAssessmentItemEvidence(
+  async listAssessmentItemEvidence(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('itemId') itemId: string,
   ) {
     this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItemEvidence(itemId);
   }
 
@@ -1713,23 +1807,33 @@ export class NotesController {
 
   @Patch('assessments/items/:itemId')
   @ApiOperation({ summary: 'Update risk assessment item' })
-  updateAssessmentItem(
+  async updateAssessmentItem(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('itemId') itemId: string,
     @Body() patch: AssessmentItemPatch,
   ) {
     this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateAssessmentItem(itemId, patch);
   }
 
   @Delete('assessments/items/:itemId')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete risk assessment item' })
-  deleteAssessmentItem(
+  async deleteAssessmentItem(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('itemId') itemId: string,
   ) {
     this.uid(req);
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(item.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteAssessmentItem(itemId);
   }
 
