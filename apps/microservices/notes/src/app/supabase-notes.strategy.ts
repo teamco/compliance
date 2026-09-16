@@ -3843,6 +3843,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     reviewedBy: string,
     reviewNotes?: string,
   ): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, reviewedBy);
     const { data, error } = await this.db
       .from('risk_acceptances')
       .update({
@@ -3853,6 +3855,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('approver_id', reviewedBy)
+      .in('status', ['requested', 'reviewed'])
       .select()
       .single();
     return this.toRiskAcceptance(ok(data, error));
