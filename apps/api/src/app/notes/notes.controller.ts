@@ -1187,40 +1187,55 @@ export class NotesController {
 
   @Get('risks')
   @ApiOperation({ summary: 'List risks for org (sorted by risk score desc)' })
-  listRisks(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listRisks(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listRisks(orgId);
   }
 
   @Post('risks')
   @ApiOperation({ summary: 'Create risk entry' })
-  createRisk(
+  async createRisk(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: RiskInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createRisk(orgId, userId, body);
   }
 
   @Get('risks/methodology')
   @ApiOperation({ summary: 'Get the org active risk methodology' })
-  getRiskMethodology(
+  async getRiskMethodology(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.getRiskMethodology(orgId);
   }
 
   @Get('risks/taxonomy')
   @ApiOperation({ summary: 'List the org risk taxonomy categories' })
-  listRiskTaxonomy(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listRiskTaxonomy(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskTaxonomy(orgId);
   }
 
@@ -1230,17 +1245,25 @@ export class NotesController {
     this.uid(req);
     const risk = await this.notes.getRisk(id);
     if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return risk;
   }
 
   @Patch('risks/:id')
   @ApiOperation({ summary: 'Update risk (writes a history snapshot first)' })
-  updateRisk(
+  async updateRisk(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: RiskPatch & { reason?: string },
   ) {
     const userId = this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     const { reason, ...patch } = body;
     return this.notes.updateRisk(id, patch, userId, reason);
   }
@@ -1248,8 +1271,13 @@ export class NotesController {
   @Delete('risks/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete risk' })
-  deleteRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteRisk(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteRisk(id);
   }
 
@@ -1257,130 +1285,201 @@ export class NotesController {
 
   @Post('risks/methodology')
   @ApiOperation({ summary: 'Update the org risk methodology (creates a new version)' })
-  upsertRiskMethodology(
+  async upsertRiskMethodology(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: RiskMethodologyInput,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.upsertRiskMethodology(orgId, body);
   }
 
   @Post('risks/taxonomy')
   @ApiOperation({ summary: 'Add a risk taxonomy category' })
-  createRiskTaxonomyCategory(
+  async createRiskTaxonomyCategory(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: RiskTaxonomyCategoryInput,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createRiskTaxonomyCategory(orgId, body);
   }
 
   @Patch('risks/taxonomy/:id/archive')
   @ApiOperation({ summary: 'Archive a risk taxonomy category' })
-  archiveRiskTaxonomyCategory(
+  async archiveRiskTaxonomyCategory(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
   ) {
     this.uid(req);
+    const category = await this.notes.getRiskTaxonomyCategory(id);
+    if (!category) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(category.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.archiveRiskTaxonomyCategory(id);
   }
 
   @Get('risks/:id/mappings')
   @ApiOperation({ summary: 'List controls mapped to a risk' })
-  listRiskControlMappings(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listRiskControlMappings(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskControlMappings(id);
   }
 
   @Post('risks/:id/mappings')
   @ApiOperation({ summary: 'Map a control to a risk' })
-  addRiskControlMapping(
+  async addRiskControlMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: RiskControlMappingInput,
   ) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.addRiskControlMapping(id, body);
   }
 
   @Delete('risks/:riskId/mappings/:mappingId')
   @ApiOperation({ summary: 'Remove a risk-control mapping' })
-  removeRiskControlMapping(
+  async removeRiskControlMapping(
     @Req() req: Request & { user?: VerifiedToken },
+    @Param('riskId') riskId: string,
     @Param('mappingId') mappingId: string,
   ) {
     this.uid(req);
+    const risk = await this.notes.getRisk(riskId);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.removeRiskControlMapping(mappingId);
   }
 
   @Post('risks/:id/acceptance')
   @ApiOperation({ summary: 'Request risk acceptance' })
-  createRiskAcceptance(
+  async createRiskAcceptance(
     @Req() req: Request & { user?: VerifiedToken },
-    @Query('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: RiskAcceptanceInput,
   ) {
     const userId = this.uid(req);
-    if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createRiskAcceptance(orgId, id, userId, body);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createRiskAcceptance(risk.orgId, id, userId, body);
   }
 
   @Get('risks/:id/acceptance/active')
   @ApiOperation({ summary: 'Get the active risk acceptance, if any' })
-  getActiveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async getActiveRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.getActiveRiskAcceptance(id);
   }
 
   @Post('risk-acceptances/:id/review')
   @ApiOperation({ summary: 'Review a risk acceptance request' })
-  reviewRiskAcceptance(
+  async reviewRiskAcceptance(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { reviewNotes?: string },
   ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.reviewRiskAcceptance(id, userId, body.reviewNotes);
   }
 
   @Post('risk-acceptances/:id/approve')
   @ApiOperation({ summary: 'Approve a risk acceptance request' })
-  approveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async approveRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.approveRiskAcceptance(id, userId);
   }
 
   @Post('risk-acceptances/:id/reject')
   @ApiOperation({ summary: 'Reject a risk acceptance request' })
-  rejectRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async rejectRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.rejectRiskAcceptance(id, userId);
   }
 
   @Get('risks/:id/snapshots')
   @ApiOperation({ summary: 'List risk history snapshots' })
-  listRiskSnapshots(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listRiskSnapshots(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskSnapshots(id);
   }
 
   @Get('risks/:id/evidence')
   @ApiOperation({ summary: 'List evidence attached to a risk' })
-  listRiskEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listRiskEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskEvidence(id);
   }
 
   @Post('risks/:id/evidence')
   @ApiOperation({ summary: 'Attach evidence to a risk' })
-  createRiskEvidence(
+  async createRiskEvidence(
     @Req() req: Request & { user?: VerifiedToken },
-    @Query('orgId') orgId: string,
     @Param('id') id: string,
     @Body()
     body: Omit<
@@ -1389,8 +1488,12 @@ export class NotesController {
     >,
   ) {
     const userId = this.uid(req);
-    if (!orgId) throw new BadRequestException('orgId required');
-    return this.notes.createRiskEvidence(orgId, id, {
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
+    return this.notes.createRiskEvidence(risk.orgId, id, {
       ...body,
       createdBy: userId,
       verificationStatus: 'pending_review',
@@ -1401,11 +1504,16 @@ export class NotesController {
 
   @Get('risks/:id/assessment-items')
   @ApiOperation({ summary: 'List assessment items linked to a risk' })
-  listAssessmentItemsForRisk(
+  async listAssessmentItemsForRisk(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
   ) {
     this.uid(req);
+    const risk = await this.notes.getRisk(id);
+    if (!risk) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(risk.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItemsForRisk(id);
   }
 
