@@ -249,6 +249,7 @@ export interface RequirementEvidence {
   createdBy: string;
   verifiedBy: string | null;
   verifiedAt: string | null;
+  reviewNotes: string | null;
   linkedControls?: string[];
   linkedRequirements?: string[];
 }

@@ -701,7 +701,9 @@ export const en = {
     urlPlaceholder: 'Evidence URL (optional)…',
     verify: 'Verify',
     reject: 'Reject',
-    rejectedByReviewer: 'Rejected during review',
+    rejectDialogTitle: 'Reject this evidence?',
+    rejectDialogDescription: 'Provide a reason. It will be shown on the evidence record.',
+    rejectNotesPlaceholder: 'Why is this evidence being rejected?',
     deleteConfirmTitle: 'Delete this evidence?',
     deleteConfirmDescription: 'This action cannot be undone.',
     status: {

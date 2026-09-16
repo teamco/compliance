@@ -667,7 +667,9 @@ export const ru = {
     urlPlaceholder: 'URL доказательства (необязательно)…',
     verify: 'Подтвердить',
     reject: 'Отклонить',
-    rejectedByReviewer: 'Отклонено при проверке',
+    rejectDialogTitle: 'Отклонить это доказательство?',
+    rejectDialogDescription: 'Укажите причину. Она будет показана в записи доказательства.',
+    rejectNotesPlaceholder: 'Почему это доказательство отклоняется?',
     deleteConfirmTitle: 'Удалить это доказательство?',
     deleteConfirmDescription: 'Это действие нельзя отменить.',
     status: {

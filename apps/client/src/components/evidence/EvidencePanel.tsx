@@ -4,6 +4,7 @@ import { CheckCircle2, Plus, Trash2, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,6 +110,8 @@ export function EvidencePanel(props: EvidencePanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [rejectNotes, setRejectNotes] = useState('');
 
   function handleCreate() {
     if (!form.title.trim()) return;
@@ -178,6 +181,20 @@ export function EvidencePanel(props: EvidencePanelProps) {
     deleteMut.mutate(id, { onError: () => notify.error(t('error.unknown')) });
   }
 
+  function handleReject() {
+    if (!rejectId || !rejectNotes.trim()) return;
+    reviewMut.mutate(
+      { id: rejectId, decision: 'rejected', reviewNotes: rejectNotes.trim() },
+      {
+        onSuccess: () => {
+          setRejectId(null);
+          setRejectNotes('');
+        },
+        onError: () => notify.error(t('error.unknown')),
+      },
+    );
+  }
+
   return (
     <div className="space-y-3">
       {evidence.length === 0 ? (
@@ -240,6 +257,9 @@ export function EvidencePanel(props: EvidencePanelProps) {
                   ) : (
                     <span className="text-muted-foreground/70">{e.url}</span>
                   ))}
+                {e.verificationStatus === 'rejected' && e.reviewNotes && (
+                  <p className="text-destructive/80">{e.reviewNotes}</p>
+                )}
                 <div className="flex items-center gap-1.5 pt-1">
                   <button
                     type="button"
@@ -273,16 +293,10 @@ export function EvidencePanel(props: EvidencePanelProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() =>
-                          reviewMut.mutate(
-                            {
-                              id: e.id,
-                              decision: 'rejected',
-                              reviewNotes: t('evidence.rejectedByReviewer'),
-                            },
-                            { onError: () => notify.error(t('error.unknown')) },
-                          )
-                        }
+                        onClick={() => {
+                          setRejectId(e.id);
+                          setRejectNotes('');
+                        }}
                         className="text-muted-foreground hover:text-destructive cursor-pointer"
                       >
                         <XCircle size={12} className="inline mr-0.5" />
@@ -400,6 +414,34 @@ export function EvidencePanel(props: EvidencePanelProps) {
               }}
             >
               {t('common.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog
+        open={!!rejectId}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setRejectId(null);
+            setRejectNotes('');
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('evidence.rejectDialogTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('evidence.rejectDialogDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            value={rejectNotes}
+            onChange={(ev) => setRejectNotes(ev.target.value)}
+            placeholder={t('evidence.rejectNotesPlaceholder')}
+            rows={3}
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('common.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReject} disabled={!rejectNotes.trim()}>
+              {t('evidence.reject')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

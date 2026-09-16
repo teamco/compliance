@@ -679,7 +679,9 @@ export const es = {
     urlPlaceholder: 'URL de la evidencia (opcional)…',
     verify: 'Verificar',
     reject: 'Rechazar',
-    rejectedByReviewer: 'Rechazada durante la revisión',
+    rejectDialogTitle: '¿Rechazar esta evidencia?',
+    rejectDialogDescription: 'Indica un motivo. Se mostrará en el registro de la evidencia.',
+    rejectNotesPlaceholder: '¿Por qué se rechaza esta evidencia?',
     deleteConfirmTitle: '¿Eliminar esta evidencia?',
     deleteConfirmDescription: 'Esta acción no se puede deshacer.',
     status: {

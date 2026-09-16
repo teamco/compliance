@@ -57,6 +57,7 @@ const EVIDENCE: RequirementEvidence = {
   createdBy: 'creator-1',
   verifiedBy: null,
   verifiedAt: null,
+  reviewNotes: null,
 };
 
 describe('EvidencePanel', () => {
@@ -155,6 +156,52 @@ describe('EvidencePanel', () => {
     const alertDialog = screen.getByRole('alertdialog');
     fireEvent.click(within(alertDialog).getByRole('button', { name: /^delete$/i }));
     expect(deleteMutate).toHaveBeenCalledWith('ev-1', expect.anything());
+  });
+
+  it('requires a reason before rejecting, and persists it', async () => {
+    mockEvidence = [EVIDENCE];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel
+          orgId="org1"
+          ownerType="control"
+          ownerId="control-1"
+          currentUserId="someone-else"
+        />,
+      ),
+    );
+    fireEvent.click(screen.getByText(/^reject$/i));
+    expect(reviewMutate).not.toHaveBeenCalled();
+
+    const alertDialog = screen.getByRole('alertdialog');
+    const confirmButton = within(alertDialog).getByRole('button', {
+      name: /^reject$/i,
+    }) as HTMLButtonElement;
+    expect(confirmButton.disabled).toBe(true);
+
+    fireEvent.change(within(alertDialog).getByPlaceholderText(/why is this evidence/i), {
+      target: { value: 'Screenshot is stale' },
+    });
+    expect(confirmButton.disabled).toBe(false);
+    fireEvent.click(confirmButton);
+    expect(reviewMutate).toHaveBeenCalledWith(
+      { id: 'ev-1', decision: 'rejected', reviewNotes: 'Screenshot is stale' },
+      expect.anything(),
+    );
+  });
+
+  it('shows the persisted rejection reason on a rejected item', async () => {
+    mockEvidence = [
+      { ...EVIDENCE, verificationStatus: 'rejected', reviewNotes: 'Missing signature' },
+    ];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    expect(screen.getByText('Missing signature')).toBeTruthy();
   });
 
   it('shows an empty create form after editing an item and cancelling', async () => {

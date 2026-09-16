@@ -657,7 +657,9 @@ export const he = {
     urlPlaceholder: 'כתובת URL של הראיה (אופציונלי)…',
     verify: 'אמת',
     reject: 'דחה',
-    rejectedByReviewer: 'נדחה במהלך הביקורת',
+    rejectDialogTitle: 'לדחות את הראיה הזו?',
+    rejectDialogDescription: 'ציין סיבה. היא תוצג ברשומת הראיה.',
+    rejectNotesPlaceholder: 'מדוע נדחית ראיה זו?',
     deleteConfirmTitle: 'למחוק את הראיה הזו?',
     deleteConfirmDescription: 'לא ניתן לבטל פעולה זו.',
     status: {

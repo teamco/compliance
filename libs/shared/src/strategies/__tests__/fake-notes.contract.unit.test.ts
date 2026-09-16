@@ -1751,6 +1751,7 @@ describe('framework workspace & GRC hierarchy', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     expect(created.id).toBeDefined();
@@ -2042,6 +2043,7 @@ describe('InternalControl lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     const evidence = await strategy.listControlEvidence(control.id);
@@ -2291,6 +2293,7 @@ describe('Risk Register lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     expect(await strategy.listRiskEvidence(risk.id)).toHaveLength(1);
@@ -2323,6 +2326,7 @@ describe('Risk Register lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     expect(ev.assessmentItemId).toBe(item.id);
@@ -2353,6 +2357,7 @@ describe('Risk Register lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     const control = await strategy.createInternalControl('org-1', {
@@ -2380,6 +2385,7 @@ describe('Risk Register lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     const nistId = '00000000-0000-0000-0000-000000000003';
@@ -2397,6 +2403,7 @@ describe('Risk Register lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
 
     const types = await strategy.listAssessmentTypes('org-1');
@@ -2430,6 +2437,7 @@ describe('Risk Register lifecycle', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     } as const;
     await strategy.createAssessmentItemEvidence('org-1', item1.id, evidenceInput);
     await strategy.createAssessmentItemEvidence('org-1', item2.id, evidenceInput);
@@ -2475,6 +2483,7 @@ describe('unified evidence', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
     expect(ev.assetId).toBe('asset-1');
     expect(ev.createdBy).toBe('user-1');
@@ -2495,6 +2504,7 @@ describe('unified evidence', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
     const updated = await s.updateEvidence(ev.id, {
       title: 'New title',
@@ -2517,6 +2527,7 @@ describe('unified evidence', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
     await s.deleteEvidence(ev.id);
     expect(await s.getEvidence(ev.id)).toBeNull();
@@ -2535,11 +2546,34 @@ describe('unified evidence', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
     const reviewed = await s.reviewEvidence(ev.id, 'reviewer-1', 'verified');
     expect(reviewed.verificationStatus).toBe('verified');
     expect(reviewed.verifiedBy).toBe('reviewer-1');
     expect(reviewed.verifiedAt).not.toBeNull();
+  });
+
+  it('persists reviewNotes on rejection', async () => {
+    const ev = await s.createControlEvidence('org1', 'control-1', {
+      title: 'T',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+      reviewNotes: null,
+    });
+    const rejected = await s.reviewEvidence(ev.id, 'reviewer-1', 'rejected', 'Screenshot is stale');
+    expect(rejected.verificationStatus).toBe('rejected');
+    expect(rejected.reviewNotes).toBe('Screenshot is stale');
+    const fetched = await s.getEvidence(ev.id);
+    expect(fetched?.reviewNotes).toBe('Screenshot is stale');
   });
 
   it('rejects self-verification', async () => {
@@ -2555,6 +2589,7 @@ describe('unified evidence', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
     await expect(s.reviewEvidence(ev.id, 'user-1', 'verified')).rejects.toThrow(
       'evidence_self_review_forbidden',
@@ -2574,6 +2609,7 @@ describe('unified evidence', () => {
       createdBy: 'user-1',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
     await expect(s.reviewEvidence(ev.id, 'reviewer-1', 'rejected')).rejects.toThrow(
       'evidence_review_notes_required',
