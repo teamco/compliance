@@ -1146,54 +1146,11 @@ yarn nx build api
     return this.notes.getActiveRiskAcceptance(id);
   }
 
-  @Post('risk-acceptances/:id/review')
-  @ApiOperation({ summary: 'Review a risk acceptance request' })
-  async reviewRiskAcceptance(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-    @Body() body: { reviewNotes?: string },
-  ) {
-    const userId = this.uid(req);
-    const acceptance = await this.notes.getRiskAcceptance(id);
-    if (!acceptance) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(acceptance.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.reviewRiskAcceptance(id, userId, body.reviewNotes);
-  }
-
-  @Post('risk-acceptances/:id/approve')
-  @ApiOperation({ summary: 'Approve a risk acceptance request' })
-  async approveRiskAcceptance(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
-    const userId = this.uid(req);
-    const acceptance = await this.notes.getRiskAcceptance(id);
-    if (!acceptance) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(acceptance.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.approveRiskAcceptance(id, userId);
-  }
-
-  @Post('risk-acceptances/:id/reject')
-  @ApiOperation({ summary: 'Reject a risk acceptance request' })
-  async rejectRiskAcceptance(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
-    const userId = this.uid(req);
-    const acceptance = await this.notes.getRiskAcceptance(id);
-    if (!acceptance) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(acceptance.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.rejectRiskAcceptance(id, userId);
-  }
 ```
 
-(`createRiskAcceptance` drops its `@Query('orgId')` param entirely — org now derives from `risk.orgId`, per the spec's instruction to stop trusting the separate query param here. Remove the unused import/param cleanly; check no other caller relies on the query param being read here — the client already sends the risk id in the path, so this is a body/behavior no-op for legitimate callers.)
+**`reviewRiskAcceptance` / `approveRiskAcceptance` / `rejectRiskAcceptance` — no change (4th occurrence of the exemption pattern; ruled during Task 5's review).** All three already have complete, resource-specific authorization at the strategy layer: `fake-notes.ts` throws `risk_acceptance_not_authorized_approver` when `acceptance.approverId !== userId` — `approverId` is DB-stored on the `RiskAcceptance` record at creation, not attacker-controlled. `reviewRiskAcceptance` additionally already got the full self-approval + approver-identity guard restructuring in PR #57 (`assertCanDecideRiskAcceptance`). Adding `checkOrgAccess('update')` on top would restrict these to org creator/admin only, wrongly blocking a legitimate designated approver who isn't the org creator. Leave all three routes exactly as they are today — no fetch chain, no `checkOrgAccess`.
+
+(`createRiskAcceptance` drops its `@Query('orgId')` param entirely — org now derives from `risk.orgId`, per the spec's instruction to stop trusting the separate query param here. Remove the unused import/param cleanly; check no other caller relies on the query param being read here — the client already sends the risk id in the path, so this is a body/behavior no-op for legitimate callers. `getActiveRiskAcceptance` gets `checkOrgAccess('read')` as shown above — it has no owner/approver check to collide with.)
 
 - [ ] **Step 6: `listRiskSnapshots` / `listRiskEvidence` / `createRiskEvidence` / `listAssessmentItemsForRisk`**
 
@@ -1379,29 +1336,6 @@ describe('NotesController — risk org scoping (Phase 1 hardening)', () => {
       await expect(
         makeController(notes).removeRiskControlMapping(reqAs('outsider'), 'risk-1', 'mapping-1'),
       ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('risk-acceptances review/approve/reject', () => {
-    it('resolves org through the acceptance, rejects a caller outside the org', async () => {
-      const notes = makeNotes();
-      await expect(
-        makeController(notes).approveRiskAcceptance(reqAs('outsider'), 'acceptance-1'),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('allows the org creator to approve', async () => {
-      const notes = makeNotes();
-      await makeController(notes).approveRiskAcceptance(reqAs('org-creator'), 'acceptance-1');
-      expect(notes.getRiskAcceptance).toHaveBeenCalledWith('acceptance-1');
-      expect(notes.approveRiskAcceptance).toHaveBeenCalledWith('acceptance-1', 'org-creator');
-    });
-
-    it('throws NotFound when the acceptance does not exist', async () => {
-      const notes = makeNotes({ getRiskAcceptance: vi.fn().mockResolvedValue(null) });
-      await expect(
-        makeController(notes).reviewRiskAcceptance(reqAs('org-creator'), 'missing', {}),
-      ).rejects.toThrow(NotFoundException);
     });
   });
 
