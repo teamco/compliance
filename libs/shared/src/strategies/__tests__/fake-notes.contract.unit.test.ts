@@ -1562,6 +1562,13 @@ describe('policies', () => {
     expect(p.version).toBe(1);
   });
 
+  it('lists activity scoped to one policy', async () => {
+    const p1 = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'A', content: 'C' });
+    const p2 = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'B', content: 'C' });
+    expect(await s.listPolicyActivity(p1.id)).toHaveLength(0);
+    expect(await s.listPolicyActivity(p2.id)).toHaveLength(0);
+  });
+
   it('bumps version on content update', async () => {
     const p = await s.createPolicy('org1', 'u1', {
       frameworkId: 'fw1',

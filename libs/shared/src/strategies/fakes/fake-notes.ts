@@ -2930,6 +2930,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return this.activities.filter((a) => a.assetId === assetId);
   }
 
+  async listPolicyActivity(policyId: string): Promise<FrameworkActivity[]> {
+    return this.activities.filter((a) => a.policyId === policyId);
+  }
+
   async listFrameworkEvidence(
     frameworkId: string,
     _orgId?: string,

@@ -935,12 +935,22 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map((row) => this.toFrameworkActivity(row));
   }
 
+  async listPolicyActivity(policyId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('policy_id', policyId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
   private toFrameworkActivity(row: Record<string, unknown>): FrameworkActivity {
     return {
       id: row['id'] as string,
       frameworkId: row['framework_id'] as string | undefined,
       controlId: row['control_id'] as string | undefined,
       assetId: row['asset_id'] as string | undefined,
+      policyId: row['policy_id'] as string | undefined,
       action: row['action'] as string,
       details: row['details'] as string,
       actor: row['actor'] as string,
