@@ -17,6 +17,7 @@ import type {
   InternalControlInput,
   InternalControlPatch,
   RequirementEvidence,
+  EvidencePatch,
   RequirementAssessment,
   FrameworkActivity,
   FrameworkInput,
@@ -2140,6 +2141,9 @@ export class FakeNotesStrategy implements NotesStrategy {
         expirationDate: '2027-01-15',
         verificationStatus: 'verified',
         url: 'https://docs.acme.corp/sec-policy-2026.pdf',
+        createdBy: 'seed-user',
+        verifiedBy: 'seed-reviewer',
+        verifiedAt: '2026-01-16T00:00:00.000Z',
         linkedControls: ['POL-001', 'AC-001'],
         linkedRequirements: ['GV.PO-01', 'GV.PO-02'],
       },
@@ -2156,6 +2160,9 @@ export class FakeNotesStrategy implements NotesStrategy {
         expirationDate: '2026-12-31',
         verificationStatus: 'verified',
         url: 'https://entra.microsoft.com/policies/mfa-export-2026q3.json',
+        createdBy: 'seed-user',
+        verifiedBy: 'seed-reviewer',
+        verifiedAt: '2026-07-02T00:00:00.000Z',
         linkedControls: ['AC-001'],
         linkedRequirements: ['PR.AA-01'],
       },
@@ -2171,6 +2178,9 @@ export class FakeNotesStrategy implements NotesStrategy {
         periodCovered: '2026-Q3',
         expirationDate: '2026-12-31',
         verificationStatus: 'verified',
+        createdBy: 'seed-user',
+        verifiedBy: 'seed-reviewer',
+        verifiedAt: '2026-08-11T00:00:00.000Z',
         linkedControls: ['AC-001'],
         linkedRequirements: ['PR.AA-01'],
       },
@@ -2187,6 +2197,9 @@ export class FakeNotesStrategy implements NotesStrategy {
         expirationDate: '2026-10-01',
         verificationStatus: 'verified',
         url: 'https://jira.acme.corp/browse/COMP-402',
+        createdBy: 'seed-user',
+        verifiedBy: 'seed-reviewer',
+        verifiedAt: '2026-07-01T00:00:00.000Z',
         linkedControls: ['AC-001'],
         linkedRequirements: ['PR.AA-02'],
       },
@@ -2203,6 +2216,9 @@ export class FakeNotesStrategy implements NotesStrategy {
         expirationDate: '2027-01-01',
         verificationStatus: 'verified',
         url: 'https://servicenow.acme.corp/nav_to.do?uri=change_request.do?sys_id=CHG001234',
+        createdBy: 'seed-user',
+        verifiedBy: 'seed-reviewer',
+        verifiedAt: '2026-08-02T00:00:00.000Z',
         linkedControls: ['POL-001'],
         linkedRequirements: ['GV.PO-01'],
       },
@@ -4603,6 +4619,67 @@ export class FakeNotesStrategy implements NotesStrategy {
       ...data,
     };
     this.evidence.unshift(ev);
+    return ev;
+  }
+
+  async createAssetEvidence(
+    orgId: string,
+    assetId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assetId'>,
+  ): Promise<RequirementEvidence> {
+    const ev: RequirementEvidence = {
+      id: `ev-${globalThis.crypto.randomUUID().slice(0, 8)}`,
+      orgId,
+      assetId,
+      ...data,
+    };
+    this.evidence.unshift(ev);
+    return ev;
+  }
+
+  async listAssetEvidence(assetId: string): Promise<RequirementEvidence[]> {
+    return this.evidence.filter((e) => e.assetId === assetId);
+  }
+
+  async getEvidence(id: string): Promise<RequirementEvidence | null> {
+    return this.evidence.find((e) => e.id === id) ?? null;
+  }
+
+  async updateEvidence(id: string, patch: EvidencePatch): Promise<RequirementEvidence> {
+    const ev = this.evidence.find((e) => e.id === id);
+    if (!ev) throw new Error(`evidence_not_found: ${id}`);
+    if (patch.title !== undefined) ev.title = patch.title;
+    if (patch.owner !== undefined) ev.owner = patch.owner;
+    if (patch.evidenceType !== undefined) ev.evidenceType = patch.evidenceType;
+    if (patch.source !== undefined) ev.source = patch.source;
+    if (patch.collectionDate !== undefined) ev.collectionDate = patch.collectionDate;
+    if (patch.periodCovered !== undefined) ev.periodCovered = patch.periodCovered;
+    if (patch.expirationDate !== undefined) ev.expirationDate = patch.expirationDate;
+    if (patch.url !== undefined) ev.url = patch.url;
+    return ev;
+  }
+
+  async deleteEvidence(id: string): Promise<void> {
+    this.evidence = this.evidence.filter((e) => e.id !== id);
+  }
+
+  async reviewEvidence(
+    id: string,
+    reviewerId: string,
+    decision: 'verified' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<RequirementEvidence> {
+    const ev = this.evidence.find((e) => e.id === id);
+    if (!ev) throw new Error(`evidence_not_found: ${id}`);
+    if (ev.createdBy === reviewerId) {
+      throw new Error('evidence_self_review_forbidden');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('evidence_review_notes_required');
+    }
+    ev.verificationStatus = decision;
+    ev.verifiedBy = reviewerId;
+    ev.verifiedAt = new Date().toISOString();
     return ev;
   }
 
