@@ -18,8 +18,7 @@
 - New get-by-id methods return `T | null`, never throw on not-found (matches `getRisk`, `getException`, `getAssessment`).
 - `removeRiskControlMapping`'s route already has `:riskId` in its path, unused — add the `@Param` and call the existing `getRisk(riskId)`, no new strategy method.
 - `listExceptionRenewals`, `listIssueValidations` are genuinely out of scope — already correct via hand-rolled inline checks, not touched.
-- `requestExceptionRenewal`, `submitIssueForValidation` are NOT touched — their existing owner-only check is already complete, resource-specific authorization; `checkOrgAccess` adds no real value today and would wrongly block a future non-creator org member acting on their own resource.
-- `reviewIssueValidation` gaining `checkOrgAccess('update')` will make it reachable only by the org creator/admin (org-membership doesn't really exist on this platform) — same accepted tradeoff as every other review workflow this session. Not a new problem.
+- `requestExceptionRenewal`, `submitIssueForValidation`, `reviewIssueValidation` are NOT touched — each already has a complete, resource-specific authorization check tied to a DB-stored, non-attacker-controlled identity field (owner, validator), independent of org membership. Layering `checkOrgAccess` on top adds no real value today and would wrongly block a legitimate non-creator/non-admin org member from acting on a resource they're already individually authorized for, once real multi-member orgs exist. (`reviewIssueValidation`'s check lives at the strategy layer — `validation.validatorId !== validatorId` — not the controller; that's still a complete check and the same exemption applies.)
 - This phase touches zero migrations and zero client/UI code — no Playwright verification required.
 
 ---
@@ -809,31 +808,9 @@ yarn nx build api
 
 Same ruling as `requestExceptionRenewal` in Task 3 (see that task's ledger entry): the existing owner-only check (`if (issue.ownerId !== userId) throw new ForbiddenException();`) is already complete, resource-specific authorization — `ownerId` is DB-stored, not attacker-controlled. Do NOT add `checkOrgAccess` here. Leave the route exactly as it is today.
 
-- [ ] **Step 4: `reviewIssueValidation`**
+- [ ] **Step 4: `reviewIssueValidation` — no change (corrected during Task 4's review, same class as Step 3)**
 
-This route has zero resource fetch today — needs the full inline block built from scratch:
-
-```ts
-  @Post('issue-validations/:id/review')
-  @ApiOperation({ summary: 'Validator approves or rejects a pending issue validation' })
-  async reviewIssueValidation(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-    @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
-  ) {
-    const userId = this.uid(req);
-    const validation = await this.notes.getIssueValidation(id);
-    if (!validation) throw new NotFoundException();
-    const issue = await this.notes.getIssue(validation.issueId);
-    if (!issue) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(issue.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
-  }
-```
-
-(Confirm `IssueValidation`'s field name for the parent issue reference — `issueId` — by checking its interface in `libs/shared/src/strategies/notes.ts` before applying; use whatever the real field name is if different.)
+**Ruling:** `reviewIssueValidation` is NOT touched. Its authorization lives at the strategy layer, not the controller: `libs/shared/src/strategies/fakes/fake-notes.ts` already throws `issue_validation_not_authorized_validator` when `validation.validatorId !== validatorId`. `validatorId` is a DB-stored field set when the validation record is created, not attacker-controlled — this is already complete, resource-specific authorization, identical in shape to `requestExceptionRenewal`'s and `submitIssueForValidation`'s owner-only checks. Adding `checkOrgAccess('update')` on top would restrict reviewing to org creator/admin only, wrongly blocking a legitimate assigned validator who isn't the org creator — a real functional regression, not a hardening. Leave the route exactly as it is today (no new resource-fetch chain, no `checkOrgAccess`).
 
 `listIssueValidations` (hand-rolled correct) and `listPendingIssueValidations` (already correct) are not touched.
 
@@ -901,45 +878,10 @@ describe('issues org scoping (Phase 1 hardening)', () => {
     });
   });
 
-  describe('reviewIssueValidation', () => {
-    it('rejects a caller outside the org', async () => {
-      const notes = makeNotes({
-        getIssueValidation: vi.fn().mockResolvedValue(VALIDATION),
-        getIssue: vi.fn().mockResolvedValue(ISSUE),
-        getOrganizationById: vi.fn().mockResolvedValue(ORG),
-      });
-      await expect(
-        makeController(notes).reviewIssueValidation(reqAs('outsider'), 'validation-1', {
-          decision: 'approved',
-        }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('resolves org through validation -> issue, not a client-supplied id', async () => {
-      const notes = makeNotes({
-        getIssueValidation: vi.fn().mockResolvedValue(VALIDATION),
-        getIssue: vi.fn().mockResolvedValue(ISSUE),
-        getOrganizationById: vi.fn().mockResolvedValue(ORG),
-      });
-      await makeController(notes).reviewIssueValidation(reqAs('org-creator'), 'validation-1', {
-        decision: 'approved',
-      });
-      expect(notes.getIssueValidation).toHaveBeenCalledWith('validation-1');
-      expect(notes.getIssue).toHaveBeenCalledWith('issue-1');
-      expect(notes.getOrganizationById).toHaveBeenCalledWith('org-1');
-    });
-
-    it('throws NotFound when the validation does not exist', async () => {
-      const notes = makeNotes({ getIssueValidation: vi.fn().mockResolvedValue(null) });
-      await expect(
-        makeController(notes).reviewIssueValidation(reqAs('org-creator'), 'missing', {
-          decision: 'approved',
-        }),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
 });
 ```
+
+(`reviewIssueValidation` is not touched — see Step 4's ruling — so no new tests for it. Its existing pre-Task-4 tests must be left exactly as they are.)
 
 Add `ORG` fixture (`{ id: 'org-1', userId: 'org-creator', name: 'Acme' } as unknown as Organization`) if this test file doesn't already define one — check first. Import `Issue`, `IssueValidation` types if not already imported.
 
