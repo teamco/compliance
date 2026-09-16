@@ -340,6 +340,12 @@ export class NotesClientService {
     });
   }
 
+  listAssetActivity(assetId: string): Promise<FrameworkActivity[]> {
+    return signedSend<FrameworkActivity[]>(this.client, 'notes.assets.activity.list', {
+      assetId,
+    });
+  }
+
   listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]> {
     return signedSend<RequirementEvidence[]>(this.client, 'notes.frameworks.evidence.list', {
       frameworkId,

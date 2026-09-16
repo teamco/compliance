@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import type { Asset, AssetInput, AssetPatch, RequirementEvidence } from '@icore/shared';
+import type {
+  Asset,
+  AssetInput,
+  AssetPatch,
+  FrameworkActivity,
+  RequirementEvidence,
+} from '@icore/shared';
 
 export type { Asset, AssetInput, AssetPatch };
 
@@ -34,7 +40,10 @@ export function useUpdateAsset(orgId: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets', orgId] }),
+    onSuccess: (_data, { id }) => {
+      qc.invalidateQueries({ queryKey: ['assets', orgId] });
+      qc.invalidateQueries({ queryKey: ['assets', id, 'activity'] });
+    },
   });
 }
 
@@ -50,6 +59,14 @@ export function useAssetEvidence(assetId: string) {
   return useQuery<RequirementEvidence[]>({
     queryKey: ['assets', assetId, 'evidence'],
     queryFn: () => api<RequirementEvidence[]>(`/notes/assets/${assetId}/evidence`),
+    enabled: !!assetId,
+  });
+}
+
+export function useAssetActivity(assetId: string) {
+  return useQuery<FrameworkActivity[]>({
+    queryKey: ['assets', assetId, 'activity'],
+    queryFn: () => api<FrameworkActivity[]>(`/notes/assets/${assetId}/activity`),
     enabled: !!assetId,
   });
 }
@@ -73,6 +90,9 @@ export function useCreateAssetEvidence(orgId: string, assetId: string) {
           body: JSON.stringify(data),
         },
       ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets', assetId, 'evidence'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['assets', assetId, 'evidence'] });
+      qc.invalidateQueries({ queryKey: ['assets', assetId, 'activity'] });
+    },
   });
 }
