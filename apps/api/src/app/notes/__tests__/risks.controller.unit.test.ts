@@ -3,7 +3,13 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { NotesClientService } from '@icore/notes-client';
-import type { Organization, Risk, RiskAcceptance, VerifiedToken } from '@icore/shared';
+import type {
+  Organization,
+  Risk,
+  RiskAcceptance,
+  RiskTaxonomyCategory,
+  VerifiedToken,
+} from '@icore/shared';
 import { NotesController } from '../notes.controller';
 import { AbilityFactory } from '../../abilities/ability.factory';
 import type { StandardsQueueService } from '../standards-queue.service';
@@ -25,6 +31,12 @@ const ACCEPTANCE: RiskAcceptance = {
   status: 'requested',
 } as unknown as RiskAcceptance;
 
+const TAXONOMY_CATEGORY: RiskTaxonomyCategory = {
+  id: 'category-1',
+  orgId: 'org-1',
+  name: 'Operational',
+} as unknown as RiskTaxonomyCategory;
+
 function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientService {
   return {
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
@@ -35,6 +47,11 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     deleteRisk: vi.fn().mockResolvedValue(undefined),
     removeRiskControlMapping: vi.fn().mockResolvedValue(undefined),
     createRiskAcceptance: vi.fn().mockResolvedValue(ACCEPTANCE),
+    getRiskTaxonomyCategory: vi.fn().mockResolvedValue(TAXONOMY_CATEGORY),
+    archiveRiskTaxonomyCategory: vi.fn().mockResolvedValue({
+      ...TAXONOMY_CATEGORY,
+      archived: true,
+    }),
     ...overrides,
   } as unknown as NotesClientService;
 }
@@ -117,6 +134,29 @@ describe('NotesController — risk org scoping (Phase 1 hardening)', () => {
         approverId: 'ciso-1',
       });
       expect(notes.getRisk).toHaveBeenCalledWith('risk-1');
+    });
+  });
+
+  describe('archiveRiskTaxonomyCategory', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).archiveRiskTaxonomyCategory(reqAs('outsider'), 'category-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows the org creator', async () => {
+      const notes = makeNotes();
+      await makeController(notes).archiveRiskTaxonomyCategory(reqAs('org-creator'), 'category-1');
+      expect(notes.getRiskTaxonomyCategory).toHaveBeenCalledWith('category-1');
+      expect(notes.archiveRiskTaxonomyCategory).toHaveBeenCalledWith('category-1');
+    });
+
+    it('throws NotFound when the category does not exist', async () => {
+      const notes = makeNotes({ getRiskTaxonomyCategory: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).archiveRiskTaxonomyCategory(reqAs('org-creator'), 'missing'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });
