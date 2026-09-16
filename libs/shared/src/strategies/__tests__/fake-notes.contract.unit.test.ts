@@ -870,6 +870,38 @@ describe('Assessment lifecycle (Phase B.1)', () => {
     ]);
   });
 
+  it('getAssessmentType returns the type by id, or null when not found', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+
+    await expect(strategy.getAssessmentType(types[0]!.id)).resolves.toEqual(types[0]);
+    await expect(strategy.getAssessmentType('missing')).resolves.toBeNull();
+  });
+
+  it('getAssessmentItemControlMapping returns the mapping by id, or null when not found', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'user-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'user-1',
+    });
+    const item = await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 4,
+      inherentImpact: 4,
+    });
+    const mapping = await strategy.addAssessmentItemControlMapping(item.id, {
+      controlId: 'ctrl-1',
+      controlCode: 'VULN-001',
+      controlTitle: 'Patch Management',
+    });
+
+    await expect(strategy.getAssessmentItemControlMapping(mapping.id)).resolves.toEqual(mapping);
+    await expect(strategy.getAssessmentItemControlMapping('missing')).resolves.toBeNull();
+  });
+
   it('creates an assessment with an auto-generated code and pinned methodology', async () => {
     const strategy = new FakeNotesStrategy();
     const types = await strategy.listAssessmentTypes('org-1');
@@ -993,7 +1025,7 @@ describe('Assessment lifecycle (Phase B.1)', () => {
     expect(submitted.status).toBe('pending_review');
 
     await expect(strategy.approveAssessment(assessment.id, 'owner-1')).rejects.toThrow(
-      'not_authorized_approver',
+      'assessment_self_approval_forbidden',
     );
 
     const approved = await strategy.approveAssessment(assessment.id, 'approver-1');
@@ -1241,6 +1273,74 @@ describe('Assessment write-path hardening', () => {
 
     const items = await strategy.listAssessmentItems(assessment.id);
     expect(items.map((i) => i.subject)).toEqual(['High', 'Medium', 'Low']);
+  });
+
+  it('rejects an assessment owner approving their own assessment even when named as approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Self-approval attempt',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'owner-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    await expect(strategy.approveAssessment(assessment.id, 'owner-1')).rejects.toThrow(
+      'assessment_self_approval_forbidden',
+    );
+  });
+
+  it('rejects an assessment owner requesting changes on their own assessment even when named as approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Self-review attempt',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'owner-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    await expect(
+      strategy.requestChanges(assessment.id, 'owner-1', 'Needs more evidence'),
+    ).rejects.toThrow('assessment_self_approval_forbidden');
+  });
+
+  it('still allows the legitimate, distinct approver to approve', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Legitimate approval',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    const approved = await strategy.approveAssessment(assessment.id, 'approver-1');
+    expect(approved.status).toBe('approved');
   });
 });
 
@@ -2135,6 +2235,36 @@ describe('Risk Register lifecycle', () => {
     await expect(strategy.reviewRiskAcceptance(acceptance.id, 'ciso-1')).rejects.toThrow(
       `risk_acceptance_already_decided: ${acceptance.id}`,
     );
+  });
+
+  it('getRiskAcceptance returns the acceptance by id, or null when not found', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: new Date(Date.now() + 86400_000).toISOString(),
+      approverId: 'ciso-1',
+    });
+
+    await expect(strategy.getRiskAcceptance(acceptance.id)).resolves.toEqual(acceptance);
+    await expect(strategy.getRiskAcceptance('missing')).resolves.toBeNull();
+  });
+
+  it('getRiskTaxonomyCategory returns the category by id, or null when not found', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+
+    await expect(strategy.getRiskTaxonomyCategory(taxonomy[0]!.id)).resolves.toEqual(taxonomy[0]);
+    await expect(strategy.getRiskTaxonomyCategory('missing')).resolves.toBeNull();
   });
 
   it('attaches evidence to a risk', async () => {

@@ -854,6 +854,13 @@ export class NotesController {
     return this.strategy.listRiskTaxonomy(payload.orgId);
   }
 
+  @MessagePattern('notes.risks.taxonomy.get')
+  getRiskTaxonomyCategory(
+    @Payload() payload: { id: string },
+  ): Promise<RiskTaxonomyCategory | null> {
+    return this.strategy.getRiskTaxonomyCategory(payload.id);
+  }
+
   @MessagePattern('notes.risks.taxonomy.create')
   createRiskTaxonomyCategory(
     @Payload() payload: { orgId: string; data: RiskTaxonomyCategoryInput },
@@ -904,6 +911,11 @@ export class NotesController {
   @MessagePattern('notes.risks.acceptance.active')
   getActiveRiskAcceptance(@Payload() payload: { riskId: string }): Promise<RiskAcceptance | null> {
     return this.strategy.getActiveRiskAcceptance(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.acceptance.get')
+  getRiskAcceptance(@Payload() payload: { id: string }): Promise<RiskAcceptance | null> {
+    return this.strategy.getRiskAcceptance(payload.id);
   }
 
   @MessagePattern('notes.risks.acceptance.review')
@@ -1038,6 +1050,11 @@ export class NotesController {
     return this.strategy.listAssessmentTypes(payload.orgId);
   }
 
+  @MessagePattern('notes.assessment-types.get')
+  getAssessmentType(@Payload() payload: { id: string }): Promise<AssessmentType | null> {
+    return this.strategy.getAssessmentType(payload.id);
+  }
+
   @MessagePattern('notes.assessment-types.create')
   createAssessmentType(
     @Payload() payload: { orgId: string; data: AssessmentTypeInput },
@@ -1087,6 +1104,13 @@ export class NotesController {
     @Payload() payload: { itemId: string },
   ): Promise<AssessmentItemControlMapping[]> {
     return this.strategy.listAssessmentItemControlMappings(payload.itemId);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.get')
+  getAssessmentItemControlMapping(
+    @Payload() payload: { id: string },
+  ): Promise<AssessmentItemControlMapping | null> {
+    return this.strategy.getAssessmentItemControlMapping(payload.id);
   }
 
   @MessagePattern('notes.assessments.items.mappings.add')

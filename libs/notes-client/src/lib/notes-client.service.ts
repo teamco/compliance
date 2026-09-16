@@ -899,6 +899,12 @@ export class NotesClientService {
     return signedSend<RiskTaxonomyCategory[]>(this.client, 'notes.risks.taxonomy.list', { orgId });
   }
 
+  getRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory | null> {
+    return signedSend<RiskTaxonomyCategory | null>(this.client, 'notes.risks.taxonomy.get', {
+      id,
+    });
+  }
+
   createRiskTaxonomyCategory(
     orgId: string,
     data: RiskTaxonomyCategoryInput,
@@ -949,6 +955,10 @@ export class NotesClientService {
     return signedSend<RiskAcceptance | null>(this.client, 'notes.risks.acceptance.active', {
       riskId,
     });
+  }
+
+  getRiskAcceptance(id: string): Promise<RiskAcceptance | null> {
+    return signedSend<RiskAcceptance | null>(this.client, 'notes.risks.acceptance.get', { id });
   }
 
   reviewRiskAcceptance(
@@ -1073,6 +1083,10 @@ export class NotesClientService {
     return signedSend<AssessmentType[]>(this.client, 'notes.assessment-types.list', { orgId });
   }
 
+  getAssessmentType(id: string): Promise<AssessmentType | null> {
+    return signedSend<AssessmentType | null>(this.client, 'notes.assessment-types.get', { id });
+  }
+
   createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
     return signedSend<AssessmentType>(this.client, 'notes.assessment-types.create', {
       orgId,
@@ -1120,6 +1134,14 @@ export class NotesClientService {
       this.client,
       'notes.assessments.items.mappings.list',
       { itemId },
+    );
+  }
+
+  getAssessmentItemControlMapping(id: string): Promise<AssessmentItemControlMapping | null> {
+    return signedSend<AssessmentItemControlMapping | null>(
+      this.client,
+      'notes.assessments.items.mappings.get',
+      { id },
     );
   }
 

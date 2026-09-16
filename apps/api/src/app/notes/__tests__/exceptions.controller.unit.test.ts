@@ -5,6 +5,7 @@ import type { AiClientService } from '@icore/ai-client';
 import type { NotesClientService } from '@icore/notes-client';
 import type {
   Exception,
+  ExceptionInput,
   ExceptionRenewal,
   ExceptionRenewalRequestInput,
   Organization,
@@ -51,6 +52,10 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     getException: vi.fn().mockResolvedValue(EXCEPTION),
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
     getExceptionRenewal: vi.fn().mockResolvedValue(PENDING_RENEWAL),
+    listExceptions: vi.fn().mockResolvedValue([]),
+    createException: vi.fn().mockResolvedValue(EXCEPTION),
+    updateException: vi.fn().mockResolvedValue(EXCEPTION),
+    deleteException: vi.fn().mockResolvedValue(undefined),
     listExceptionRenewals: vi.fn().mockResolvedValue([]),
     listPendingExceptionRenewals: vi.fn().mockResolvedValue([]),
     requestExceptionRenewal: vi.fn().mockResolvedValue(PENDING_RENEWAL),
@@ -317,6 +322,73 @@ describe('NotesController — exception governance authorization', () => {
       const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
       await expect(
         makeController(notes).listPendingExceptionRenewals(reqAs('org-creator'), 'missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+});
+
+describe('exceptions org scoping (Phase 1 hardening)', () => {
+  describe('listExceptions / createException', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listExceptions(reqAs('outsider'), 'org-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(notes.listExceptions).not.toHaveBeenCalled();
+    });
+
+    it('allows the org creator to list', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listExceptions(reqAs('org-creator'), 'org-1'),
+      ).resolves.toBeDefined();
+    });
+
+    it('allows an admin to create', async () => {
+      const notes = makeNotes();
+      await makeController(notes).createException(reqAsAdmin('platform-admin'), 'org-1', {
+        title: 'New exception',
+      } as ExceptionInput);
+      expect(notes.createException).toHaveBeenCalledWith(
+        'org-1',
+        'platform-admin',
+        expect.anything(),
+      );
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).listExceptions(reqAs('org-creator'), 'missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getException / updateException / deleteException', () => {
+    it('rejects a caller outside the org on get', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).getException(reqAs('outsider'), 'exception-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows the org creator on get/update/delete', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).getException(reqAs('org-creator'), 'exception-1'),
+      ).resolves.toEqual(EXCEPTION);
+      await expect(
+        makeController(notes).updateException(reqAs('org-creator'), 'exception-1', {}),
+      ).resolves.toBeDefined();
+      await expect(
+        makeController(notes).deleteException(reqAs('org-creator'), 'exception-1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('throws NotFound when the exception does not exist', async () => {
+      const notes = makeNotes({ getException: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).getException(reqAs('org-creator'), 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
   });

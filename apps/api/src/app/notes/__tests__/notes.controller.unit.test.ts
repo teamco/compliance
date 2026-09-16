@@ -49,6 +49,10 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
   return {
     getIssue: vi.fn().mockResolvedValue(ISSUE),
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
+    listIssues: vi.fn().mockResolvedValue([]),
+    createIssue: vi.fn().mockResolvedValue(ISSUE),
+    updateIssue: vi.fn().mockResolvedValue(ISSUE),
+    deleteIssue: vi.fn().mockResolvedValue(undefined),
     listIssueValidations: vi.fn().mockResolvedValue([]),
     listPendingIssueValidations: vi.fn().mockResolvedValue([]),
     submitIssueForValidation: vi.fn().mockResolvedValue(ISSUE),
@@ -220,6 +224,51 @@ describe('NotesController — issue validation authorization', () => {
       await expect(
         makeController(notes).listPendingIssueValidations(reqAs('org-creator'), 'missing'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+});
+
+describe('issues org scoping (Phase 1 hardening)', () => {
+  describe('listIssues / createIssue', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(makeController(notes).listIssues(reqAs('outsider'), 'org-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('getIssue / updateIssue / deleteIssue', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(makeController(notes).getIssue(reqAs('outsider'), 'issue-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('allows the org creator', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).getIssue(reqAs('org-creator'), 'issue-1'),
+      ).resolves.toEqual(ISSUE);
+    });
+
+    it('throws NotFound when the issue does not exist', async () => {
+      const notes = makeNotes({ getIssue: vi.fn().mockResolvedValue(null) });
+      await expect(makeController(notes).getIssue(reqAs('org-creator'), 'missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('submitIssueForValidation', () => {
+    it('rejects a non-owner even if they belong to the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).submitIssueForValidation(reqAs('org-creator'), 'issue-1', {
+          ...SUBMIT_INPUT,
+        }),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });
