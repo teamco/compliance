@@ -4035,6 +4035,7 @@ export class FakeNotesStrategy implements NotesStrategy {
       inherentImpact: data.inherentImpact,
       inherentScore: score,
       inherentLabel: label,
+      aboveAppetite: score > methodology.appetiteThreshold,
       status: 'open',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -4092,6 +4093,7 @@ export class FakeNotesStrategy implements NotesStrategy {
 
     const methodology = this.riskMethodologies.find((m) => m.id === risk.methodologyId);
     if (methodology) {
+      let scoresChanged = false;
       if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
         const { score, label } = this.scoreRisk(
           methodology,
@@ -4100,6 +4102,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         );
         risk.inherentScore = score;
         risk.inherentLabel = label;
+        scoresChanged = true;
       }
       if (
         (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
@@ -4113,7 +4116,11 @@ export class FakeNotesStrategy implements NotesStrategy {
         );
         risk.residualScore = score;
         risk.residualLabel = label;
-        risk.aboveAppetite = score > methodology.appetiteThreshold;
+        scoresChanged = true;
+      }
+      if (scoresChanged) {
+        const effectiveScore = risk.residualScore ?? risk.inherentScore;
+        risk.aboveAppetite = effectiveScore > methodology.appetiteThreshold;
       }
     }
 
