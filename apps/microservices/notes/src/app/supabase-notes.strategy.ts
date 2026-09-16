@@ -555,6 +555,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       createdBy: row['created_by'] as string,
       verifiedBy: (row['verified_by'] as string | null) ?? null,
       verifiedAt: (row['verified_at'] as string | null) ?? null,
+      reviewNotes: (row['review_notes'] as string | null) ?? null,
     };
   }
 
@@ -3595,6 +3596,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         verification_status: decision,
         verified_by: reviewerId,
         verified_at: new Date().toISOString(),
+        review_notes: reviewNotes ?? null,
       })
       .eq('id', id)
       .select()

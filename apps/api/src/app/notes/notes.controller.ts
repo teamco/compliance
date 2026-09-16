@@ -265,7 +265,13 @@ export class NotesController {
     @Body()
     body: Omit<
       RequirementEvidence,
-      'id' | 'controlId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+      | 'id'
+      | 'controlId'
+      | 'createdBy'
+      | 'verificationStatus'
+      | 'verifiedBy'
+      | 'verifiedAt'
+      | 'reviewNotes'
     >,
   ) {
     const userId = this.uid(req);
@@ -276,6 +282,7 @@ export class NotesController {
       verificationStatus: 'pending_review',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
   }
 
@@ -475,7 +482,7 @@ export class NotesController {
     @Body()
     body: Omit<
       RequirementEvidence,
-      'id' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+      'id' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt' | 'reviewNotes'
     >,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
@@ -490,6 +497,7 @@ export class NotesController {
       verificationStatus: 'pending_review',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
   }
 
@@ -1121,7 +1129,13 @@ export class NotesController {
     @Body()
     body: Omit<
       RequirementEvidence,
-      'id' | 'assetId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+      | 'id'
+      | 'assetId'
+      | 'createdBy'
+      | 'verificationStatus'
+      | 'verifiedBy'
+      | 'verifiedAt'
+      | 'reviewNotes'
     >,
   ) {
     const userId = this.uid(req);
@@ -1137,6 +1151,7 @@ export class NotesController {
       verificationStatus: 'pending_review',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
   }
 
@@ -1463,7 +1478,13 @@ export class NotesController {
     @Body()
     body: Omit<
       RequirementEvidence,
-      'id' | 'riskId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+      | 'id'
+      | 'riskId'
+      | 'createdBy'
+      | 'verificationStatus'
+      | 'verifiedBy'
+      | 'verifiedAt'
+      | 'reviewNotes'
     >,
   ) {
     const userId = this.uid(req);
@@ -1478,6 +1499,7 @@ export class NotesController {
       verificationStatus: 'pending_review',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
   }
 
@@ -1786,7 +1808,13 @@ export class NotesController {
     @Body()
     body: Omit<
       RequirementEvidence,
-      'id' | 'assessmentItemId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+      | 'id'
+      | 'assessmentItemId'
+      | 'createdBy'
+      | 'verificationStatus'
+      | 'verifiedBy'
+      | 'verifiedAt'
+      | 'reviewNotes'
     >,
   ) {
     const userId = this.uid(req);
@@ -1802,6 +1830,7 @@ export class NotesController {
       verificationStatus: 'pending_review',
       verifiedBy: null,
       verifiedAt: null,
+      reviewNotes: null,
     });
   }
 

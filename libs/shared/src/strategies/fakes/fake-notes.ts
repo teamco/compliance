@@ -2144,6 +2144,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         createdBy: 'seed-user',
         verifiedBy: 'seed-reviewer',
         verifiedAt: '2026-01-16T00:00:00.000Z',
+        reviewNotes: null,
         linkedControls: ['POL-001', 'AC-001'],
         linkedRequirements: ['GV.PO-01', 'GV.PO-02'],
       },
@@ -2163,6 +2164,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         createdBy: 'seed-user',
         verifiedBy: 'seed-reviewer',
         verifiedAt: '2026-07-02T00:00:00.000Z',
+        reviewNotes: null,
         linkedControls: ['AC-001'],
         linkedRequirements: ['PR.AA-01'],
       },
@@ -2181,6 +2183,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         createdBy: 'seed-user',
         verifiedBy: 'seed-reviewer',
         verifiedAt: '2026-08-11T00:00:00.000Z',
+        reviewNotes: null,
         linkedControls: ['AC-001'],
         linkedRequirements: ['PR.AA-01'],
       },
@@ -2200,6 +2203,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         createdBy: 'seed-user',
         verifiedBy: 'seed-reviewer',
         verifiedAt: '2026-07-01T00:00:00.000Z',
+        reviewNotes: null,
         linkedControls: ['AC-001'],
         linkedRequirements: ['PR.AA-02'],
       },
@@ -2219,6 +2223,7 @@ export class FakeNotesStrategy implements NotesStrategy {
         createdBy: 'seed-user',
         verifiedBy: 'seed-reviewer',
         verifiedAt: '2026-08-02T00:00:00.000Z',
+        reviewNotes: null,
         linkedControls: ['POL-001'],
         linkedRequirements: ['GV.PO-01'],
       },
@@ -4707,6 +4712,7 @@ export class FakeNotesStrategy implements NotesStrategy {
     ev.verificationStatus = decision;
     ev.verifiedBy = reviewerId;
     ev.verifiedAt = new Date().toISOString();
+    ev.reviewNotes = reviewNotes ?? null;
     return ev;
   }
 
