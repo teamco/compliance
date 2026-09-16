@@ -166,9 +166,7 @@ describe('EvidencePanel', () => {
       ),
     );
     fireEvent.click(screen.getByText(/^edit$/i));
-    expect((screen.getByPlaceholderText(/title/i) as HTMLInputElement).value).toBe(
-      EVIDENCE.title,
-    );
+    expect((screen.getByPlaceholderText(/title/i) as HTMLInputElement).value).toBe(EVIDENCE.title);
     fireEvent.click(screen.getByText(/^cancel$/i));
 
     fireEvent.click(screen.getByText(/add evidence/i));
