@@ -4305,6 +4305,7 @@ export class FakeNotesStrategy implements NotesStrategy {
     const a = this.assessments.find((x) => x.id === id);
     if (!a) throw new Error(`assessment_not_found: ${id}`);
     if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
+    if (a.ownerId === userId) throw new Error('assessment_self_approval_forbidden');
     if (a.approverId !== userId) throw new Error('not_authorized_approver');
     a.status = 'approved';
     a.updatedAt = new Date().toISOString();
@@ -4316,6 +4317,7 @@ export class FakeNotesStrategy implements NotesStrategy {
     const a = this.assessments.find((x) => x.id === id);
     if (!a) throw new Error(`assessment_not_found: ${id}`);
     if (a.status !== 'pending_review') throw new Error(`invalid_transition_from_${a.status}`);
+    if (a.ownerId === userId) throw new Error('assessment_self_approval_forbidden');
     if (a.approverId !== userId) throw new Error('not_authorized_approver');
     a.status = 'changes_requested';
     a.lastReviewNote = note;

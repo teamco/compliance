@@ -3048,21 +3048,47 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toAssessment(ok(data, error));
   }
 
+  private async getAssessmentOrThrow(id: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
   async approveAssessment(id: string, userId: string): Promise<Assessment> {
+    const current = await this.getAssessmentOrThrow(id);
+    if (current.status !== 'pending_review') {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (current.ownerId === userId) {
+      throw new Error('assessment_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('not_authorized_approver');
+    }
     const { data, error } = await this.db
       .from('risk_assessments')
       .update({ status: 'approved', updated_at: new Date().toISOString() })
       .eq('id', id)
-      .eq('approver_id', userId)
-      .eq('status', 'pending_review')
       .select()
       .single();
-    if (error || !data) throw new Error('not_authorized_approver_or_invalid_transition');
-    return this.toAssessment(data);
+    return this.toAssessment(ok(data, error));
   }
 
   async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
     if (!note || note.trim() === '') throw new Error('note_required');
+    const current = await this.getAssessmentOrThrow(id);
+    if (current.status !== 'pending_review') {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (current.ownerId === userId) {
+      throw new Error('assessment_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('not_authorized_approver');
+    }
     const { data, error } = await this.db
       .from('risk_assessments')
       .update({
@@ -3071,12 +3097,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('approver_id', userId)
-      .eq('status', 'pending_review')
       .select()
       .single();
-    if (error || !data) throw new Error('not_authorized_approver_or_invalid_transition');
-    return this.toAssessment(data);
+    return this.toAssessment(ok(data, error));
   }
 
   async completeAssessment(id: string, userId: string): Promise<Assessment> {

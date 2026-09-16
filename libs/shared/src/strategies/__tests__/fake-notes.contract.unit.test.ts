@@ -1025,7 +1025,7 @@ describe('Assessment lifecycle (Phase B.1)', () => {
     expect(submitted.status).toBe('pending_review');
 
     await expect(strategy.approveAssessment(assessment.id, 'owner-1')).rejects.toThrow(
-      'not_authorized_approver',
+      'assessment_self_approval_forbidden',
     );
 
     const approved = await strategy.approveAssessment(assessment.id, 'approver-1');
@@ -1273,6 +1273,74 @@ describe('Assessment write-path hardening', () => {
 
     const items = await strategy.listAssessmentItems(assessment.id);
     expect(items.map((i) => i.subject)).toEqual(['High', 'Medium', 'Low']);
+  });
+
+  it('rejects an assessment owner approving their own assessment even when named as approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Self-approval attempt',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'owner-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    await expect(strategy.approveAssessment(assessment.id, 'owner-1')).rejects.toThrow(
+      'assessment_self_approval_forbidden',
+    );
+  });
+
+  it('rejects an assessment owner requesting changes on their own assessment even when named as approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Self-review attempt',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'owner-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    await expect(
+      strategy.requestChanges(assessment.id, 'owner-1', 'Needs more evidence'),
+    ).rejects.toThrow('assessment_self_approval_forbidden');
+  });
+
+  it('still allows the legitimate, distinct approver to approve', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Legitimate approval',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+
+    const approved = await strategy.approveAssessment(assessment.id, 'approver-1');
+    expect(approved.status).toBe('approved');
   });
 });
 
