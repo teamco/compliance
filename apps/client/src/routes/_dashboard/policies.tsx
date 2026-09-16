@@ -32,9 +32,12 @@ export const Route = createFileRoute('/_dashboard/policies')({
   component: PoliciesPage,
 });
 
-const STATUS_COLORS: Record<Policy['status'], string> = {
+const WORKFLOW_COLOR: Record<Policy['workflowStatus'], string> = {
   draft: 'bg-muted text-muted-foreground border-border',
-  approved: 'bg-green-500/10 text-green-400 border-green-500/20',
+  in_review: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  published: 'bg-green-500/10 text-green-500 border-green-500/20',
+  superseded: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
 };
 
 const EMPTY_FORM: PolicyInput = { frameworkId: '', title: '', content: '' };
@@ -119,9 +122,9 @@ function PoliciesPage() {
                     {policy.title}
                   </span>
                   <span
-                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${STATUS_COLORS[policy.status]}`}
+                    className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded border ${WORKFLOW_COLOR[policy.workflowStatus]}`}
                   >
-                    {t(`policies.status.${policy.status}`)}
+                    {t(`policies.workflow.${policy.workflowStatus}`)}
                   </span>
                   <span className="text-[10px] text-muted-foreground/50">v{policy.version}</span>
                 </div>
