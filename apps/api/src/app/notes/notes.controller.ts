@@ -874,6 +874,10 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Body() body: { orgId: string; docId?: string; result: GapAnalysisResult },
   ) {
+    if (!body.orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(body.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.saveGapAnalysis(body.orgId, this.uid(req), body.docId ?? null, body.result);
   }
 
@@ -881,14 +885,20 @@ export class NotesController {
   @ApiOperation({ summary: 'List persisted gap analyses for an org' })
   async listGap(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId?: string) {
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listGapAnalyses(orgId);
   }
 
   @Get('gap/:id')
   @ApiOperation({ summary: 'Get a single gap analysis by id' })
-  async getGap(@Param('id') id: string) {
+  async getGap(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const gap = await this.notes.getGapAnalysis(id);
     if (!gap) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(gap.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return gap;
   }
 
