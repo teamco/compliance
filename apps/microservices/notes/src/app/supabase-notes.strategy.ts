@@ -3812,12 +3812,26 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toPolicyControl(ok(row, error));
   }
 
+  async getPolicyControl(id: string): Promise<PolicyControl | null> {
+    const { data, error } = await this.db
+      .from('policy_controls')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toPolicyControl(data) : null;
+  }
+
   async removePolicyControl(id: string): Promise<void> {
     const { error } = await this.db.from('policy_controls').delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
 
-  async listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+  async listPoliciesForControl(
+    controlCode: string,
+    frameworkId: string,
+    orgId: string,
+  ): Promise<Policy[]> {
     const { data, error } = await this.db
       .from('policy_controls')
       .select('policy_id')
@@ -3828,7 +3842,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const { data: policies, error: pErr } = await this.db
       .from('policies')
       .select('*')
-      .in('id', policyIds);
+      .in('id', policyIds)
+      .eq('org_id', orgId);
     return ok(policies, pErr).map(this.toPolicy);
   }
 

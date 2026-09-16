@@ -1213,6 +1213,11 @@ export class NotesController {
     return this.strategy.addPolicyControl(p.policyId, p.data);
   }
 
+  @MessagePattern('notes.policies.controls.get')
+  getPolicyControl(@Payload() p: { id: string }): Promise<PolicyControl | null> {
+    return this.strategy.getPolicyControl(p.id);
+  }
+
   @MessagePattern('notes.policies.controls.remove')
   removePolicyControl(@Payload() p: { id: string }): Promise<void> {
     return this.strategy.removePolicyControl(p.id);
@@ -1220,9 +1225,9 @@ export class NotesController {
 
   @MessagePattern('notes.policies.for-control')
   listPoliciesForControl(
-    @Payload() p: { controlCode: string; frameworkId: string },
+    @Payload() p: { controlCode: string; frameworkId: string; orgId: string },
   ): Promise<Policy[]> {
-    return this.strategy.listPoliciesForControl(p.controlCode, p.frameworkId);
+    return this.strategy.listPoliciesForControl(p.controlCode, p.frameworkId, p.orgId);
   }
 
   @MessagePattern('notes.policies.transition-workflow')

@@ -4897,14 +4897,22 @@ export class FakeNotesStrategy implements NotesStrategy {
     return pc;
   }
 
+  async getPolicyControl(id: string): Promise<PolicyControl | null> {
+    return this.policyControls.find((c) => c.id === id) ?? null;
+  }
+
   async removePolicyControl(id: string): Promise<void> {
     this.policyControls = this.policyControls.filter((c) => c.id !== id);
   }
 
-  async listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+  async listPoliciesForControl(
+    controlCode: string,
+    frameworkId: string,
+    orgId: string,
+  ): Promise<Policy[]> {
     const policyIds = this.policyControls
       .filter((c) => c.controlCode === controlCode && c.frameworkId === frameworkId)
       .map((c) => c.policyId);
-    return this.policies.filter((p) => policyIds.includes(p.id));
+    return this.policies.filter((p) => policyIds.includes(p.id) && p.orgId === orgId);
   }
 }

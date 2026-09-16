@@ -1714,9 +1714,29 @@ describe('policy controls mapping', () => {
   it('lists policies for a given control code', async () => {
     const p = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'T', content: 'C' });
     await s.addPolicyControl(p.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
-    const policies = await s.listPoliciesForControl('AC-1', 'fw1');
+    const policies = await s.listPoliciesForControl('AC-1', 'fw1', 'org1');
     expect(policies).toHaveLength(1);
     expect(policies[0].id).toBe(p.id);
+  });
+
+  it('scopes listPoliciesForControl results to the requesting org', async () => {
+    const policyA = await s.createPolicy('org-a', 'user-a', {
+      frameworkId: 'fw1',
+      title: 'Policy A',
+      content: 'C',
+    });
+    const policyB = await s.createPolicy('org-b', 'user-b', {
+      frameworkId: 'fw1',
+      title: 'Policy B',
+      content: 'C',
+    });
+    await s.addPolicyControl(policyA.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+    await s.addPolicyControl(policyB.id, { controlCode: 'AC-1', frameworkId: 'fw1' });
+
+    const resultForA = await s.listPoliciesForControl('AC-1', 'fw1', 'org-a');
+
+    expect(resultForA.map((p) => p.id)).toEqual([policyA.id]);
+    expect(resultForA.map((p) => p.id)).not.toContain(policyB.id);
   });
 
   it('removes control mapping', async () => {

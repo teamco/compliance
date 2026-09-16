@@ -1560,8 +1560,13 @@ export interface NotesStrategy {
   // Controls ↔ Policies
   listPolicyControls(policyId: string): Promise<PolicyControl[]>;
   addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl>;
+  getPolicyControl(id: string): Promise<PolicyControl | null>;
   removePolicyControl(id: string): Promise<void>;
-  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]>;
+  listPoliciesForControl(
+    controlCode: string,
+    frameworkId: string,
+    orgId: string,
+  ): Promise<Policy[]>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────
