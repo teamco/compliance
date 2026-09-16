@@ -156,11 +156,21 @@ vi.mock('@/queries/controls', () => ({
   useInternalControl: () => ({ data: mockControl, isPending: false }),
   useUpdateControl: () => ({ mutate: mockUpdateMutate, isPending: false }),
   useControlEvidence: () => ({ data: mockEvidence }),
+  useCreateControlEvidence: () => ({ mutate: vi.fn(), isPending: false }),
   useControlAssessments: () => ({ data: mockAssessments }),
   useControlFindings: () => ({ data: mockFindings }),
   useControlActivity: () => ({ data: mockActivity }),
   useCreateControlAssessment: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useAuthStore: (selector: (s: { user: { id: string } }) => unknown) =>
+      selector({ user: { id: 'user-1' } }),
+  };
+});
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
 

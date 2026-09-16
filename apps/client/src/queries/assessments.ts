@@ -231,7 +231,10 @@ export function useCreateAssessmentItemEvidence(orgId: string, itemId: string) {
   return useMutation<
     RequirementEvidence,
     Error,
-    Omit<RequirementEvidence, 'id' | 'assessmentItemId'>
+    Omit<
+      RequirementEvidence,
+      'id' | 'assessmentItemId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >
   >({
     mutationFn: (data) =>
       api<RequirementEvidence>(

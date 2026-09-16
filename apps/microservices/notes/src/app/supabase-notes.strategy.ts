@@ -38,6 +38,7 @@ import type {
   ImplementationStatus,
   EffectivenessStatus,
   RequirementEvidence,
+  EvidencePatch,
   RequirementAssessment,
   FrameworkActivity,
   Finding,
@@ -528,6 +529,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       expiration_date: data.expirationDate || null,
       verification_status: data.verificationStatus,
       url: data.url ?? null,
+      created_by: data.createdBy,
     };
   }
 
@@ -540,6 +542,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       requirementId: row['requirement_id'] as string | undefined,
       riskId: row['risk_id'] as string | undefined,
       assessmentItemId: row['assessment_item_id'] as string | undefined,
+      assetId: row['asset_id'] as string | undefined,
       title: row['title'] as string,
       owner: row['owner'] as string,
       evidenceType: row['evidence_type'] as string,
@@ -549,6 +552,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       expirationDate: row['expiration_date'] as string,
       verificationStatus: row['verification_status'] as RequirementEvidence['verificationStatus'],
       url: row['url'] as string | undefined,
+      createdBy: row['created_by'] as string,
+      verifiedBy: (row['verified_by'] as string | null) ?? null,
+      verifiedAt: (row['verified_at'] as string | null) ?? null,
     };
   }
 
@@ -3461,6 +3467,96 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .select()
       .single();
     return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listAssetEvidence(assetId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('asset_id', assetId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createAssetEvidence(
+    orgId: string,
+    assetId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assetId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), asset_id: assetId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  private async getEvidenceOrThrow(id: string): Promise<RequirementEvidence> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toRequirementEvidence(ok(data, error));
+  }
+
+  async getEvidence(id: string): Promise<RequirementEvidence | null> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRequirementEvidence(data) : null;
+  }
+
+  async updateEvidence(id: string, patch: EvidencePatch): Promise<RequirementEvidence> {
+    const payload: Record<string, unknown> = {};
+    if (patch.title !== undefined) payload['title'] = patch.title;
+    if (patch.owner !== undefined) payload['owner'] = patch.owner;
+    if (patch.evidenceType !== undefined) payload['evidence_type'] = patch.evidenceType;
+    if (patch.source !== undefined) payload['source'] = patch.source;
+    if (patch.collectionDate !== undefined) payload['collection_date'] = patch.collectionDate;
+    if (patch.periodCovered !== undefined) payload['period_covered'] = patch.periodCovered;
+    if (patch.expirationDate !== undefined) payload['expiration_date'] = patch.expirationDate;
+    if (patch.url !== undefined) payload['url'] = patch.url;
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(data, error));
+  }
+
+  async deleteEvidence(id: string): Promise<void> {
+    const { error } = await this.db.from('requirement_evidence').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async reviewEvidence(
+    id: string,
+    reviewerId: string,
+    decision: 'verified' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<RequirementEvidence> {
+    const current = await this.getEvidenceOrThrow(id);
+    if (current.createdBy === reviewerId) {
+      throw new Error('evidence_self_review_forbidden');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('evidence_review_notes_required');
+    }
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .update({
+        verification_status: decision,
+        verified_by: reviewerId,
+        verified_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(data, error));
   }
 
   // ─── Policies ──────────────────────────────────────────────────────────────

@@ -1648,6 +1648,9 @@ describe('framework workspace & GRC hierarchy', () => {
       periodCovered: '2026-Q3',
       expirationDate: '2027-09-01',
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     expect(created.id).toBeDefined();
@@ -1936,6 +1939,9 @@ describe('InternalControl lifecycle', () => {
       periodCovered: '2026-09-01/2026-09-08',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     const evidence = await strategy.listControlEvidence(control.id);
@@ -2082,6 +2088,9 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     expect(await strategy.listRiskEvidence(risk.id)).toHaveLength(1);
@@ -2111,6 +2120,9 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     expect(ev.assessmentItemId).toBe(item.id);
@@ -2138,6 +2150,9 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     const control = await strategy.createInternalControl('org-1', {
@@ -2162,6 +2177,9 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026-09-01/2026-09-08',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     const nistId = '00000000-0000-0000-0000-000000000003';
@@ -2176,6 +2194,9 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026-Q3',
       expirationDate: '2027-09-01',
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     });
 
     const types = await strategy.listAssessmentTypes('org-1');
@@ -2206,6 +2227,9 @@ describe('Risk Register lifecycle', () => {
       periodCovered: '2026',
       expirationDate: new Date().toISOString(),
       verificationStatus: 'verified',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
     } as const;
     await strategy.createAssessmentItemEvidence('org-1', item1.id, evidenceInput);
     await strategy.createAssessmentItemEvidence('org-1', item2.id, evidenceInput);
@@ -2229,5 +2253,132 @@ describe('Risk Register lifecycle', () => {
     const frameworkEvidence = await strategy.listFrameworkEvidence(nistId, 'org-1');
     expect(frameworkEvidence.length).toBeGreaterThanOrEqual(1);
     expect(item1Evidence.some((e) => frameworkEvidence.some((fe) => fe.id === e.id))).toBe(false);
+  });
+});
+
+describe('unified evidence', () => {
+  let s: FakeNotesStrategy;
+  beforeEach(() => {
+    s = new FakeNotesStrategy();
+  });
+
+  it('creates and lists evidence scoped to an asset', async () => {
+    const ev = await s.createAssetEvidence('org1', 'asset-1', {
+      title: 'Firewall config export',
+      owner: 'Network Team',
+      evidenceType: 'config',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    expect(ev.assetId).toBe('asset-1');
+    expect(ev.createdBy).toBe('user-1');
+    const list = await s.listAssetEvidence('asset-1');
+    expect(list.map((e) => e.id)).toEqual([ev.id]);
+  });
+
+  it('updates evidence metadata without touching verificationStatus', async () => {
+    const ev = await s.createControlEvidence('org1', 'control-1', {
+      title: 'Old title',
+      owner: 'IT',
+      evidenceType: 'screenshot',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    const updated = await s.updateEvidence(ev.id, {
+      title: 'New title',
+      verificationStatus: 'verified',
+    } as never);
+    expect(updated.title).toBe('New title');
+    expect(updated.verificationStatus).toBe('pending_review');
+  });
+
+  it('deletes evidence', async () => {
+    const ev = await s.createControlEvidence('org1', 'control-1', {
+      title: 'T',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    await s.deleteEvidence(ev.id);
+    expect(await s.getEvidence(ev.id)).toBeNull();
+  });
+
+  it('verifies evidence, recording reviewer and timestamp', async () => {
+    const ev = await s.createControlEvidence('org1', 'control-1', {
+      title: 'T',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    const reviewed = await s.reviewEvidence(ev.id, 'reviewer-1', 'verified');
+    expect(reviewed.verificationStatus).toBe('verified');
+    expect(reviewed.verifiedBy).toBe('reviewer-1');
+    expect(reviewed.verifiedAt).not.toBeNull();
+  });
+
+  it('rejects self-verification', async () => {
+    const ev = await s.createControlEvidence('org1', 'control-1', {
+      title: 'T',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    await expect(s.reviewEvidence(ev.id, 'user-1', 'verified')).rejects.toThrow(
+      'evidence_self_review_forbidden',
+    );
+  });
+
+  it('requires reviewNotes on rejection', async () => {
+    const ev = await s.createControlEvidence('org1', 'control-1', {
+      title: 'T',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00.000Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00.000Z',
+      verificationStatus: 'pending_review',
+      createdBy: 'user-1',
+      verifiedBy: null,
+      verifiedAt: null,
+    });
+    await expect(s.reviewEvidence(ev.id, 'reviewer-1', 'rejected')).rejects.toThrow(
+      'evidence_review_notes_required',
+    );
+    const rejected = await s.reviewEvidence(ev.id, 'reviewer-1', 'rejected', 'Not sufficient');
+    expect(rejected.verificationStatus).toBe('rejected');
   });
 });

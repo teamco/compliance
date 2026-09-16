@@ -83,6 +83,7 @@ import type {
   Webhook,
   WebhookInput,
   WorkflowTransition,
+  EvidencePatch,
 } from '@icore/shared';
 import { NOTES_CLIENT } from './notes-client.tokens';
 
@@ -819,6 +820,50 @@ export class NotesClientService {
   }
   deleteAsset(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.assets.delete', { id });
+  }
+
+  listAssetEvidence(assetId: string): Promise<RequirementEvidence[]> {
+    return signedSend<RequirementEvidence[]>(this.client, 'notes.assets.evidence.list', {
+      assetId,
+    });
+  }
+
+  createAssetEvidence(
+    orgId: string,
+    assetId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assetId'>,
+  ): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.assets.evidence.create', {
+      orgId,
+      assetId,
+      data,
+    });
+  }
+
+  getEvidence(id: string): Promise<RequirementEvidence | null> {
+    return signedSend<RequirementEvidence | null>(this.client, 'notes.evidence.get', { id });
+  }
+
+  updateEvidence(id: string, patch: EvidencePatch): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.evidence.update', { id, patch });
+  }
+
+  deleteEvidence(id: string): Promise<void> {
+    return signedSend<void>(this.client, 'notes.evidence.delete', { id });
+  }
+
+  reviewEvidence(
+    id: string,
+    reviewerId: string,
+    decision: 'verified' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<RequirementEvidence> {
+    return signedSend<RequirementEvidence>(this.client, 'notes.evidence.review', {
+      id,
+      reviewerId,
+      decision,
+      reviewNotes,
+    });
   }
 
   listRisks(orgId: string): Promise<Risk[]> {

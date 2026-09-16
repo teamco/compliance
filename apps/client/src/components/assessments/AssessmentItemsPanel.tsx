@@ -3,7 +3,7 @@ import type React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
 import { Plus, Trash2 } from 'lucide-react';
-import { useNotify } from '@icore/template-shared';
+import { useAuthStore, useNotify } from '@icore/template-shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -26,7 +26,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Combobox } from '@/components/ui/combobox';
 import { AssessmentItemControls } from '@/components/assessments/AssessmentItemControls';
-import { AssessmentItemEvidence } from '@/components/assessments/AssessmentItemEvidence';
+import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 import {
   useRiskMethodology,
   useRiskTaxonomy,
@@ -56,6 +56,7 @@ interface AssessmentItemsPanelProps {
 export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPanelProps) {
   const { t } = useTranslation();
   const notify = useNotify();
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
 
   const { data: items = [] } = useAssessmentItems(assessmentId);
   const { data: methodology } = useRiskMethodology(orgId);
@@ -251,7 +252,12 @@ export function AssessmentItemsPanel({ orgId, assessmentId }: AssessmentItemsPan
                   <p className="text-xs font-medium text-muted-foreground mb-2">
                     {t('assessments.evidence')}
                   </p>
-                  <AssessmentItemEvidence orgId={orgId} itemId={item.id} />
+                  <EvidencePanel
+                    orgId={orgId}
+                    ownerType="assessmentItem"
+                    ownerId={item.id}
+                    currentUserId={currentUserId}
+                  />
                 </div>
                 {item.linkedRiskId ? (
                   <LinkedRiskSection item={item} />

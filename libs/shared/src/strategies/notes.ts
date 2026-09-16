@@ -236,6 +236,7 @@ export interface RequirementEvidence {
   assessmentItemId?: string;
   frameworkId?: string;
   requirementId?: string;
+  assetId?: string;
   title: string;
   owner: string;
   evidenceType: string;
@@ -245,8 +246,22 @@ export interface RequirementEvidence {
   expirationDate: string;
   verificationStatus: 'verified' | 'pending_review' | 'rejected' | 'expired';
   url?: string;
+  createdBy: string;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
   linkedControls?: string[];
   linkedRequirements?: string[];
+}
+
+export interface EvidencePatch {
+  title?: string;
+  owner?: string;
+  evidenceType?: string;
+  source?: string;
+  collectionDate?: string;
+  periodCovered?: string;
+  expirationDate?: string;
+  url?: string;
 }
 
 export interface RequirementAssessment {
@@ -1190,6 +1205,21 @@ export interface NotesStrategy {
     orgId: string,
     itemId: string,
     data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence>;
+  createAssetEvidence(
+    orgId: string,
+    assetId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assetId'>,
+  ): Promise<RequirementEvidence>;
+  listAssetEvidence(assetId: string): Promise<RequirementEvidence[]>;
+  getEvidence(id: string): Promise<RequirementEvidence | null>;
+  updateEvidence(id: string, patch: EvidencePatch): Promise<RequirementEvidence>;
+  deleteEvidence(id: string): Promise<void>;
+  reviewEvidence(
+    id: string,
+    reviewerId: string,
+    decision: 'verified' | 'rejected',
+    reviewNotes?: string,
   ): Promise<RequirementEvidence>;
 
   listControlAssessments(controlId: string): Promise<RequirementAssessment[]>;
