@@ -2067,6 +2067,76 @@ describe('Risk Register lifecycle', () => {
     expect(active?.id).toBe(acceptance.id);
   });
 
+  it('rejects reviewing a risk acceptance as its own requester', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: new Date(Date.now() + 86400_000).toISOString(),
+      approverId: 'ciso-1',
+    });
+
+    await expect(strategy.reviewRiskAcceptance(acceptance.id, 'user-1')).rejects.toThrow(
+      'risk_acceptance_self_approval_forbidden',
+    );
+  });
+
+  it('rejects reviewing a risk acceptance as someone other than the named approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: new Date(Date.now() + 86400_000).toISOString(),
+      approverId: 'ciso-1',
+    });
+
+    await expect(strategy.reviewRiskAcceptance(acceptance.id, 'someone-else')).rejects.toThrow(
+      'risk_acceptance_not_authorized_approver',
+    );
+  });
+
+  it('rejects reviewing a risk acceptance that has already been decided', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: new Date(Date.now() + 86400_000).toISOString(),
+      approverId: 'ciso-1',
+    });
+    await strategy.approveRiskAcceptance(acceptance.id, 'ciso-1');
+
+    await expect(strategy.reviewRiskAcceptance(acceptance.id, 'ciso-1')).rejects.toThrow(
+      `risk_acceptance_already_decided: ${acceptance.id}`,
+    );
+  });
+
   it('attaches evidence to a risk', async () => {
     const strategy = new FakeNotesStrategy();
     const taxonomy = await strategy.listRiskTaxonomy('org-1');
