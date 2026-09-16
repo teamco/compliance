@@ -25,7 +25,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { useDraft, useNotify } from '@icore/template-shared';
+import { useAuthStore, useDraft, useNotify } from '@icore/template-shared';
 import type {
   Asset,
   AssetCriticality,
@@ -36,6 +36,7 @@ import type {
   CiaImpact,
   DataClassification,
 } from '@icore/shared';
+import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -274,6 +275,7 @@ export function AssetsPage() {
   const { t } = useTranslation();
   const { activeOrgId } = useActiveOrgStore();
   const orgId = activeOrgId ?? '';
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
 
   const { data: assets = [], isPending } = useAssets(orgId);
   const { data: risks = [] } = useRisks(orgId);
@@ -2701,14 +2703,17 @@ export function AssetsPage() {
                 )}
 
                 {/* 7. EVIDENCE TAB */}
-                {profileTab === 'evidence' && (
+                {profileTab === 'evidence' && viewingAsset && (
                   <div className="space-y-4">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                       Attached Evidence & Artifacts
                     </h4>
-                    <div className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded border text-center">
-                      {t('assets.profile.noEvidence')}
-                    </div>
+                    <EvidencePanel
+                      orgId={orgId}
+                      ownerType="asset"
+                      ownerId={viewingAsset.id}
+                      currentUserId={currentUserId}
+                    />
                   </div>
                 )}
 

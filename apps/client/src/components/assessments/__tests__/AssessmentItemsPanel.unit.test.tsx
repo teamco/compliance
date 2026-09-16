@@ -77,7 +77,18 @@ vi.mock('@/queries/risks', () => ({
   useRisks: () => ({ data: mockAvailableRisks }),
   useRisk: () => ({ data: mockLinkedRisk }),
   useUpdateRisk: () => ({ mutate: mockUpdateRiskMutate, isPending: false }),
+  useRiskEvidence: () => ({ data: [] }),
+  useCreateRiskEvidence: () => ({ mutate: vi.fn(), isPending: false }),
 }));
+
+vi.mock('@icore/template-shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@icore/template-shared')>();
+  return {
+    ...actual,
+    useAuthStore: (selector: (s: { user: { id: string } }) => unknown) =>
+      selector({ user: { id: 'user-1' } }),
+  };
+});
 
 const mockControls: InternalControl[] = [
   {
@@ -92,6 +103,8 @@ const mockControls: InternalControl[] = [
 
 vi.mock('@/queries/controls', () => ({
   useInternalControlsList: () => ({ data: mockControls }),
+  useControlEvidence: () => ({ data: [] }),
+  useCreateControlEvidence: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 const linkedRiskFixture: Risk = {
@@ -298,7 +311,7 @@ describe('AssessmentItemsPanel', () => {
     fireEvent.click(screen.getByText('Unpatched endpoints'));
 
     expect(screen.getByText('SOC2 Report')).toBeDefined();
-    expect(screen.getByText('verified')).toBeDefined();
+    expect(screen.getByText('Verified')).toBeDefined();
   });
 
   it('requires a title before adding evidence, url is optional', async () => {
@@ -307,7 +320,7 @@ describe('AssessmentItemsPanel', () => {
     fireEvent.click(screen.getByText('Unpatched endpoints'));
     fireEvent.click(screen.getByRole('button', { name: 'Add Evidence' }));
 
-    const submitButton = screen.getByRole('button', { name: 'Add Evidence' });
+    const submitButton = screen.getByRole('button', { name: 'Save' });
     expect(submitButton).toHaveProperty('disabled', true);
 
     const titleInput = screen.getByPlaceholderText('Evidence title…');
@@ -318,7 +331,7 @@ describe('AssessmentItemsPanel', () => {
     fireEvent.click(submitButton);
 
     expect(mockCreateEvidenceMutate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: 'New Evidence', url: '' }),
+      expect.objectContaining({ title: 'New Evidence' }),
       expect.any(Object),
     );
   });
