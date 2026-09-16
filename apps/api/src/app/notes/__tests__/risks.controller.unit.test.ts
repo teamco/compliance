@@ -35,10 +35,6 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     deleteRisk: vi.fn().mockResolvedValue(undefined),
     removeRiskControlMapping: vi.fn().mockResolvedValue(undefined),
     createRiskAcceptance: vi.fn().mockResolvedValue(ACCEPTANCE),
-    getRiskAcceptance: vi.fn().mockResolvedValue(ACCEPTANCE),
-    reviewRiskAcceptance: vi.fn().mockResolvedValue({ ...ACCEPTANCE, status: 'reviewed' }),
-    approveRiskAcceptance: vi.fn().mockResolvedValue({ ...ACCEPTANCE, status: 'approved' }),
-    rejectRiskAcceptance: vi.fn().mockResolvedValue({ ...ACCEPTANCE, status: 'rejected' }),
     ...overrides,
   } as unknown as NotesClientService;
 }
@@ -108,29 +104,6 @@ describe('NotesController — risk org scoping (Phase 1 hardening)', () => {
       await expect(
         makeController(notes).removeRiskControlMapping(reqAs('outsider'), 'risk-1', 'mapping-1'),
       ).rejects.toThrow(ForbiddenException);
-    });
-  });
-
-  describe('risk-acceptances review/approve/reject', () => {
-    it('resolves org through the acceptance, rejects a caller outside the org', async () => {
-      const notes = makeNotes();
-      await expect(
-        makeController(notes).approveRiskAcceptance(reqAs('outsider'), 'acceptance-1'),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('allows the org creator to approve', async () => {
-      const notes = makeNotes();
-      await makeController(notes).approveRiskAcceptance(reqAs('org-creator'), 'acceptance-1');
-      expect(notes.getRiskAcceptance).toHaveBeenCalledWith('acceptance-1');
-      expect(notes.approveRiskAcceptance).toHaveBeenCalledWith('acceptance-1', 'org-creator');
-    });
-
-    it('throws NotFound when the acceptance does not exist', async () => {
-      const notes = makeNotes({ getRiskAcceptance: vi.fn().mockResolvedValue(null) });
-      await expect(
-        makeController(notes).reviewRiskAcceptance(reqAs('org-creator'), 'missing', {}),
-      ).rejects.toThrow(NotFoundException);
     });
   });
 

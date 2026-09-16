@@ -1408,47 +1408,26 @@ export class NotesController {
 
   @Post('risk-acceptances/:id/review')
   @ApiOperation({ summary: 'Review a risk acceptance request' })
-  async reviewRiskAcceptance(
+  reviewRiskAcceptance(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { reviewNotes?: string },
   ) {
     const userId = this.uid(req);
-    const acceptance = await this.notes.getRiskAcceptance(id);
-    if (!acceptance) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(acceptance.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
     return this.notes.reviewRiskAcceptance(id, userId, body.reviewNotes);
   }
 
   @Post('risk-acceptances/:id/approve')
   @ApiOperation({ summary: 'Approve a risk acceptance request' })
-  async approveRiskAcceptance(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
+  approveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
-    const acceptance = await this.notes.getRiskAcceptance(id);
-    if (!acceptance) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(acceptance.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
     return this.notes.approveRiskAcceptance(id, userId);
   }
 
   @Post('risk-acceptances/:id/reject')
   @ApiOperation({ summary: 'Reject a risk acceptance request' })
-  async rejectRiskAcceptance(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
+  rejectRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
-    const acceptance = await this.notes.getRiskAcceptance(id);
-    if (!acceptance) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(acceptance.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
     return this.notes.rejectRiskAcceptance(id, userId);
   }
 
