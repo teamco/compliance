@@ -189,13 +189,11 @@ export function useCreateInternalControl(orgId: string) {
 export function useFrameworkEvidence(frameworkId: string, orgId?: string) {
   return useQuery<RequirementEvidence[]>({
     queryKey: ['frameworks', frameworkId, 'evidence', orgId ?? 'all'],
-    queryFn: () => {
-      const url = orgId
-        ? `/notes/frameworks/${encodeURIComponent(frameworkId)}/evidence?orgId=${encodeURIComponent(orgId)}`
-        : `/notes/frameworks/${encodeURIComponent(frameworkId)}/evidence`;
-      return api<RequirementEvidence[]>(url);
-    },
-    enabled: !!frameworkId,
+    queryFn: () =>
+      api<RequirementEvidence[]>(
+        `/notes/frameworks/${encodeURIComponent(frameworkId)}/evidence?orgId=${encodeURIComponent(orgId as string)}`,
+      ),
+    enabled: !!frameworkId && !!orgId,
   });
 }
 
@@ -228,13 +226,11 @@ export function useCreateFrameworkEvidence(orgId: string, frameworkId: string) {
 export function useFrameworkAssessments(frameworkId: string, orgId?: string) {
   return useQuery<RequirementAssessment[]>({
     queryKey: ['frameworks', frameworkId, 'assessments', orgId ?? 'all'],
-    queryFn: () => {
-      const url = orgId
-        ? `/notes/frameworks/${encodeURIComponent(frameworkId)}/assessments?orgId=${encodeURIComponent(orgId)}`
-        : `/notes/frameworks/${encodeURIComponent(frameworkId)}/assessments`;
-      return api<RequirementAssessment[]>(url);
-    },
-    enabled: !!frameworkId,
+    queryFn: () =>
+      api<RequirementAssessment[]>(
+        `/notes/frameworks/${encodeURIComponent(frameworkId)}/assessments?orgId=${encodeURIComponent(orgId as string)}`,
+      ),
+    enabled: !!frameworkId && !!orgId,
   });
 }
 
@@ -272,13 +268,11 @@ export function useCreateAssessmentFinding(orgId: string, frameworkId: string) {
 export function useFrameworkActivities(frameworkId: string, orgId?: string) {
   return useQuery<FrameworkActivity[]>({
     queryKey: ['frameworks', frameworkId, 'activities', orgId ?? 'all'],
-    queryFn: () => {
-      const url = orgId
-        ? `/notes/frameworks/${encodeURIComponent(frameworkId)}/activities?orgId=${encodeURIComponent(orgId)}`
-        : `/notes/frameworks/${encodeURIComponent(frameworkId)}/activities`;
-      return api<FrameworkActivity[]>(url);
-    },
-    enabled: !!frameworkId,
+    queryFn: () =>
+      api<FrameworkActivity[]>(
+        `/notes/frameworks/${encodeURIComponent(frameworkId)}/activities?orgId=${encodeURIComponent(orgId as string)}`,
+      ),
+    enabled: !!frameworkId && !!orgId,
   });
 }
 
