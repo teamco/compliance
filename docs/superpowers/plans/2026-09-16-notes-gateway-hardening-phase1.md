@@ -1563,36 +1563,7 @@ yarn nx build api
     return this.notes.submitForReview(id, userId);
   }
 
-  @Post('assessments/:id/approve')
-  @ApiOperation({ summary: 'Approve an assessment' })
-  async approveAssessment(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-  ) {
-    const userId = this.uid(req);
-    const a = await this.notes.getAssessment(id);
-    if (!a) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(a.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.approveAssessment(id, userId);
-  }
-
-  @Post('assessments/:id/request-changes')
-  @ApiOperation({ summary: 'Request changes on an assessment' })
-  async requestChanges(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-    @Body() body: { note: string },
-  ) {
-    const userId = this.uid(req);
-    const a = await this.notes.getAssessment(id);
-    if (!a) throw new NotFoundException();
-    const org = await this.notes.getOrganizationById(a.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.requestChanges(id, userId, body.note);
-  }
+**`approveAssessment` / `requestChanges` — no change (5th occurrence of the exemption pattern, corrected pre-emptively before Task 6 dispatch).** Task 2 already restructured both to check `assessment.ownerId === userId` (self-approval) and `assessment.approverId !== userId` (not the authorized approver) at the strategy layer, mirroring `assertCanDecideRiskAcceptance`. `approverId`/`ownerId` are DB-stored, non-attacker-controlled fields — already complete, resource-specific authorization, identical in shape to `reviewRiskAcceptance`/`approveRiskAcceptance`/`rejectRiskAcceptance` (Task 5) and `reviewIssueValidation` (Task 4). Adding `checkOrgAccess('update')` on top would restrict both to org creator/admin only, wrongly blocking a legitimate non-creator approver. Leave both routes exactly as they are today (no `checkOrgAccess`, no change to the existing fetch/guard chain that already calls into the strategy).
 
   @Post('assessments/:id/complete')
   @ApiOperation({ summary: 'Complete an approved assessment' })
@@ -1817,12 +1788,6 @@ describe('NotesController — assessment org scoping (Phase 1 hardening)', () =>
       await expect(
         makeController(notes).getAssessment(reqAs('outsider'), 'assessment-1'),
       ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('allows the org creator to approve', async () => {
-      const notes = makeNotes();
-      await makeController(notes).approveAssessment(reqAs('org-creator'), 'assessment-1');
-      expect(notes.approveAssessment).toHaveBeenCalledWith('assessment-1', 'org-creator');
     });
 
     it('allows an admin', async () => {
