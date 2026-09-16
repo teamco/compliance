@@ -63,6 +63,8 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
 
 vi.mock('@/queries/assets', () => ({
   useAssets: () => ({ data: [] }),
+  useAssetEvidence: () => ({ data: [] }),
+  useCreateAssetEvidence: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('@/queries/vendors', () => ({
@@ -224,6 +226,8 @@ const mockUpdateMutate = vi.fn();
 
 vi.mock('@/queries/frameworks', () => ({
   useFindingsByLink: () => ({ data: mockLinkedFindingsData }),
+  useFrameworkEvidence: () => ({ data: [] }),
+  useCreateFrameworkEvidence: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 vi.mock('@/queries/risks', () => ({
@@ -236,6 +240,7 @@ vi.mock('@/queries/risks', () => ({
   useApproveRiskAcceptance: () => ({ mutate: mockApproveAcceptanceMutate, isPending: false }),
   useRejectRiskAcceptance: () => ({ mutate: mockRejectAcceptanceMutate, isPending: false }),
   useRiskEvidence: () => ({ data: mockEvidence }),
+  useCreateRiskEvidence: () => ({ mutate: vi.fn(), isPending: false }),
   useRiskSnapshots: () => ({ data: mockSnapshots }),
   useAssessmentItemsForRisk: () => ({ data: mockAssessmentItemsData }),
 }));
@@ -374,7 +379,7 @@ describe('RiskDetailPage', () => {
     expect(screen.getByText('EDR rollout report.pdf')).toBeDefined();
     expect(screen.getByText(/Dana/)).toBeDefined();
     expect(screen.getByText(/Deployment Report/)).toBeDefined();
-    expect(screen.getByText(/verified/)).toBeDefined();
+    expect(screen.getByText(/Verified/)).toBeDefined();
   });
 
   it('renders History tab fixture snapshots', async () => {

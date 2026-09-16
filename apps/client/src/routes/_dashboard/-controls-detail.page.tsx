@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { useAuthStore } from '@icore/template-shared';
 import {
   useInternalControl,
   useUpdateControl,
-  useControlEvidence,
   useControlAssessments,
   useControlFindings,
   useControlActivity,
@@ -13,6 +13,7 @@ import { PageLayout } from '@/components/PageLayout';
 import { ScrollableRow } from '@/components/ui/scrollable-row';
 import { Button } from '@/components/ui/button';
 import { CreateAssessmentDialog } from '@/components/frameworks/CreateAssessmentDialog';
+import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 
 type Tab =
   'overview' | 'implementation' | 'mapping' | 'evidence' | 'assessments' | 'findings' | 'history';
@@ -22,7 +23,7 @@ export function ControlDetailPage() {
   const { id } = useParams({ from: '/_dashboard/controls_/$id' });
   const { data: control, isPending } = useInternalControl(id);
   const updateControl = useUpdateControl(id);
-  const { data: evidence = [] } = useControlEvidence(id);
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
   const { data: assessments = [] } = useControlAssessments(id);
   const { data: findings = [] } = useControlFindings(id);
   const { data: activity = [] } = useControlActivity(id);
@@ -165,20 +166,12 @@ export function ControlDetailPage() {
       )}
 
       {tab === 'evidence' && (
-        <div className="space-y-2 text-sm">
-          {evidence.map((e) => (
-            <div key={e.id} className="border border-border rounded-lg p-3">
-              <div className="font-medium">{e.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {e.owner} · {e.evidenceType} ·{' '}
-                {t(`controls.evidenceStatus.${e.verificationStatus}`)}
-              </div>
-            </div>
-          ))}
-          {evidence.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground">{t('controls.noEvidence')}</div>
-          )}
-        </div>
+        <EvidencePanel
+          orgId={control?.orgId ?? ''}
+          ownerType="control"
+          ownerId={id}
+          currentUserId={currentUserId}
+        />
       )}
 
       {tab === 'assessments' && (

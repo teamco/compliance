@@ -13,7 +13,6 @@ import {
   useCreateRiskAcceptance,
   useApproveRiskAcceptance,
   useRejectRiskAcceptance,
-  useRiskEvidence,
   useRiskSnapshots,
   useAssessmentItemsForRisk,
 } from '@/queries/risks';
@@ -21,6 +20,7 @@ import { useFindingsByLink } from '@/queries/frameworks';
 import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
 import { Button } from '@/components/ui/button';
+import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 import {
   Dialog,
   DialogContent,
@@ -39,7 +39,7 @@ export function RiskDetailPage() {
   const { t } = useTranslation();
   const { id } = useParams({ from: '/_dashboard/risks_/$id' });
   const { activeOrgId } = useActiveOrgStore();
-  const currentUserId = useAuthStore((s) => s.user?.id);
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
   const { data: risk, isPending } = useRisk(id);
   const { data: taxonomy = [] } = useRiskTaxonomy(activeOrgId ?? undefined);
   const { data: mappings = [] } = useRiskControlMappings(id);
@@ -48,7 +48,6 @@ export function RiskDetailPage() {
   const createAcceptanceMut = useCreateRiskAcceptance(activeOrgId ?? '', id);
   const approveAcceptanceMut = useApproveRiskAcceptance(id);
   const rejectAcceptanceMut = useRejectRiskAcceptance(id);
-  const { data: evidence = [] } = useRiskEvidence(id);
   const { data: snapshots = [] } = useRiskSnapshots(id);
   const { data: assessmentItems = [] } = useAssessmentItemsForRisk(id);
   const { data: linkedFindings = [] } = useFindingsByLink({
@@ -340,19 +339,12 @@ export function RiskDetailPage() {
       )}
 
       {tab === 'evidence' && (
-        <div className="space-y-2 text-sm">
-          {evidence.map((e) => (
-            <div key={e.id} className="border border-border rounded-lg p-3">
-              <div className="font-medium">{e.title}</div>
-              <div className="text-xs text-muted-foreground">
-                {e.owner} · {e.evidenceType} · {e.verificationStatus}
-              </div>
-            </div>
-          ))}
-          {evidence.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground">{t('risks.noEvidence')}</div>
-          )}
-        </div>
+        <EvidencePanel
+          orgId={activeOrgId ?? ''}
+          ownerType="risk"
+          ownerId={id}
+          currentUserId={currentUserId}
+        />
       )}
 
       {tab === 'history' && (
