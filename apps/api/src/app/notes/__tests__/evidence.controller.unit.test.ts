@@ -3,7 +3,13 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { NotesClientService } from '@icore/notes-client';
-import type { Asset, Organization, RequirementEvidence, VerifiedToken } from '@icore/shared';
+import type {
+  Asset,
+  AssessmentItem,
+  Organization,
+  RequirementEvidence,
+  VerifiedToken,
+} from '@icore/shared';
 import { NotesController } from '../notes.controller';
 import { AbilityFactory } from '../../abilities/ability.factory';
 import type { StandardsQueueService } from '../standards-queue.service';
@@ -43,16 +49,33 @@ const ASSET: Asset = {
   status: 'active',
 } as unknown as Asset;
 
+const ASSESSMENT_ITEM: AssessmentItem = {
+  id: 'item-1',
+  assessmentId: 'assessment-1',
+  orgId: 'org-1',
+  subject: 'Access review',
+  description: '',
+  inherentLikelihood: 3,
+  inherentImpact: 3,
+  inherentScore: 9,
+  inherentLabel: 'high',
+  createdAt: '2026-09-01T00:00:00Z',
+  updatedAt: '2026-09-01T00:00:00Z',
+} as unknown as AssessmentItem;
+
 function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientService {
   return {
     getEvidence: vi.fn().mockResolvedValue(EVIDENCE),
     getOrganizationById: vi.fn().mockResolvedValue(ORG),
     getAsset: vi.fn().mockResolvedValue(ASSET),
+    getAssessmentItem: vi.fn().mockResolvedValue(ASSESSMENT_ITEM),
     updateEvidence: vi.fn().mockResolvedValue({ ...EVIDENCE, title: 'Updated' }),
     deleteEvidence: vi.fn().mockResolvedValue(undefined),
     reviewEvidence: vi.fn().mockResolvedValue({ ...EVIDENCE, verificationStatus: 'verified' }),
     createControlEvidence: vi.fn().mockResolvedValue(EVIDENCE),
     createAssetEvidence: vi.fn().mockResolvedValue(EVIDENCE),
+    listAssetEvidence: vi.fn().mockResolvedValue([EVIDENCE]),
+    createAssessmentItemEvidence: vi.fn().mockResolvedValue(EVIDENCE),
     ...overrides,
   } as unknown as NotesClientService;
 }
@@ -162,6 +185,24 @@ describe('NotesController — evidence authorization', () => {
     });
   });
 
+  describe('listAssetEvidence', () => {
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listAssetEvidence(reqAs('outsider'), 'asset-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(notes.listAssetEvidence).not.toHaveBeenCalled();
+    });
+
+    it('allows the org creator', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).listAssetEvidence(reqAs('org-creator'), 'asset-1'),
+      ).resolves.toEqual([EVIDENCE]);
+      expect(notes.listAssetEvidence).toHaveBeenCalledWith('asset-1');
+    });
+  });
+
   describe('createAssetEvidence', () => {
     const body = {
       title: 'DR runbook',
@@ -247,6 +288,83 @@ describe('NotesController — evidence authorization', () => {
         'control-1',
         expect.objectContaining({
           createdBy: 'some-user',
+          verificationStatus: 'pending_review',
+          verifiedBy: null,
+          verifiedAt: null,
+        }),
+      );
+    });
+  });
+
+  describe('createAssessmentItemEvidence', () => {
+    const body = {
+      title: 'Access review evidence',
+      owner: 'IT',
+      evidenceType: 'doc',
+      source: 'internal',
+      collectionDate: '2026-09-01T00:00:00Z',
+      periodCovered: '2026-Q3',
+      expirationDate: '2027-09-01T00:00:00Z',
+      url: 'https://example.com',
+    } as unknown as Omit<
+      RequirementEvidence,
+      'id' | 'assessmentItemId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >;
+
+    it('rejects a caller outside the org', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).createAssessmentItemEvidence(
+          reqAs('outsider'),
+          'org-1',
+          'item-1',
+          body,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(notes.createAssessmentItemEvidence).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the assessment item does not belong to the given org', async () => {
+      const notes = makeNotes({
+        getAssessmentItem: vi.fn().mockResolvedValue({ ...ASSESSMENT_ITEM, orgId: 'org-2' }),
+      });
+      await expect(
+        makeController(notes).createAssessmentItemEvidence(
+          reqAs('org-creator'),
+          'org-1',
+          'item-1',
+          body,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(notes.createAssessmentItemEvidence).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the assessment item does not exist', async () => {
+      const notes = makeNotes({ getAssessmentItem: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).createAssessmentItemEvidence(
+          reqAs('org-creator'),
+          'org-1',
+          'missing-item',
+          body,
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(notes.createAssessmentItemEvidence).not.toHaveBeenCalled();
+    });
+
+    it('allows the org creator and always creates as pending_review', async () => {
+      const notes = makeNotes();
+      await makeController(notes).createAssessmentItemEvidence(
+        reqAs('org-creator'),
+        'org-1',
+        'item-1',
+        body,
+      );
+      expect(notes.createAssessmentItemEvidence).toHaveBeenCalledWith(
+        'org-1',
+        'item-1',
+        expect.objectContaining({
+          createdBy: 'org-creator',
           verificationStatus: 'pending_review',
           verifiedBy: null,
           verifiedAt: null,

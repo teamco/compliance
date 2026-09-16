@@ -1572,6 +1572,8 @@ export class NotesController {
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'update');
+    const item = await this.notes.getAssessmentItem(itemId);
+    if (!item || item.orgId !== orgId) throw new NotFoundException();
     return this.notes.createAssessmentItemEvidence(orgId, itemId, {
       ...body,
       createdBy: userId,
