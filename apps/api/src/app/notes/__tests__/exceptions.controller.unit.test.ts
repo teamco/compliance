@@ -107,26 +107,14 @@ describe('NotesController — exception governance authorization', () => {
       expect(notes.requestExceptionRenewal).not.toHaveBeenCalled();
     });
 
-    it('rejects the exception owner when they are not the org creator (Phase 1 hardening)', async () => {
+    it('lets the exception owner request a renewal even when they are not the org creator', async () => {
       const notes = makeNotes();
-      await expect(
-        makeController(notes).requestExceptionRenewal(reqAs('owner-1'), 'exception-1', {
-          ...RENEWAL_INPUT,
-        }),
-      ).rejects.toThrow(ForbiddenException);
-      expect(notes.requestExceptionRenewal).not.toHaveBeenCalled();
-    });
-
-    it('lets the exception owner request a renewal when they are also the org creator', async () => {
-      const notes = makeNotes({
-        getException: vi.fn().mockResolvedValue({ ...EXCEPTION, ownerId: 'org-creator' }),
-      });
-      await makeController(notes).requestExceptionRenewal(reqAs('org-creator'), 'exception-1', {
+      await makeController(notes).requestExceptionRenewal(reqAs('owner-1'), 'exception-1', {
         ...RENEWAL_INPUT,
       });
       expect(notes.requestExceptionRenewal).toHaveBeenCalledWith(
         'exception-1',
-        'org-creator',
+        'owner-1',
         RENEWAL_INPUT,
       );
     });
@@ -401,18 +389,6 @@ describe('exceptions org scoping (Phase 1 hardening)', () => {
       const notes = makeNotes({ getException: vi.fn().mockResolvedValue(null) });
       await expect(
         makeController(notes).getException(reqAs('org-creator'), 'missing'),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
-
-  describe('requestExceptionRenewal org scoping', () => {
-    it('rejects a caller who is the owner but whose org no longer resolves', async () => {
-      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
-      await expect(
-        makeController(notes).requestExceptionRenewal(reqAs('owner-1'), 'exception-1', {
-          proposedExpiresAt: '2026-12-01T00:00:00Z',
-          justification: 'Delay',
-        }),
       ).rejects.toThrow(NotFoundException);
     });
   });

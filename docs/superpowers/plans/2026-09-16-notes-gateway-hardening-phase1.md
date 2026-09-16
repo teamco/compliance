@@ -18,7 +18,7 @@
 - New get-by-id methods return `T | null`, never throw on not-found (matches `getRisk`, `getException`, `getAssessment`).
 - `removeRiskControlMapping`'s route already has `:riskId` in its path, unused — add the `@Param` and call the existing `getRisk(riskId)`, no new strategy method.
 - `listExceptionRenewals`, `listIssueValidations` are genuinely out of scope — already correct via hand-rolled inline checks, not touched.
-- `requestExceptionRenewal`, `submitIssueForValidation` get `checkOrgAccess` added **alongside** their existing owner-only check, not replacing it.
+- `requestExceptionRenewal`, `submitIssueForValidation` are NOT touched — their existing owner-only check is already complete, resource-specific authorization; `checkOrgAccess` adds no real value today and would wrongly block a future non-creator org member acting on their own resource.
 - `reviewIssueValidation` gaining `checkOrgAccess('update')` will make it reachable only by the org creator/admin (org-membership doesn't really exist on this platform) — same accepted tradeoff as every other review workflow this session. Not a new problem.
 - This phase touches zero migrations and zero client/UI code — no Playwright verification required.
 
@@ -627,30 +627,11 @@ Replace all three:
   }
 ```
 
-- [ ] **Step 3: `requestExceptionRenewal`**
+- [ ] **Step 3: `requestExceptionRenewal` — no change (corrected during Task 3's review)**
 
-Replace:
+**Ruling (superseding an earlier draft of this plan and the spec's Global Constraints):** `requestExceptionRenewal` is NOT touched. Its existing owner-only check (`if (exception.ownerId !== userId) throw new ForbiddenException();`) is already complete authorization on its own — `ownerId` is a resource-specific field set at creation, not client-controlled at request time, so no cross-org caller can pass it by any means. Layering `checkOrgAccess('update')` on top (which for a non-admin caller requires being the *org's creator*, not just a member) doesn't close any real gap today, and actively breaks the intended future semantics once real multi-member orgs exist: a legitimate org member who owns their own exception but isn't the org's original creator would be wrongly blocked from requesting a renewal for their own record. Leave this route exactly as it is.
 
-```ts
-  @Post('exceptions/:id/renewals')
-  @ApiOperation({ summary: 'Owner requests a renewal (new expiry) for an exception' })
-  async requestExceptionRenewal(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-    @Body() body: ExceptionRenewalRequestInput,
-  ) {
-    const userId = this.uid(req);
-    const exception = await this.notes.getException(id);
-    if (!exception) throw new NotFoundException();
-    if (exception.ownerId !== userId) throw new ForbiddenException();
-    const org = await this.notes.getOrganizationById(exception.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.requestExceptionRenewal(id, userId, body);
-  }
-```
-
-(Existing owner-only check stays first — this only adds `checkOrgAccess` alongside it, matching Global Constraints. `listExceptionRenewals`, `approveException`, `rejectException`, `reviewExceptionRenewal`, `listPendingExceptionRenewals` are already correct — do not touch.)
+`listExceptionRenewals`, `approveException`, `rejectException`, `reviewExceptionRenewal`, `listPendingExceptionRenewals` are already correct — do not touch, per the original plan.
 
 - [ ] **Step 4: Write/extend gateway controller unit tests**
 
@@ -723,17 +704,6 @@ describe('exceptions org scoping (Phase 1 hardening)', () => {
     });
   });
 
-  describe('requestExceptionRenewal org scoping', () => {
-    it('rejects a caller who is the owner but whose org no longer resolves', async () => {
-      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
-      await expect(
-        makeController(notes).requestExceptionRenewal(reqAs('owner-1'), 'exception-1', {
-          proposedExpiresAt: '2026-12-01T00:00:00Z',
-          justification: 'Delay',
-        }),
-      ).rejects.toThrow(NotFoundException);
-    });
-  });
 });
 ```
 
@@ -835,26 +805,9 @@ yarn nx build api
   }
 ```
 
-- [ ] **Step 3: `submitIssueForValidation`**
+- [ ] **Step 3: `submitIssueForValidation` — no change**
 
-```ts
-  @Post('issues/:id/submit-for-validation')
-  @ApiOperation({ summary: 'Owner submits an issue fix for validator review' })
-  async submitIssueForValidation(
-    @Req() req: Request & { user?: VerifiedToken },
-    @Param('id') id: string,
-    @Body() body: IssueValidationSubmitInput,
-  ) {
-    const userId = this.uid(req);
-    const issue = await this.notes.getIssue(id);
-    if (!issue) throw new NotFoundException();
-    if (issue.ownerId !== userId) throw new ForbiddenException();
-    const org = await this.notes.getOrganizationById(issue.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
-    return this.notes.submitIssueForValidation(id, userId, body);
-  }
-```
+Same ruling as `requestExceptionRenewal` in Task 3 (see that task's ledger entry): the existing owner-only check (`if (issue.ownerId !== userId) throw new ForbiddenException();`) is already complete, resource-specific authorization — `ownerId` is DB-stored, not attacker-controlled. Do NOT add `checkOrgAccess` here. Leave the route exactly as it is today.
 
 - [ ] **Step 4: `reviewIssueValidation`**
 

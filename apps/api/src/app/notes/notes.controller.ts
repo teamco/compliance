@@ -870,9 +870,6 @@ export class NotesController {
     const exception = await this.notes.getException(id);
     if (!exception) throw new NotFoundException();
     if (exception.ownerId !== userId) throw new ForbiddenException();
-    const org = await this.notes.getOrganizationById(exception.orgId);
-    if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
     return this.notes.requestExceptionRenewal(id, userId, body);
   }
 
