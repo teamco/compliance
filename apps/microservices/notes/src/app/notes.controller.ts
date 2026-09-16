@@ -70,6 +70,7 @@ import type {
   StandardsDocument,
   StandardsSnapshot,
   WorkflowTransition,
+  EvidencePatch,
 } from '@icore/shared';
 
 @Controller()
@@ -745,6 +746,58 @@ export class NotesController {
   @MessagePattern('notes.assets.delete')
   deleteAsset(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteAsset(payload.id);
+  }
+
+  @MessagePattern('notes.assets.evidence.list')
+  listAssetEvidence(@Payload() payload: { assetId: string }): Promise<RequirementEvidence[]> {
+    return this.strategy.listAssetEvidence(payload.assetId);
+  }
+
+  @MessagePattern('notes.assets.evidence.create')
+  createAssetEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      assetId: string;
+      data: Omit<RequirementEvidence, 'id' | 'assetId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createAssetEvidence(payload.orgId, payload.assetId, payload.data);
+  }
+
+  @MessagePattern('notes.evidence.get')
+  getEvidence(@Payload() payload: { id: string }): Promise<RequirementEvidence | null> {
+    return this.strategy.getEvidence(payload.id);
+  }
+
+  @MessagePattern('notes.evidence.update')
+  updateEvidence(
+    @Payload() payload: { id: string; patch: EvidencePatch },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.updateEvidence(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.evidence.delete')
+  deleteEvidence(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteEvidence(payload.id);
+  }
+
+  @MessagePattern('notes.evidence.review')
+  reviewEvidence(
+    @Payload()
+    payload: {
+      id: string;
+      reviewerId: string;
+      decision: 'verified' | 'rejected';
+      reviewNotes?: string;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.reviewEvidence(
+      payload.id,
+      payload.reviewerId,
+      payload.decision,
+      payload.reviewNotes,
+    );
   }
 
   // ─── Risks ───────────────────────────────────────────────────────────────
