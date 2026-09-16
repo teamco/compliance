@@ -2059,46 +2059,63 @@ export class NotesController {
 
   @Get('policies')
   @ApiOperation({ summary: 'List policies for org' })
-  listPolicies(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listPolicies(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicies(orgId);
   }
 
   @Post('policies')
-  @ApiOperation({ summary: 'Create policy' })
-  createPolicy(
+  @ApiOperation({ summary: 'Create a policy' })
+  async createPolicy(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: PolicyInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createPolicy(orgId, userId, body);
   }
 
   @Get('policies/for-control')
-  @ApiOperation({ summary: 'List policies linked to a specific control' })
-  listPoliciesForControl(
+  @ApiOperation({ summary: 'List policies mapped to a control' })
+  async listPoliciesForControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('controlCode') controlCode: string,
     @Query('frameworkId') frameworkId: string,
+    @Query('orgId') orgId: string,
   ) {
     this.uid(req);
-    if (!controlCode || !frameworkId)
-      throw new BadRequestException('controlCode and frameworkId required');
-    return this.notes.listPoliciesForControl(controlCode, frameworkId);
+    if (!controlCode || !frameworkId || !orgId) {
+      throw new BadRequestException('controlCode, frameworkId, and orgId required');
+    }
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listPoliciesForControl(controlCode, frameworkId, orgId);
   }
 
   @Post('policies/clone/:templateId')
-  @ApiOperation({ summary: 'Clone a policy template into org' })
-  cloneTemplate(
+  @ApiOperation({ summary: 'Clone a policy template into an org' })
+  async cloneTemplate(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('templateId') templateId: string,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.cloneTemplate(orgId, userId, templateId);
   }
 
@@ -2114,12 +2131,18 @@ export class NotesController {
 
   @Delete('policies/controls/:mappingId')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Remove a policy-control mapping' })
-  removePolicyControl(
+  async removePolicyControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('mappingId') mappingId: string,
   ) {
     this.uid(req);
+    const mapping = await this.notes.getPolicyControl(mappingId);
+    if (!mapping) throw new NotFoundException();
+    const policy = await this.notes.getPolicy(mapping.policyId);
+    if (!policy) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(policy.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.removePolicyControl(mappingId);
   }
 
@@ -2169,51 +2192,74 @@ export class NotesController {
   }
 
   @Get('policies/:id')
-  @ApiOperation({ summary: 'Get policy' })
+  @ApiOperation({ summary: 'Get a policy' })
   async getPolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     const p = await this.notes.getPolicy(id);
     if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return p;
   }
 
   @Patch('policies/:id')
-  @ApiOperation({ summary: 'Update policy' })
-  updatePolicy(
+  @ApiOperation({ summary: 'Update a policy' })
+  async updatePolicy(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: PolicyPatch,
   ) {
     this.uid(req);
+    const p = await this.notes.getPolicy(id);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updatePolicy(id, patch);
   }
 
   @Delete('policies/:id')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Delete policy' })
-  deletePolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  @ApiOperation({ summary: 'Delete a policy' })
+  async deletePolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const p = await this.notes.getPolicy(id);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deletePolicy(id);
   }
 
   @Get('policies/:id/controls')
-  @ApiOperation({ summary: 'List controls linked to a policy' })
-  listPolicyControls(
+  @ApiOperation({ summary: 'List control mappings for a policy' })
+  async listPolicyControls(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') policyId: string,
   ) {
     this.uid(req);
+    const p = await this.notes.getPolicy(policyId);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicyControls(policyId);
   }
 
   @Post('policies/:id/controls')
-  @ApiOperation({ summary: 'Add control mapping to policy' })
-  addPolicyControl(
+  @ApiOperation({ summary: 'Add a control mapping to a policy' })
+  async addPolicyControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') policyId: string,
     @Body() body: PolicyControlInput,
   ) {
     this.uid(req);
+    const p = await this.notes.getPolicy(policyId);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.addPolicyControl(policyId, body);
   }
 

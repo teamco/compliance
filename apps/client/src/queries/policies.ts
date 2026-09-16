@@ -49,14 +49,14 @@ export function usePolicyControls(policyId: string) {
   });
 }
 
-export function usePoliciesForControl(controlCode: string, frameworkId: string) {
+export function usePoliciesForControl(orgId: string, controlCode: string, frameworkId: string) {
   return useQuery<Policy[]>({
-    queryKey: ['policies', 'for-control', controlCode, frameworkId],
+    queryKey: ['policies', 'for-control', orgId, controlCode, frameworkId],
     queryFn: () =>
       api<Policy[]>(
-        `/notes/policies/for-control?controlCode=${encodeURIComponent(controlCode)}&frameworkId=${encodeURIComponent(frameworkId)}`,
+        `/notes/policies/for-control?orgId=${encodeURIComponent(orgId)}&controlCode=${encodeURIComponent(controlCode)}&frameworkId=${encodeURIComponent(frameworkId)}`,
       ),
-    enabled: !!controlCode && !!frameworkId,
+    enabled: !!orgId && !!controlCode && !!frameworkId,
   });
 }
 
