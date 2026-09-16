@@ -743,7 +743,7 @@ No new imports needed (`InternalControlPatch`, `ControlFrameworkMappingInput`, `
 - [ ] **Step 4: Run tests, confirm they pass**
 
 Run: `yarn nx test api -- internal-controls.controller.unit.test.ts`
-Expected: PASS, all 22 tests.
+Expected: PASS, all 23 tests.
 
 - [ ] **Step 5: Post-coding routine**
 
@@ -1143,7 +1143,7 @@ No new imports needed.
 - [ ] **Step 4: Run tests, confirm they pass**
 
 Run: `yarn nx test api -- standards.controller.unit.test.ts`
-Expected: PASS, all 15 tests.
+Expected: PASS, all 17 tests.
 
 - [ ] **Step 5: Post-coding routine**
 
