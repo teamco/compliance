@@ -470,7 +470,15 @@ export class NotesController {
 
   @Get('frameworks/:id/evidence')
   @ApiOperation({ summary: 'List evidence for a framework' })
-  listFrameworkEvidence(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listFrameworkEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkEvidence(id, orgId);
   }
 
@@ -504,7 +512,15 @@ export class NotesController {
 
   @Get('frameworks/:id/assessments')
   @ApiOperation({ summary: 'List assessment history for a framework' })
-  listFrameworkAssessments(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listFrameworkAssessments(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkAssessments(id, orgId);
   }
 
@@ -532,7 +548,15 @@ export class NotesController {
 
   @Get('frameworks/:id/activities')
   @ApiOperation({ summary: 'List activities for a framework' })
-  listFrameworkActivities(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listFrameworkActivities(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkActivities(id, orgId);
   }
 
