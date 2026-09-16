@@ -123,7 +123,7 @@ describe('RiskTable', () => {
   });
 
   describe('above-appetite indicator', () => {
-    it('renders a warning glyph when true', () => {
+    it('renders the above-appetite badge when true', () => {
       render(
         <RiskTable
           risks={[buildRisk({ aboveAppetite: true })]}
@@ -133,10 +133,10 @@ describe('RiskTable', () => {
         />,
       );
       const cells = getRow('RISK-001').querySelectorAll('td');
-      expect(cells[6].textContent).toBe('⚠');
+      expect(cells[6].textContent).toBe('risks.aboveAppetite');
     });
 
-    it('renders a check glyph when false', () => {
+    it('renders the within-appetite badge when false', () => {
       render(
         <RiskTable
           risks={[buildRisk({ aboveAppetite: false })]}
@@ -146,7 +146,7 @@ describe('RiskTable', () => {
         />,
       );
       const cells = getRow('RISK-001').querySelectorAll('td');
-      expect(cells[6].textContent).toBe('✓');
+      expect(cells[6].textContent).toBe('risks.withinAppetite');
     });
 
     it('renders a dash when undefined', () => {

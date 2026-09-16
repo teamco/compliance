@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { Trash2 } from 'lucide-react';
 import type { Risk, RiskTaxonomyCategory } from '@icore/shared';
+import { AppetiteBadge } from './AppetiteBadge';
 
 interface RiskTableProps {
   risks: Risk[];
@@ -58,7 +59,7 @@ export function RiskTable({ risks, taxonomy, onRowClick, onDeleteClick }: RiskTa
                 {r.residualScore != null ? `${r.residualScore} · ${r.residualLabel}` : '—'}
               </td>
               <td className="py-2 px-3">
-                {r.aboveAppetite == null ? '—' : r.aboveAppetite ? '⚠' : '✓'}
+                <AppetiteBadge aboveAppetite={r.aboveAppetite} />
               </td>
               <td className="py-2 px-3">{r.treatmentStrategy ?? '—'}</td>
               <td className="py-2 px-3">{r.status}</td>

@@ -2549,6 +2549,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         inherent_impact: data.inherentImpact,
         inherent_score: score,
         inherent_label: label,
+        above_appetite: score > methodology.appetiteThreshold,
         status: 'open',
         // legacy columns kept populated for backward compatibility with any
         // code path still reading the pre-rebuild columns directly:
@@ -2628,6 +2629,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
     const methodology = await this.getRiskMethodology(current.orgId);
     if (methodology) {
+      let scoresChanged = false;
+      let effectiveScore = current.residualScore ?? current.inherentScore;
+
       const newInherentLikelihood = patch.inherentLikelihood ?? current.inherentLikelihood;
       const newInherentImpact = patch.inherentImpact ?? current.inherentImpact;
       if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
@@ -2640,6 +2644,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         update['inherent_impact'] = newInherentImpact;
         update['inherent_score'] = score;
         update['inherent_label'] = label;
+        scoresChanged = true;
+        effectiveScore = current.residualScore ?? score;
       }
       const newResidualLikelihood = patch.residualLikelihood ?? current.residualLikelihood;
       const newResidualImpact = patch.residualImpact ?? current.residualImpact;
@@ -2657,7 +2663,11 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         update['residual_impact'] = newResidualImpact;
         update['residual_score'] = score;
         update['residual_label'] = label;
-        update['above_appetite'] = score > methodology.appetiteThreshold;
+        scoresChanged = true;
+        effectiveScore = score;
+      }
+      if (scoresChanged) {
+        update['above_appetite'] = effectiveScore > methodology.appetiteThreshold;
       }
     }
 

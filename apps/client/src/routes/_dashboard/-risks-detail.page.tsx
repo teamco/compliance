@@ -21,6 +21,7 @@ import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
 import { Button } from '@/components/ui/button';
 import { EvidencePanel } from '@/components/evidence/EvidencePanel';
+import { AppetiteBadge } from '@/components/risks/AppetiteBadge';
 import {
   Dialog,
   DialogContent,
@@ -125,16 +126,12 @@ export function RiskDetailPage() {
                 : t('risks.notYetAssessed')
             }
           />
-          <Field
-            label={t('risks.colAppetite')}
-            value={
-              risk.aboveAppetite == null
-                ? '—'
-                : risk.aboveAppetite
-                  ? t('risks.aboveAppetite')
-                  : t('risks.withinAppetite')
-            }
-          />
+          <div>
+            <div className="text-xs text-muted-foreground">{t('risks.colAppetite')}</div>
+            <div className="text-foreground">
+              <AppetiteBadge aboveAppetite={risk.aboveAppetite} />
+            </div>
+          </div>
           <Field label={t('risks.colStatus')} value={risk.status} />
           {linkedFinding && (
             <div>

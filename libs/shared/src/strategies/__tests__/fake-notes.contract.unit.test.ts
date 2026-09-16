@@ -2161,6 +2161,87 @@ describe('Risk Register lifecycle', () => {
     expect(snapshots[0]?.reason).toBe('MFA deployed');
   });
 
+  it('computes above-appetite from the inherent score on creation, before any residual score exists', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Unpatched Internet-Facing Host',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 4,
+      inherentImpact: 5,
+    });
+    expect(risk.inherentScore).toBe(20);
+    expect(risk.aboveAppetite).toBe(true); // 20 > default appetite threshold 9
+
+    const withinAppetite = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Minor Cosmetic UI Bug',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 1,
+      inherentImpact: 2,
+    });
+    expect(withinAppetite.inherentScore).toBe(2);
+    expect(withinAppetite.aboveAppetite).toBe(false);
+  });
+
+  it('recomputes above-appetite from inherent score when edited, before residual exists', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 1,
+      inherentImpact: 2,
+    });
+    expect(risk.aboveAppetite).toBe(false);
+
+    const updated = await strategy.updateRisk(
+      risk.id,
+      { inherentLikelihood: 5, inherentImpact: 5 },
+      'user-1',
+    );
+    expect(updated.inherentScore).toBe(25);
+    expect(updated.aboveAppetite).toBe(true);
+  });
+
+  it('prefers residual score over inherent score for above-appetite once residual exists', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 5,
+      inherentImpact: 5,
+    });
+    expect(risk.aboveAppetite).toBe(true); // inherent 25 > 9
+
+    const treated = await strategy.updateRisk(
+      risk.id,
+      { residualLikelihood: 1, residualImpact: 2 },
+      'user-1',
+      'Mitigating control applied',
+    );
+    expect(treated.residualScore).toBe(2);
+    expect(treated.aboveAppetite).toBe(false); // residual 2 <= 9, takes priority over inherent 25
+
+    // Editing inherent again while residual still stands must not override the residual-based verdict.
+    const editedInherent = await strategy.updateRisk(
+      treated.id,
+      { inherentLikelihood: 4, inherentImpact: 4 },
+      'user-1',
+    );
+    expect(editedInherent.inherentScore).toBe(16);
+    expect(editedInherent.residualScore).toBe(2);
+    expect(editedInherent.aboveAppetite).toBe(false);
+  });
+
   it('maps a risk to a control directly, independent of findings', async () => {
     const strategy = new FakeNotesStrategy();
     const taxonomy = await strategy.listRiskTaxonomy('org-1');
