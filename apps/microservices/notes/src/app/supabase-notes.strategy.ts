@@ -104,7 +104,12 @@ import type {
   PolicyControl,
   PolicyControlInput,
 } from '@icore/shared';
-import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
+import {
+  DEFAULT_RETENTION_PREFS,
+  DEFAULT_USER_PREFS,
+  WORKFLOW_TRANSITIONS,
+  ADMIN_TRANSITIONS,
+} from '@icore/shared';
 
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
@@ -3711,6 +3716,47 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async deletePolicy(id: string): Promise<void> {
     const { error } = await this.db.from('policies').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  }
+
+  private policyActivityLabel(transition: WorkflowTransition): string {
+    const labels: Record<WorkflowTransition, string> = {
+      submit: 'Submitted for Review',
+      approve: 'Approved',
+      reject: 'Rejected',
+      publish: 'Published',
+      supersede: 'Superseded',
+    };
+    return labels[transition];
+  }
+
+  async transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy> {
+    const policy = await this.getPolicy(id);
+    if (!policy) throw new Error('policy_not_found');
+    const { from, to } = WORKFLOW_TRANSITIONS[transition];
+    if (policy.workflowStatus !== from) {
+      throw new Error(`invalid_transition: ${policy.workflowStatus} -> ${transition}`);
+    }
+    if (ADMIN_TRANSITIONS.includes(transition) && policy.userId === userId) {
+      throw new Error('policy_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('policies')
+      .update({ workflow_status: to, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    const updated = this.toPolicy(ok(data, error));
+    await this.db.from('framework_activities').insert({
+      policy_id: id,
+      action: this.policyActivityLabel(transition),
+      details: `Policy "${policy.title}" moved from ${from} to ${to}.`,
+      actor: userId,
+    });
+    return updated;
   }
 
   async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {

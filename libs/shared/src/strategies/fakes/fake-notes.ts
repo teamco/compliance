@@ -86,7 +86,12 @@ import type {
   AssessmentType,
   AssessmentTypeInput,
 } from '../notes';
-import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '../notes';
+import {
+  DEFAULT_RETENTION_PREFS,
+  DEFAULT_USER_PREFS,
+  WORKFLOW_TRANSITIONS,
+  ADMIN_TRANSITIONS,
+} from '../notes';
 
 export class FakeNotesStrategy implements NotesStrategy {
   private frameworks = new Map<string, Framework>();
@@ -4809,6 +4814,45 @@ export class FakeNotesStrategy implements NotesStrategy {
   async deletePolicy(id: string): Promise<void> {
     this.policyControls = this.policyControls.filter((c) => c.policyId !== id);
     this.policies = this.policies.filter((p) => p.id !== id);
+  }
+
+  private policyActivityLabel(transition: WorkflowTransition): string {
+    const labels: Record<WorkflowTransition, string> = {
+      submit: 'Submitted for Review',
+      approve: 'Approved',
+      reject: 'Rejected',
+      publish: 'Published',
+      supersede: 'Superseded',
+    };
+    return labels[transition];
+  }
+
+  async transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy> {
+    const idx = this.policies.findIndex((p) => p.id === id);
+    if (idx === -1) throw new Error('policy_not_found');
+    const policy = this.policies[idx]!;
+    const { from, to } = WORKFLOW_TRANSITIONS[transition];
+    if (policy.workflowStatus !== from) {
+      throw new Error(`invalid_transition: ${policy.workflowStatus} -> ${transition}`);
+    }
+    if (ADMIN_TRANSITIONS.includes(transition) && policy.userId === userId) {
+      throw new Error('policy_self_approval_forbidden');
+    }
+    const updated: Policy = { ...policy, workflowStatus: to, updatedAt: new Date().toISOString() };
+    this.policies[idx] = updated;
+    this.activities.unshift({
+      id: globalThis.crypto.randomUUID(),
+      policyId: id,
+      action: this.policyActivityLabel(transition),
+      details: `Policy "${policy.title}" moved from ${from} to ${to}.`,
+      actor: userId,
+      timestamp: updated.updatedAt,
+    });
+    return updated;
   }
 
   async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {

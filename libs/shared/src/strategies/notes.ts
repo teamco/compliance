@@ -1547,6 +1547,11 @@ export interface NotesStrategy {
   getPolicy(id: string): Promise<Policy | null>;
   updatePolicy(id: string, patch: PolicyPatch): Promise<Policy>;
   deletePolicy(id: string): Promise<void>;
+  transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy>;
   cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy>;
 
   // Policy templates (platform-wide seed data)
