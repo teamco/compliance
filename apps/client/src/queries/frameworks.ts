@@ -201,7 +201,14 @@ export function useFrameworkEvidence(frameworkId: string, orgId?: string) {
 
 export function useCreateFrameworkEvidence(orgId: string, frameworkId: string) {
   const qc = useQueryClient();
-  return useMutation<RequirementEvidence, Error, Omit<RequirementEvidence, 'id'>>({
+  return useMutation<
+    RequirementEvidence,
+    Error,
+    Omit<
+      RequirementEvidence,
+      'id' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >
+  >({
     mutationFn: (data) =>
       api<RequirementEvidence>(
         `/notes/frameworks/${encodeURIComponent(frameworkId)}/evidence?orgId=${encodeURIComponent(orgId)}`,

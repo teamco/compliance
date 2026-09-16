@@ -89,7 +89,14 @@ export function useControlEvidence(controlId: string) {
 
 export function useCreateControlEvidence(orgId: string, controlId: string) {
   const qc = useQueryClient();
-  return useMutation<RequirementEvidence, Error, Omit<RequirementEvidence, 'id' | 'controlId'>>({
+  return useMutation<
+    RequirementEvidence,
+    Error,
+    Omit<
+      RequirementEvidence,
+      'id' | 'controlId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >
+  >({
     mutationFn: (data) =>
       api<RequirementEvidence>(
         `/notes/internal-controls/${controlId}/evidence?orgId=${encodeURIComponent(orgId)}`,

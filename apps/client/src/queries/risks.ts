@@ -214,7 +214,14 @@ export function useRiskEvidence(riskId: string) {
 
 export function useCreateRiskEvidence(orgId: string, riskId: string) {
   const qc = useQueryClient();
-  return useMutation<RequirementEvidence, Error, Omit<RequirementEvidence, 'id' | 'riskId'>>({
+  return useMutation<
+    RequirementEvidence,
+    Error,
+    Omit<
+      RequirementEvidence,
+      'id' | 'riskId' | 'createdBy' | 'verificationStatus' | 'verifiedBy' | 'verifiedAt'
+    >
+  >({
     mutationFn: (data) =>
       api<RequirementEvidence>(
         `/notes/risks/${riskId}/evidence?orgId=${encodeURIComponent(orgId)}`,

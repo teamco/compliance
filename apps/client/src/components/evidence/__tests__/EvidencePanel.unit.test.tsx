@@ -1,0 +1,145 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { I18nextProvider } from 'react-i18next';
+import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { RequirementEvidence } from '@icore/shared';
+
+let mockEvidence: RequirementEvidence[] = [];
+const createMutate = vi.fn();
+const updateMutate = vi.fn();
+const deleteMutate = vi.fn();
+const reviewMutate = vi.fn();
+
+vi.mock('@/queries/controls', () => ({
+  useControlEvidence: () => ({ data: mockEvidence }),
+  useCreateControlEvidence: () => ({ mutate: createMutate, isPending: false }),
+}));
+
+vi.mock('@/queries/evidence', () => ({
+  useUpdateEvidence: () => ({ mutate: updateMutate, isPending: false }),
+  useDeleteEvidence: () => ({ mutate: deleteMutate, isPending: false }),
+  useReviewEvidence: () => ({ mutate: reviewMutate, isPending: false }),
+}));
+
+const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
+
+function wrap(ui: React.ReactElement) {
+  const qc = new QueryClient();
+  return (
+    <QueryClientProvider client={qc}>
+      <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>
+    </QueryClientProvider>
+  );
+}
+
+const EVIDENCE: RequirementEvidence = {
+  id: 'ev-1',
+  orgId: 'org1',
+  controlId: 'control-1',
+  title: 'Firewall config export',
+  owner: 'Network Team',
+  evidenceType: 'config',
+  source: 'internal',
+  collectionDate: '2026-09-01T00:00:00.000Z',
+  periodCovered: '2026-Q3',
+  expirationDate: '2027-09-01T00:00:00.000Z',
+  verificationStatus: 'pending_review',
+  createdBy: 'creator-1',
+  verifiedBy: null,
+  verifiedAt: null,
+};
+
+describe('EvidencePanel', () => {
+  beforeEach(() => {
+    mockEvidence = [];
+    createMutate.mockClear();
+    updateMutate.mockClear();
+    deleteMutate.mockClear();
+    reviewMutate.mockClear();
+  });
+
+  it('renders an empty state with no evidence', async () => {
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    expect(screen.getByText(/no evidence/i)).toBeTruthy();
+  });
+
+  it('renders an evidence item with its verification badge', async () => {
+    mockEvidence = [EVIDENCE];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    expect(screen.getByText('Firewall config export')).toBeTruthy();
+  });
+
+  it('submits the create form with all fields', async () => {
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    fireEvent.click(screen.getByText(/add evidence/i));
+    fireEvent.change(screen.getByPlaceholderText(/title/i), { target: { value: 'New evidence' } });
+    fireEvent.click(screen.getByText(/^save$/i));
+    // verificationStatus/verifiedBy/verifiedAt/createdBy are forced server-side —
+    // the create hooks' narrowed input types omit them, so the client must not send them.
+    expect(createMutate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'New evidence' }),
+      expect.anything(),
+    );
+    const [submittedPayload] = createMutate.mock.calls[0];
+    expect(submittedPayload).not.toHaveProperty('verificationStatus');
+    expect(submittedPayload).not.toHaveProperty('verifiedBy');
+    expect(submittedPayload).not.toHaveProperty('verifiedAt');
+    expect(submittedPayload).not.toHaveProperty('createdBy');
+  });
+
+  it('shows verify/reject actions only when the current user is not the creator', async () => {
+    mockEvidence = [EVIDENCE];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    const { rerender } = render(
+      wrap(
+        <EvidencePanel
+          orgId="org1"
+          ownerType="control"
+          ownerId="control-1"
+          currentUserId="creator-1"
+        />,
+      ),
+    );
+    expect(screen.queryByText(/^verify$/i)).toBeNull();
+
+    rerender(
+      wrap(
+        <EvidencePanel
+          orgId="org1"
+          ownerType="control"
+          ownerId="control-1"
+          currentUserId="someone-else"
+        />,
+      ),
+    );
+    expect(screen.getByText(/^verify$/i)).toBeTruthy();
+  });
+
+  it('calls delete when the delete action is clicked', async () => {
+    mockEvidence = [EVIDENCE];
+    const { EvidencePanel } = await import('../EvidencePanel');
+    render(
+      wrap(
+        <EvidencePanel orgId="org1" ownerType="control" ownerId="control-1" currentUserId="me" />,
+      ),
+    );
+    fireEvent.click(screen.getByText(/delete/i));
+    expect(deleteMutate).toHaveBeenCalledWith('ev-1');
+  });
+});
