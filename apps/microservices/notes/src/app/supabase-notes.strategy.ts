@@ -2820,6 +2820,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toRiskTaxonomyCategory(ok(data, error));
   }
 
+  async getRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory | null> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskTaxonomyCategory(data) : null;
+  }
+
   private toRiskTaxonomyCategory(row: Record<string, unknown>): RiskTaxonomyCategory {
     return {
       id: row['id'] as string,
@@ -2886,6 +2896,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .select()
       .single();
     return this.toAssessmentType(ok(data, error));
+  }
+
+  async getAssessmentType(id: string): Promise<AssessmentType | null> {
+    const { data, error } = await this.db
+      .from('assessment_types')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAssessmentType(data) : null;
   }
 
   private toAssessmentType(row: Record<string, unknown>): AssessmentType {
@@ -3786,6 +3806,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (error) throw new Error(error.message);
   }
 
+  async getAssessmentItemControlMapping(id: string): Promise<AssessmentItemControlMapping | null> {
+    const { data, error } = await this.db
+      .from('assessment_item_control_mappings')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAssessmentItemControlMapping(data) : null;
+  }
+
   private toAssessmentItemControlMapping(
     row: Record<string, unknown>,
   ): AssessmentItemControlMapping {
@@ -3833,6 +3863,16 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskAcceptance(data) : null;
+  }
+
+  async getRiskAcceptance(id: string): Promise<RiskAcceptance | null> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('id', id)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return data ? this.toRiskAcceptance(data) : null;

@@ -3949,6 +3949,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     return seeded;
   }
 
+  async getRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory | null> {
+    return this.riskTaxonomy.find((c) => c.id === id) ?? null;
+  }
+
   async createRiskTaxonomyCategory(
     orgId: string,
     data: RiskTaxonomyCategoryInput,
@@ -4141,6 +4145,10 @@ export class FakeNotesStrategy implements NotesStrategy {
         (a) => a.riskId === riskId && a.status !== 'rejected' && a.expiresAt > now,
       ) ?? null
     );
+  }
+
+  async getRiskAcceptance(id: string): Promise<RiskAcceptance | null> {
+    return this.riskAcceptances.find((a) => a.id === id) ?? null;
   }
 
   async reviewRiskAcceptance(
@@ -4548,6 +4556,10 @@ export class FakeNotesStrategy implements NotesStrategy {
     );
   }
 
+  async getAssessmentItemControlMapping(id: string): Promise<AssessmentItemControlMapping | null> {
+    return this.assessmentItemControlMappings.find((m) => m.id === id) ?? null;
+  }
+
   async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
     const defaults: Array<[string, string, string]> = [
       ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
@@ -4566,6 +4578,10 @@ export class FakeNotesStrategy implements NotesStrategy {
       });
     }
     return this.assessmentTypes.filter((t) => t.orgId === orgId);
+  }
+
+  async getAssessmentType(id: string): Promise<AssessmentType | null> {
+    return this.assessmentTypes.find((t) => t.id === id) ?? null;
   }
 
   async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {

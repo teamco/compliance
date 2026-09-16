@@ -1446,6 +1446,7 @@ export interface NotesStrategy {
 
   // Risk Taxonomy
   listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]>;
+  getRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory | null>;
   createRiskTaxonomyCategory(
     orgId: string,
     data: RiskTaxonomyCategoryInput,
@@ -1472,6 +1473,7 @@ export interface NotesStrategy {
     data: RiskAcceptanceInput,
   ): Promise<RiskAcceptance>;
   getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null>;
+  getRiskAcceptance(id: string): Promise<RiskAcceptance | null>;
   reviewRiskAcceptance(
     id: string,
     reviewedBy: string,
@@ -1485,6 +1487,7 @@ export interface NotesStrategy {
 
   // Assessment Types
   listAssessmentTypes(orgId: string): Promise<AssessmentType[]>;
+  getAssessmentType(id: string): Promise<AssessmentType | null>;
   createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType>;
   archiveAssessmentType(id: string): Promise<AssessmentType>;
 
@@ -1523,6 +1526,7 @@ export interface NotesStrategy {
 
   // Item <-> control mapping
   listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]>;
+  getAssessmentItemControlMapping(id: string): Promise<AssessmentItemControlMapping | null>;
   addAssessmentItemControlMapping(
     itemId: string,
     data: AssessmentItemControlMappingInput,
