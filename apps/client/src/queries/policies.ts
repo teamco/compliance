@@ -7,6 +7,8 @@ import type {
   PolicyTemplate,
   PolicyControl,
   PolicyControlInput,
+  FrameworkActivity,
+  WorkflowTransition,
 } from '@icore/shared';
 
 export type { Policy, PolicyInput, PolicyPatch, PolicyTemplate, PolicyControl, PolicyControlInput };
@@ -95,6 +97,30 @@ export function useUpdatePolicy(orgId: string, id: string) {
       qc.invalidateQueries({ queryKey: ['policies', orgId] });
       qc.invalidateQueries({ queryKey: ['policies', id] });
     },
+  });
+}
+
+export function useTransitionPolicyWorkflow(orgId: string, id: string) {
+  const qc = useQueryClient();
+  return useMutation<Policy, Error, WorkflowTransition>({
+    mutationFn: (transition) =>
+      api<Policy>(`/notes/policies/${id}/workflow`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transition }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['policies', orgId] });
+      qc.invalidateQueries({ queryKey: ['policies', id] });
+    },
+  });
+}
+
+export function usePolicyActivity(id: string) {
+  return useQuery<FrameworkActivity[]>({
+    queryKey: ['policies', id, 'activity'],
+    queryFn: () => api<FrameworkActivity[]>(`/notes/policies/${id}/activity`),
+    enabled: !!id,
   });
 }
 

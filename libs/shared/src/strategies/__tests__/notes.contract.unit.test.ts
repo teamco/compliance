@@ -197,6 +197,13 @@ export function runNotesContract(name: string, factory: () => NotesStrategy): vo
       expect(docs2.map((d) => d.id)).not.toContain(id1);
     });
 
+    it('transitionWorkflow rejects supersede on a Standards document', async () => {
+      const { id } = await strategy.createStandardsDocument('user-1', 'org-1', []);
+      await expect(strategy.transitionWorkflow(id, 'supersede')).rejects.toThrow(
+        'invalid_transition',
+      );
+    });
+
     // ── updateStandard ──────────────────────────────────────────────────────────
 
     it('updateStandard patches objective on an existing standard', async () => {

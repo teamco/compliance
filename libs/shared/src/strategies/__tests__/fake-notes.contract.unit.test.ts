@@ -1552,24 +1552,21 @@ describe('policies', () => {
     s = new FakeNotesStrategy();
   });
 
-  it('creates policy with draft status', async () => {
+  it('creates policy in draft workflow status', async () => {
     const p = await s.createPolicy('org1', 'u1', {
       frameworkId: 'fw1',
       title: 'Access Control Policy',
       content: '# Access Control\n\nAll systems require MFA.',
     });
-    expect(p.status).toBe('draft');
+    expect(p.workflowStatus).toBe('draft');
     expect(p.version).toBe(1);
   });
 
-  it('approves policy', async () => {
-    const p = await s.createPolicy('org1', 'u1', {
-      frameworkId: 'fw1',
-      title: 'T',
-      content: 'C',
-    });
-    const approved = await s.updatePolicy(p.id, { status: 'approved' });
-    expect(approved.status).toBe('approved');
+  it('lists activity scoped to one policy', async () => {
+    const p1 = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'A', content: 'C' });
+    const p2 = await s.createPolicy('org1', 'u1', { frameworkId: 'fw1', title: 'B', content: 'C' });
+    expect(await s.listPolicyActivity(p1.id)).toHaveLength(0);
+    expect(await s.listPolicyActivity(p2.id)).toHaveLength(0);
   });
 
   it('bumps version on content update', async () => {
@@ -1599,7 +1596,7 @@ describe('policies', () => {
   it('clones template into a new draft policy', async () => {
     const cloned = await s.cloneTemplate('org1', 'u1', 'tmpl-1');
     expect(cloned.templateId).toBe('tmpl-1');
-    expect(cloned.status).toBe('draft');
+    expect(cloned.workflowStatus).toBe('draft');
     expect(cloned.content).toContain('SOC 2');
   });
 
@@ -1608,6 +1605,88 @@ describe('policies', () => {
     const filtered = await s.listPolicyTemplates('fw-soc2');
     expect(filtered.length).toBeLessThanOrEqual(all.length);
     filtered.forEach((t) => expect(t.frameworkId).toBe('fw-soc2'));
+  });
+
+  it('transitions through the full lifecycle and records activity', async () => {
+    const p = await s.createPolicy('org1', 'author-1', {
+      frameworkId: 'fw1',
+      title: 'Access Control Policy',
+      content: 'C',
+    });
+    const submitted = await s.transitionPolicyWorkflow(p.id, 'submit', 'author-1');
+    expect(submitted.workflowStatus).toBe('in_review');
+
+    const approved = await s.transitionPolicyWorkflow(p.id, 'approve', 'reviewer-1');
+    expect(approved.workflowStatus).toBe('approved');
+
+    const published = await s.transitionPolicyWorkflow(p.id, 'publish', 'reviewer-1');
+    expect(published.workflowStatus).toBe('published');
+
+    const superseded = await s.transitionPolicyWorkflow(p.id, 'supersede', 'reviewer-1');
+    expect(superseded.workflowStatus).toBe('superseded');
+
+    const activity = await s.listPolicyActivity(p.id);
+    expect(activity.map((a) => a.action)).toEqual([
+      'Superseded',
+      'Published',
+      'Approved',
+      'Submitted for Review',
+    ]);
+    expect(activity.every((a) => a.policyId === p.id)).toBe(true);
+  });
+
+  it('rejects a transition from the wrong starting state', async () => {
+    const p = await s.createPolicy('org1', 'author-1', {
+      frameworkId: 'fw1',
+      title: 'T',
+      content: 'C',
+    });
+    await expect(s.transitionPolicyWorkflow(p.id, 'publish', 'author-1')).rejects.toThrow(
+      'invalid_transition',
+    );
+  });
+
+  it('forbids the policy author from approving their own policy', async () => {
+    const p = await s.createPolicy('org1', 'author-1', {
+      frameworkId: 'fw1',
+      title: 'T',
+      content: 'C',
+    });
+    await s.transitionPolicyWorkflow(p.id, 'submit', 'author-1');
+    await expect(s.transitionPolicyWorkflow(p.id, 'approve', 'author-1')).rejects.toThrow(
+      'policy_self_approval_forbidden',
+    );
+  });
+
+  it('forbids the policy author from publishing or superseding their own policy', async () => {
+    const p = await s.createPolicy('org1', 'author-1', {
+      frameworkId: 'fw1',
+      title: 'T',
+      content: 'C',
+    });
+    await s.transitionPolicyWorkflow(p.id, 'submit', 'author-1');
+    await s.transitionPolicyWorkflow(p.id, 'approve', 'reviewer-1');
+    await expect(s.transitionPolicyWorkflow(p.id, 'publish', 'author-1')).rejects.toThrow(
+      'policy_self_approval_forbidden',
+    );
+    const published = await s.transitionPolicyWorkflow(p.id, 'publish', 'reviewer-1');
+    expect(published.workflowStatus).toBe('published');
+    await expect(s.transitionPolicyWorkflow(p.id, 'supersede', 'author-1')).rejects.toThrow(
+      'policy_self_approval_forbidden',
+    );
+  });
+
+  it('allows the author to submit and reject-resubmit their own policy', async () => {
+    const p = await s.createPolicy('org1', 'author-1', {
+      frameworkId: 'fw1',
+      title: 'T',
+      content: 'C',
+    });
+    await s.transitionPolicyWorkflow(p.id, 'submit', 'author-1');
+    const rejected = await s.transitionPolicyWorkflow(p.id, 'reject', 'reviewer-1');
+    expect(rejected.workflowStatus).toBe('draft');
+    const resubmitted = await s.transitionPolicyWorkflow(p.id, 'submit', 'author-1');
+    expect(resubmitted.workflowStatus).toBe('in_review');
   });
 });
 

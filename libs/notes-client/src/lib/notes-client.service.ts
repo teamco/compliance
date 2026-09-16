@@ -1258,4 +1258,22 @@ export class NotesClientService {
       frameworkId,
     });
   }
+
+  transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy> {
+    return signedSend<Policy>(this.client, 'notes.policies.transition-workflow', {
+      id,
+      transition,
+      userId,
+    });
+  }
+
+  listPolicyActivity(policyId: string): Promise<FrameworkActivity[]> {
+    return signedSend<FrameworkActivity[]>(this.client, 'notes.policies.activity.list', {
+      policyId,
+    });
+  }
 }

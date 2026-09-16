@@ -1224,4 +1224,16 @@ export class NotesController {
   ): Promise<Policy[]> {
     return this.strategy.listPoliciesForControl(p.controlCode, p.frameworkId);
   }
+
+  @MessagePattern('notes.policies.transition-workflow')
+  transitionPolicyWorkflow(
+    @Payload() p: { id: string; transition: WorkflowTransition; userId: string },
+  ): Promise<Policy> {
+    return this.strategy.transitionPolicyWorkflow(p.id, p.transition, p.userId);
+  }
+
+  @MessagePattern('notes.policies.activity.list')
+  listPolicyActivity(@Payload() p: { policyId: string }): Promise<FrameworkActivity[]> {
+    return this.strategy.listPolicyActivity(p.policyId);
+  }
 }

@@ -104,7 +104,12 @@ import type {
   PolicyControl,
   PolicyControlInput,
 } from '@icore/shared';
-import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
+import {
+  DEFAULT_RETENTION_PREFS,
+  DEFAULT_USER_PREFS,
+  WORKFLOW_TRANSITIONS,
+  ADMIN_TRANSITIONS,
+} from '@icore/shared';
 
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
@@ -935,12 +940,22 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return ok(data, error).map((row) => this.toFrameworkActivity(row));
   }
 
+  async listPolicyActivity(policyId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('policy_id', policyId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
   private toFrameworkActivity(row: Record<string, unknown>): FrameworkActivity {
     return {
       id: row['id'] as string,
       frameworkId: row['framework_id'] as string | undefined,
       controlId: row['control_id'] as string | undefined,
       assetId: row['asset_id'] as string | undefined,
+      policyId: row['policy_id'] as string | undefined,
       action: row['action'] as string,
       details: row['details'] as string,
       actor: row['actor'] as string,
@@ -1131,6 +1146,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
     const doc = await this.getStandardsDocument(id);
     if (!doc) throw new Error('doc_not_found');
+    if (transition === 'supersede') {
+      throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
+    }
     const { from, to } = WORKFLOW_TRANSITIONS[transition];
     if (doc.workflowStatus !== from) {
       throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
@@ -3684,7 +3702,6 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.status !== undefined) update['status'] = patch.status;
     if (patch.content !== undefined) {
       update['content'] = patch.content;
       const cur = await this.db.from('policies').select('version').eq('id', id).single();
@@ -3702,6 +3719,48 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async deletePolicy(id: string): Promise<void> {
     const { error } = await this.db.from('policies').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  }
+
+  private policyActivityLabel(transition: WorkflowTransition): string {
+    const labels: Record<WorkflowTransition, string> = {
+      submit: 'Submitted for Review',
+      approve: 'Approved',
+      reject: 'Rejected',
+      publish: 'Published',
+      supersede: 'Superseded',
+    };
+    return labels[transition];
+  }
+
+  async transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy> {
+    const policy = await this.getPolicy(id);
+    if (!policy) throw new Error('policy_not_found');
+    const { from, to } = WORKFLOW_TRANSITIONS[transition];
+    if (policy.workflowStatus !== from) {
+      throw new Error(`invalid_transition: ${policy.workflowStatus} -> ${transition}`);
+    }
+    if (ADMIN_TRANSITIONS.includes(transition) && policy.userId === userId) {
+      throw new Error('policy_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('policies')
+      .update({ workflow_status: to, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    const updated = this.toPolicy(ok(data, error));
+    const { error: activityError } = await this.db.from('framework_activities').insert({
+      policy_id: id,
+      action: this.policyActivityLabel(transition),
+      details: `Policy "${policy.title}" moved from ${from} to ${to}.`,
+      actor: userId,
+    });
+    if (activityError) throw new Error(activityError.message);
+    return updated;
   }
 
   async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
@@ -3781,7 +3840,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       frameworkId: row['framework_id'] as string,
       title: row['title'] as string,
       content: row['content'] as string,
-      status: row['status'] as Policy['status'],
+      workflowStatus: row['workflow_status'] as Policy['workflowStatus'],
       version: row['version'] as number,
       templateId: row['template_id'] as string | null,
       createdAt: row['created_at'] as string,

@@ -289,6 +289,7 @@ export interface FrameworkActivity {
   frameworkId?: string;
   controlId?: string;
   assetId?: string;
+  policyId?: string;
   action: string;
   details: string;
   actor: string;
@@ -376,8 +377,8 @@ export interface DocumentStandard {
   frameworkMappings: { frameworkId: string; standardCode: string }[];
 }
 
-export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
-export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
+export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'superseded';
+export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish' | 'supersede';
 
 export const WORKFLOW_TRANSITIONS: Record<
   WorkflowTransition,
@@ -387,9 +388,15 @@ export const WORKFLOW_TRANSITIONS: Record<
   approve: { from: 'in_review', to: 'approved' },
   reject: { from: 'in_review', to: 'draft' },
   publish: { from: 'approved', to: 'published' },
+  supersede: { from: 'published', to: 'superseded' },
 };
 
-export const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish'];
+export const ADMIN_TRANSITIONS: WorkflowTransition[] = [
+  'approve',
+  'reject',
+  'publish',
+  'supersede',
+];
 
 export interface StandardsDocument {
   id: string;
@@ -1042,8 +1049,6 @@ export interface AssessmentItemControlMappingInput {
 
 // ─── Policies ──────────────────────────────────────────────────────────────
 
-export type PolicyStatus = 'draft' | 'approved';
-
 export interface Policy {
   id: string;
   orgId: string;
@@ -1051,7 +1056,7 @@ export interface Policy {
   frameworkId: string;
   title: string;
   content: string;
-  status: PolicyStatus;
+  workflowStatus: WorkflowStatus;
   version: number;
   templateId: string | null;
   createdAt: string;
@@ -1068,7 +1073,6 @@ export interface PolicyInput {
 export interface PolicyPatch {
   title?: string;
   content?: string;
-  status?: PolicyStatus;
 }
 
 // ─── Policy Templates ──────────────────────────────────────────────────────
@@ -1278,6 +1282,7 @@ export interface NotesStrategy {
 
   listControlActivity(controlId: string): Promise<FrameworkActivity[]>;
   listAssetActivity(assetId: string): Promise<FrameworkActivity[]>;
+  listPolicyActivity(policyId: string): Promise<FrameworkActivity[]>;
   listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]>;
   createFrameworkEvidence(
     orgId: string,
@@ -1542,6 +1547,11 @@ export interface NotesStrategy {
   getPolicy(id: string): Promise<Policy | null>;
   updatePolicy(id: string, patch: PolicyPatch): Promise<Policy>;
   deletePolicy(id: string): Promise<void>;
+  transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy>;
   cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy>;
 
   // Policy templates (platform-wide seed data)
