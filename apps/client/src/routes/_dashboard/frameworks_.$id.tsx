@@ -1212,7 +1212,6 @@ function FrameworkWorkspacePage() {
         framework={framework}
         requirement={selectedRequirement}
         internalControls={internalControls}
-        evidenceList={evidenceList}
         assessmentsList={assessmentsList}
         orgId={orgId}
         open={!!selectedReqId}

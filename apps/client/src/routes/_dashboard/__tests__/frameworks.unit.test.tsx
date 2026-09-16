@@ -95,6 +95,23 @@ const mockFrameworksList: Framework[] = [
   },
 ];
 
+const mockEvidenceForDrawer = [
+  {
+    id: 'ev-1',
+    frameworkId: '00000000-0000-0000-0000-000000000003',
+    requirementId: 'nist-gv-po-01',
+    title: 'Information Security Policy.pdf',
+    owner: 'CISO Office',
+    evidenceType: 'Policy Document',
+    source: 'Manual Upload',
+    collectionDate: '2026-01-15',
+    periodCovered: '2026-Q1 - 2026-Q4',
+    expirationDate: '2027-01-15',
+    verificationStatus: 'verified' as const,
+    linkedRequirements: ['GV.PO-01'],
+  },
+];
+
 const mockFindingForBridge = {
   id: 'FIND-2026-0042',
   orgId: 'org1',
@@ -117,6 +134,7 @@ vi.mock('@/queries/frameworks', async (importOriginal) => {
     useCreateFramework: () => ({ mutate: mockCreateFramework, isPending: false }),
     useUpdateFramework: () => ({ mutate: mockUpdateFramework, isPending: false }),
     useUpdateRequirement: () => ({ mutate: mockUpdateRequirement, isPending: false }),
+    useFrameworkEvidence: () => ({ data: mockEvidenceForDrawer, isPending: false }),
     useCreateFrameworkEvidence: () => ({ mutate: mockCreateEvidence, isPending: false }),
     useCreateAssessmentFinding: () => ({ mutate: mockCreateFinding, isPending: false }),
     useControlFindings: () => ({ data: [mockFindingForBridge] }),
@@ -211,23 +229,6 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
     },
   ];
 
-  const mockEvidence = [
-    {
-      id: 'ev-1',
-      frameworkId: '00000000-0000-0000-0000-000000000003',
-      requirementId: 'nist-gv-po-01',
-      title: 'Information Security Policy.pdf',
-      owner: 'CISO Office',
-      evidenceType: 'Policy Document',
-      source: 'Manual Upload',
-      collectionDate: '2026-01-15',
-      periodCovered: '2026-Q1 - 2026-Q4',
-      expirationDate: '2027-01-15',
-      verificationStatus: 'verified' as const,
-      linkedRequirements: ['GV.PO-01'],
-    },
-  ];
-
   const mockAssessments = [
     {
       id: 'asm-1',
@@ -259,7 +260,6 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
           framework={mockFramework}
           requirement={mockReq}
           internalControls={mockControls}
-          evidenceList={mockEvidence}
           assessmentsList={mockAssessments}
           orgId="org1"
           open={true}
@@ -283,7 +283,6 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
           framework={mockFramework}
           requirement={mockReq}
           internalControls={mockControls}
-          evidenceList={mockEvidence}
           assessmentsList={mockAssessments}
           orgId="org1"
           open={true}
@@ -344,7 +343,6 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
           framework={mockFramework}
           requirement={reqWithMappings}
           internalControls={controlsWithBenefit}
-          evidenceList={mockEvidence}
           assessmentsList={mockAssessments}
           orgId="org1"
           open={true}
@@ -373,7 +371,6 @@ describe('RequirementDrawer (6 GRC Areas)', () => {
           framework={mockFramework}
           requirement={mockReq}
           internalControls={mockControls}
-          evidenceList={mockEvidence}
           assessmentsList={mockAssessments}
           orgId="org1"
           open={true}

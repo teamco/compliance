@@ -14,24 +14,22 @@ import {
   ExternalLink,
   Info,
 } from 'lucide-react';
-import { useNotify } from '@icore/template-shared';
+import { useNotify, useAuthStore } from '@icore/template-shared';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   useUpdateRequirement,
-  useCreateFrameworkEvidence,
   useCreateAssessmentFinding,
   type Framework,
   type FrameworkRequirement,
   type FrameworkApplicabilityStatus,
   type ImplementationStatus,
   type InternalControl,
-  type RequirementEvidence,
   type RequirementAssessment,
 } from '@/queries/frameworks';
-import { safeHref } from '@/lib/safe-href';
+import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 import { LinkedFindingSection } from './LinkedFindingSection';
 
 type DrawerSection =
@@ -41,7 +39,6 @@ interface RequirementDrawerProps {
   framework: Framework;
   requirement: FrameworkRequirement | null;
   internalControls: InternalControl[];
-  evidenceList: RequirementEvidence[];
   assessmentsList: RequirementAssessment[];
   orgId: string;
   open: boolean;
@@ -66,7 +63,6 @@ export function RequirementDrawer({
   framework,
   requirement,
   internalControls,
-  evidenceList,
   assessmentsList,
   orgId,
   open,
@@ -74,6 +70,7 @@ export function RequirementDrawer({
 }: RequirementDrawerProps) {
   const { t } = useTranslation();
   const notify = useNotify();
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
 
   const [activeSection, setActiveSection] = useState<DrawerSection>('requirement');
 
@@ -94,14 +91,6 @@ export function RequirementDrawer({
   const [lastAssessed, setLastAssessed] = useState('');
   const [nextAssessment, setNextAssessment] = useState('');
 
-  // Add Evidence Dialog state inside Drawer
-  const [showAddEvidence, setShowAddEvidence] = useState(false);
-  const [evidenceTitle, setEvidenceTitle] = useState('');
-  const [evidenceOwner, setEvidenceOwner] = useState('SecOps');
-  const [evidenceType, setEvidenceType] = useState('Policy Document');
-  const [evidenceSource, setEvidenceSource] = useState('Manual Upload');
-  const [evidenceUrl, setEvidenceUrl] = useState('');
-
   // Log Finding state inside Drawer
   const [showAddFinding, setShowAddFinding] = useState(false);
   const [findingTitle, setFindingTitle] = useState('');
@@ -111,7 +100,6 @@ export function RequirementDrawer({
   const [findingDescription, setFindingDescription] = useState('');
 
   const updateMut = useUpdateRequirement(orgId, framework.id, requirement?.id ?? '');
-  const addEvidenceMut = useCreateFrameworkEvidence(orgId, framework.id);
   const addFindingMut = useCreateAssessmentFinding(orgId, framework.id);
 
   useEffect(() => {
@@ -145,13 +133,6 @@ export function RequirementDrawer({
         m.frameworkId === framework.id &&
         (m.requirementCode === currentReq.code || m.requirementCode.includes(currentReq.code)),
     ),
-  );
-
-  const linkedEvidence = evidenceList.filter(
-    (e) =>
-      e.requirementId === currentReq.id ||
-      e.linkedRequirements?.includes(currentReq.code) ||
-      linkedInternalControls.some((c) => e.linkedControls?.includes(c.code)),
   );
 
   const linkedAssessments = assessmentsList.filter(
@@ -189,34 +170,6 @@ export function RequirementDrawer({
       {
         onSuccess: () => {
           notify.success(t('frameworks.drawer.saved', 'Requirement updated successfully'));
-        },
-      },
-    );
-  }
-
-  function handleCreateEvidence() {
-    if (!evidenceTitle.trim()) return;
-    addEvidenceMut.mutate(
-      {
-        requirementId: currentReq.id,
-        frameworkId: framework.id,
-        title: evidenceTitle,
-        owner: evidenceOwner || 'SecOps',
-        evidenceType,
-        source: evidenceSource,
-        collectionDate: new Date().toISOString().split('T')[0],
-        periodCovered: '2026-Q3',
-        expirationDate: '2026-12-31',
-        verificationStatus: 'verified',
-        url: evidenceUrl,
-        linkedRequirements: [currentReq.code],
-      },
-      {
-        onSuccess: () => {
-          notify.success(t('frameworks.drawer.evidenceAdded', 'Evidence item linked'));
-          setShowAddEvidence(false);
-          setEvidenceTitle('');
-          setEvidenceUrl('');
         },
       },
     );
@@ -317,7 +270,7 @@ export function RequirementDrawer({
               },
               {
                 id: 'evidence' as const,
-                label: `${t('frameworks.drawer.tabEvidence', '5. Evidence')} (${linkedEvidence.length})`,
+                label: t('frameworks.drawer.tabEvidence', '5. Evidence'),
                 icon: FileText,
               },
               {
@@ -804,162 +757,14 @@ export function RequirementDrawer({
           )}
 
           {/* AREA 5: EVIDENCE */}
-          {activeSection === 'evidence' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
-                    {t('frameworks.drawer.attachedEvidence', 'Attached Evidence & Artifacts')}
-                  </h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Manual and automated evidence records demonstrating requirement compliance.
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setShowAddEvidence(!showAddEvidence)}
-                  className="h-7 text-xs gap-1 bg-green-600 hover:bg-green-500 text-white"
-                >
-                  <Plus size={12} />
-                  Add Evidence
-                </Button>
-              </div>
-
-              {showAddEvidence && (
-                <div className="p-4 rounded-xl bg-surface border border-green-500/30 space-y-3">
-                  <h5 className="text-xs font-semibold text-foreground">Add Evidence Artifact</h5>
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Evidence Name / Title</Label>
-                    <Input
-                      value={evidenceTitle}
-                      onChange={(e) => setEvidenceTitle(e.target.value)}
-                      placeholder="e.g. Entra ID Conditional Access Screenshot"
-                      className="h-8 text-xs bg-background"
-                    />
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Type</Label>
-                      <select
-                        value={evidenceType}
-                        onChange={(e) => setEvidenceType(e.target.value)}
-                        className="w-full h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground"
-                      >
-                        <option value="Policy Document">Policy Document</option>
-                        <option value="Config Export">Config Export</option>
-                        <option value="Screenshot">Screenshot</option>
-                        <option value="Spreadsheet">Spreadsheet</option>
-                        <option value="Ticket">Service Ticket</option>
-                      </select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Source</Label>
-                      <Input
-                        value={evidenceSource}
-                        onChange={(e) => setEvidenceSource(e.target.value)}
-                        placeholder="e.g. Entra ID / AWS"
-                        className="h-8 text-xs bg-background"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Owner</Label>
-                      <Input
-                        value={evidenceOwner}
-                        onChange={(e) => setEvidenceOwner(e.target.value)}
-                        placeholder="SecOps"
-                        className="h-8 text-xs bg-background"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">URL / Reference Link</Label>
-                    <Input
-                      value={evidenceUrl}
-                      onChange={(e) => setEvidenceUrl(e.target.value)}
-                      placeholder="https://…"
-                      className="h-8 text-xs bg-background"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => setShowAddEvidence(false)}
-                      className="h-7 text-xs"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleCreateEvidence}
-                      disabled={addEvidenceMut.isPending}
-                      className="h-7 text-xs bg-green-600 text-white"
-                    >
-                      Save Evidence
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {linkedEvidence.length === 0 ? (
-                <div className="p-8 rounded-xl border border-dashed border-border text-center space-y-2">
-                  <FileText size={24} className="text-muted-foreground/40 mx-auto" />
-                  <p className="text-xs text-muted-foreground">
-                    No evidence linked to this requirement yet.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {linkedEvidence.map((ev) => (
-                    <div
-                      key={ev.id}
-                      className="p-4 rounded-xl bg-surface border border-border space-y-2.5 hover:border-muted-foreground/40 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex items-center gap-2">
-                          <FileText size={16} className="text-green-500 shrink-0" />
-                          <h4 className="text-xs font-semibold text-foreground">{ev.title}</h4>
-                        </div>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded bg-green-500/10 text-green-500 border border-green-500/20">
-                          {ev.verificationStatus}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-muted-foreground">
-                        <div>
-                          Type: <strong className="text-foreground">{ev.evidenceType}</strong>
-                        </div>
-                        <div>
-                          Source: <strong className="text-foreground">{ev.source}</strong>
-                        </div>
-                        <div>
-                          Period: <strong className="text-foreground">{ev.periodCovered}</strong>
-                        </div>
-                        <div>
-                          Expires: <strong className="text-foreground">{ev.expirationDate}</strong>
-                        </div>
-                      </div>
-                      {ev.url &&
-                        (safeHref(ev.url) ? (
-                          <div className="pt-1">
-                            <a
-                              href={safeHref(ev.url)}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-green-500 hover:underline inline-flex items-center gap-1 cursor-pointer"
-                            >
-                              View Evidence Artifact <ExternalLink size={11} />
-                            </a>
-                          </div>
-                        ) : (
-                          <div className="pt-1">
-                            <span className="text-xs text-muted-foreground">{ev.url}</span>
-                          </div>
-                        ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {activeSection === 'evidence' && currentReq && (
+            <EvidencePanel
+              orgId={orgId}
+              ownerType="framework"
+              ownerId={framework.id}
+              requirementFilter={currentReq.id}
+              currentUserId={currentUserId}
+            />
           )}
 
           {/* AREA 6: ASSESSMENTS & FINDINGS */}
