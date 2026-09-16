@@ -1146,6 +1146,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
     const doc = await this.getStandardsDocument(id);
     if (!doc) throw new Error('doc_not_found');
+    if (transition === 'supersede') {
+      throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
+    }
     const { from, to } = WORKFLOW_TRANSITIONS[transition];
     if (doc.workflowStatus !== from) {
       throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);

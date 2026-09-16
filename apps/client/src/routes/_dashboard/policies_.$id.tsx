@@ -64,6 +64,14 @@ const TRANSITION_FOR_STATUS: Record<WorkflowStatus, WorkflowTransition | null> =
 
 const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish', 'supersede'];
 
+const PENDING_LABEL_FOR_TRANSITION: Record<WorkflowTransition, string> = {
+  submit: 'policies.workflow.submitting',
+  approve: 'policies.workflow.approving',
+  reject: 'policies.workflow.rejecting',
+  publish: 'policies.workflow.publishing',
+  supersede: 'policies.workflow.superseding',
+};
+
 function PolicyWorkflowBar({
   status,
   policyId,
@@ -136,7 +144,7 @@ function PolicyWorkflowBar({
             className="gap-1.5 h-7 text-xs"
           >
             {transition.isPending
-              ? t(`policies.workflow.${primaryTransition}ing`)
+              ? t(PENDING_LABEL_FOR_TRANSITION[primaryTransition])
               : t(`policies.workflow.${primaryTransition}`)}
           </Button>
         )}

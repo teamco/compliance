@@ -331,6 +331,7 @@ export const es = {
       in_review: 'En revisión',
       approved: 'Aprobado',
       published: 'Publicado',
+      superseded: 'Reemplazado',
       submit: 'Enviar a revisión',
       approve: 'Aprobar',
       reject: 'Devolver',
@@ -339,6 +340,13 @@ export const es = {
       approving: 'Aprobando…',
       rejecting: 'Devolviendo…',
       publishing: 'Publicando…',
+      desc: {
+        draft: 'En curso, aún no revisado',
+        in_review: 'Pendiente de aprobación',
+        approved: 'Revisado y aceptado, listo para publicar',
+        published: 'Vigente y aplicado en la organización',
+        superseded: 'Reemplazado por una versión más nueva',
+      },
     },
   },
   gapAnalysis: {

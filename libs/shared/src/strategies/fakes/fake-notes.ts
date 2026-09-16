@@ -3160,6 +3160,9 @@ export class FakeNotesStrategy implements NotesStrategy {
   async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
     const doc = this.docs.get(id);
     if (!doc) throw new Error(`doc_not_found: ${id}`);
+    if (transition === 'supersede') {
+      throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
+    }
     const { from, to } = WORKFLOW_TRANSITIONS[transition];
     if (doc.workflowStatus !== from) {
       throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
