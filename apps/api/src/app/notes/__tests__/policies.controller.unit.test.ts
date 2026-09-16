@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { NotesClientService } from '@icore/notes-client';
@@ -82,6 +82,17 @@ describe('NotesController — policy workflow org scoping', () => {
           transition: 'approve',
         }),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects an invalid transition value with a 400 before touching the strategy', async () => {
+      const notes = makeNotes();
+      await expect(
+        makeController(notes).transitionPolicyWorkflow(reqAs('org-creator'), 'policy-1', {
+          transition: 'not_a_real_transition' as never,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.getPolicy).not.toHaveBeenCalled();
+      expect(notes.transitionPolicyWorkflow).not.toHaveBeenCalled();
     });
 
     it('propagates the strategy-level self-approval guard unswallowed', async () => {

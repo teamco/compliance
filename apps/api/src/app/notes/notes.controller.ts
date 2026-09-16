@@ -21,6 +21,7 @@ import type { Request } from 'express';
 import { subject } from '@casl/ability';
 import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
+import { WORKFLOW_TRANSITIONS } from '@icore/shared';
 import type {
   StandardPatch,
   DocumentStandard,
@@ -2011,6 +2012,9 @@ export class NotesController {
     @Param('id') id: string,
     @Body() body: { transition: WorkflowTransition },
   ) {
+    if (!(body.transition in WORKFLOW_TRANSITIONS)) {
+      throw new BadRequestException('invalid_transition');
+    }
     const userId = this.uid(req);
     const policy = await this.notes.getPolicy(id);
     if (!policy) throw new NotFoundException();

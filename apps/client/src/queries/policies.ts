@@ -112,7 +112,6 @@ export function useTransitionPolicyWorkflow(orgId: string, id: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['policies', orgId] });
       qc.invalidateQueries({ queryKey: ['policies', id] });
-      qc.invalidateQueries({ queryKey: ['policies', id, 'activity'] });
     },
   });
 }

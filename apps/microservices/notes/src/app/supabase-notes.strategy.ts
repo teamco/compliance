@@ -3753,12 +3753,13 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .select()
       .single();
     const updated = this.toPolicy(ok(data, error));
-    await this.db.from('framework_activities').insert({
+    const { error: activityError } = await this.db.from('framework_activities').insert({
       policy_id: id,
       action: this.policyActivityLabel(transition),
       details: `Policy "${policy.title}" moved from ${from} to ${to}.`,
       actor: userId,
     });
+    if (activityError) throw new Error(activityError.message);
     return updated;
   }
 
