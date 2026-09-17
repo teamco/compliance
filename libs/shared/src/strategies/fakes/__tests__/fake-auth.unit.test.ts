@@ -123,6 +123,60 @@ describe('FakeAuthStrategy.deactivateOrgMember', () => {
     const strategy = new FakeAuthStrategy();
     await expect(strategy.deactivateOrgMember('org-1', 'nobody')).resolves.toBeUndefined();
   });
+
+  it('records deactivatedAt, and clears it again on reactivation via a fresh invite accept', async () => {
+    const strategy = new FakeAuthStrategy();
+    const session = await strategy.signUp('returning@example.com', 'password123');
+    strategy.seedOrgMember('org-1', { userId: session.user.id, role: 'viewer' });
+
+    await strategy.deactivateOrgMember('org-1', session.user.id);
+
+    const deactivatedMembers = (
+      strategy as unknown as {
+        orgMembers: Map<string, { userId: string; deactivatedAt?: string }[]>;
+      }
+    ).orgMembers.get('org-1');
+    const deactivated = deactivatedMembers?.find((m) => m.userId === session.user.id);
+    expect(deactivated?.deactivatedAt).toBeTruthy();
+
+    const invite = await strategy.createOrgInvite(
+      'org-1',
+      'returning@example.com',
+      'admin',
+      'owner-1',
+    );
+    const member = await strategy.acceptOrgInvite(
+      invite.token,
+      session.user.id,
+      'returning@example.com',
+    );
+    expect(member.deactivatedAt).toBeUndefined();
+  });
+
+  it('revokes pending invites for the same org + email so reactivation cannot smuggle in a higher role', async () => {
+    const strategy = new FakeAuthStrategy();
+    const session = await strategy.signUp('b@example.com', 'password123');
+    strategy.seedOrgMember('org-1', { userId: session.user.id, role: 'viewer' });
+
+    // Manager (re-)invites B as admin before B accepts, then deactivates B's viewer membership.
+    const higherRoleInvite = await strategy.createOrgInvite(
+      'org-1',
+      'b@example.com',
+      'admin',
+      'owner-1',
+    );
+
+    await strategy.deactivateOrgMember('org-1', session.user.id);
+
+    const found = await strategy.getOrgInviteByToken(higherRoleInvite.token);
+    expect(found?.status).toBe('revoked');
+  });
+
+  it('skips invite revocation silently when the deactivated user has no email on record', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'no-email-user', role: 'viewer' });
+    await expect(strategy.deactivateOrgMember('org-1', 'no-email-user')).resolves.toBeUndefined();
+  });
 });
 
 describe('org invites', () => {

@@ -48,6 +48,7 @@ export interface OrgMember {
   email?: string;
   role: string;
   isActive?: boolean; // absent or true = active; false = deactivated
+  deactivatedAt?: string; // ISO timestamp of the most recent deactivation; cleared on reactivation
 }
 
 export type OrgInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';

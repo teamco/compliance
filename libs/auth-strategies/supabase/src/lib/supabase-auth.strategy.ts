@@ -228,6 +228,7 @@ export class SupabaseAuthStrategy implements AuthStrategy {
           role: r.role,
           email: profile?.email,
           displayName: profile?.display_name,
+          isActive: true, // query already filters to is_active = true
         };
       });
     }
@@ -337,10 +338,10 @@ export class SupabaseAuthStrategy implements AuthStrategy {
       .maybeSingle();
 
     if (existing) {
-      if (existing['is_active']) throw new Error('invite_already_member');
+      if (existing['is_active'] !== false) throw new Error('invite_already_member');
       const { error: reactivateError } = await this.client
         .from('organization_members')
-        .update({ is_active: true, role: invite.role })
+        .update({ is_active: true, role: invite.role, deactivated_at: null })
         .eq('id', existing['id']);
       if (reactivateError) throw new Error(reactivateError.message);
     } else {
@@ -362,10 +363,23 @@ export class SupabaseAuthStrategy implements AuthStrategy {
   async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
     const { error } = await this.client
       .from('organization_members')
-      .update({ is_active: false })
+      .update({ is_active: false, deactivated_at: new Date().toISOString() })
       .eq('org_id', orgId)
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
+
+    // Revoke any pending invites for this same org + email so a reactivation
+    // can't smuggle the removed member back in at a higher role with zero
+    // manager action. Skip silently if the user has no email on record.
+    const profile = await this.getProfile(userId);
+    if (!profile?.email) return;
+    const { error: revokeError } = await this.client
+      .from('organization_invites')
+      .update({ status: 'revoked' })
+      .eq('org_id', orgId)
+      .eq('status', 'pending')
+      .ilike('email', profile.email);
+    if (revokeError) throw new Error(revokeError.message);
   }
 
   // Mirrors sendMagicLink's signInWithOtp + emailRedirectTo delivery mechanism --

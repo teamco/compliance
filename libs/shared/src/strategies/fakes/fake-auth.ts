@@ -251,6 +251,7 @@ export class FakeAuthStrategy implements AuthStrategy {
       if (existing.isActive !== false) throw new Error('invite_already_member');
       existing.isActive = true;
       existing.role = invite.role;
+      existing.deactivatedAt = undefined;
       member = existing;
     } else {
       member = { userId, role: invite.role, isActive: true };
@@ -263,7 +264,30 @@ export class FakeAuthStrategy implements AuthStrategy {
 
   async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
     const member = (this.orgMembers.get(orgId) ?? []).find((m) => m.userId === userId);
-    if (member) member.isActive = false;
+    if (!member) return;
+    member.isActive = false;
+    member.deactivatedAt = new Date().toISOString();
+
+    // Revoke any pending invites for this same org + email so a reactivation
+    // can't smuggle the removed member back in at a higher role with zero
+    // manager action. Skip silently if the user has no email on record.
+    let email: string | undefined;
+    try {
+      email = this.findById(userId).email;
+    } catch {
+      email = undefined;
+    }
+    if (!email) return;
+    const lowerEmail = email.toLowerCase();
+    for (const invite of this.orgInvites.values()) {
+      if (
+        invite.orgId === orgId &&
+        invite.status === 'pending' &&
+        invite.email.toLowerCase() === lowerEmail
+      ) {
+        invite.status = 'revoked';
+      }
+    }
   }
 
   private findById(uid: string): StoredUser {
