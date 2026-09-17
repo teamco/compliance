@@ -293,6 +293,30 @@ describe('AuthController (gateway) — org invite management routes', () => {
       expect(auth.createOrgInvite).toHaveBeenCalledWith('org-1', 'a@x.com', 'viewer', 'owner-1');
     });
 
+    it('rejects an invalid role before touching the strategy', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).createOrgInvite(reqAs('owner-1'), 'org-1', {
+          email: 'a@x.com',
+          role: 'owner' as never,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(auth.createOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects a malformed email before touching the strategy', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).createOrgInvite(reqAs('owner-1'), 'org-1', {
+          email: 'not-an-email',
+          role: 'viewer',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(auth.createOrgInvite).not.toHaveBeenCalled();
+    });
+
     it('allows an org-admin member', async () => {
       const notes = makeNotes();
       const auth = makeInviteAuthClient({

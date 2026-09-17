@@ -174,6 +174,12 @@ export class AuthController {
   ) {
     const uid = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    if (body.role !== 'admin' && body.role !== 'viewer') {
+      throw new BadRequestException('invalid_role');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      throw new BadRequestException('invalid_email');
+    }
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     await this.checkOrgManage(req, org);

@@ -143,9 +143,11 @@ export function OrgPage() {
         }}
       />
 
-      {activeOrgId && orgList.some((org) => org.id === activeOrgId) && (
-        <MembersSection orgId={activeOrgId} />
-      )}
+      {activeOrgId &&
+        (() => {
+          const activeOrg = orgList.find((org) => org.id === activeOrgId);
+          return activeOrg ? <MembersSection org={activeOrg} /> : null;
+        })()}
     </div>
   );
 }

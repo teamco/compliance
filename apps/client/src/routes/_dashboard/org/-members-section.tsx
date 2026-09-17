@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Users, UserPlus, RotateCw, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useNotify } from '@icore/template-shared';
+import { useAuthStore, useNotify } from '@icore/template-shared';
 import {
   useOrgMembers,
   useOrgInvites,
@@ -9,6 +9,7 @@ import {
   useResendOrgInvite,
   type OrgMemberRole,
 } from '@/queries/org-members';
+import type { Organization } from '@/queries/notes';
 import { Button } from '@/components/ui/button';
 import { InviteMemberDialog } from './-invite-member-dialog';
 
@@ -19,12 +20,14 @@ const ROLE_STYLES: Record<OrgMemberRole, string> = {
 };
 
 interface MembersSectionProps {
-  orgId: string;
+  org: Organization;
 }
 
-export function MembersSection({ orgId }: MembersSectionProps) {
+export function MembersSection({ org }: MembersSectionProps) {
+  const orgId = org.id;
   const { t } = useTranslation();
   const notify = useNotify();
+  const myUid = useAuthStore((s) => s.user?.id);
   const { data: members, isPending: membersPending } = useOrgMembers(orgId);
   const { data: invites, isPending: invitesPending } = useOrgInvites(orgId);
   const revokeInvite = useRevokeOrgInvite(orgId);
@@ -33,6 +36,8 @@ export function MembersSection({ orgId }: MembersSectionProps) {
 
   const memberList = members ?? [];
   const inviteList = invites ?? [];
+  const myMembership = memberList.find((m) => m.userId === myUid);
+  const canManage = org.userId === myUid || myMembership?.role === 'admin';
 
   async function handleRevoke(inviteId: string) {
     try {
@@ -59,10 +64,17 @@ export function MembersSection({ orgId }: MembersSectionProps) {
           <Users size={16} className="text-muted-foreground" />
           <h2 className="text-sm font-semibold text-foreground">{t('org.members.title')}</h2>
         </div>
-        <Button size="sm" variant="outline" onClick={() => setInviteOpen(true)} className="gap-1.5">
-          <UserPlus size={14} />
-          {t('org.members.inviteButton')}
-        </Button>
+        {canManage && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setInviteOpen(true)}
+            className="gap-1.5"
+          >
+            <UserPlus size={14} />
+            {t('org.members.inviteButton')}
+          </Button>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -121,30 +133,32 @@ export function MembersSection({ orgId }: MembersSectionProps) {
                   · {new Date(invite.expiresAt).toLocaleDateString()}
                 </p>
               </div>
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title={t('org.members.resend')}
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                  disabled={resendInvite.isPending}
-                  onClick={() => void handleResend(invite.id)}
-                >
-                  <RotateCw size={13} />
-                  <span className="sr-only">{t('org.members.resend')}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title={t('org.members.revoke')}
-                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                  disabled={revokeInvite.isPending}
-                  onClick={() => void handleRevoke(invite.id)}
-                >
-                  <XCircle size={13} />
-                  <span className="sr-only">{t('org.members.revoke')}</span>
-                </Button>
-              </div>
+              {canManage && (
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title={t('org.members.resend')}
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                    disabled={resendInvite.isPending}
+                    onClick={() => void handleResend(invite.id)}
+                  >
+                    <RotateCw size={13} />
+                    <span className="sr-only">{t('org.members.resend')}</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    title={t('org.members.revoke')}
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    disabled={revokeInvite.isPending}
+                    onClick={() => void handleRevoke(invite.id)}
+                  >
+                    <XCircle size={13} />
+                    <span className="sr-only">{t('org.members.revoke')}</span>
+                  </Button>
+                </div>
+              )}
             </div>
           ))
         )}
