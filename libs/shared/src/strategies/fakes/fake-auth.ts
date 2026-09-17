@@ -4,6 +4,8 @@ import type {
   MagicLinkRequest,
   OAuthProvider,
   OAuthStartResult,
+  OrgInvite,
+  OrgInviteRole,
   OrgMember,
   VerifiedToken,
 } from '../auth';
@@ -33,6 +35,7 @@ export class FakeAuthStrategy implements AuthStrategy {
   private readonly oauthCodes = new Map<string, string>();
   private lastOAuthState: string | null = null;
   private readonly orgMembers = new Map<string, OrgMember[]>();
+  private orgInvites = new Map<string, OrgInvite>();
 
   async signUp(email: string, password: string): Promise<AuthSession> {
     if (this.users.has(email)) throw new Error('user_exists');
@@ -168,8 +171,87 @@ export class FakeAuthStrategy implements AuthStrategy {
     this.orgMembers.set(orgId, [...existing, member]);
   }
 
-  async listOrgMembers(orgId: string): Promise<OrgMember[]> {
-    return this.orgMembers.get(orgId) ?? [];
+  async listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
+    const members = this.orgMembers.get(orgId) ?? [];
+    if (!ownerId || members.some((m) => m.userId === ownerId)) return members;
+    const owner = [...this.users.values()].find((u) => u.id === ownerId);
+    return [{ userId: ownerId, role: 'owner', email: owner?.email }, ...members];
+  }
+
+  async listOrgIdsForMember(userId: string): Promise<string[]> {
+    const result: string[] = [];
+    for (const [orgId, members] of this.orgMembers.entries()) {
+      if (members.some((m) => m.userId === userId)) result.push(orgId);
+    }
+    return result;
+  }
+
+  async createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite> {
+    const invite: OrgInvite = {
+      id: `invite-${this.orgInvites.size + 1}`,
+      orgId,
+      email,
+      role,
+      token: `token-${Math.random().toString(36).slice(2)}`,
+      invitedBy,
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      acceptedAt: null,
+    };
+    this.orgInvites.set(invite.id, invite);
+    return invite;
+  }
+
+  async listOrgInvites(orgId: string): Promise<OrgInvite[]> {
+    return [...this.orgInvites.values()].filter((i) => i.orgId === orgId && i.status === 'pending');
+  }
+
+  async revokeOrgInvite(inviteId: string): Promise<void> {
+    const invite = this.orgInvites.get(inviteId);
+    if (invite) invite.status = 'revoked';
+  }
+
+  async resendOrgInvite(inviteId: string): Promise<OrgInvite> {
+    const existing = this.orgInvites.get(inviteId);
+    if (!existing) throw new Error('invite_not_found');
+    // Store a new object rather than mutating `existing` in place -- callers may still
+    // hold a reference to the invite returned by createOrgInvite, and mutating that same
+    // object would make its `.token` change out from under them too.
+    const invite: OrgInvite = {
+      ...existing,
+      token: `token-${Math.random().toString(36).slice(2)}`,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    this.orgInvites.set(inviteId, invite);
+    return invite;
+  }
+
+  async getOrgInviteByToken(token: string): Promise<OrgInvite | null> {
+    return [...this.orgInvites.values()].find((i) => i.token === token) ?? null;
+  }
+
+  async acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember> {
+    const invite = await this.getOrgInviteByToken(token);
+    if (!invite) throw new Error('invite_not_found');
+    if (invite.status !== 'pending') throw new Error('invite_not_pending');
+    if (new Date(invite.expiresAt).getTime() < Date.now()) throw new Error('invite_expired');
+    if (userEmail.toLowerCase() !== invite.email.toLowerCase())
+      throw new Error('invite_email_mismatch');
+
+    const existingMembers = this.orgMembers.get(invite.orgId) ?? [];
+    if (existingMembers.some((m) => m.userId === userId)) throw new Error('invite_already_member');
+
+    const member: OrgMember = { userId, role: invite.role };
+    this.orgMembers.set(invite.orgId, [...existingMembers, member]);
+    invite.status = 'accepted';
+    invite.acceptedAt = new Date().toISOString();
+    return member;
   }
 
   private findById(uid: string): StoredUser {

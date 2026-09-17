@@ -18,6 +18,7 @@ import { OrgForm } from './-org-form';
 import { EditOrgForm } from './-edit-org-form';
 import { OrgList } from './-org-list';
 import { DeleteOrgDialog } from './-delete-org-dialog';
+import { MembersSection } from './-members-section';
 
 export function OrgPage() {
   const { t } = useTranslation();
@@ -141,6 +142,10 @@ export function OrgPage() {
           if (confirmDeleteId) void handleDelete(confirmDeleteId);
         }}
       />
+
+      {activeOrgId && orgList.some((org) => org.id === activeOrgId) && (
+        <MembersSection orgId={activeOrgId} />
+      )}
     </div>
   );
 }

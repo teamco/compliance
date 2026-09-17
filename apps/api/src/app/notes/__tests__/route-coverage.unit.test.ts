@@ -3,7 +3,8 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 
 /**
- * Every route in notes.controller.ts must either call checkOrgAccess or be
+ * Every route in notes.controller.ts must either call one of the org-access
+ * helpers (checkOrgAccess, or the stricter owner-only checkOrgOwner) or be
  * listed here with a reason it's legitimately exempt. Verified live during
  * Notes Gateway Hardening Phase 1-3 (PRs #58, #63, and this one) — do not add
  * an entry without confirming the reason still holds (re-read the route).
@@ -39,6 +40,8 @@ const EXEMPT_ROUTES: Record<string, string> = {
 
 const ROUTE_DECORATOR_RE = /^\s*@(Get|Post|Patch|Put|Delete)\((.*)\)\s*$/;
 
+const ORG_CHECK_HELPERS = ['checkOrgAccess(', 'checkOrgOwner('];
+
 interface RouteChunk {
   key: string;
   body: string;
@@ -66,9 +69,9 @@ describe('notes.controller.ts route coverage', () => {
     expect(chunks.length).toBeGreaterThan(100);
   });
 
-  it('every route either calls checkOrgAccess or is in the exemption allowlist', () => {
+  it('every route either calls an org-access helper or is in the exemption allowlist', () => {
     const violations = chunks
-      .filter((c) => !c.body.includes('checkOrgAccess('))
+      .filter((c) => !ORG_CHECK_HELPERS.some((helper) => c.body.includes(helper)))
       .filter((c) => !(c.key in EXEMPT_ROUTES))
       .map((c) => c.key);
 

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
+import type { AuthClientService } from '@icore/auth-client';
 import type { NotesClientService } from '@icore/notes-client';
 import type { GapAnalysis, Organization, VerifiedToken } from '@icore/shared';
 import { NotesController } from '../notes.controller';
@@ -40,6 +41,7 @@ function makeController(notes: NotesClientService): NotesController {
     {} as unknown as AiClientService,
     new AbilityFactory(),
     {} as unknown as StandardsQueueService,
+    { listOrgMembers: vi.fn().mockResolvedValue([]) } as unknown as AuthClientService,
   );
 }
 

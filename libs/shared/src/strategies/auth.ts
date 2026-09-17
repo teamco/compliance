@@ -49,6 +49,22 @@ export interface OrgMember {
   role: string;
 }
 
+export type OrgInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+export type OrgInviteRole = 'admin' | 'viewer';
+
+export interface OrgInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgInviteRole;
+  token: string;
+  invitedBy: string;
+  status: OrgInviteStatus;
+  expiresAt: string;
+  createdAt: string;
+  acceptedAt: string | null;
+}
+
 export interface AuthStrategy {
   verifyToken(token: string): Promise<VerifiedToken>;
   signIn(email: string, password: string): Promise<AuthSession>;
@@ -78,5 +94,17 @@ export interface AuthStrategy {
   verifyMagicLink(token: string): Promise<AuthSession>;
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
-  listOrgMembers(orgId: string): Promise<OrgMember[]>;
+  listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]>;
+  listOrgIdsForMember(userId: string): Promise<string[]>;
+  createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite>;
+  listOrgInvites(orgId: string): Promise<OrgInvite[]>;
+  revokeOrgInvite(inviteId: string): Promise<void>;
+  resendOrgInvite(inviteId: string): Promise<OrgInvite>;
+  getOrgInviteByToken(token: string): Promise<OrgInvite | null>;
+  acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember>;
 }

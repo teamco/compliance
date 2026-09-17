@@ -1,8 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
-import { BadRequestException, ForbiddenException, type ExecutionContext } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+  type ExecutionContext,
+} from '@nestjs/common';
+import type { Request } from 'express';
 import type { AuthClientService } from '@icore/auth-client';
+import type { NotesClientService } from '@icore/notes-client';
+import type { Organization, OrgInvite, VerifiedToken } from '@icore/shared';
 import { AuthController } from '../auth.controller';
 import { AbilityFactory } from '../../abilities/ability.factory';
 import { AbilityGuard } from '../../abilities/ability.guard';
@@ -201,5 +209,396 @@ describe('AuthController (gateway) — setRole', () => {
 
     expect(guard.canActivate(ctx('admin'))).toBe(true);
     expect(() => guard.canActivate(ctx('user'))).toThrow(ForbiddenException);
+  });
+});
+
+const ORG: Organization = {
+  id: 'org-1',
+  userId: 'owner-1',
+  name: 'Acme',
+} as unknown as Organization;
+
+const INVITE: OrgInvite = {
+  id: 'invite-1',
+  orgId: 'org-1',
+  email: 'invitee@x.com',
+  role: 'viewer',
+  token: 'tok',
+  invitedBy: 'owner-1',
+  status: 'pending',
+  expiresAt: new Date(Date.now() + 60_000).toISOString(),
+  createdAt: new Date().toISOString(),
+  acceptedAt: null,
+};
+
+function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientService {
+  return {
+    getOrganizationById: vi.fn().mockResolvedValue(ORG),
+    ...overrides,
+  } as unknown as NotesClientService;
+}
+
+function makeInviteAuthClient(overrides: Partial<AuthClientService> = {}): AuthClientService {
+  return {
+    listOrgMembers: vi.fn().mockResolvedValue([]),
+    createOrgInvite: vi.fn().mockResolvedValue(INVITE),
+    listOrgInvites: vi.fn().mockResolvedValue([INVITE]),
+    revokeOrgInvite: vi.fn().mockResolvedValue(undefined),
+    resendOrgInvite: vi.fn().mockResolvedValue(INVITE),
+    getOrgInviteByToken: vi.fn().mockResolvedValue(INVITE),
+    acceptOrgInvite: vi.fn().mockResolvedValue({ userId: 'u1', role: 'viewer' }),
+    ...overrides,
+  } as unknown as AuthClientService;
+}
+
+function makeInviteController(notes: NotesClientService, auth: AuthClientService): AuthController {
+  return new AuthController(auth, makeConfig({}), notes, new AbilityFactory());
+}
+
+function reqAs(uid: string, role?: string, email?: string): Request & { user?: VerifiedToken } {
+  return { user: { uid, role, email } as VerifiedToken } as Request & { user?: VerifiedToken };
+}
+
+describe('AuthController (gateway) — org invite management routes', () => {
+  describe('createOrgInvite', () => {
+    it('rejects a missing orgId', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).createOrgInvite(reqAs('owner-1'), '', {
+          email: 'a@x.com',
+          role: 'viewer',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).createOrgInvite(reqAs('owner-1'), 'org-1', {
+          email: 'a@x.com',
+          role: 'viewer',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows the org owner', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await makeInviteController(notes, auth).createOrgInvite(reqAs('owner-1'), 'org-1', {
+        email: 'a@x.com',
+        role: 'viewer',
+      });
+      expect(auth.createOrgInvite).toHaveBeenCalledWith('org-1', 'a@x.com', 'viewer', 'owner-1');
+    });
+
+    it('allows an org-admin member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'admin-1', role: 'admin' }]),
+      });
+      await makeInviteController(notes, auth).createOrgInvite(reqAs('admin-1'), 'org-1', {
+        email: 'a@x.com',
+        role: 'viewer',
+      });
+      expect(auth.createOrgInvite).toHaveBeenCalled();
+    });
+
+    it('rejects a viewer member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).createOrgInvite(reqAs('viewer-1'), 'org-1', {
+          email: 'a@x.com',
+          role: 'viewer',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.createOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).createOrgInvite(reqAs('outsider'), 'org-1', {
+          email: 'a@x.com',
+          role: 'viewer',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('allows a platform admin regardless of membership', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await makeInviteController(notes, auth).createOrgInvite(
+        reqAs('platform-admin', 'admin'),
+        'org-1',
+        { email: 'a@x.com', role: 'viewer' },
+      );
+      expect(auth.createOrgInvite).toHaveBeenCalledWith(
+        'org-1',
+        'a@x.com',
+        'viewer',
+        'platform-admin',
+      );
+    });
+  });
+
+  describe('listOrgInvites', () => {
+    it('rejects a missing orgId', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).listOrgInvites(reqAs('owner-1'), ''),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).listOrgInvites(reqAs('owner-1'), 'org-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows the org owner', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).listOrgInvites(reqAs('owner-1'), 'org-1'),
+      ).resolves.toEqual([INVITE]);
+    });
+
+    it('rejects a viewer member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).listOrgInvites(reqAs('viewer-1'), 'org-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('rejects a non-member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).listOrgInvites(reqAs('outsider'), 'org-1'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('revokeOrgInvite', () => {
+    it('rejects a missing orgId', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(reqAs('owner-1'), '', 'invite-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(reqAs('owner-1'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows the org owner', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await makeInviteController(notes, auth).revokeOrgInvite(
+        reqAs('owner-1'),
+        'org-1',
+        'invite-1',
+      );
+      expect(auth.revokeOrgInvite).toHaveBeenCalledWith('invite-1');
+    });
+
+    it('rejects a viewer member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(reqAs('viewer-1'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.revokeOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(reqAs('outsider'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.revokeOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects revoking an invite that belongs to a different org (IDOR)', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgInvites: vi.fn().mockResolvedValue([INVITE]),
+      });
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(
+          reqAs('owner-1'),
+          'org-1',
+          'other-org-invite',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(auth.revokeOrgInvite).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resendOrgInvite', () => {
+    it('rejects a missing orgId', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(reqAs('owner-1'), '', 'invite-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(reqAs('owner-1'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('allows an org-admin member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'admin-1', role: 'admin' }]),
+      });
+      await makeInviteController(notes, auth).resendOrgInvite(
+        reqAs('admin-1'),
+        'org-1',
+        'invite-1',
+      );
+      expect(auth.resendOrgInvite).toHaveBeenCalledWith('invite-1');
+    });
+
+    it('rejects a viewer member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(reqAs('viewer-1'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.resendOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(reqAs('outsider'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.resendOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects resending an invite that belongs to a different org (IDOR)', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgInvites: vi.fn().mockResolvedValue([INVITE]),
+      });
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(
+          reqAs('owner-1'),
+          'org-1',
+          'other-org-invite',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(auth.resendOrgInvite).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('AuthController (gateway) — org invite public/accept routes', () => {
+  describe('previewOrgInvite', () => {
+    it('returns minimal invite details without inviter identity', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      const result = await makeInviteController(notes, auth).previewOrgInvite('tok');
+      expect(result).toEqual({
+        orgName: 'Acme',
+        role: 'viewer',
+        email: 'invitee@x.com',
+        expiresAt: INVITE.expiresAt,
+      });
+    });
+
+    it('throws NotFound when the invite does not exist', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({ getOrgInviteByToken: vi.fn().mockResolvedValue(null) });
+      await expect(makeInviteController(notes, auth).previewOrgInvite('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('throws NotFound when the invite is not pending', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        getOrgInviteByToken: vi.fn().mockResolvedValue({ ...INVITE, status: 'revoked' }),
+      });
+      await expect(makeInviteController(notes, auth).previewOrgInvite('tok')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('acceptOrgInvite', () => {
+    it('rejects when the session has no email', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).acceptOrgInvite(reqAs('u1'), 'tok'),
+      ).rejects.toThrow(BadRequestException);
+      expect(auth.acceptOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the invite does not exist', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({ getOrgInviteByToken: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeInviteController(notes, auth).acceptOrgInvite(reqAs('u1', undefined, 'a@x.com'), 'tok'),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects accepting when the caller is the org owner', async () => {
+      const notes = makeNotes({
+        getOrganizationById: vi.fn().mockResolvedValue({ id: 'org-1', userId: 'owner-1' }),
+      });
+      const auth = makeInviteAuthClient({
+        getOrgInviteByToken: vi.fn().mockResolvedValue({
+          id: 'i1',
+          orgId: 'org-1',
+          email: 'owner@x.com',
+          status: 'pending',
+        }),
+        acceptOrgInvite: vi.fn(),
+      });
+      const controller = makeInviteController(notes, auth);
+      await expect(
+        controller.acceptOrgInvite(reqAs('owner-1', undefined, 'owner@x.com'), 'tok'),
+      ).rejects.toThrow(BadRequestException);
+      expect(auth.acceptOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('accepts a pending invite for a non-owner caller', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      const controller = makeInviteController(notes, auth);
+      await controller.acceptOrgInvite(reqAs('newcomer', undefined, 'invitee@x.com'), 'tok');
+      expect(auth.acceptOrgInvite).toHaveBeenCalledWith('tok', 'newcomer', 'invitee@x.com');
+    });
   });
 });
