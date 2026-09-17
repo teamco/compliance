@@ -16,7 +16,6 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle, seconds } from '@nestjs/throttler';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { subject } from '@casl/ability';
 import { AuthClientService } from '@icore/auth-client';
 import { NotesClientService } from '@icore/notes-client';
 import type { Organization, OAuthProvider, VerifiedToken } from '@icore/shared';
@@ -160,7 +159,7 @@ export class AuthController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.authClient.listOrgMembers(orgId, org.userId);
   }
 
@@ -231,14 +230,28 @@ export class AuthController {
     return res.redirect(`${origin}/auth/oauth/callback#${fragment.toString()}`);
   }
 
-  private checkOrgAccess(
+  private async checkOrgAccess(
     req: Request & { user?: VerifiedToken },
     org: Organization,
     action: 'read' | 'update' | 'delete',
-  ): void {
-    const ability = this.abilityFactory.forUser(req.user);
-    if (!ability.can(action, subject('Organization', { id: org.id, userId: org.userId }))) {
-      throw new ForbiddenException();
-    }
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+
+    const uid = req.user?.uid;
+    if (org.userId === uid) return;
+
+    const members = await this.authClient.listOrgMembers(org.id, org.userId);
+    const membership = members.find((m) => m.userId === uid);
+    if (!membership) throw new ForbiddenException();
+
+    if (membership.role === 'viewer' && action !== 'read') throw new ForbiddenException();
+  }
+
+  private async checkOrgOwner(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+    if (org.userId !== req.user?.uid) throw new ForbiddenException();
   }
 }

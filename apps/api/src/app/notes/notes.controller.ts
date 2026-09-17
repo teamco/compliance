@@ -18,9 +18,9 @@ import {
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { subject } from '@casl/ability';
 import { NotesClientService } from '@icore/notes-client';
 import { AiClientService } from '@icore/ai-client';
+import { AuthClientService } from '@icore/auth-client';
 import { WORKFLOW_TRANSITIONS } from '@icore/shared';
 import type {
   StandardPatch,
@@ -77,6 +77,7 @@ export class NotesController {
     private readonly ai: AiClientService,
     private readonly abilityFactory: AbilityFactory,
     private readonly queue: StandardsQueueService,
+    private readonly auth: AuthClientService,
   ) {}
 
   @Get('frameworks')
@@ -103,7 +104,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createFramework(orgId, body);
   }
 
@@ -118,7 +119,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateFramework(id, orgId, body);
   }
 
@@ -133,7 +134,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     await this.notes.deleteFramework(id, orgId);
   }
 
@@ -167,7 +168,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateRequirement(id, reqId, orgId, body);
   }
 
@@ -182,7 +183,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listInternalControls(orgId, frameworkId);
   }
 
@@ -196,7 +197,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createInternalControl(orgId, body);
   }
 
@@ -211,7 +212,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return control;
   }
 
@@ -227,7 +228,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateInternalControl(id, patch);
   }
 
@@ -243,7 +244,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteInternalControl(id);
   }
 
@@ -259,7 +260,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.addControlFrameworkMapping(id, body);
   }
 
@@ -275,7 +276,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.removeControlFrameworkMapping(id, mappingId);
   }
 
@@ -290,7 +291,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlEvidence(id);
   }
 
@@ -316,7 +317,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createControlEvidence(orgId, id, {
       ...body,
       createdBy: userId,
@@ -338,7 +339,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlAssessments(id);
   }
 
@@ -354,7 +355,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createControlAssessment(orgId, id, body);
   }
 
@@ -369,7 +370,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlFindings(id);
   }
 
@@ -385,7 +386,7 @@ export class NotesController {
     if (!finding) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const risk = await this.notes.getRisk(body.riskId);
     if (!risk || risk.orgId !== finding.orgId) throw new ForbiddenException();
     return this.notes.linkFindingToRisk(id, body.riskId);
@@ -403,7 +404,7 @@ export class NotesController {
     if (!finding) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const issue = await this.notes.getIssue(body.issueId);
     if (!issue || issue.orgId !== finding.orgId) throw new ForbiddenException();
     return this.notes.linkFindingToIssue(id, body.issueId);
@@ -421,7 +422,7 @@ export class NotesController {
     if (!finding) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const exception = await this.notes.getException(body.exceptionId);
     if (!exception || exception.orgId !== finding.orgId) throw new ForbiddenException();
     return this.notes.resolveFindingViaException(id, body.exceptionId);
@@ -439,7 +440,7 @@ export class NotesController {
     if (!finding) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createIssueFromFinding(finding.orgId, uid, id, body);
   }
 
@@ -463,7 +464,7 @@ export class NotesController {
     if (!finding) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createRiskFromFinding(finding.orgId, uid, id, body);
   }
 
@@ -488,7 +489,7 @@ export class NotesController {
     if (!finding) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(finding.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createExceptionFromFinding(finding.orgId, uid, id, body);
   }
 
@@ -508,7 +509,7 @@ export class NotesController {
     if (!orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listFindingsByLink({ issueId, riskId, exceptionId });
   }
 
@@ -523,7 +524,7 @@ export class NotesController {
     if (!control?.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(control.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlActivity(id);
   }
 
@@ -537,7 +538,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkEvidence(id, orgId);
   }
 
@@ -556,7 +557,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const userId = this.uid(req);
     return this.notes.createFrameworkEvidence(orgId, {
       ...body,
@@ -579,7 +580,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkAssessments(id, orgId);
   }
 
@@ -601,7 +602,7 @@ export class NotesController {
     if (!assessment || !assessment.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(assessment.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessmentFinding(assessment.orgId, assessmentId, body);
   }
 
@@ -615,7 +616,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkActivities(id, orgId);
   }
 
@@ -635,7 +636,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listStandardsByFramework(orgId, id);
   }
 
@@ -657,7 +658,7 @@ export class NotesController {
   async getOrgById(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const org = await this.notes.getOrganizationById(id);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return org;
   }
 
@@ -671,7 +672,7 @@ export class NotesController {
   ) {
     const org = await this.notes.getOrganizationById(id);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateOrganization(id, body);
   }
 
@@ -681,7 +682,7 @@ export class NotesController {
   async deleteOrg(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const org = await this.notes.getOrganizationById(id);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     await this.notes.deleteOrganization(id);
   }
 
@@ -695,7 +696,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listStandardsDocuments(orgId);
   }
 
@@ -706,7 +707,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return doc;
   }
 
@@ -730,7 +731,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const result = await this.notes.transitionWorkflow(id, body.transition);
     const uid = req.user?.uid;
     if (uid) {
@@ -752,7 +753,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateStandard(id, code, patch);
   }
 
@@ -763,7 +764,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listSnapshots(id);
   }
 
@@ -779,7 +780,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return snapshot;
   }
 
@@ -803,7 +804,7 @@ export class NotesController {
 
     const org = await this.notes.getOrganizationById(body.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
 
     const aiOrgProfile: OrgProfile = {
       id: org.id,
@@ -828,7 +829,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     if (doc.status === 'pending') {
       await this.notes.failStandardsDocument(id, 'cancelled');
     }
@@ -842,7 +843,7 @@ export class NotesController {
     if (!doc) throw new NotFoundException('doc_not_found');
     const org = await this.notes.getOrganizationById(doc.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
 
     const STUCK_MS = 5 * 60 * 1000;
     const isPendingTooLong =
@@ -877,7 +878,7 @@ export class NotesController {
     if (!body.orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(body.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.saveGapAnalysis(body.orgId, this.uid(req), body.docId ?? null, body.result);
   }
 
@@ -887,7 +888,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listGapAnalyses(orgId);
   }
 
@@ -898,7 +899,7 @@ export class NotesController {
     if (!gap) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(gap.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return gap;
   }
 
@@ -914,7 +915,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listExceptions(orgId);
   }
 
@@ -929,7 +930,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createException(orgId, userId, body);
   }
 
@@ -941,7 +942,7 @@ export class NotesController {
     if (!exc) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exc.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return exc;
   }
 
@@ -957,7 +958,7 @@ export class NotesController {
     if (!exc) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exc.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateException(id, patch);
   }
 
@@ -969,7 +970,7 @@ export class NotesController {
     if (!exception) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exception.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.approveException(id, userId);
   }
 
@@ -981,7 +982,7 @@ export class NotesController {
     if (!exception) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exception.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.rejectException(id, userId);
   }
 
@@ -994,7 +995,7 @@ export class NotesController {
     if (!exc) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exc.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteException(id);
   }
 
@@ -1026,7 +1027,7 @@ export class NotesController {
     if (!exception) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(exception.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.reviewExceptionRenewal(id, userId, body.decision, body.reviewNotes);
   }
 
@@ -1059,7 +1060,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listPendingExceptionRenewals(orgId);
   }
 
@@ -1072,7 +1073,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listIssues(orgId);
   }
 
@@ -1087,7 +1088,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createIssue(orgId, userId, body);
   }
 
@@ -1099,7 +1100,7 @@ export class NotesController {
     if (!issue) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(issue.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return issue;
   }
 
@@ -1115,7 +1116,7 @@ export class NotesController {
     if (!issue) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(issue.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateIssue(id, patch);
   }
 
@@ -1128,7 +1129,7 @@ export class NotesController {
     if (!issue) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(issue.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteIssue(id);
   }
 
@@ -1186,7 +1187,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listPendingIssueValidations(orgId);
   }
 
@@ -1199,7 +1200,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssets(orgId);
   }
 
@@ -1214,7 +1215,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createAsset(orgId, userId, body);
   }
 
@@ -1226,7 +1227,7 @@ export class NotesController {
     if (!asset) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(asset.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return asset;
   }
 
@@ -1242,7 +1243,7 @@ export class NotesController {
     if (!asset) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(asset.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateAsset(id, patch);
   }
 
@@ -1255,7 +1256,7 @@ export class NotesController {
     if (!asset) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(asset.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteAsset(id);
   }
 
@@ -1266,7 +1267,7 @@ export class NotesController {
     if (!asset) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(asset.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssetEvidence(id);
   }
 
@@ -1277,7 +1278,7 @@ export class NotesController {
     if (!asset) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(asset.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssetActivity(id);
   }
 
@@ -1303,7 +1304,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const asset = await this.notes.getAsset(id);
     if (!asset || asset.orgId !== orgId) throw new NotFoundException();
     return this.notes.createAssetEvidence(orgId, id, {
@@ -1327,7 +1328,7 @@ export class NotesController {
     if (!evidence || !evidence.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(evidence.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateEvidence(id, patch);
   }
 
@@ -1339,7 +1340,7 @@ export class NotesController {
     if (!evidence || !evidence.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(evidence.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteEvidence(id);
   }
 
@@ -1355,7 +1356,7 @@ export class NotesController {
     if (!evidence || !evidence.orgId) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(evidence.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.reviewEvidence(id, userId, body.decision, body.reviewNotes);
   }
 
@@ -1368,7 +1369,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listRisks(orgId);
   }
 
@@ -1383,7 +1384,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createRisk(orgId, userId, body);
   }
 
@@ -1397,7 +1398,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.getRiskMethodology(orgId);
   }
 
@@ -1411,7 +1412,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskTaxonomy(orgId);
   }
 
@@ -1423,7 +1424,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return risk;
   }
 
@@ -1439,7 +1440,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const { reason, ...patch } = body;
     return this.notes.updateRisk(id, patch, userId, reason);
   }
@@ -1453,7 +1454,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteRisk(id);
   }
 
@@ -1470,7 +1471,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.upsertRiskMethodology(orgId, body);
   }
 
@@ -1485,7 +1486,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createRiskTaxonomyCategory(orgId, body);
   }
 
@@ -1500,7 +1501,7 @@ export class NotesController {
     if (!category) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(category.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.archiveRiskTaxonomyCategory(id);
   }
 
@@ -1515,7 +1516,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskControlMappings(id);
   }
 
@@ -1531,7 +1532,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.addRiskControlMapping(id, body);
   }
 
@@ -1547,7 +1548,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.removeRiskControlMapping(mappingId);
   }
 
@@ -1563,7 +1564,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createRiskAcceptance(risk.orgId, id, userId, body);
   }
 
@@ -1578,7 +1579,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.getActiveRiskAcceptance(id);
   }
 
@@ -1615,7 +1616,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskSnapshots(id);
   }
 
@@ -1627,7 +1628,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listRiskEvidence(id);
   }
 
@@ -1653,7 +1654,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createRiskEvidence(risk.orgId, id, {
       ...body,
       createdBy: userId,
@@ -1675,7 +1676,7 @@ export class NotesController {
     if (!risk) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(risk.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItemsForRisk(id);
   }
 
@@ -1691,7 +1692,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessments(orgId);
   }
 
@@ -1706,7 +1707,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessment(orgId, userId, body);
   }
 
@@ -1718,7 +1719,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return a;
   }
 
@@ -1734,7 +1735,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateAssessment(id, patch);
   }
 
@@ -1747,7 +1748,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteAssessment(id, userId);
   }
 
@@ -1762,7 +1763,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItems(id);
   }
 
@@ -1778,7 +1779,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessmentItem(assessmentId, body);
   }
 
@@ -1794,7 +1795,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentTypes(orgId);
   }
 
@@ -1809,7 +1810,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createAssessmentType(orgId, body);
   }
 
@@ -1824,7 +1825,7 @@ export class NotesController {
     if (!type) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(type.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.archiveAssessmentType(id);
   }
 
@@ -1836,7 +1837,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.startAssessment(id, userId);
   }
 
@@ -1848,7 +1849,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.submitForReview(id, userId);
   }
 
@@ -1881,7 +1882,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.completeAssessment(id, userId);
   }
 
@@ -1893,7 +1894,7 @@ export class NotesController {
     if (!a) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(a.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.archiveAssessment(id, userId);
   }
 
@@ -1908,7 +1909,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItemControlMappings(itemId);
   }
 
@@ -1924,7 +1925,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.addAssessmentItemControlMapping(itemId, body);
   }
 
@@ -1941,7 +1942,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.removeAssessmentItemControlMapping(mappingId);
   }
 
@@ -1956,7 +1957,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssessmentItemEvidence(itemId);
   }
 
@@ -1982,7 +1983,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     const item = await this.notes.getAssessmentItem(itemId);
     if (!item || item.orgId !== orgId) throw new NotFoundException();
     return this.notes.createAssessmentItemEvidence(orgId, itemId, {
@@ -2007,7 +2008,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updateAssessmentItem(itemId, patch);
   }
 
@@ -2023,7 +2024,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteAssessmentItem(itemId);
   }
 
@@ -2039,7 +2040,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createRiskFromAssessmentItem(item.orgId, uid, itemId, body);
   }
 
@@ -2055,7 +2056,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.linkAssessmentItemToRisk(itemId, body.riskId);
   }
 
@@ -2070,7 +2071,7 @@ export class NotesController {
     if (!item) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(item.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.unlinkAssessmentItemFromRisk(itemId);
   }
 
@@ -2086,7 +2087,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicies(orgId);
   }
 
@@ -2101,7 +2102,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.createPolicy(orgId, userId, body);
   }
 
@@ -2119,7 +2120,7 @@ export class NotesController {
     }
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listPoliciesForControl(controlCode, frameworkId, orgId);
   }
 
@@ -2134,7 +2135,7 @@ export class NotesController {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.cloneTemplate(orgId, userId, templateId);
   }
 
@@ -2161,7 +2162,7 @@ export class NotesController {
     if (!policy) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(policy.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.removePolicyControl(mappingId);
   }
 
@@ -2192,7 +2193,7 @@ export class NotesController {
     if (!policy) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(policy.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.transitionPolicyWorkflow(id, body.transition, userId);
   }
 
@@ -2206,7 +2207,7 @@ export class NotesController {
     if (!policy) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(policy.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicyActivity(id);
   }
 
@@ -2218,7 +2219,7 @@ export class NotesController {
     if (!p) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(p.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return p;
   }
 
@@ -2234,7 +2235,7 @@ export class NotesController {
     if (!p) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(p.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.updatePolicy(id, patch);
   }
 
@@ -2247,7 +2248,7 @@ export class NotesController {
     if (!p) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(p.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgAccess(req, org, 'delete');
     return this.notes.deletePolicy(id);
   }
 
@@ -2262,7 +2263,7 @@ export class NotesController {
     if (!p) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(p.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicyControls(policyId);
   }
 
@@ -2278,7 +2279,7 @@ export class NotesController {
     if (!p) throw new NotFoundException();
     const org = await this.notes.getOrganizationById(p.orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'update');
+    await this.checkOrgAccess(req, org, 'update');
     return this.notes.addPolicyControl(policyId, body);
   }
 
@@ -2287,14 +2288,28 @@ export class NotesController {
     return req.user.uid;
   }
 
-  private checkOrgAccess(
+  private async checkOrgAccess(
     req: Request & { user?: VerifiedToken },
     org: Organization,
     action: 'read' | 'update' | 'delete',
-  ): void {
-    const ability = this.abilityFactory.forUser(req.user);
-    if (!ability.can(action, subject('Organization', { id: org.id, userId: org.userId }))) {
-      throw new ForbiddenException();
-    }
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+
+    const uid = req.user?.uid;
+    if (org.userId === uid) return;
+
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    const membership = members.find((m) => m.userId === uid);
+    if (!membership) throw new ForbiddenException();
+
+    if (membership.role === 'viewer' && action !== 'read') throw new ForbiddenException();
+  }
+
+  private async checkOrgOwner(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+    if (org.userId !== req.user?.uid) throw new ForbiddenException();
   }
 }
