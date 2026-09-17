@@ -232,6 +232,30 @@ export class AuthController {
     return this.authClient.resendOrgInvite(inviteId);
   }
 
+  @Delete('org/members/:userId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Deactivate an org member, or leave an org by removing yourself' })
+  async deactivateOrgMember(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('userId') userId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    if (userId === org.userId) throw new ForbiddenException('cannot_deactivate_owner');
+
+    const actorUid = this.uid(req);
+    if (actorUid !== userId) {
+      await this.checkOrgManage(req, org);
+    }
+
+    const members = await this.authClient.listOrgMembers(orgId, org.userId);
+    if (!members.some((m) => m.userId === userId)) throw new NotFoundException();
+
+    return this.authClient.deactivateOrgMember(orgId, userId);
+  }
+
   @Public()
   @Get('org-invites/:token')
   @ApiOperation({ summary: 'Preview an invite before authenticating' })

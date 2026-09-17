@@ -247,6 +247,7 @@ function makeInviteAuthClient(overrides: Partial<AuthClientService> = {}): AuthC
     resendOrgInvite: vi.fn().mockResolvedValue(INVITE),
     getOrgInviteByToken: vi.fn().mockResolvedValue(INVITE),
     acceptOrgInvite: vi.fn().mockResolvedValue({ userId: 'u1', role: 'viewer' }),
+    deactivateOrgMember: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   } as unknown as AuthClientService;
 }
@@ -542,6 +543,117 @@ describe('AuthController (gateway) — org invite management routes', () => {
         ),
       ).rejects.toThrow(NotFoundException);
       expect(auth.resendOrgInvite).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deactivateOrgMember', () => {
+    it('rejects a missing orgId', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).deactivateOrgMember(reqAs('owner-1'), '', 'member-1'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFound when the org does not exist', async () => {
+      const notes = makeNotes({ getOrganizationById: vi.fn().mockResolvedValue(null) });
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).deactivateOrgMember(
+          reqAs('owner-1'),
+          'org-1',
+          'member-1',
+        ),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('forbids deactivating the org owner, even by the owner themselves', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'owner-1', role: 'owner' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).deactivateOrgMember(reqAs('owner-1'), 'org-1', 'owner-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.deactivateOrgMember).not.toHaveBeenCalled();
+    });
+
+    it('allows the org owner to deactivate an admin', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([
+          { userId: 'owner-1', role: 'owner' },
+          { userId: 'admin-1', role: 'admin' },
+        ]),
+      });
+      await makeInviteController(notes, auth).deactivateOrgMember(
+        reqAs('owner-1'),
+        'org-1',
+        'admin-1',
+      );
+      expect(auth.deactivateOrgMember).toHaveBeenCalledWith('org-1', 'admin-1');
+    });
+
+    it('allows an org-admin to deactivate another admin', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([
+          { userId: 'admin-1', role: 'admin' },
+          { userId: 'admin-2', role: 'admin' },
+        ]),
+      });
+      await makeInviteController(notes, auth).deactivateOrgMember(
+        reqAs('admin-1'),
+        'org-1',
+        'admin-2',
+      );
+      expect(auth.deactivateOrgMember).toHaveBeenCalledWith('org-1', 'admin-2');
+    });
+
+    it('rejects a viewer deactivating someone else', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([
+          { userId: 'viewer-1', role: 'viewer' },
+          { userId: 'viewer-2', role: 'viewer' },
+        ]),
+      });
+      await expect(
+        makeInviteController(notes, auth).deactivateOrgMember(
+          reqAs('viewer-1'),
+          'org-1',
+          'viewer-2',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.deactivateOrgMember).not.toHaveBeenCalled();
+    });
+
+    it('allows a viewer to deactivate themselves (leave)', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+      });
+      await makeInviteController(notes, auth).deactivateOrgMember(
+        reqAs('viewer-1'),
+        'org-1',
+        'viewer-1',
+      );
+      expect(auth.deactivateOrgMember).toHaveBeenCalledWith('org-1', 'viewer-1');
+    });
+
+    it('404s when the target is not a member of the org', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'owner-1', role: 'owner' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).deactivateOrgMember(
+          reqAs('owner-1'),
+          'org-1',
+          'not-a-member',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(auth.deactivateOrgMember).not.toHaveBeenCalled();
     });
   });
 });
