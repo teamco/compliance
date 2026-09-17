@@ -65,21 +65,27 @@ vi.mock('@/stores/active-org', () => ({
   useActiveOrgStore: () => ({ activeOrgId: mockActiveOrgId, setActiveOrgId: vi.fn() }),
 }));
 
-vi.mock('@/queries/org-members', () => ({
-  useOrgMembers: () => ({ data: [], isPending: false }),
-  useOrgInvites: () => ({ data: [], isPending: false }),
-  useCreateOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useRevokeOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
-  useResendOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
-}));
+let mockAuthUserId = 'u-1';
 
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
   return {
     ...actual,
     useNotify: () => ({ success: vi.fn(), error: vi.fn() }),
+    useAuthStore: (selector: (s: { user: { id: string } | null }) => unknown) =>
+      selector({ user: { id: mockAuthUserId } }),
   };
 });
+
+let mockMembers: Array<{ userId: string; role: string }> = [];
+
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({ data: mockMembers, isPending: false }),
+  useOrgInvites: () => ({ data: [], isPending: false }),
+  useCreateOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevokeOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useResendOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
 
 vi.mock('@/components/ui/dialog', () => ({
   Dialog: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
@@ -155,6 +161,7 @@ describe('OrgPage', () => {
     mockOrgs = [ORG_1, ORG_2];
     mockIsPending = false;
     mockActiveOrgId = 'org-1';
+    mockAuthUserId = 'u-1';
     vi.clearAllMocks();
   });
 
@@ -351,6 +358,7 @@ describe('OrgPage delete', () => {
     mockOrgs = [ORG_1, ORG_2];
     mockIsPending = false;
     mockActiveOrgId = 'org-1';
+    mockAuthUserId = 'u-1';
     vi.clearAllMocks();
   });
 
@@ -388,5 +396,60 @@ describe('OrgPage delete', () => {
     await waitFor(() => {
       expect(deleteMutateAsync).toHaveBeenCalledWith(ORG_1.id);
     });
+  });
+});
+
+// ── Role gating (Edit/Delete visible only to the org's own creator) ──────────
+
+describe('OrgList role gating', () => {
+  beforeEach(() => {
+    mockOrgs = [ORG_1, ORG_2];
+    mockIsPending = false;
+    mockActiveOrgId = 'org-1';
+    vi.clearAllMocks();
+  });
+
+  it('shows Edit and Delete for orgs the current user created', () => {
+    mockAuthUserId = 'u-1';
+    render(wrap(<OrgPage />));
+    expect(screen.getAllByRole('button', { name: /^edit$/i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /^delete$/i })).toHaveLength(2);
+  });
+
+  it('hides Edit and Delete for orgs the current user did not create', () => {
+    mockAuthUserId = 'someone-else';
+    render(wrap(<OrgPage />));
+    expect(screen.queryByRole('button', { name: /^edit$/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^delete$/i })).toBeNull();
+  });
+});
+
+describe('MembersSection role gating', () => {
+  beforeEach(() => {
+    mockOrgs = [ORG_1];
+    mockIsPending = false;
+    mockActiveOrgId = 'org-1';
+    mockMembers = [];
+    vi.clearAllMocks();
+  });
+
+  it('shows the Invite Member button for the org owner', () => {
+    mockAuthUserId = 'u-1'; // ORG_1.userId
+    render(wrap(<OrgPage />));
+    expect(screen.getByRole('button', { name: /invite member/i })).toBeTruthy();
+  });
+
+  it('shows the Invite Member button for an org-admin member', () => {
+    mockAuthUserId = 'admin-1';
+    mockMembers = [{ userId: 'admin-1', role: 'admin' }];
+    render(wrap(<OrgPage />));
+    expect(screen.getByRole('button', { name: /invite member/i })).toBeTruthy();
+  });
+
+  it('hides the Invite Member button for a viewer member', () => {
+    mockAuthUserId = 'viewer-1';
+    mockMembers = [{ userId: 'viewer-1', role: 'viewer' }];
+    render(wrap(<OrgPage />));
+    expect(screen.queryByRole('button', { name: /invite member/i })).toBeNull();
   });
 });
