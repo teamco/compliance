@@ -96,6 +96,8 @@ private async checkOrgAccess(
   org: Organization,
   action: 'read' | 'update' | 'delete',
 ): Promise<void> {
+  if (req.user?.role === 'admin') return; // platform admin: existing bypass, must be preserved
+
   const uid = req.user?.uid;
   if (org.userId === uid) return; // owner: full access, no lookup needed
 
@@ -112,7 +114,9 @@ private async checkOrgAccess(
 
 This reuses `listOrgMembers` (already correct, already unions in the creator) rather than adding a new single-membership-lookup method — avoids a second, potentially-inconsistent read path.
 
-**Blast radius, stated plainly:** every one of the ~130 existing `this.checkOrgAccess(...)` call sites across `notes.controller.ts` (the full surface hardened by Notes Gateway Hardening Phases 1-3) needs `await` added, since the method itself becomes `async`. Every one of those call sites is already inside an `async` handler (confirmed — this was a prerequisite for the `await getOrganizationById(...)` call that already precedes every `checkOrgAccess` call today), so this is a mechanical, uniform, low-risk change — add one keyword per call site, not a structural rewrite. Same shape of work as the Notes Gateway Hardening phases themselves, just simpler (one repeated edit, not per-route judgment).
+**Blast radius, confirmed exactly, not estimated:** 126 existing `this.checkOrgAccess(...)` call sites across `notes.controller.ts` (2300 lines total) need `await` added, since the method itself becomes `async`. Independently verified that all 126 are already inside a method declared `async` (zero exceptions), so this is a mechanical, uniform, low-risk change — add one keyword per call site, not a structural rewrite. Same shape of work as the Notes Gateway Hardening phases themselves, just simpler (one repeated edit, not per-route judgment).
+
+**Platform-admin bypass must be preserved.** `AbilityFactory.forUser` (`apps/api/src/app/abilities/ability.factory.ts`) currently grants a platform-role admin (`VerifiedToken.role === 'admin'`) `can('manage', 'all')` via CASL, meaning today's `checkOrgAccess` already lets a platform admin act on any org regardless of creator/membership. The rewrite must check `req.user?.role === 'admin'` and short-circuit before any membership lookup (shown in the code above) — dropping this silently regresses platform admins' existing access, a real behavior change nobody asked for.
 
 **Org-level owner-only actions** (deleting the org itself, managing members, managing invites) get a separate, stricter check — not `checkOrgAccess`, since that method's `'delete'` action now means "admin-or-owner can delete a resource in this org," not "can delete the org." A new small private helper, `checkOrgOwner(req, org)`, throws unless `org.userId === req.user.uid`, used only by the org-deletion route and the new member/invite-management routes.
 
