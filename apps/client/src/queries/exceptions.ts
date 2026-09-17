@@ -58,6 +58,19 @@ export function useApproveException(orgId: string) {
   });
 }
 
+export function useReassignExceptionOwner(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<Exception, Error, { id: string; newOwnerId: string }>({
+    mutationFn: ({ id, newOwnerId }) =>
+      api<Exception>(`/notes/exceptions/${id}/reassign-owner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['exceptions', orgId] }),
+  });
+}
+
 export function useRejectException(orgId: string) {
   const qc = useQueryClient();
   return useMutation<Exception, Error, string>({
