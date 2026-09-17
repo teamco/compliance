@@ -1630,6 +1630,26 @@ export class NotesController {
     return this.notes.getActiveRiskAcceptance(id);
   }
 
+  @Post('risk-acceptances/:id/reassign-approver')
+  @ApiOperation({ summary: 'Reassign the approver of a risk acceptance' })
+  async reassignRiskAcceptanceApprover(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newApproverId: string },
+  ) {
+    this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newApproverId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignRiskAcceptanceApprover(id, body.newApproverId);
+  }
+
   @Post('risk-acceptances/:id/review')
   @ApiOperation({ summary: 'Review a risk acceptance request' })
   reviewRiskAcceptance(

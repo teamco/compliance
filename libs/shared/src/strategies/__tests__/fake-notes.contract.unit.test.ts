@@ -2510,6 +2510,51 @@ describe('Risk Register lifecycle', () => {
     expect(active?.id).toBe(acceptance.id);
   });
 
+  it('reassigns a risk acceptance approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    const reassigned = await strategy.reassignRiskAcceptanceApprover(acceptance.id, 'ciso-2');
+    expect(reassigned.approverId).toBe('ciso-2');
+  });
+
+  it('forbids reassigning the approver to the requester', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    await expect(strategy.reassignRiskAcceptanceApprover(acceptance.id, 'user-1')).rejects.toThrow(
+      'risk_acceptance_self_approval_forbidden',
+    );
+  });
+
   it('rejects reviewing a risk acceptance as its own requester', async () => {
     const strategy = new FakeNotesStrategy();
     const taxonomy = await strategy.listRiskTaxonomy('org-1');

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { AuthClientService } from '@icore/auth-client';
@@ -48,22 +48,32 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     deleteRisk: vi.fn().mockResolvedValue(undefined),
     removeRiskControlMapping: vi.fn().mockResolvedValue(undefined),
     createRiskAcceptance: vi.fn().mockResolvedValue(ACCEPTANCE),
+    getRiskAcceptance: vi.fn().mockResolvedValue(ACCEPTANCE),
     getRiskTaxonomyCategory: vi.fn().mockResolvedValue(TAXONOMY_CATEGORY),
     archiveRiskTaxonomyCategory: vi.fn().mockResolvedValue({
       ...TAXONOMY_CATEGORY,
       archived: true,
     }),
+    reassignRiskAcceptanceApprover: vi.fn().mockResolvedValue({
+      ...ACCEPTANCE,
+      approverId: 'ciso-2',
+    }),
     ...overrides,
   } as unknown as NotesClientService;
 }
 
-function makeController(notes: NotesClientService): NotesController {
+function makeController(
+  notes: NotesClientService,
+  auth: { listOrgMembers: ReturnType<typeof vi.fn> } = {
+    listOrgMembers: vi.fn().mockResolvedValue([]),
+  },
+): NotesController {
   return new NotesController(
     notes,
     {} as unknown as AiClientService,
     new AbilityFactory(),
     {} as unknown as StandardsQueueService,
-    { listOrgMembers: vi.fn().mockResolvedValue([]) } as unknown as AuthClientService,
+    auth as unknown as AuthClientService,
   );
 }
 
@@ -160,5 +170,58 @@ describe('NotesController — risk org scoping (Phase 1 hardening)', () => {
         makeController(notes).archiveRiskTaxonomyCategory(reqAs('org-creator'), 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
+  });
+});
+
+describe('NotesController — reassignRiskAcceptanceApprover', () => {
+  it('rejects a non-manager caller', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+    };
+    await expect(
+      makeController(notes, auth).reassignRiskAcceptanceApprover(
+        reqAs('viewer-1'),
+        'acceptance-1',
+        { newApproverId: 'ciso-2' },
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(notes.reassignRiskAcceptanceApprover).not.toHaveBeenCalled();
+  });
+
+  it('rejects a new approver who is not an active org member', async () => {
+    const notes = makeNotes();
+    const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+    await expect(
+      makeController(notes, auth).reassignRiskAcceptanceApprover(
+        reqAs('org-creator'),
+        'acceptance-1',
+        { newApproverId: 'not-a-member' },
+      ),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('allows the org owner to reassign', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'ciso-2', role: 'viewer' }]),
+    };
+    await makeController(notes, auth).reassignRiskAcceptanceApprover(
+      reqAs('org-creator'),
+      'acceptance-1',
+      { newApproverId: 'ciso-2' },
+    );
+    expect(notes.reassignRiskAcceptanceApprover).toHaveBeenCalledWith('acceptance-1', 'ciso-2');
+  });
+
+  it('throws NotFound when the acceptance does not exist', async () => {
+    const notes = makeNotes({ getRiskAcceptance: vi.fn().mockResolvedValue(null) });
+    await expect(
+      makeController(notes).reassignRiskAcceptanceApprover(
+        reqAsAdmin('platform-admin'),
+        'missing',
+        { newApproverId: 'ciso-2' },
+      ),
+    ).rejects.toThrow(NotFoundException);
   });
 });

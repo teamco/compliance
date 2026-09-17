@@ -4136,6 +4136,20 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toRiskAcceptance(ok(data, error));
   }
 
+  async reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    if (current.requestedBy === newApproverId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({ approver_id: newApproverId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
   async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     const current = await this.getRiskAcceptanceOrThrow(id);
     this.assertCanDecideRiskAcceptance(current, userId);

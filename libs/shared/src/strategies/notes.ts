@@ -1490,6 +1490,7 @@ export interface NotesStrategy {
     reviewNotes?: string,
   ): Promise<RiskAcceptance>;
   approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+  reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance>;
   rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
 
   // Risk history

@@ -4272,6 +4272,17 @@ export class FakeNotesStrategy implements NotesStrategy {
     return acceptance;
   }
 
+  async reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.requestedBy === newApproverId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    acceptance.approverId = newApproverId;
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
   async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     const acceptance = this.riskAcceptances.find((a) => a.id === id);
     if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);

@@ -949,6 +949,13 @@ export class NotesController {
     return this.strategy.approveRiskAcceptance(payload.id, payload.userId);
   }
 
+  @MessagePattern('notes.risks.acceptance.reassign-approver')
+  reassignRiskAcceptanceApprover(
+    @Payload() payload: { id: string; newApproverId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.reassignRiskAcceptanceApprover(payload.id, payload.newApproverId);
+  }
+
   @MessagePattern('notes.risks.acceptance.reject')
   rejectRiskAcceptance(
     @Payload() payload: { id: string; userId: string },

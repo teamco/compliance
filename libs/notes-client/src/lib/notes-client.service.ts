@@ -997,6 +997,13 @@ export class NotesClientService {
     });
   }
 
+  reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reassign-approver', {
+      id,
+      newApproverId,
+    });
+  }
+
   rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reject', {
       id,
