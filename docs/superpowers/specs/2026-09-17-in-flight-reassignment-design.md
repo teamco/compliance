@@ -208,9 +208,13 @@ query key(s) on success):
 
 ### `ReassignDialog` component (new, shared)
 
-`apps/client/src/components/shared/-reassign-dialog.tsx` (co-located under
-a new `shared` folder since it's used across issues/assessments/risks/
-exceptions, none of which owns it):
+`apps/client/src/components/shared/ReassignDialog.tsx` — PascalCase,
+matching this directory's existing convention (`IssueDetailSheet.tsx`,
+`ExceptionDetailSheet.tsx`, `PageLayout.tsx`; the dash-prefix convention
+seen elsewhere is TanStack Router's route-colocation marker and doesn't
+apply outside `routes/`), co-located under a new `shared` folder since
+it's used across issues/assessments/risks/exceptions, none of which
+owns it:
 
 ```tsx
 interface ReassignDialogProps {
@@ -239,7 +243,9 @@ org-admin member):
 
 - `IssueDetailSheet` — next to the Owner (Overview tab) and next to the
   pending validator's name (Validation tab).
-- Assessment detail page — next to Owner and Approver fields.
+- Assessment detail page — next to the Approver field only (`Assessment.ownerId`
+  reassignment is out of scope, per the Scope section above — no reassign
+  control appears next to Owner there).
 - Risk detail page's RiskAcceptance panel — next to the Approver field.
 - `ExceptionDetailSheet` — next to the Owner field.
 
