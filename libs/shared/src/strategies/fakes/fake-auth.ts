@@ -172,7 +172,7 @@ export class FakeAuthStrategy implements AuthStrategy {
   }
 
   async listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
-    const members = this.orgMembers.get(orgId) ?? [];
+    const members = (this.orgMembers.get(orgId) ?? []).filter((m) => m.isActive !== false);
     if (!ownerId || members.some((m) => m.userId === ownerId)) return members;
     const owner = [...this.users.values()].find((u) => u.id === ownerId);
     return [{ userId: ownerId, role: 'owner', email: owner?.email }, ...members];
@@ -181,7 +181,7 @@ export class FakeAuthStrategy implements AuthStrategy {
   async listOrgIdsForMember(userId: string): Promise<string[]> {
     const result: string[] = [];
     for (const [orgId, members] of this.orgMembers.entries()) {
-      if (members.some((m) => m.userId === userId)) result.push(orgId);
+      if (members.some((m) => m.userId === userId && m.isActive !== false)) result.push(orgId);
     }
     return result;
   }
@@ -245,13 +245,25 @@ export class FakeAuthStrategy implements AuthStrategy {
       throw new Error('invite_email_mismatch');
 
     const existingMembers = this.orgMembers.get(invite.orgId) ?? [];
-    if (existingMembers.some((m) => m.userId === userId)) throw new Error('invite_already_member');
-
-    const member: OrgMember = { userId, role: invite.role };
-    this.orgMembers.set(invite.orgId, [...existingMembers, member]);
+    const existing = existingMembers.find((m) => m.userId === userId);
+    let member: OrgMember;
+    if (existing) {
+      if (existing.isActive !== false) throw new Error('invite_already_member');
+      existing.isActive = true;
+      existing.role = invite.role;
+      member = existing;
+    } else {
+      member = { userId, role: invite.role, isActive: true };
+      this.orgMembers.set(invite.orgId, [...existingMembers, member]);
+    }
     invite.status = 'accepted';
     invite.acceptedAt = new Date().toISOString();
     return member;
+  }
+
+  async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
+    const member = (this.orgMembers.get(orgId) ?? []).find((m) => m.userId === userId);
+    if (member) member.isActive = false;
   }
 
   private findById(uid: string): StoredUser {

@@ -47,6 +47,7 @@ export interface OrgMember {
   displayName?: string;
   email?: string;
   role: string;
+  isActive?: boolean; // absent or true = active; false = deactivated
 }
 
 export type OrgInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
@@ -107,4 +108,5 @@ export interface AuthStrategy {
   resendOrgInvite(inviteId: string): Promise<OrgInvite>;
   getOrgInviteByToken(token: string): Promise<OrgInvite | null>;
   acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember>;
+  deactivateOrgMember(orgId: string, userId: string): Promise<void>;
 }
