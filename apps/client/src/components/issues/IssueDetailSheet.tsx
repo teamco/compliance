@@ -46,6 +46,10 @@ export function IssueDetailSheet({
   const notify = useNotify();
   const currentUserId = useAuthStore((s) => s.user?.id);
   const { data: members = [] } = useOrgMembers(orgId);
+  // Validation history can reference a validator who has since been removed
+  // from the org; their name must still resolve, so this list stays separate
+  // from `members` (active-only, used for the validator picker below).
+  const { data: allMembers = [] } = useOrgMembers(orgId, { includeInactive: true });
   const { data: validations = [] } = useIssueValidations(issue.id);
   const submitMut = useSubmitIssueForValidation(orgId);
   const reviewMut = useReviewIssueValidation(orgId);
@@ -72,6 +76,11 @@ export function IssueDetailSheet({
   const validatorOptions = members
     .filter((m) => m.userId !== issue.ownerId)
     .map((m) => ({ value: m.userId, label: m.displayName ?? m.email ?? m.userId }));
+
+  function resolveMemberName(userId: string): string {
+    const member = allMembers.find((m) => m.userId === userId);
+    return member?.displayName ?? member?.email ?? userId;
+  }
 
   const tabs: DetailTab[] = ['overview', 'rootCause', 'validation'];
 
@@ -207,9 +216,7 @@ export function IssueDetailSheet({
                 <div className="border border-border rounded-lg p-3 space-y-2 text-sm">
                   <p>
                     {t('issues.detail.pendingValidationFor', {
-                      name:
-                        members.find((m) => m.userId === pendingValidation.validatorId)
-                          ?.displayName ?? pendingValidation.validatorId,
+                      name: resolveMemberName(pendingValidation.validatorId),
                     })}
                   </p>
                   {isAssignedValidator && (
@@ -256,8 +263,7 @@ export function IssueDetailSheet({
                     >
                       <p>
                         {t(`issues.detail.historyStatus.${v.status}`)} —{' '}
-                        {members.find((m) => m.userId === v.validatorId)?.displayName ??
-                          v.validatorId}
+                        {resolveMemberName(v.validatorId)}
                       </p>
                       {v.reviewNotes && <p className="text-muted-foreground">{v.reviewNotes}</p>}
                     </div>

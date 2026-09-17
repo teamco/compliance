@@ -21,10 +21,14 @@ export interface OrgInvite {
   createdAt: string;
 }
 
-export function useOrgMembers(orgId: string) {
+export function useOrgMembers(orgId: string, opts?: { includeInactive?: boolean }) {
+  const includeInactive = opts?.includeInactive ?? false;
   return useQuery<OrgMember[]>({
-    queryKey: ['org-members', orgId],
-    queryFn: () => api<OrgMember[]>(`/auth/org/members?orgId=${encodeURIComponent(orgId)}`),
+    queryKey: ['org-members', orgId, includeInactive ? 'all' : 'active'],
+    queryFn: () =>
+      api<OrgMember[]>(
+        `/auth/org/members?orgId=${encodeURIComponent(orgId)}${includeInactive ? '&includeInactive=true' : ''}`,
+      ),
     enabled: !!orgId,
   });
 }

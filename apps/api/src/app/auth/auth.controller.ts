@@ -157,12 +157,13 @@ export class AuthController {
   async listOrgMembers(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     await this.checkOrgAccess(req, org, 'read');
-    return this.authClient.listOrgMembers(orgId, org.userId);
+    return this.authClient.listOrgMembers(orgId, org.userId, includeInactive === 'true');
   }
 
   @Post('org/invites')

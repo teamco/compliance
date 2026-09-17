@@ -37,7 +37,9 @@ export function AssessmentDetailPage() {
   const completeMut = useCompleteAssessment(orgId, id);
   const archiveMut = useArchiveAssessment(orgId, id);
 
-  const { data: members = [] } = useOrgMembers(orgId);
+  // includeInactive: assessor/approver names must still resolve after that
+  // member has been removed from the org.
+  const { data: members = [] } = useOrgMembers(orgId, { includeInactive: true });
 
   const [tab, setTab] = useState<'overview' | 'items'>('overview');
   const [changesNote, setChangesNote] = useState('');

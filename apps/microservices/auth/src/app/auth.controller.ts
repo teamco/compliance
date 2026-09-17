@@ -138,8 +138,10 @@ export class AuthController {
   }
 
   @MessagePattern('auth.org.members.list')
-  listOrgMembers(@Payload() payload: { orgId: string; ownerId?: string }): Promise<OrgMember[]> {
-    return this.strategy.listOrgMembers(payload.orgId, payload.ownerId);
+  listOrgMembers(
+    @Payload() payload: { orgId: string; ownerId?: string; includeInactive?: boolean },
+  ): Promise<OrgMember[]> {
+    return this.strategy.listOrgMembers(payload.orgId, payload.ownerId, payload.includeInactive);
   }
 
   @MessagePattern('auth.org.member.listOrgIds')
