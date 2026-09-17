@@ -33,17 +33,21 @@ export function MembersSection({ org }: MembersSectionProps) {
   const myUid = useAuthStore((s) => s.user?.id);
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
   const { data: members, isPending: membersPending } = useOrgMembers(orgId);
-  const { data: invites, isPending: invitesPending } = useOrgInvites(orgId);
+  const memberList = members ?? [];
+  const myMembership = memberList.find((m) => m.userId === myUid);
+  const canManage = org.userId === myUid || myMembership?.role === 'admin';
+
+  // Only managers can act on invites (server-side, GET org/invites itself
+  // requires checkOrgManage) -- skip the request entirely for everyone else
+  // instead of firing it and eating a console 403.
+  const { data: invites, isPending: invitesPending } = useOrgInvites(orgId, canManage);
   const revokeInvite = useRevokeOrgInvite(orgId);
   const resendInvite = useResendOrgInvite(orgId);
   const deactivateMember = useDeactivateOrgMember(orgId);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removeTargetId, setRemoveTargetId] = useState<string | null>(null);
 
-  const memberList = members ?? [];
   const inviteList = invites ?? [];
-  const myMembership = memberList.find((m) => m.userId === myUid);
-  const canManage = org.userId === myUid || myMembership?.role === 'admin';
 
   async function handleRevoke(inviteId: string) {
     try {
@@ -149,30 +153,30 @@ export function MembersSection({ org }: MembersSectionProps) {
         )}
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-muted-foreground">
-          {t('org.members.pendingInvites')}
-        </h3>
-        {invitesPending ? (
-          <div className="h-10 bg-muted/40 rounded-lg animate-pulse" />
-        ) : inviteList.length === 0 ? (
-          <p className="text-xs text-muted-foreground">{t('org.members.noInvites')}</p>
-        ) : (
-          inviteList.map((invite) => (
-            <div
-              key={invite.id}
-              className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-foreground">{invite.email}</p>
-                <p className="truncate text-[11px] text-muted-foreground">
-                  {t(`org.members.role${capitalize(invite.role)}` as never, {
-                    defaultValue: invite.role,
-                  })}{' '}
-                  · {new Date(invite.expiresAt).toLocaleDateString()}
-                </p>
-              </div>
-              {canManage && (
+      {canManage && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-muted-foreground">
+            {t('org.members.pendingInvites')}
+          </h3>
+          {invitesPending ? (
+            <div className="h-10 bg-muted/40 rounded-lg animate-pulse" />
+          ) : inviteList.length === 0 ? (
+            <p className="text-xs text-muted-foreground">{t('org.members.noInvites')}</p>
+          ) : (
+            inviteList.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-card/40 px-3 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-foreground">{invite.email}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    {t(`org.members.role${capitalize(invite.role)}` as never, {
+                      defaultValue: invite.role,
+                    })}{' '}
+                    · {new Date(invite.expiresAt).toLocaleDateString()}
+                  </p>
+                </div>
                 <div className="flex shrink-0 items-center gap-1">
                   <Button
                     variant="ghost"
@@ -197,11 +201,11 @@ export function MembersSection({ org }: MembersSectionProps) {
                     <span className="sr-only">{t('org.members.revoke')}</span>
                   </Button>
                 </div>
-              )}
-            </div>
-          ))
-        )}
-      </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       <InviteMemberDialog orgId={orgId} open={inviteOpen} onOpenChange={setInviteOpen} />
 
