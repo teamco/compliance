@@ -205,6 +205,8 @@ export class AuthController {
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     await this.checkOrgManage(req, org);
+    const invites = await this.authClient.listOrgInvites(orgId);
+    if (!invites.some((i) => i.id === inviteId)) throw new NotFoundException();
     return this.authClient.revokeOrgInvite(inviteId);
   }
 
@@ -219,6 +221,8 @@ export class AuthController {
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     await this.checkOrgManage(req, org);
+    const invites = await this.authClient.listOrgInvites(orgId);
+    if (!invites.some((i) => i.id === inviteId)) throw new NotFoundException();
     return this.authClient.resendOrgInvite(inviteId);
   }
 

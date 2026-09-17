@@ -429,6 +429,30 @@ describe('AuthController (gateway) — org invite management routes', () => {
       ).rejects.toThrow(ForbiddenException);
       expect(auth.revokeOrgInvite).not.toHaveBeenCalled();
     });
+
+    it('rejects a non-member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient();
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(reqAs('outsider'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.revokeOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects revoking an invite that belongs to a different org (IDOR)', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgInvites: vi.fn().mockResolvedValue([INVITE]),
+      });
+      await expect(
+        makeInviteController(notes, auth).revokeOrgInvite(
+          reqAs('owner-1'),
+          'org-1',
+          'other-org-invite',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(auth.revokeOrgInvite).not.toHaveBeenCalled();
+    });
   });
 
   describe('resendOrgInvite', () => {
@@ -461,12 +485,39 @@ describe('AuthController (gateway) — org invite management routes', () => {
       expect(auth.resendOrgInvite).toHaveBeenCalledWith('invite-1');
     });
 
+    it('rejects a viewer member', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+      });
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(reqAs('viewer-1'), 'org-1', 'invite-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(auth.resendOrgInvite).not.toHaveBeenCalled();
+    });
+
     it('rejects a non-member', async () => {
       const notes = makeNotes();
       const auth = makeInviteAuthClient();
       await expect(
         makeInviteController(notes, auth).resendOrgInvite(reqAs('outsider'), 'org-1', 'invite-1'),
       ).rejects.toThrow(ForbiddenException);
+      expect(auth.resendOrgInvite).not.toHaveBeenCalled();
+    });
+
+    it('rejects resending an invite that belongs to a different org (IDOR)', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        listOrgInvites: vi.fn().mockResolvedValue([INVITE]),
+      });
+      await expect(
+        makeInviteController(notes, auth).resendOrgInvite(
+          reqAs('owner-1'),
+          'org-1',
+          'other-org-invite',
+        ),
+      ).rejects.toThrow(NotFoundException);
+      expect(auth.resendOrgInvite).not.toHaveBeenCalled();
     });
   });
 });
