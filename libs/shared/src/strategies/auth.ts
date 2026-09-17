@@ -96,4 +96,15 @@ export interface AuthStrategy {
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
   listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]>;
   listOrgIdsForMember(userId: string): Promise<string[]>;
+  createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite>;
+  listOrgInvites(orgId: string): Promise<OrgInvite[]>;
+  revokeOrgInvite(inviteId: string): Promise<void>;
+  resendOrgInvite(inviteId: string): Promise<OrgInvite>;
+  getOrgInviteByToken(token: string): Promise<OrgInvite | null>;
+  acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember>;
 }

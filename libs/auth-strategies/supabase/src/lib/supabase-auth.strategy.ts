@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   TokenExpiredError,
@@ -7,6 +7,9 @@ import {
   type MagicLinkRequest,
   type OAuthProvider,
   type OAuthStartResult,
+  type OrgInvite,
+  type OrgInviteRole,
+  type OrgInviteStatus,
   type OrgMember,
   type VerifiedToken,
 } from '@icore/shared';
@@ -253,6 +256,125 @@ export class SupabaseAuthStrategy implements AuthStrategy {
       .eq('user_id', userId);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => r['org_id'] as string);
+  }
+
+  async createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .insert({ org_id: orgId, email, role, token, invited_by: invitedBy, expires_at: expiresAt })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await this.sendInviteEmail(email, token);
+    return this.toOrgInvite(data);
+  }
+
+  async listOrgInvites(orgId: string): Promise<OrgInvite[]> {
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'pending');
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.toOrgInvite(r as Record<string, unknown>));
+  }
+
+  async revokeOrgInvite(inviteId: string): Promise<void> {
+    const { error } = await this.client
+      .from('organization_invites')
+      .update({ status: 'revoked' })
+      .eq('id', inviteId);
+    if (error) throw new Error(error.message);
+  }
+
+  async resendOrgInvite(inviteId: string): Promise<OrgInvite> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .update({ token, expires_at: expiresAt })
+      .eq('id', inviteId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    const invite = this.toOrgInvite(data);
+    await this.sendInviteEmail(invite.email, token);
+    return invite;
+  }
+
+  async getOrgInviteByToken(token: string): Promise<OrgInvite | null> {
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .select('*')
+      .eq('token', token)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toOrgInvite(data) : null;
+  }
+
+  async acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember> {
+    const invite = await this.getOrgInviteByToken(token);
+    if (!invite) throw new Error('invite_not_found');
+    if (invite.status !== 'pending') throw new Error('invite_not_pending');
+    if (new Date(invite.expiresAt).getTime() < Date.now()) throw new Error('invite_expired');
+    if (userEmail.toLowerCase() !== invite.email.toLowerCase())
+      throw new Error('invite_email_mismatch');
+
+    const { data: existing } = await this.client
+      .from('organization_members')
+      .select('id')
+      .eq('org_id', invite.orgId)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (existing) throw new Error('invite_already_member');
+
+    const { error: insertError } = await this.client
+      .from('organization_members')
+      .insert({ org_id: invite.orgId, user_id: userId, role: invite.role });
+    if (insertError) throw new Error(insertError.message);
+
+    const { error: updateError } = await this.client
+      .from('organization_invites')
+      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+      .eq('id', invite.id);
+    if (updateError) throw new Error(updateError.message);
+
+    return { userId, role: invite.role };
+  }
+
+  // Mirrors sendMagicLink's signInWithOtp + emailRedirectTo delivery mechanism --
+  // no new email vendor, same optional siteUrl config source as signUp/sendMagicLink.
+  private async sendInviteEmail(email: string, token: string): Promise<void> {
+    const emailRedirectTo = this.siteUrl
+      ? `${this.siteUrl}/accept-invite?token=${token}`
+      : undefined;
+    const { error } = await this.client.auth.signInWithOtp({
+      email,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  private toOrgInvite(row: Record<string, unknown>): OrgInvite {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      email: row['email'] as string,
+      role: row['role'] as OrgInviteRole,
+      token: row['token'] as string,
+      invitedBy: row['invited_by'] as string,
+      status: row['status'] as OrgInviteStatus,
+      expiresAt: row['expires_at'] as string,
+      createdAt: row['created_at'] as string,
+      acceptedAt: row['accepted_at'] as string | null,
+    };
   }
 
   private toSession(s: {
