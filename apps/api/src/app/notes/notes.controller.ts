@@ -685,11 +685,11 @@ export class NotesController {
 
   @Delete('orgs/:id')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Delete organization (owner or admin only)' })
+  @ApiOperation({ summary: 'Delete organization (org owner or platform admin only)' })
   async deleteOrg(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const org = await this.notes.getOrganizationById(id);
     if (!org) throw new NotFoundException();
-    await this.checkOrgAccess(req, org, 'delete');
+    await this.checkOrgOwner(req, org);
     await this.notes.deleteOrganization(id);
   }
 
@@ -811,7 +811,7 @@ export class NotesController {
 
     const org = await this.notes.getOrganizationById(body.orgId);
     if (!org) throw new NotFoundException('org_not_found');
-    await this.checkOrgAccess(req, org, 'read');
+    await this.checkOrgAccess(req, org, 'update');
 
     const aiOrgProfile: OrgProfile = {
       id: org.id,

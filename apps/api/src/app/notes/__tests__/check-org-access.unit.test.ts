@@ -26,12 +26,13 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
 function makeController(
   notes: NotesClientService,
   auth: { listOrgMembers: ReturnType<typeof vi.fn> },
+  queue: { enqueue: ReturnType<typeof vi.fn> } = { enqueue: vi.fn() },
 ): NotesController {
   return new NotesController(
     notes,
     {} as unknown as AiClientService,
     new AbilityFactory(),
-    {} as unknown as StandardsQueueService,
+    queue as unknown as StandardsQueueService,
     auth as unknown as AuthClientService,
   );
 }
@@ -152,5 +153,70 @@ describe('checkOrgAccess role matrix', () => {
     const notes = makeNotes({ getPolicy: vi.fn().mockResolvedValue({ id: 'p1', orgId: 'org-1' }) });
     const controller = makeController(notes, auth);
     await expect(controller.getPolicy(reqAs('outsider'), 'p1')).rejects.toThrow(ForbiddenException);
+  });
+});
+
+// Deleting the whole org cascades away all of its data, so it stays owner-only
+// even though checkOrgAccess now grants org-admins every other write.
+describe('deleteOrg is owner-only', () => {
+  it('rejects an org-admin member who is not the owner', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'admin' }]),
+    };
+    const notes = makeNotes({ deleteOrganization: vi.fn() });
+    const controller = makeController(notes, auth);
+    await expect(controller.deleteOrg(reqAs('member-1'), 'org-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(notes.deleteOrganization).not.toHaveBeenCalled();
+    expect(auth.listOrgMembers).not.toHaveBeenCalled();
+  });
+
+  it('allows the org owner', async () => {
+    const auth = { listOrgMembers: vi.fn() };
+    const notes = makeNotes({ deleteOrganization: vi.fn().mockResolvedValue(undefined) });
+    const controller = makeController(notes, auth);
+    await controller.deleteOrg(reqAs('owner-1'), 'org-1');
+    expect(notes.deleteOrganization).toHaveBeenCalledWith('org-1');
+  });
+
+  it('allows a platform admin', async () => {
+    const auth = { listOrgMembers: vi.fn() };
+    const notes = makeNotes({ deleteOrganization: vi.fn().mockResolvedValue(undefined) });
+    const controller = makeController(notes, auth);
+    await controller.deleteOrg(reqAs('platform-admin-1', 'admin'), 'org-1');
+    expect(notes.deleteOrganization).toHaveBeenCalledWith('org-1');
+  });
+});
+
+// Standards generation bills a real AI call, so it must be gated as a write.
+describe('generateStandards is gated as a write', () => {
+  it('rejects a viewer without enqueueing an AI job', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'viewer' }]),
+    };
+    const notes = makeNotes({ createStandardsDocument: vi.fn() });
+    const queue = { enqueue: vi.fn() };
+    const controller = makeController(notes, auth, queue);
+    await expect(
+      controller.generateStandards(reqAs('member-1'), { orgId: 'org-1', frameworkIds: ['fw-1'] }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(notes.createStandardsDocument).not.toHaveBeenCalled();
+    expect(queue.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('allows an org-admin member', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'admin' }]),
+    };
+    const notes = makeNotes({
+      createStandardsDocument: vi.fn().mockResolvedValue({ id: 'doc-1' }),
+    });
+    const queue = { enqueue: vi.fn().mockResolvedValue(undefined) };
+    const controller = makeController(notes, auth, queue);
+    await expect(
+      controller.generateStandards(reqAs('member-1'), { orgId: 'org-1', frameworkIds: ['fw-1'] }),
+    ).resolves.toEqual({ docId: 'doc-1' });
+    expect(queue.enqueue).toHaveBeenCalled();
   });
 });
