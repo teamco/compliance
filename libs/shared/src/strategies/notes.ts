@@ -1512,6 +1512,7 @@ export interface NotesStrategy {
   startAssessment(id: string, userId: string): Promise<Assessment>;
   submitForReview(id: string, userId: string): Promise<Assessment>;
   approveAssessment(id: string, userId: string): Promise<Assessment>;
+  reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment>;
   requestChanges(id: string, userId: string, note: string): Promise<Assessment>;
   completeAssessment(id: string, userId: string): Promise<Assessment>;
   archiveAssessment(id: string, userId: string): Promise<Assessment>;

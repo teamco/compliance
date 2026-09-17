@@ -1099,6 +1099,13 @@ export class NotesController {
     return this.strategy.approveAssessment(payload.id, payload.userId);
   }
 
+  @MessagePattern('notes.assessments.reassign-approver')
+  reassignAssessmentApprover(
+    @Payload() payload: { id: string; newApproverId: string },
+  ): Promise<Assessment> {
+    return this.strategy.reassignAssessmentApprover(payload.id, payload.newApproverId);
+  }
+
   @MessagePattern('notes.assessments.request-changes')
   requestChanges(
     @Payload() payload: { id: string; userId: string; note: string },

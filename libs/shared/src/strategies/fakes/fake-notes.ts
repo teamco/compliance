@@ -4390,6 +4390,15 @@ export class FakeNotesStrategy implements NotesStrategy {
     return a;
   }
 
+  async reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.ownerId === newApproverId) throw new Error('assessment_self_approval_forbidden');
+    a.approverId = newApproverId;
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
   async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
     if (!note || note.trim() === '') throw new Error('note_required');
     const a = this.assessments.find((x) => x.id === id);

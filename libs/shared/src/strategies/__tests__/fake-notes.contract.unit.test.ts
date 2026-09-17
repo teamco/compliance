@@ -1172,6 +1172,33 @@ describe('Assessment lifecycle (Phase B.1)', () => {
     expect(archived.status).toBe('archived');
   });
 
+  it('reassigns an assessment approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    const reassigned = await strategy.reassignAssessmentApprover(assessment.id, 'approver-2');
+    expect(reassigned.approverId).toBe('approver-2');
+  });
+
+  it('forbids reassigning the approver to the assessment owner', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await expect(strategy.reassignAssessmentApprover(assessment.id, 'owner-1')).rejects.toThrow(
+      'assessment_self_approval_forbidden',
+    );
+  });
+
   it('requestChanges records a note and returns the assessment to changes_requested', async () => {
     const strategy = new FakeNotesStrategy();
     const types = await strategy.listAssessmentTypes('org-1');

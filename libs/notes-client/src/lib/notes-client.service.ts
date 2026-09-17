@@ -1130,6 +1130,13 @@ export class NotesClientService {
     return signedSend<Assessment>(this.client, 'notes.assessments.approve', { id, userId });
   }
 
+  reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.reassign-approver', {
+      id,
+      newApproverId,
+    });
+  }
+
   requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
     return signedSend<Assessment>(this.client, 'notes.assessments.request-changes', {
       id,

@@ -3170,6 +3170,20 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toAssessment(ok(data, error));
   }
 
+  async reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
+    const current = await this.getAssessmentOrThrow(id);
+    if (current.ownerId === newApproverId) {
+      throw new Error('assessment_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ approver_id: newApproverId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
   async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
     if (!note || note.trim() === '') throw new Error('note_required');
     const current = await this.getAssessmentOrThrow(id);

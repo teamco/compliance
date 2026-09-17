@@ -1907,6 +1907,26 @@ export class NotesController {
     return this.notes.approveAssessment(id, userId);
   }
 
+  @Post('assessments/:id/reassign-approver')
+  @ApiOperation({ summary: 'Reassign the approver of an assessment' })
+  async reassignAssessmentApprover(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newApproverId: string },
+  ) {
+    this.uid(req);
+    const assessment = await this.notes.getAssessment(id);
+    if (!assessment) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newApproverId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignAssessmentApprover(id, body.newApproverId);
+  }
+
   @Post('assessments/:id/request-changes')
   @ApiOperation({ summary: 'Request changes on an assessment' })
   requestChanges(
