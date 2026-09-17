@@ -319,6 +319,12 @@ export const es = {
       noInvites: 'No hay invitaciones pendientes',
     },
   },
+  reassign: {
+    selectMember: 'Selecciona un miembro…',
+    searchMembers: 'Buscar miembros…',
+    cancel: 'Cancelar',
+    confirm: 'Reasignar',
+  },
   standards: {
     title: 'Estándares generados',
     subtitle: 'Estándares de cumplimiento generados por IA para tu organización',

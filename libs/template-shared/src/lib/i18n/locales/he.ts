@@ -306,6 +306,12 @@ export const he = {
       noInvites: 'אין הזמנות ממתינות',
     },
   },
+  reassign: {
+    selectMember: 'בחר חבר…',
+    searchMembers: 'חיפוש חברים…',
+    cancel: 'ביטול',
+    confirm: 'הקצה מחדש',
+  },
   standards: {
     title: 'תקנים שנוצרו',
     subtitle: 'תקני תאימות שנוצרו על ידי AI לארגונך',

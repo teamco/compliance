@@ -320,6 +320,12 @@ export const en = {
       noInvites: 'No pending invites',
     },
   },
+  reassign: {
+    selectMember: 'Select a member…',
+    searchMembers: 'Search members…',
+    cancel: 'Cancel',
+    confirm: 'Reassign',
+  },
   standards: {
     title: 'Generated Standards',
     subtitle: 'AI-generated compliance standards tailored to your organization',
