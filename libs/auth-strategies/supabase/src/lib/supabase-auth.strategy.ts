@@ -200,7 +200,8 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     const { data: members, error } = await this.client
       .from('organization_members')
       .select('user_id, role')
-      .eq('org_id', orgId);
+      .eq('org_id', orgId)
+      .eq('is_active', true);
     if (error) throw new Error(error.message);
     const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
 
@@ -253,7 +254,8 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     const { data, error } = await this.client
       .from('organization_members')
       .select('org_id')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('is_active', true);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => r['org_id'] as string);
   }
@@ -329,16 +331,24 @@ export class SupabaseAuthStrategy implements AuthStrategy {
 
     const { data: existing } = await this.client
       .from('organization_members')
-      .select('id')
+      .select('id, is_active')
       .eq('org_id', invite.orgId)
       .eq('user_id', userId)
       .maybeSingle();
-    if (existing) throw new Error('invite_already_member');
 
-    const { error: insertError } = await this.client
-      .from('organization_members')
-      .insert({ org_id: invite.orgId, user_id: userId, role: invite.role });
-    if (insertError) throw new Error(insertError.message);
+    if (existing) {
+      if (existing['is_active']) throw new Error('invite_already_member');
+      const { error: reactivateError } = await this.client
+        .from('organization_members')
+        .update({ is_active: true, role: invite.role })
+        .eq('id', existing['id']);
+      if (reactivateError) throw new Error(reactivateError.message);
+    } else {
+      const { error: insertError } = await this.client
+        .from('organization_members')
+        .insert({ org_id: invite.orgId, user_id: userId, role: invite.role });
+      if (insertError) throw new Error(insertError.message);
+    }
 
     const { error: updateError } = await this.client
       .from('organization_invites')
@@ -347,6 +357,15 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     if (updateError) throw new Error(updateError.message);
 
     return { userId, role: invite.role };
+  }
+
+  async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
+    const { error } = await this.client
+      .from('organization_members')
+      .update({ is_active: false })
+      .eq('org_id', orgId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
   }
 
   // Mirrors sendMagicLink's signInWithOtp + emailRedirectTo delivery mechanism --
