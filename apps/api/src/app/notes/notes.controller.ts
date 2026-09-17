@@ -1194,21 +1194,27 @@ export class NotesController {
 
   @Get('assets')
   @ApiOperation({ summary: 'List assets for org' })
-  listAssets(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listAssets(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listAssets(orgId);
   }
 
   @Post('assets')
   @ApiOperation({ summary: 'Create asset' })
-  createAsset(
+  async createAsset(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: AssetInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createAsset(orgId, userId, body);
   }
 
@@ -1218,25 +1224,38 @@ export class NotesController {
     this.uid(req);
     const asset = await this.notes.getAsset(id);
     if (!asset) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(asset.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return asset;
   }
 
   @Patch('assets/:id')
   @ApiOperation({ summary: 'Update asset' })
-  updateAsset(
+  async updateAsset(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: AssetPatch,
   ) {
     this.uid(req);
+    const asset = await this.notes.getAsset(id);
+    if (!asset) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(asset.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateAsset(id, patch);
   }
 
   @Delete('assets/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete asset' })
-  deleteAsset(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteAsset(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const asset = await this.notes.getAsset(id);
+    if (!asset) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(asset.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteAsset(id);
   }
 
