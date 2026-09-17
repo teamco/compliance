@@ -186,6 +186,11 @@ export class AuthController {
     return this.strategy.acceptOrgInvite(payload.token, payload.userId, payload.userEmail);
   }
 
+  @MessagePattern('auth.org.members.deactivate')
+  deactivateOrgMember(@Payload() payload: { orgId: string; userId: string }): Promise<void> {
+    return this.strategy.deactivateOrgMember(payload.orgId, payload.userId);
+  }
+
   @MessagePattern('auth.profile.update')
   async updateProfile(
     @Payload() payload: { uid: string; displayName?: string },
