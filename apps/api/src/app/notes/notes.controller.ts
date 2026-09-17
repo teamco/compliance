@@ -173,13 +173,16 @@ export class NotesController {
 
   @Get('internal-controls')
   @ApiOperation({ summary: 'List internal controls for org' })
-  listInternalControls(
+  async listInternalControls(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId?: string,
     @Query('frameworkId') frameworkId?: string,
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listInternalControls(orgId, frameworkId);
   }
 
@@ -205,61 +208,95 @@ export class NotesController {
   ) {
     this.uid(req);
     const control = await this.notes.getInternalControl(id);
-    if (!control) throw new NotFoundException();
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return control;
   }
 
   @Patch('internal-controls/:id')
   @ApiOperation({ summary: 'Update internal control' })
-  updateInternalControl(
+  async updateInternalControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: InternalControlPatch,
   ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateInternalControl(id, patch);
   }
 
   @Delete('internal-controls/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete internal control' })
-  deleteInternalControl(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async deleteInternalControl(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deleteInternalControl(id);
   }
 
   @Post('internal-controls/:id/mappings')
   @ApiOperation({ summary: 'Add a framework mapping to an internal control' })
-  addControlFrameworkMapping(
+  async addControlFrameworkMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: ControlFrameworkMappingInput,
   ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.addControlFrameworkMapping(id, body);
   }
 
   @Delete('internal-controls/:id/mappings/:mappingId')
   @ApiOperation({ summary: 'Remove a framework mapping from an internal control' })
-  removeControlFrameworkMapping(
+  async removeControlFrameworkMapping(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Param('mappingId') mappingId: string,
   ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.removeControlFrameworkMapping(id, mappingId);
   }
 
   @Get('internal-controls/:id/evidence')
   @ApiOperation({ summary: 'List evidence attached to an internal control' })
-  listControlEvidence(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlEvidence(id);
   }
 
   @Post('internal-controls/:id/evidence')
   @ApiOperation({ summary: 'Attach evidence to an internal control' })
-  createControlEvidence(
+  async createControlEvidence(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
@@ -277,6 +314,9 @@ export class NotesController {
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createControlEvidence(orgId, id, {
       ...body,
       createdBy: userId,
@@ -289,14 +329,22 @@ export class NotesController {
 
   @Get('internal-controls/:id/assessments')
   @ApiOperation({ summary: 'List assessments for an internal control' })
-  listControlAssessments(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlAssessments(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlAssessments(id);
   }
 
   @Post('internal-controls/:id/assessments')
   @ApiOperation({ summary: 'Record a control assessment (may generate a Finding)' })
-  createControlAssessment(
+  async createControlAssessment(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('id') id: string,
@@ -304,6 +352,9 @@ export class NotesController {
   ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createControlAssessment(orgId, id, body);
   }
 
@@ -463,14 +514,30 @@ export class NotesController {
 
   @Get('internal-controls/:id/activity')
   @ApiOperation({ summary: 'List activity log for an internal control' })
-  listControlActivity(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async listControlActivity(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     this.uid(req);
+    const control = await this.notes.getInternalControl(id);
+    if (!control?.orgId) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(control.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listControlActivity(id);
   }
 
   @Get('frameworks/:id/evidence')
   @ApiOperation({ summary: 'List evidence for a framework' })
-  listFrameworkEvidence(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listFrameworkEvidence(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkEvidence(id, orgId);
   }
 
@@ -504,7 +571,15 @@ export class NotesController {
 
   @Get('frameworks/:id/assessments')
   @ApiOperation({ summary: 'List assessment history for a framework' })
-  listFrameworkAssessments(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listFrameworkAssessments(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkAssessments(id, orgId);
   }
 
@@ -532,7 +607,15 @@ export class NotesController {
 
   @Get('frameworks/:id/activities')
   @ApiOperation({ summary: 'List activities for a framework' })
-  listFrameworkActivities(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listFrameworkActivities(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listFrameworkActivities(id, orgId);
   }
 
@@ -610,13 +693,21 @@ export class NotesController {
     @Query('orgId') orgId?: string,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listStandardsDocuments(orgId);
   }
 
   @Get('standards/:id')
   @ApiOperation({ summary: 'Get a standards document' })
-  getStandards(@Param('id') id: string) {
-    return this.notes.getStandardsDocument(id);
+  async getStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
+    return doc;
   }
 
   @Patch('standards/:id/workflow')
@@ -635,6 +726,11 @@ export class NotesController {
     @Param('id') id: string,
     @Body() body: { transition: WorkflowTransition },
   ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'update');
     const result = await this.notes.transitionWorkflow(id, body.transition);
     const uid = req.user?.uid;
     if (uid) {
@@ -646,24 +742,45 @@ export class NotesController {
   @Patch('standards/:id/standards/:code')
   @ApiOperation({ summary: 'Update a single generated standard (objective, scope)' })
   @ApiBody({ schema: { type: 'object' } })
-  updateStandard(
+  async updateStandard(
+    @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Param('code') code: string,
     @Body() patch: StandardPatch,
   ) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updateStandard(id, code, patch);
   }
 
   @Get('standards/:id/snapshots')
   @ApiOperation({ summary: 'List immutable approval snapshots for a standards document' })
-  listSnapshots(@Param('id') id: string) {
+  async listSnapshots(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+    const doc = await this.notes.getStandardsDocument(id);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listSnapshots(id);
   }
 
   @Get('standards/snapshots/:snapshotId')
   @ApiOperation({ summary: 'Get a single snapshot by ID' })
-  getSnapshot(@Param('snapshotId') snapshotId: string) {
-    return this.notes.getSnapshot(snapshotId);
+  async getSnapshot(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('snapshotId') snapshotId: string,
+  ) {
+    const snapshot = await this.notes.getSnapshot(snapshotId);
+    if (!snapshot) throw new NotFoundException('snapshot_not_found');
+    const doc = await this.notes.getStandardsDocument(snapshot.documentId);
+    if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'read');
+    return snapshot;
   }
 
   @Post('standards/generate')
@@ -709,6 +826,9 @@ export class NotesController {
   async deleteStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'delete');
     if (doc.status === 'pending') {
       await this.notes.failStandardsDocument(id, 'cancelled');
     }
@@ -720,6 +840,9 @@ export class NotesController {
   async retryStandards(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const doc = await this.notes.getStandardsDocument(id);
     if (!doc) throw new NotFoundException('doc_not_found');
+    const org = await this.notes.getOrganizationById(doc.orgId);
+    if (!org) throw new NotFoundException('org_not_found');
+    this.checkOrgAccess(req, org, 'update');
 
     const STUCK_MS = 5 * 60 * 1000;
     const isPendingTooLong =
@@ -728,9 +851,6 @@ export class NotesController {
     if (doc.status !== 'failed' && !isPendingTooLong) {
       throw new BadRequestException('doc_not_retryable');
     }
-
-    const org = await this.notes.getOrganizationById(doc.orgId);
-    if (!org) throw new NotFoundException('org_not_found');
 
     await this.notes.resetStandardsDocument(id);
 
@@ -754,6 +874,10 @@ export class NotesController {
     @Req() req: Request & { user?: VerifiedToken },
     @Body() body: { orgId: string; docId?: string; result: GapAnalysisResult },
   ) {
+    if (!body.orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(body.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.saveGapAnalysis(body.orgId, this.uid(req), body.docId ?? null, body.result);
   }
 
@@ -761,14 +885,20 @@ export class NotesController {
   @ApiOperation({ summary: 'List persisted gap analyses for an org' })
   async listGap(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId?: string) {
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listGapAnalyses(orgId);
   }
 
   @Get('gap/:id')
   @ApiOperation({ summary: 'Get a single gap analysis by id' })
-  async getGap(@Param('id') id: string) {
+  async getGap(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const gap = await this.notes.getGapAnalysis(id);
     if (!gap) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(gap.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return gap;
   }
 
@@ -1929,46 +2059,63 @@ export class NotesController {
 
   @Get('policies')
   @ApiOperation({ summary: 'List policies for org' })
-  listPolicies(@Req() req: Request & { user?: VerifiedToken }, @Query('orgId') orgId: string) {
+  async listPolicies(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
     this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicies(orgId);
   }
 
   @Post('policies')
-  @ApiOperation({ summary: 'Create policy' })
-  createPolicy(
+  @ApiOperation({ summary: 'Create a policy' })
+  async createPolicy(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Body() body: PolicyInput,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.createPolicy(orgId, userId, body);
   }
 
   @Get('policies/for-control')
-  @ApiOperation({ summary: 'List policies linked to a specific control' })
-  listPoliciesForControl(
+  @ApiOperation({ summary: 'List policies mapped to a control' })
+  async listPoliciesForControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('controlCode') controlCode: string,
     @Query('frameworkId') frameworkId: string,
+    @Query('orgId') orgId: string,
   ) {
     this.uid(req);
-    if (!controlCode || !frameworkId)
-      throw new BadRequestException('controlCode and frameworkId required');
-    return this.notes.listPoliciesForControl(controlCode, frameworkId);
+    if (!controlCode || !frameworkId || !orgId) {
+      throw new BadRequestException('controlCode, frameworkId, and orgId required');
+    }
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
+    return this.notes.listPoliciesForControl(controlCode, frameworkId, orgId);
   }
 
   @Post('policies/clone/:templateId')
-  @ApiOperation({ summary: 'Clone a policy template into org' })
-  cloneTemplate(
+  @ApiOperation({ summary: 'Clone a policy template into an org' })
+  async cloneTemplate(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
     @Param('templateId') templateId: string,
   ) {
     const userId = this.uid(req);
     if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.cloneTemplate(orgId, userId, templateId);
   }
 
@@ -1984,12 +2131,18 @@ export class NotesController {
 
   @Delete('policies/controls/:mappingId')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Remove a policy-control mapping' })
-  removePolicyControl(
+  async removePolicyControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('mappingId') mappingId: string,
   ) {
     this.uid(req);
+    const mapping = await this.notes.getPolicyControl(mappingId);
+    if (!mapping) throw new NotFoundException();
+    const policy = await this.notes.getPolicy(mapping.policyId);
+    if (!policy) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(policy.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.removePolicyControl(mappingId);
   }
 
@@ -2039,51 +2192,74 @@ export class NotesController {
   }
 
   @Get('policies/:id')
-  @ApiOperation({ summary: 'Get policy' })
+  @ApiOperation({ summary: 'Get a policy' })
   async getPolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
     const p = await this.notes.getPolicy(id);
     if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return p;
   }
 
   @Patch('policies/:id')
-  @ApiOperation({ summary: 'Update policy' })
-  updatePolicy(
+  @ApiOperation({ summary: 'Update a policy' })
+  async updatePolicy(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() patch: PolicyPatch,
   ) {
     this.uid(req);
+    const p = await this.notes.getPolicy(id);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.updatePolicy(id, patch);
   }
 
   @Delete('policies/:id')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Delete policy' })
-  deletePolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  @ApiOperation({ summary: 'Delete a policy' })
+  async deletePolicy(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     this.uid(req);
+    const p = await this.notes.getPolicy(id);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'delete');
     return this.notes.deletePolicy(id);
   }
 
   @Get('policies/:id/controls')
-  @ApiOperation({ summary: 'List controls linked to a policy' })
-  listPolicyControls(
+  @ApiOperation({ summary: 'List control mappings for a policy' })
+  async listPolicyControls(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') policyId: string,
   ) {
     this.uid(req);
+    const p = await this.notes.getPolicy(policyId);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'read');
     return this.notes.listPolicyControls(policyId);
   }
 
   @Post('policies/:id/controls')
-  @ApiOperation({ summary: 'Add control mapping to policy' })
-  addPolicyControl(
+  @ApiOperation({ summary: 'Add a control mapping to a policy' })
+  async addPolicyControl(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') policyId: string,
     @Body() body: PolicyControlInput,
   ) {
     this.uid(req);
+    const p = await this.notes.getPolicy(policyId);
+    if (!p) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(p.orgId);
+    if (!org) throw new NotFoundException();
+    this.checkOrgAccess(req, org, 'update');
     return this.notes.addPolicyControl(policyId, body);
   }
 

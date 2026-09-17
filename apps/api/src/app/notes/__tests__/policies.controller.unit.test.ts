@@ -34,6 +34,16 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     getPolicy: vi.fn().mockResolvedValue(POLICY),
     transitionPolicyWorkflow: vi.fn().mockResolvedValue({ ...POLICY, workflowStatus: 'approved' }),
     listPolicyActivity: vi.fn().mockResolvedValue([]),
+    listPolicies: vi.fn().mockResolvedValue([]),
+    createPolicy: vi.fn().mockResolvedValue(POLICY),
+    cloneTemplate: vi.fn().mockResolvedValue(POLICY),
+    updatePolicy: vi.fn().mockResolvedValue(POLICY),
+    deletePolicy: vi.fn().mockResolvedValue(undefined),
+    listPolicyControls: vi.fn().mockResolvedValue([]),
+    addPolicyControl: vi.fn().mockResolvedValue({}),
+    getPolicyControl: vi.fn().mockResolvedValue(null),
+    removePolicyControl: vi.fn().mockResolvedValue(undefined),
+    listPoliciesForControl: vi.fn().mockResolvedValue([]),
     ...overrides,
   } as unknown as NotesClientService;
 }
@@ -123,5 +133,185 @@ describe('NotesController — policy workflow org scoping', () => {
         makeController(notes).listPolicyActivity(reqAs('org-creator'), 'policy-1'),
       ).resolves.toEqual([]);
     });
+  });
+});
+
+describe('listPolicies', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(makeController(notes).listPolicies(reqAs('outsider'), 'org-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).listPolicies(reqAs('org-creator'), 'org-1'),
+    ).resolves.toEqual([]);
+  });
+});
+
+describe('createPolicy', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).createPolicy(reqAs('outsider'), 'org-1', {} as never),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).createPolicy(reqAs('org-creator'), 'org-1', {} as never),
+    ).resolves.toEqual(POLICY);
+  });
+});
+
+describe('cloneTemplate', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).cloneTemplate(reqAs('outsider'), 'org-1', 'template-1'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).cloneTemplate(reqAs('org-creator'), 'org-1', 'template-1'),
+    ).resolves.toEqual(POLICY);
+  });
+});
+
+describe('getPolicy', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(makeController(notes).getPolicy(reqAs('outsider'), 'policy-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).getPolicy(reqAs('org-creator'), 'policy-1'),
+    ).resolves.toEqual(POLICY);
+  });
+});
+
+describe('updatePolicy', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).updatePolicy(reqAs('outsider'), 'policy-1', {}),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).updatePolicy(reqAs('org-creator'), 'policy-1', {}),
+    ).resolves.toEqual(POLICY);
+  });
+});
+
+describe('deletePolicy', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(makeController(notes).deletePolicy(reqAs('outsider'), 'policy-1')).rejects.toThrow(
+      ForbiddenException,
+    );
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).deletePolicy(reqAs('org-creator'), 'policy-1'),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('listPolicyControls', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).listPolicyControls(reqAs('outsider'), 'policy-1'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).listPolicyControls(reqAs('org-creator'), 'policy-1'),
+    ).resolves.toEqual([]);
+  });
+});
+
+describe('addPolicyControl', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).addPolicyControl(reqAs('outsider'), 'policy-1', {} as never),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).addPolicyControl(reqAs('org-creator'), 'policy-1', {} as never),
+    ).resolves.toEqual({});
+  });
+});
+
+describe('removePolicyControl', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes({
+      getPolicyControl: vi.fn().mockResolvedValue({
+        id: 'map-1',
+        policyId: 'policy-1',
+        controlCode: 'AC-01',
+        frameworkId: 'fw-1',
+      }),
+    });
+    await expect(
+      makeController(notes).removePolicyControl(reqAs('outsider'), 'map-1'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator', async () => {
+    const notes = makeNotes({
+      getPolicyControl: vi.fn().mockResolvedValue({
+        id: 'map-1',
+        policyId: 'policy-1',
+        controlCode: 'AC-01',
+        frameworkId: 'fw-1',
+      }),
+    });
+    await expect(
+      makeController(notes).removePolicyControl(reqAs('org-creator'), 'map-1'),
+    ).resolves.toBeUndefined();
+  });
+  it('throws NotFound when the mapping does not exist', async () => {
+    const notes = makeNotes({ getPolicyControl: vi.fn().mockResolvedValue(null) });
+    await expect(
+      makeController(notes).removePolicyControl(reqAs('org-creator'), 'missing'),
+    ).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('listPoliciesForControl', () => {
+  it('rejects a caller outside the org', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).listPoliciesForControl(reqAs('outsider'), 'AC-01', 'fw-1', 'org-1'),
+    ).rejects.toThrow(ForbiddenException);
+  });
+  it('allows the org creator and passes orgId through', async () => {
+    const notes = makeNotes();
+    await makeController(notes).listPoliciesForControl(
+      reqAs('org-creator'),
+      'AC-01',
+      'fw-1',
+      'org-1',
+    );
+    expect(notes.listPoliciesForControl).toHaveBeenCalledWith('AC-01', 'fw-1', 'org-1');
+  });
+  it('rejects when orgId is missing', async () => {
+    const notes = makeNotes();
+    await expect(
+      makeController(notes).listPoliciesForControl(reqAs('org-creator'), 'AC-01', 'fw-1', ''),
+    ).rejects.toThrow(BadRequestException);
   });
 });

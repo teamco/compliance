@@ -1248,14 +1248,23 @@ export class NotesClientService {
     });
   }
 
+  getPolicyControl(id: string): Promise<PolicyControl | null> {
+    return signedSend<PolicyControl | null>(this.client, 'notes.policies.controls.get', { id });
+  }
+
   removePolicyControl(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.policies.controls.remove', { id });
   }
 
-  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+  listPoliciesForControl(
+    controlCode: string,
+    frameworkId: string,
+    orgId: string,
+  ): Promise<Policy[]> {
     return signedSend<Policy[]>(this.client, 'notes.policies.for-control', {
       controlCode,
       frameworkId,
+      orgId,
     });
   }
 
