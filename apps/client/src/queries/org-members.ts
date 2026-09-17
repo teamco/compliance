@@ -71,3 +71,19 @@ export function useResendOrgInvite(orgId: string) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['org-invites', orgId] }),
   });
 }
+
+export function useDeactivateOrgMember(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (userId) =>
+      api<void>(`/auth/org/members/${userId}?orgId=${encodeURIComponent(orgId)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['org-members', orgId] });
+      // Covers self-removal: the org list (creator's orgs unioned with
+      // listOrgIdsForMember) must drop this org from the switcher too.
+      qc.invalidateQueries({ queryKey: ['notes', 'orgs'] });
+    },
+  });
+}
