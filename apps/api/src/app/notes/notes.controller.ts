@@ -1154,6 +1154,26 @@ export class NotesController {
     return this.notes.submitIssueForValidation(id, userId, body);
   }
 
+  @Post('issues/:id/reassign-owner')
+  @ApiOperation({ summary: 'Reassign the owner of an issue' })
+  async reassignIssueOwner(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newOwnerId: string },
+  ) {
+    this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newOwnerId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignIssueOwner(id, body.newOwnerId);
+  }
+
   @Post('issue-validations/:id/review')
   @ApiOperation({ summary: 'Validator approves or rejects a pending issue validation' })
   async reviewIssueValidation(
@@ -2322,5 +2342,16 @@ export class NotesController {
   ): Promise<void> {
     if (req.user?.role === 'admin') return;
     if (org.userId !== req.user?.uid) throw new ForbiddenException();
+  }
+
+  private async checkOrgManage(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+    if (org.userId === req.user?.uid) return;
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    const membership = members.find((m) => m.userId === req.user?.uid);
+    if (!membership || membership.role !== 'admin') throw new ForbiddenException();
   }
 }

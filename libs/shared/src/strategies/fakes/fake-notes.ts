@@ -3751,6 +3751,20 @@ export class FakeNotesStrategy implements NotesStrategy {
     return updated;
   }
 
+  async reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue> {
+    const issue = this.issues.get(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    const activePending = this.issueValidations.find(
+      (v) => v.issueId === id && v.status === 'pending',
+    );
+    if (activePending && activePending.validatorId === newOwnerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const updated: Issue = { ...issue, ownerId: newOwnerId, updatedAt: new Date().toISOString() };
+    this.issues.set(id, updated);
+    return updated;
+  }
+
   async reviewIssueValidation(
     id: string,
     validatorId: string,

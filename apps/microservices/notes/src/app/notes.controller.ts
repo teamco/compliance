@@ -691,6 +691,11 @@ export class NotesController {
     return this.strategy.submitIssueForValidation(payload.id, payload.ownerId, payload.data);
   }
 
+  @MessagePattern('notes.issues.reassign-owner')
+  reassignIssueOwner(@Payload() payload: { id: string; newOwnerId: string }): Promise<Issue> {
+    return this.strategy.reassignIssueOwner(payload.id, payload.newOwnerId);
+  }
+
   @MessagePattern('notes.issues.review-validation')
   reviewIssueValidation(
     @Payload()

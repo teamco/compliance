@@ -2188,6 +2188,22 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toIssue(ok(data, error));
   }
 
+  async reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue> {
+    const issue = await this.getIssue(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    const activePending = await this.getActiveIssueValidation(id);
+    if (activePending && activePending.validatorId === newOwnerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('issues')
+      .update({ owner_id: newOwnerId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toIssue(ok(data, error));
+  }
+
   async deleteIssue(id: string): Promise<void> {
     const { error } = await this.db.from('issues').delete().eq('id', id);
     if (error) throw new Error(error.message);

@@ -1430,6 +1430,7 @@ export interface NotesStrategy {
     ownerId: string,
     data: IssueValidationSubmitInput,
   ): Promise<Issue>;
+  reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue>;
   reviewIssueValidation(
     id: string,
     validatorId: string,

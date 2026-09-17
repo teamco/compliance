@@ -342,6 +342,36 @@ describe('issues', () => {
     expect(updatedIssue!.resolvedAt).not.toBeNull();
   });
 
+  it('reassigns an issue owner', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    const reassigned = await s.reassignIssueOwner(issue.id, 'owner-2');
+    expect(reassigned.ownerId).toBe('owner-2');
+  });
+
+  it("forbids reassigning the issue owner to the pending validation's validator", async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    await expect(s.reassignIssueOwner(issue.id, 'validator-1')).rejects.toThrow(
+      'issue_validation_self_validation_forbidden',
+    );
+  });
+
   it('clears resolvedAt when a closed issue is reopened via generic update', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',

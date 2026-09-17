@@ -780,6 +780,10 @@ export class NotesClientService {
     });
   }
 
+  reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue> {
+    return signedSend<Issue>(this.client, 'notes.issues.reassign-owner', { id, newOwnerId });
+  }
+
   reviewIssueValidation(
     id: string,
     validatorId: string,
