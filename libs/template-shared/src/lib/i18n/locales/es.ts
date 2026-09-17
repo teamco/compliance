@@ -1296,4 +1296,13 @@ export const es = {
     accessDeniedHint: 'No tienes permiso para ver esta página.',
     unknown: 'Algo salió mal.',
   },
+  acceptInvite: {
+    notFound: 'Este enlace de invitación no es válido o ha caducado.',
+    preview: 'Has sido invitado a unirte a {{orgName}} como {{role}}.',
+    loginPrompt: 'Inicia sesión o crea una cuenta para aceptar esta invitación.',
+    acceptButton: 'Aceptar invitación',
+    success: 'Te has unido a la organización',
+    failed: 'No se pudo aceptar esta invitación',
+    doneRedirect: 'Listo! Redirigiendo…',
+  },
 } as const;

@@ -1256,4 +1256,13 @@ export const he = {
     accessDeniedHint: 'אין לך הרשאה לצפות בדף זה.',
     unknown: 'משהו השתבש.',
   },
+  acceptInvite: {
+    notFound: 'קישור ההזמנה הזה אינו תקין או שפג תוקפו.',
+    preview: 'הוזמנת להצטרף ל-{{orgName}} בתפקיד {{role}}.',
+    loginPrompt: 'התחבר או צור חשבון כדי לקבל הזמנה זו.',
+    acceptButton: 'קבל הזמנה',
+    success: 'הצטרפת לארגון',
+    failed: 'לא ניתן היה לקבל את ההזמנה',
+    doneRedirect: 'סיימת! מפנה מחדש…',
+  },
 } as const;

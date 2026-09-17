@@ -1314,4 +1314,13 @@ export const en = {
     accessDeniedHint: 'You do not have permission to view this page.',
     unknown: 'Something went wrong.',
   },
+  acceptInvite: {
+    notFound: 'This invite link is invalid or has expired.',
+    preview: "You've been invited to join {{orgName}} as {{role}}.",
+    loginPrompt: 'Log in or create an account to accept this invite.',
+    acceptButton: 'Accept Invite',
+    success: "You've joined the organization",
+    failed: 'Could not accept this invite',
+    doneRedirect: "You're in! Redirecting…",
+  },
 } as const;
