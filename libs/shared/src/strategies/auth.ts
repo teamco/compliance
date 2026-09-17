@@ -49,6 +49,22 @@ export interface OrgMember {
   role: string;
 }
 
+export type OrgInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+export type OrgInviteRole = 'admin' | 'viewer';
+
+export interface OrgInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgInviteRole;
+  token: string;
+  invitedBy: string;
+  status: OrgInviteStatus;
+  expiresAt: string;
+  createdAt: string;
+  acceptedAt: string | null;
+}
+
 export interface AuthStrategy {
   verifyToken(token: string): Promise<VerifiedToken>;
   signIn(email: string, password: string): Promise<AuthSession>;
