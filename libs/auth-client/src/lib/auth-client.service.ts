@@ -5,6 +5,8 @@ import type {
   AuthSession,
   OAuthProvider,
   OAuthStartResult,
+  OrgInvite,
+  OrgInviteRole,
   OrgMember,
   VerifiedToken,
 } from '@icore/shared';
@@ -98,5 +100,43 @@ export class AuthClientService {
 
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession> {
     return signedSend<AuthSession>(this.client, 'auth.oauth.complete', { provider, code, state });
+  }
+
+  createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite> {
+    return signedSend<OrgInvite>(this.client, 'auth.org.invites.create', {
+      orgId,
+      email,
+      role,
+      invitedBy,
+    });
+  }
+
+  listOrgInvites(orgId: string): Promise<OrgInvite[]> {
+    return signedSend<OrgInvite[]>(this.client, 'auth.org.invites.list', { orgId });
+  }
+
+  revokeOrgInvite(inviteId: string): Promise<void> {
+    return signedSend<void>(this.client, 'auth.org.invites.revoke', { inviteId });
+  }
+
+  resendOrgInvite(inviteId: string): Promise<OrgInvite> {
+    return signedSend<OrgInvite>(this.client, 'auth.org.invites.resend', { inviteId });
+  }
+
+  getOrgInviteByToken(token: string): Promise<OrgInvite | null> {
+    return signedSend<OrgInvite | null>(this.client, 'auth.org.invites.get-by-token', { token });
+  }
+
+  acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember> {
+    return signedSend<OrgMember>(this.client, 'auth.org.invites.accept', {
+      token,
+      userId,
+      userEmail,
+    });
   }
 }
