@@ -39,6 +39,8 @@ Optional, not required — `organization_members`'s test fixtures across the cod
 
 **`listOrgMembers`** (both `FakeAuthStrategy` and `SupabaseAuthStrategy`) filters to active members only — `SupabaseAuthStrategy` adds `.eq('is_active', true)` to its `organization_members` select; `FakeAuthStrategy` adds `.filter((m) => m.isActive !== false)` before returning. The synthetic owner-union entry (both strategies prepend the org creator as an implicit `'owner'` member when not already present) is unaffected — the owner can never be deactivated, so there's nothing to filter there.
 
+**`listOrgIdsForMember`** needs the same active-only filter. It backs the gateway's org-listing route (`notes.controller.ts:648`, unioned with orgs the user created) — the org switcher and org list. Without this filter, a deactivated member would still see the org in their list and switcher, only to hit a 403 the moment they tried to actually use it. Same filter, same two strategies.
+
 This is where enforcement actually happens: `checkOrgAccess` and `checkOrgManage` (`apps/api/src/app/auth/auth.controller.ts:334-369`, and the duplicate copy in `notes.controller.ts`) both resolve the caller's membership by calling `listOrgMembers` and searching for the caller's `userId`. Once `listOrgMembers` excludes deactivated rows, a deactivated member fails both checks on their very next request — no separate token revocation or session invalidation needed.
 
 **`acceptOrgInvite`** currently throws `invite_already_member` if any `organization_members` row exists for that `userId`, regardless of `is_active`. This blocks the natural "deactivate → re-invite → accept" recovery path. New behavior:
@@ -100,9 +102,12 @@ export function useDeactivateOrgMember(orgId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (userId: string) =>
-      api(`/auth/org/members/${userId}?orgId=${orgId}`, { method: 'DELETE' }),
+      api(`/auth/org/members/${userId}?orgId=${encodeURIComponent(orgId)}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-members', orgId] });
+      // Covers self-removal: the org list (creator's orgs unioned with
+      // listOrgIdsForMember) must drop this org from the switcher too.
+      queryClient.invalidateQueries({ queryKey: ['notes', 'orgs'] });
     },
   });
 }
@@ -121,7 +126,7 @@ const canRemove = (canManage || member.userId === myUid) && member.userId !== or
 ## Testing
 
 - API: unit tests for `deactivateOrgMember` covering — owner cannot be deactivated (by self or by admin); org-admin can deactivate a viewer; org-admin can deactivate another admin; viewer cannot deactivate another member (403, no `checkOrgManage`); a member can deactivate themselves even as a plain viewer; deactivating a non-member 404s.
-- Strategy: `FakeAuthStrategy` unit tests for `deactivateOrgMember` (flips `isActive`) and `listOrgMembers` (excludes deactivated rows) and `acceptOrgInvite`'s reactivation branch (deactivated row → invite accept → `isActive: true` with the new role, not a duplicate row).
+- Strategy: `FakeAuthStrategy` unit tests for `deactivateOrgMember` (flips `isActive`), `listOrgMembers` and `listOrgIdsForMember` (both exclude deactivated rows), and `acceptOrgInvite`'s reactivation branch (deactivated row → invite accept → `isActive: true` with the new role, not a duplicate row).
 - Client: `-members-section.tsx` role-gating tests extended with the Remove button's visibility matrix (manager on someone else / self on own row / viewer on someone else — hidden / owner's row — always hidden).
 - Live Playwright verification (mandatory per `AGENTS.md`): two real users — owner deactivates an admin member, confirm the deactivated user immediately loses org access on their next request; a viewer leaves an org themselves; confirm a deactivated-then-reinvited member can accept and rejoin.
 
