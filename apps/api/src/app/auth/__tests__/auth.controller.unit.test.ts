@@ -10,7 +10,12 @@ import {
 import type { Request } from 'express';
 import type { AuthClientService } from '@icore/auth-client';
 import type { NotesClientService } from '@icore/notes-client';
-import type { Organization, OrgInvite, VerifiedToken } from '@icore/shared';
+import {
+  FakeAuthStrategy,
+  type Organization,
+  type OrgInvite,
+  type VerifiedToken,
+} from '@icore/shared';
 import { AuthController } from '../auth.controller';
 import { AbilityFactory } from '../../abilities/ability.factory';
 import { AbilityGuard } from '../../abilities/ability.guard';
@@ -654,6 +659,28 @@ describe('AuthController (gateway) — org invite management routes', () => {
         ),
       ).rejects.toThrow(NotFoundException);
       expect(auth.deactivateOrgMember).not.toHaveBeenCalled();
+    });
+
+    it('denies further access to a deactivated member end-to-end through the real strategy filter', async () => {
+      const strategy = new FakeAuthStrategy();
+      strategy.seedOrgMember('org-1', { userId: 'admin-1', role: 'admin' });
+      const notes = makeNotes(); // ORG.userId is 'owner-1', ORG.id is 'org-1'
+      const auth = {
+        listOrgMembers: (orgId: string, ownerId?: string) =>
+          strategy.listOrgMembers(orgId, ownerId),
+        deactivateOrgMember: (orgId: string, userId: string) =>
+          strategy.deactivateOrgMember(orgId, userId),
+      } as unknown as AuthClientService;
+      const controller = makeInviteController(notes, auth);
+
+      // Owner deactivates admin-1
+      await controller.deactivateOrgMember(reqAs('owner-1'), 'org-1', 'admin-1');
+
+      // admin-1 immediately loses manage-tier access -- proven through the REAL
+      // strategy's filter, not a mock that can't regress.
+      await expect(controller.listOrgInvites(reqAs('admin-1'), 'org-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });
