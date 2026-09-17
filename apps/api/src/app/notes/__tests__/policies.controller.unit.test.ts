@@ -259,14 +259,12 @@ describe('addPolicyControl', () => {
 describe('removePolicyControl', () => {
   it('rejects a caller outside the org', async () => {
     const notes = makeNotes({
-      getPolicyControl: vi
-        .fn()
-        .mockResolvedValue({
-          id: 'map-1',
-          policyId: 'policy-1',
-          controlCode: 'AC-01',
-          frameworkId: 'fw-1',
-        }),
+      getPolicyControl: vi.fn().mockResolvedValue({
+        id: 'map-1',
+        policyId: 'policy-1',
+        controlCode: 'AC-01',
+        frameworkId: 'fw-1',
+      }),
     });
     await expect(
       makeController(notes).removePolicyControl(reqAs('outsider'), 'map-1'),
@@ -274,14 +272,12 @@ describe('removePolicyControl', () => {
   });
   it('allows the org creator', async () => {
     const notes = makeNotes({
-      getPolicyControl: vi
-        .fn()
-        .mockResolvedValue({
-          id: 'map-1',
-          policyId: 'policy-1',
-          controlCode: 'AC-01',
-          frameworkId: 'fw-1',
-        }),
+      getPolicyControl: vi.fn().mockResolvedValue({
+        id: 'map-1',
+        policyId: 'policy-1',
+        controlCode: 'AC-01',
+        frameworkId: 'fw-1',
+      }),
     });
     await expect(
       makeController(notes).removePolicyControl(reqAs('org-creator'), 'map-1'),
