@@ -174,6 +174,14 @@ export class FakeAuthStrategy implements AuthStrategy {
     return [{ userId: ownerId, role: 'owner' }, ...members];
   }
 
+  async listOrgIdsForMember(userId: string): Promise<string[]> {
+    const result: string[] = [];
+    for (const [orgId, members] of this.orgMembers.entries()) {
+      if (members.some((m) => m.userId === userId)) result.push(orgId);
+    }
+    return result;
+  }
+
   private findById(uid: string): StoredUser {
     for (const user of this.users.values()) {
       if (user.id === uid) return user;

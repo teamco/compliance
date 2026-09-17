@@ -70,6 +70,10 @@ export class AuthClientService {
     return signedSend<OrgMember[]>(this.client, 'auth.org.members.list', { orgId, ownerId });
   }
 
+  listOrgIdsForMember(userId: string): Promise<string[]> {
+    return signedSend<string[]>(this.client, 'auth.org.member.listOrgIds', { userId });
+  }
+
   updateProfile(uid: string, displayName: string): Promise<void> {
     return signedSend<{ ok: boolean }>(this.client, 'auth.profile.update', {
       uid,

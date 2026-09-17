@@ -246,6 +246,15 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     ];
   }
 
+  async listOrgIdsForMember(userId: string): Promise<string[]> {
+    const { data, error } = await this.client
+      .from('organization_members')
+      .select('org_id')
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => r['org_id'] as string);
+  }
+
   private toSession(s: {
     access_token: string;
     refresh_token: string;

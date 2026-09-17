@@ -60,3 +60,16 @@ describe('FakeAuthStrategy.listOrgMembers', () => {
     expect(members).toEqual([{ userId: 'member-1', role: 'viewer' }]);
   });
 });
+
+describe('FakeAuthStrategy.listOrgIdsForMember', () => {
+  it('lists org ids a user is a member of', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'user-a', role: 'viewer' });
+    strategy.seedOrgMember('org-2', { userId: 'user-a', role: 'admin' });
+    strategy.seedOrgMember('org-3', { userId: 'user-b', role: 'viewer' });
+
+    const orgIds = await strategy.listOrgIdsForMember('user-a');
+
+    expect(orgIds.sort()).toEqual(['org-1', 'org-2']);
+  });
+});

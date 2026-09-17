@@ -140,6 +140,11 @@ export class AuthController {
     return this.strategy.listOrgMembers(payload.orgId, payload.ownerId);
   }
 
+  @MessagePattern('auth.org.member.listOrgIds')
+  listOrgIdsForMember(@Payload() payload: { userId: string }): Promise<string[]> {
+    return this.strategy.listOrgIdsForMember(payload.userId);
+  }
+
   @MessagePattern('auth.profile.update')
   async updateProfile(
     @Payload() payload: { uid: string; displayName?: string },

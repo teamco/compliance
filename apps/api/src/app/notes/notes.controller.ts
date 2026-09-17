@@ -641,9 +641,16 @@ export class NotesController {
   }
 
   @Get('orgs')
-  @ApiOperation({ summary: 'List organizations owned by current user' })
+  @ApiOperation({ summary: 'List organizations owned by or shared with current user' })
   async listOrgs(@Req() req: Request & { user?: VerifiedToken }) {
-    return this.notes.listOrganizations(this.uid(req));
+    const uid = this.uid(req);
+    const ownedOrgs = await this.notes.listOrganizations(uid);
+    const memberOrgIds = await this.auth.listOrgIdsForMember(uid);
+    const missingIds = memberOrgIds.filter((id) => !ownedOrgs.some((o) => o.id === id));
+    const memberOrgs = await Promise.all(
+      missingIds.map((id) => this.notes.getOrganizationById(id)),
+    );
+    return [...ownedOrgs, ...memberOrgs.filter((o): o is Organization => o !== null)];
   }
 
   @Post('orgs')

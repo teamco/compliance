@@ -79,4 +79,5 @@ export interface AuthStrategy {
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
   listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]>;
+  listOrgIdsForMember(userId: string): Promise<string[]>;
 }
