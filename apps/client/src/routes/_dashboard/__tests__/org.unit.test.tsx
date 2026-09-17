@@ -79,10 +79,14 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
 });
 
 let mockMembers: Array<{ userId: string; role: string }> = [];
+const useOrgInvitesSpy = vi.fn((_orgId: string, _enabled: boolean) => ({
+  data: [],
+  isPending: false,
+}));
 
 vi.mock('@/queries/org-members', () => ({
   useOrgMembers: () => ({ data: mockMembers, isPending: false }),
-  useOrgInvites: () => ({ data: [], isPending: false }),
+  useOrgInvites: (orgId: string, enabled: boolean) => useOrgInvitesSpy(orgId, enabled),
   useCreateOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRevokeOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useResendOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
@@ -513,5 +517,38 @@ describe('MembersSection remove/leave button', () => {
     if (!confirmBtn) throw new Error('Expected a remove confirmation button to be rendered');
     fireEvent.click(confirmBtn);
     await waitFor(() => expect(deactivateMutateAsync).toHaveBeenCalledWith('viewer-1'));
+  });
+});
+
+describe('MembersSection pending invites gating', () => {
+  beforeEach(() => {
+    mockOrgs = [ORG_1];
+    mockIsPending = false;
+    mockActiveOrgId = 'org-1';
+    mockMembers = [];
+    useOrgInvitesSpy.mockClear();
+  });
+
+  it('enables the invites query and shows the section for the org owner', () => {
+    mockAuthUserId = 'u-1'; // ORG_1.userId
+    render(wrap(<OrgPage />));
+    expect(useOrgInvitesSpy).toHaveBeenCalledWith('org-1', true);
+    expect(screen.getByRole('heading', { name: /pending invites/i })).toBeTruthy();
+  });
+
+  it('enables the invites query and shows the section for an org-admin member', () => {
+    mockAuthUserId = 'admin-1';
+    mockMembers = [{ userId: 'admin-1', role: 'admin' }];
+    render(wrap(<OrgPage />));
+    expect(useOrgInvitesSpy).toHaveBeenCalledWith('org-1', true);
+    expect(screen.getByRole('heading', { name: /pending invites/i })).toBeTruthy();
+  });
+
+  it('disables the invites query and hides the section for a viewer member', () => {
+    mockAuthUserId = 'viewer-1';
+    mockMembers = [{ userId: 'viewer-1', role: 'viewer' }];
+    render(wrap(<OrgPage />));
+    expect(useOrgInvitesSpy).toHaveBeenCalledWith('org-1', false);
+    expect(screen.queryByRole('heading', { name: /pending invites/i })).toBeNull();
   });
 });

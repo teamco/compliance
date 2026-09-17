@@ -29,11 +29,11 @@ export function useOrgMembers(orgId: string) {
   });
 }
 
-export function useOrgInvites(orgId: string) {
+export function useOrgInvites(orgId: string, enabled = true) {
   return useQuery<OrgInvite[]>({
     queryKey: ['org-invites', orgId],
     queryFn: () => api<OrgInvite[]>(`/auth/org/invites?orgId=${encodeURIComponent(orgId)}`),
-    enabled: !!orgId,
+    enabled: !!orgId && enabled,
   });
 }
 
