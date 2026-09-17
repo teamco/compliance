@@ -200,7 +200,8 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     const { data: members, error } = await this.client
       .from('organization_members')
       .select('user_id, role')
-      .eq('org_id', orgId);
+      .eq('org_id', orgId)
+      .eq('is_active', true);
     if (error) throw new Error(error.message);
     const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
 
@@ -227,6 +228,7 @@ export class SupabaseAuthStrategy implements AuthStrategy {
           role: r.role,
           email: profile?.email,
           displayName: profile?.display_name,
+          isActive: true, // query already filters to is_active = true
         };
       });
     }
@@ -253,7 +255,8 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     const { data, error } = await this.client
       .from('organization_members')
       .select('org_id')
-      .eq('user_id', userId);
+      .eq('user_id', userId)
+      .eq('is_active', true);
     if (error) throw new Error(error.message);
     return (data ?? []).map((r) => r['org_id'] as string);
   }
@@ -329,16 +332,24 @@ export class SupabaseAuthStrategy implements AuthStrategy {
 
     const { data: existing } = await this.client
       .from('organization_members')
-      .select('id')
+      .select('id, is_active')
       .eq('org_id', invite.orgId)
       .eq('user_id', userId)
       .maybeSingle();
-    if (existing) throw new Error('invite_already_member');
 
-    const { error: insertError } = await this.client
-      .from('organization_members')
-      .insert({ org_id: invite.orgId, user_id: userId, role: invite.role });
-    if (insertError) throw new Error(insertError.message);
+    if (existing) {
+      if (existing['is_active'] !== false) throw new Error('invite_already_member');
+      const { error: reactivateError } = await this.client
+        .from('organization_members')
+        .update({ is_active: true, role: invite.role, deactivated_at: null })
+        .eq('id', existing['id']);
+      if (reactivateError) throw new Error(reactivateError.message);
+    } else {
+      const { error: insertError } = await this.client
+        .from('organization_members')
+        .insert({ org_id: invite.orgId, user_id: userId, role: invite.role });
+      if (insertError) throw new Error(insertError.message);
+    }
 
     const { error: updateError } = await this.client
       .from('organization_invites')
@@ -347,6 +358,31 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     if (updateError) throw new Error(updateError.message);
 
     return { userId, role: invite.role };
+  }
+
+  async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
+    const { error } = await this.client
+      .from('organization_members')
+      .update({ is_active: false, deactivated_at: new Date().toISOString() })
+      .eq('org_id', orgId)
+      .eq('user_id', userId);
+    if (error) throw new Error(error.message);
+
+    // Revoke any pending invites for this same org + email so a reactivation
+    // can't smuggle the removed member back in at a higher role with zero
+    // manager action. Skip silently if the user has no email on record.
+    const profile = await this.getProfile(userId);
+    if (!profile?.email) return;
+    // ilike's pattern isn't auto-escaped -- an email containing %/_ would be
+    // interpreted as a wildcard and could match other members' invites.
+    const escapedEmail = profile.email.replace(/[%_\\]/g, (c) => `\\${c}`);
+    const { error: revokeError } = await this.client
+      .from('organization_invites')
+      .update({ status: 'revoked' })
+      .eq('org_id', orgId)
+      .eq('status', 'pending')
+      .ilike('email', escapedEmail);
+    if (revokeError) throw new Error(revokeError.message);
   }
 
   // Mirrors sendMagicLink's signInWithOtp + emailRedirectTo delivery mechanism --

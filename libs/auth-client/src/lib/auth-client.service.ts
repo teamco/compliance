@@ -139,4 +139,8 @@ export class AuthClientService {
       userEmail,
     });
   }
+
+  deactivateOrgMember(orgId: string, userId: string): Promise<void> {
+    return signedSend<void>(this.client, 'auth.org.members.deactivate', { orgId, userId });
+  }
 }

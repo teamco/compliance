@@ -73,6 +73,16 @@ describe('FakeAuthStrategy.listOrgMembers', () => {
 
     expect(members).toEqual([{ userId: 'member-1', role: 'viewer' }]);
   });
+
+  it('excludes deactivated members', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'member-1', role: 'viewer', isActive: false });
+    strategy.seedOrgMember('org-1', { userId: 'member-2', role: 'admin' });
+
+    const members = await strategy.listOrgMembers('org-1');
+
+    expect(members.map((m) => m.userId)).toEqual(['member-2']);
+  });
 });
 
 describe('FakeAuthStrategy.listOrgIdsForMember', () => {
@@ -85,6 +95,87 @@ describe('FakeAuthStrategy.listOrgIdsForMember', () => {
     const orgIds = await strategy.listOrgIdsForMember('user-a');
 
     expect(orgIds.sort()).toEqual(['org-1', 'org-2']);
+  });
+
+  it('excludes orgs where the membership is deactivated', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'user-a', role: 'viewer', isActive: false });
+    strategy.seedOrgMember('org-2', { userId: 'user-a', role: 'admin' });
+
+    const orgIds = await strategy.listOrgIdsForMember('user-a');
+
+    expect(orgIds).toEqual(['org-2']);
+  });
+});
+
+describe('FakeAuthStrategy.deactivateOrgMember', () => {
+  it('flips isActive to false on the member row', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'member-1', role: 'viewer' });
+
+    await strategy.deactivateOrgMember('org-1', 'member-1');
+
+    const members = await strategy.listOrgMembers('org-1');
+    expect(members).toEqual([]);
+  });
+
+  it('is a no-op when the user is not a member', async () => {
+    const strategy = new FakeAuthStrategy();
+    await expect(strategy.deactivateOrgMember('org-1', 'nobody')).resolves.toBeUndefined();
+  });
+
+  it('records deactivatedAt, and clears it again on reactivation via a fresh invite accept', async () => {
+    const strategy = new FakeAuthStrategy();
+    const session = await strategy.signUp('returning@example.com', 'password123');
+    strategy.seedOrgMember('org-1', { userId: session.user.id, role: 'viewer' });
+
+    await strategy.deactivateOrgMember('org-1', session.user.id);
+
+    const deactivatedMembers = (
+      strategy as unknown as {
+        orgMembers: Map<string, { userId: string; deactivatedAt?: string }[]>;
+      }
+    ).orgMembers.get('org-1');
+    const deactivated = deactivatedMembers?.find((m) => m.userId === session.user.id);
+    expect(deactivated?.deactivatedAt).toBeTruthy();
+
+    const invite = await strategy.createOrgInvite(
+      'org-1',
+      'returning@example.com',
+      'admin',
+      'owner-1',
+    );
+    const member = await strategy.acceptOrgInvite(
+      invite.token,
+      session.user.id,
+      'returning@example.com',
+    );
+    expect(member.deactivatedAt).toBeUndefined();
+  });
+
+  it('revokes pending invites for the same org + email so reactivation cannot smuggle in a higher role', async () => {
+    const strategy = new FakeAuthStrategy();
+    const session = await strategy.signUp('b@example.com', 'password123');
+    strategy.seedOrgMember('org-1', { userId: session.user.id, role: 'viewer' });
+
+    // Manager (re-)invites B as admin before B accepts, then deactivates B's viewer membership.
+    const higherRoleInvite = await strategy.createOrgInvite(
+      'org-1',
+      'b@example.com',
+      'admin',
+      'owner-1',
+    );
+
+    await strategy.deactivateOrgMember('org-1', session.user.id);
+
+    const found = await strategy.getOrgInviteByToken(higherRoleInvite.token);
+    expect(found?.status).toBe('revoked');
+  });
+
+  it('skips invite revocation silently when the deactivated user has no email on record', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'no-email-user', role: 'viewer' });
+    await expect(strategy.deactivateOrgMember('org-1', 'no-email-user')).resolves.toBeUndefined();
   });
 });
 
@@ -178,6 +269,29 @@ describe('org invites', () => {
     await expect(
       strategy.acceptOrgInvite(invite.token, 'new-user-1', 'new@example.com'),
     ).rejects.toThrow('invite_already_member');
+  });
+
+  it('reactivates a deactivated member instead of erroring, applying the new role', async () => {
+    const strategy = new FakeAuthStrategy();
+    strategy.seedOrgMember('org-1', { userId: 'returning-user', role: 'viewer', isActive: false });
+    const invite = await strategy.createOrgInvite(
+      'org-1',
+      'returning@example.com',
+      'admin',
+      'owner-1',
+    );
+
+    const member = await strategy.acceptOrgInvite(
+      invite.token,
+      'returning-user',
+      'returning@example.com',
+    );
+
+    expect(member.role).toBe('admin');
+    const members = await strategy.listOrgMembers('org-1');
+    expect(members).toContainEqual(
+      expect.objectContaining({ userId: 'returning-user', role: 'admin', isActive: true }),
+    );
   });
 
   // The "caller is the org owner" case cannot be tested at this strategy layer:

@@ -23,6 +23,7 @@ vi.hoisted(() => {
 const createMutateAsync = vi.fn();
 const updateMutateAsync = vi.fn();
 const deleteMutateAsync = vi.fn();
+const deactivateMutateAsync = vi.fn();
 
 const ORG_1: Organization = {
   id: 'org-1',
@@ -85,6 +86,7 @@ vi.mock('@/queries/org-members', () => ({
   useCreateOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useRevokeOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useResendOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeactivateOrgMember: () => ({ mutateAsync: deactivateMutateAsync, isPending: false }),
 }));
 
 vi.mock('@/components/ui/dialog', () => ({
@@ -451,5 +453,65 @@ describe('MembersSection role gating', () => {
     mockMembers = [{ userId: 'viewer-1', role: 'viewer' }];
     render(wrap(<OrgPage />));
     expect(screen.queryByRole('button', { name: /invite member/i })).toBeNull();
+  });
+});
+
+describe('MembersSection remove/leave button', () => {
+  beforeEach(() => {
+    mockOrgs = [ORG_1];
+    mockIsPending = false;
+    mockActiveOrgId = 'org-1';
+    deactivateMutateAsync.mockClear();
+  });
+
+  it('shows Remove on another member for the owner', () => {
+    mockAuthUserId = 'u-1'; // ORG_1.userId
+    mockMembers = [{ userId: 'viewer-1', role: 'viewer' }];
+    render(wrap(<OrgPage />));
+    expect(screen.getByRole('button', { name: /remove/i })).toBeTruthy();
+  });
+
+  it("shows Leave on the current user's own row when they are not the owner", () => {
+    mockAuthUserId = 'viewer-1';
+    mockMembers = [{ userId: 'viewer-1', role: 'viewer' }];
+    render(wrap(<OrgPage />));
+    expect(screen.getByRole('button', { name: /leave/i })).toBeTruthy();
+  });
+
+  it("hides any remove/leave control on the owner's own row", () => {
+    mockAuthUserId = 'u-1'; // ORG_1.userId
+    // The mocked useOrgMembers returns exactly mockMembers with no implicit
+    // owner union (that union only happens server-side) — the owner's own
+    // row must be included explicitly for it to render at all here.
+    mockMembers = [{ userId: 'u-1', role: 'owner' }];
+    render(wrap(<OrgPage />));
+    expect(screen.queryByRole('button', { name: /remove/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /leave/i })).toBeNull();
+  });
+
+  it('hides Remove for a viewer looking at another member', () => {
+    mockAuthUserId = 'viewer-1';
+    mockMembers = [
+      { userId: 'viewer-1', role: 'viewer' },
+      { userId: 'viewer-2', role: 'viewer' },
+    ];
+    render(wrap(<OrgPage />));
+    expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull();
+  });
+
+  it('confirms and calls deactivate with the target userId', async () => {
+    mockAuthUserId = 'u-1';
+    mockMembers = [{ userId: 'viewer-1', role: 'viewer' }];
+    render(wrap(<OrgPage />));
+    fireEvent.click(screen.getByRole('button', { name: /remove/i }));
+    // The row's own trigger button is also named "Remove" and stays mounted
+    // behind the (mocked) dialog, so disambiguate by scoping to the dialog —
+    // same pattern the existing delete-org confirm test already uses above.
+    const confirmBtn = screen
+      .getAllByRole('button', { name: /remove/i })
+      .find((btn) => btn.closest('[data-testid="alert-dialog"]'));
+    if (!confirmBtn) throw new Error('Expected a remove confirmation button to be rendered');
+    fireEvent.click(confirmBtn);
+    await waitFor(() => expect(deactivateMutateAsync).toHaveBeenCalledWith('viewer-1'));
   });
 });
