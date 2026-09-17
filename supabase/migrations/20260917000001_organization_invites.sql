@@ -16,3 +16,8 @@ create unique index organization_invites_pending_unique
   where status = 'pending';
 
 create index organization_invites_token_idx on public.organization_invites (token);
+
+-- No policies by design: RLS with zero policies denies anon/authenticated all
+-- access via the PostgREST auto-API, leaving the service-role application code
+-- as the only path to invite tokens.
+alter table public.organization_invites enable row level security;
