@@ -65,6 +65,14 @@ vi.mock('@/stores/active-org', () => ({
   useActiveOrgStore: () => ({ activeOrgId: mockActiveOrgId, setActiveOrgId: vi.fn() }),
 }));
 
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({ data: [], isPending: false }),
+  useOrgInvites: () => ({ data: [], isPending: false }),
+  useCreateOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useRevokeOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useResendOrgInvite: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
   return {
