@@ -146,7 +146,7 @@ Note on "owner/admin" for invite management: per the role mapping above, admins 
 // Fake: this.organizations.filter(o => o.userId === userId || this.orgMembers.get(o.id)?.some(m => m.userId === userId))
 ```
 
-The client's `OrgSwitcher` component (`apps/client/src/components/org/OrgSwitcher.tsx`) needs no changes — it already renders whatever `useOrganizations()` returns, and already handles the multi-org case correctly (confirmed by direct code reading during brainstorming).
+**Real, load-bearing bug found during plan research, in scope for this feature.** `OrgSwitcher` (`apps/client/src/components/org/OrgSwitcher.tsx:33`) has `if (!isAdmin) return null;`, where `isAdmin` is `useIsAdmin()` — the **platform-level** role (`user.role === 'admin'`, an ops-configured superadmin allowlist via `ADMINS_LIST`), completely unrelated to org membership or even org ownership. Every fresh signup defaults to platform role `'user'` (`assignInitialRole`, `apps/microservices/auth/src/app/auth.controller.ts`). This means `OrgSwitcher` is invisible today to virtually everyone except platform superadmins — not just future invited members, but every regular org owner too. Without fixing this, an invited member who successfully accepts an invite still has no UI to see or switch into the org they joined. Fix: delete the `if (!isAdmin) return null;` line and the now-unused `useIsAdmin` import — the component already degrades gracefully with zero orgs (renders `org.noOrgs` inside the dropdown body), so no replacement gate is needed; every authenticated user should see this switcher.
 
 ## Client UI
 
