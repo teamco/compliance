@@ -96,7 +96,11 @@ export interface AuthStrategy {
   verifyMagicLink(token: string): Promise<AuthSession>;
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
-  listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]>;
+  // includeInactive is for resolving historical actor names (e.g. a past
+  // validator/approver) that must still display after that member was
+  // deactivated -- access-control call sites must never set it, since it
+  // would defeat the active-only filter membership checks rely on.
+  listOrgMembers(orgId: string, ownerId?: string, includeInactive?: boolean): Promise<OrgMember[]>;
   listOrgIdsForMember(userId: string): Promise<string[]>;
   createOrgInvite(
     orgId: string,

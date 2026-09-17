@@ -196,14 +196,23 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     return meta?.role ?? null;
   }
 
-  async listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
-    const { data: members, error } = await this.client
+  async listOrgMembers(
+    orgId: string,
+    ownerId?: string,
+    includeInactive?: boolean,
+  ): Promise<OrgMember[]> {
+    let query = this.client
       .from('organization_members')
-      .select('user_id, role')
-      .eq('org_id', orgId)
-      .eq('is_active', true);
+      .select('user_id, role, is_active')
+      .eq('org_id', orgId);
+    if (!includeInactive) query = query.eq('is_active', true);
+    const { data: members, error } = await query;
     if (error) throw new Error(error.message);
-    const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
+    const rows = (members ?? []) as Array<{
+      user_id: string;
+      role: string;
+      is_active: boolean;
+    }>;
 
     let result: OrgMember[] = [];
     if (rows.length > 0) {
@@ -228,7 +237,7 @@ export class SupabaseAuthStrategy implements AuthStrategy {
           role: r.role,
           email: profile?.email,
           displayName: profile?.display_name,
-          isActive: true, // query already filters to is_active = true
+          isActive: r.is_active,
         };
       });
     }

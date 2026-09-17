@@ -171,8 +171,25 @@ export class FakeAuthStrategy implements AuthStrategy {
     this.orgMembers.set(orgId, [...existing, member]);
   }
 
-  async listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
-    const members = (this.orgMembers.get(orgId) ?? []).filter((m) => m.isActive !== false);
+  async listOrgMembers(
+    orgId: string,
+    ownerId?: string,
+    includeInactive?: boolean,
+  ): Promise<OrgMember[]> {
+    const all = this.orgMembers.get(orgId) ?? [];
+    const filtered = includeInactive ? all : all.filter((m) => m.isActive !== false);
+    // Stored membership rows only carry userId/role/isActive (set at invite
+    // acceptance time) -- enrich with email/displayName here, same as the
+    // Supabase strategy's profiles join, so the UI never falls back to a raw
+    // uid for an otherwise-resolvable member.
+    const members = filtered.map((m) => {
+      const user = [...this.users.values()].find((u) => u.id === m.userId);
+      return {
+        ...m,
+        email: m.email ?? user?.email,
+        displayName: m.displayName ?? user?.displayName,
+      };
+    });
     if (!ownerId || members.some((m) => m.userId === ownerId)) return members;
     const owner = [...this.users.values()].find((u) => u.id === ownerId);
     return [{ userId: ownerId, role: 'owner', email: owner?.email }, ...members];

@@ -40,7 +40,9 @@ export function AssessmentsPage() {
 
   const { data: assessments = [], isPending } = useAssessments(orgId);
   const { data: types = [] } = useAssessmentTypes(orgId);
-  const { data: members = [] } = useOrgMembers(orgId);
+  // includeInactive: an assessor/approver may since have left the org, but
+  // their name should still resolve here rather than showing a raw uid.
+  const { data: members = [] } = useOrgMembers(orgId, { includeInactive: true });
   const deleteMut = useDeleteAssessment(orgId);
 
   const [createOpen, setCreateOpen] = useState(false);

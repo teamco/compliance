@@ -28,12 +28,20 @@ vi.mock('@icore/template-shared', async () => {
   };
 });
 
+const activeMembers = [
+  { userId: 'owner-1', displayName: 'Owner One', email: 'owner@example.com' },
+  { userId: 'validator-1', displayName: 'Validator One', email: 'validator@example.com' },
+  { userId: 'validator-no-name', email: 'no-name@example.com' },
+];
+const removedMember = {
+  userId: 'validator-removed',
+  displayName: 'Removed Validator',
+  email: 'removed@example.com',
+};
+
 vi.mock('@/queries/org-members', () => ({
-  useOrgMembers: () => ({
-    data: [
-      { userId: 'owner-1', displayName: 'Owner One', email: 'owner@example.com' },
-      { userId: 'validator-1', displayName: 'Validator One', email: 'validator@example.com' },
-    ],
+  useOrgMembers: (_orgId: string, opts?: { includeInactive?: boolean }) => ({
+    data: opts?.includeInactive ? [...activeMembers, removedMember] : activeMembers,
   }),
 }));
 
@@ -222,5 +230,45 @@ describe('IssueDetailSheet', () => {
     renderSheet({ ...baseIssue, status: 'in_progress' });
     fireEvent.click(screen.getByText('issues.detail.tab.validation'));
     expect(screen.getByText('Not fixed yet')).toBeDefined();
+  });
+
+  it('resolves a removed validator by name instead of showing their raw uid', () => {
+    mockValidations = [
+      {
+        id: 'val-1',
+        issueId: 'issue-1',
+        orgId: 'org-1',
+        requestedBy: 'owner-1',
+        validatorId: 'validator-removed',
+        status: 'rejected',
+        reviewNotes: 'Not fixed yet',
+        reviewedAt: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+    renderSheet({ ...baseIssue, status: 'in_progress' });
+    fireEvent.click(screen.getByText('issues.detail.tab.validation'));
+    expect(screen.getByText(/Removed Validator/)).toBeDefined();
+    expect(screen.queryByText(/validator-removed/)).toBeNull();
+  });
+
+  it('falls back to email when a member has no displayName', () => {
+    mockValidations = [
+      {
+        id: 'val-1',
+        issueId: 'issue-1',
+        orgId: 'org-1',
+        requestedBy: 'owner-1',
+        validatorId: 'validator-no-name',
+        status: 'rejected',
+        reviewNotes: 'Not fixed yet',
+        reviewedAt: '2026-01-02T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+      },
+    ];
+    renderSheet({ ...baseIssue, status: 'in_progress' });
+    fireEvent.click(screen.getByText('issues.detail.tab.validation'));
+    expect(screen.getByText(/no-name@example.com/)).toBeDefined();
+    expect(screen.queryByText(/validator-no-name/)).toBeNull();
   });
 });
