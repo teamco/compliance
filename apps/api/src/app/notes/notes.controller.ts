@@ -1185,6 +1185,26 @@ export class NotesController {
     return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
   }
 
+  @Post('issue-validations/:id/reassign-validator')
+  @ApiOperation({ summary: 'Reassign the validator of a pending issue validation' })
+  async reassignIssueValidator(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newValidatorId: string },
+  ) {
+    this.uid(req);
+    const validation = await this.notes.getIssueValidation(id);
+    if (!validation) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(validation.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newValidatorId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignIssueValidator(id, body.newValidatorId);
+  }
+
   @Get('issues/:id/validations')
   @ApiOperation({ summary: 'List validation history for an issue' })
   async listIssueValidations(

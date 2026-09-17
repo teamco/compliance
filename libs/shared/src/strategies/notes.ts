@@ -1437,6 +1437,7 @@ export interface NotesStrategy {
     decision: 'approved' | 'rejected',
     reviewNotes?: string,
   ): Promise<IssueValidation>;
+  reassignIssueValidator(validationId: string, newValidatorId: string): Promise<IssueValidation>;
   getIssueValidation(id: string): Promise<IssueValidation | null>;
   getActiveIssueValidation(issueId: string): Promise<IssueValidation | null>;
   listIssueValidations(issueId: string): Promise<IssueValidation[]>;

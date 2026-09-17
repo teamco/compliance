@@ -714,6 +714,13 @@ export class NotesController {
     );
   }
 
+  @MessagePattern('notes.issues.reassign-validator')
+  reassignIssueValidator(
+    @Payload() payload: { id: string; newValidatorId: string },
+  ): Promise<IssueValidation> {
+    return this.strategy.reassignIssueValidator(payload.id, payload.newValidatorId);
+  }
+
   @MessagePattern('notes.issues.validations.get')
   getIssueValidation(@Payload() payload: { id: string }): Promise<IssueValidation | null> {
     return this.strategy.getIssueValidation(payload.id);

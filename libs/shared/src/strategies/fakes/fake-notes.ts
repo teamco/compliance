@@ -3799,6 +3799,23 @@ export class FakeNotesStrategy implements NotesStrategy {
     return validation;
   }
 
+  async reassignIssueValidator(
+    validationId: string,
+    newValidatorId: string,
+  ): Promise<IssueValidation> {
+    const validation = this.issueValidations.find((v) => v.id === validationId);
+    if (!validation) throw new Error(`issue_validation_not_found: ${validationId}`);
+    if (validation.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${validationId}`);
+    }
+    const issue = this.issues.get(validation.issueId);
+    if (issue && issue.ownerId === newValidatorId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    validation.validatorId = newValidatorId;
+    return validation;
+  }
+
   async getIssueValidation(id: string): Promise<IssueValidation | null> {
     return this.issueValidations.find((v) => v.id === id) ?? null;
   }

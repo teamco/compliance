@@ -2334,6 +2334,27 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toIssueValidation(ok(data, error));
   }
 
+  async reassignIssueValidator(
+    validationId: string,
+    newValidatorId: string,
+  ): Promise<IssueValidation> {
+    const current = await this.getIssueValidationOrThrow(validationId);
+    if (current.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${validationId}`);
+    }
+    const issue = await this.getIssue(current.issueId);
+    if (issue && issue.ownerId === newValidatorId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .update({ validator_id: newValidatorId })
+      .eq('id', validationId)
+      .select()
+      .single();
+    return this.toIssueValidation(ok(data, error));
+  }
+
   async getActiveIssueValidation(issueId: string): Promise<IssueValidation | null> {
     const { data, error } = await this.db
       .from('issue_validations')

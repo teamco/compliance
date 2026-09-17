@@ -56,8 +56,10 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     deleteIssue: vi.fn().mockResolvedValue(undefined),
     listIssueValidations: vi.fn().mockResolvedValue([]),
     listPendingIssueValidations: vi.fn().mockResolvedValue([]),
+    getIssueValidation: vi.fn().mockResolvedValue(PENDING_VALIDATION),
     submitIssueForValidation: vi.fn().mockResolvedValue(ISSUE),
     reassignIssueOwner: vi.fn().mockResolvedValue(ISSUE),
+    reassignIssueValidator: vi.fn().mockResolvedValue(PENDING_VALIDATION),
     reviewIssueValidation: vi.fn().mockResolvedValue(PENDING_VALIDATION),
     ...overrides,
   } as unknown as NotesClientService;
@@ -336,6 +338,51 @@ describe('NotesController — reassignIssueOwner', () => {
     await expect(
       makeController(notes).reassignIssueOwner(reqAsAdmin('platform-admin'), 'missing', {
         newOwnerId: 'owner-2',
+      }),
+    ).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('NotesController — reassignIssueValidator', () => {
+  it('rejects a non-manager caller', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+    };
+    await expect(
+      makeController(notes, auth).reassignIssueValidator(reqAs('viewer-1'), 'val-1', {
+        newValidatorId: 'validator-2',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(notes.reassignIssueValidator).not.toHaveBeenCalled();
+  });
+
+  it('rejects a new validator who is not an active org member', async () => {
+    const notes = makeNotes();
+    const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+    await expect(
+      makeController(notes, auth).reassignIssueValidator(reqAs('org-creator'), 'val-1', {
+        newValidatorId: 'not-a-member',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('allows the org owner to reassign a pending validation', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'validator-2', role: 'viewer' }]),
+    };
+    await makeController(notes, auth).reassignIssueValidator(reqAs('org-creator'), 'val-1', {
+      newValidatorId: 'validator-2',
+    });
+    expect(notes.reassignIssueValidator).toHaveBeenCalledWith('val-1', 'validator-2');
+  });
+
+  it('throws NotFound when the validation does not exist', async () => {
+    const notes = makeNotes({ getIssueValidation: vi.fn().mockResolvedValue(null) });
+    await expect(
+      makeController(notes).reassignIssueValidator(reqAsAdmin('platform-admin'), 'missing', {
+        newValidatorId: 'validator-2',
       }),
     ).rejects.toThrow(NotFoundException);
   });

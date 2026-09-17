@@ -372,6 +372,63 @@ describe('issues', () => {
     );
   });
 
+  it('reassigns a pending validation to a new validator', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    const reassigned = await s.reassignIssueValidator(validation!.id, 'validator-2');
+    expect(reassigned.validatorId).toBe('validator-2');
+  });
+
+  it('forbids reassigning a validator to the issue owner', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await expect(s.reassignIssueValidator(validation!.id, 'owner-1')).rejects.toThrow(
+      'issue_validation_self_validation_forbidden',
+    );
+  });
+
+  it('refuses to reassign an already-decided validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await s.reviewIssueValidation(validation!.id, 'validator-1', 'approved');
+    await expect(s.reassignIssueValidator(validation!.id, 'validator-2')).rejects.toThrow(
+      `issue_validation_already_decided: ${validation!.id}`,
+    );
+  });
+
   it('clears resolvedAt when a closed issue is reopened via generic update', async () => {
     const issue = await s.createIssue('org1', 'u1', {
       title: 'T',

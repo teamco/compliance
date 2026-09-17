@@ -798,6 +798,13 @@ export class NotesClientService {
     });
   }
 
+  reassignIssueValidator(id: string, newValidatorId: string): Promise<IssueValidation> {
+    return signedSend<IssueValidation>(this.client, 'notes.issues.reassign-validator', {
+      id,
+      newValidatorId,
+    });
+  }
+
   getIssueValidation(id: string): Promise<IssueValidation | null> {
     return signedSend<IssueValidation | null>(this.client, 'notes.issues.validations.get', {
       id,
