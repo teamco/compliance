@@ -361,28 +361,17 @@ export class SupabaseAuthStrategy implements AuthStrategy {
   }
 
   async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
-    const { error } = await this.client
-      .from('organization_members')
-      .update({ is_active: false, deactivated_at: new Date().toISOString() })
-      .eq('org_id', orgId)
-      .eq('user_id', userId);
-    if (error) throw new Error(error.message);
-
-    // Revoke any pending invites for this same org + email so a reactivation
-    // can't smuggle the removed member back in at a higher role with zero
-    // manager action. Skip silently if the user has no email on record.
+    // Deactivation and invite-revocation happen in a single Postgres
+    // transaction (see deactivate_org_member RPC) so a crash between two
+    // separate client round-trips can't leave a deactivated member with a
+    // still-pending invite for the same org.
     const profile = await this.getProfile(userId);
-    if (!profile?.email) return;
-    // ilike's pattern isn't auto-escaped -- an email containing %/_ would be
-    // interpreted as a wildcard and could match other members' invites.
-    const escapedEmail = profile.email.replace(/[%_\\]/g, (c) => `\\${c}`);
-    const { error: revokeError } = await this.client
-      .from('organization_invites')
-      .update({ status: 'revoked' })
-      .eq('org_id', orgId)
-      .eq('status', 'pending')
-      .ilike('email', escapedEmail);
-    if (revokeError) throw new Error(revokeError.message);
+    const { error } = await this.client.rpc('deactivate_org_member', {
+      p_org_id: orgId,
+      p_user_id: userId,
+      p_email: profile?.email ?? null,
+    });
+    if (error) throw new Error(error.message);
   }
 
   // Mirrors sendMagicLink's signInWithOtp + emailRedirectTo delivery mechanism --
