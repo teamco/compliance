@@ -78,5 +78,5 @@ export interface AuthStrategy {
   verifyMagicLink(token: string): Promise<AuthSession>;
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
-  listOrgMembers(orgId: string): Promise<OrgMember[]>;
+  listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]>;
 }

@@ -136,8 +136,8 @@ export class AuthController {
   }
 
   @MessagePattern('auth.org.members.list')
-  listOrgMembers(@Payload() payload: { orgId: string }): Promise<OrgMember[]> {
-    return this.strategy.listOrgMembers(payload.orgId);
+  listOrgMembers(@Payload() payload: { orgId: string; ownerId?: string }): Promise<OrgMember[]> {
+    return this.strategy.listOrgMembers(payload.orgId, payload.ownerId);
   }
 
   @MessagePattern('auth.profile.update')

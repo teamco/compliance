@@ -66,8 +66,8 @@ export class AuthClientService {
     } | null>(this.client, 'auth.profile.get', { uid });
   }
 
-  listOrgMembers(orgId: string): Promise<OrgMember[]> {
-    return signedSend<OrgMember[]>(this.client, 'auth.org.members.list', { orgId });
+  listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
+    return signedSend<OrgMember[]>(this.client, 'auth.org.members.list', { orgId, ownerId });
   }
 
   updateProfile(uid: string, displayName: string): Promise<void> {

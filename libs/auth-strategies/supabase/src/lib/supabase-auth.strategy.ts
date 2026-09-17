@@ -193,7 +193,7 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     return meta?.role ?? null;
   }
 
-  async listOrgMembers(orgId: string): Promise<OrgMember[]> {
+  async listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
     const { data: members, error } = await this.client
       .from('organization_members')
       .select('user_id, role')
@@ -201,47 +201,49 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     if (error) throw new Error(error.message);
     const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
 
-    // organization_members has no writer in the app today (v1 scoping decision), so it
-    // will typically be empty. Always include the org's creator as an implicit "owner"
-    // member so the Owner picker has at least one selectable option, and so this method
-    // is correct once organization_members does get populated later.
-    const { data: orgProfile, error: orgProfileError } = await this.client
-      .from('org_profiles')
-      .select('user_id')
-      .eq('id', orgId)
-      .maybeSingle();
-    if (orgProfileError) throw new Error(orgProfileError.message);
-    const ownerId = (orgProfile as { user_id?: string } | null)?.user_id;
-    if (ownerId && !rows.some((r) => r.user_id === ownerId)) {
-      rows.push({ user_id: ownerId, role: 'owner' });
+    let result: OrgMember[] = [];
+    if (rows.length > 0) {
+      const { data: profiles, error: profilesError } = await this.client
+        .from('profiles')
+        .select('id, email, display_name')
+        .in(
+          'id',
+          rows.map((r) => r.user_id),
+        );
+      if (profilesError) throw new Error(profilesError.message);
+      const profileMap = new Map(
+        (profiles ?? []).map((p) => {
+          const row = p as { id: string; email?: string; display_name?: string };
+          return [row.id, row];
+        }),
+      );
+      result = rows.map((r) => {
+        const profile = profileMap.get(r.user_id);
+        return {
+          userId: r.user_id,
+          role: r.role,
+          email: profile?.email,
+          displayName: profile?.display_name,
+        };
+      });
     }
 
-    if (rows.length === 0) return [];
+    // organization_members has no writer in the app today (v1 scoping decision), so it
+    // will typically be empty. Always union in the org's creator as an implicit "owner"
+    // member so the Owner picker has at least one selectable option, and so this method
+    // is correct once organization_members does get populated later.
+    if (!ownerId || result.some((m) => m.userId === ownerId)) return result;
 
-    const { data: profiles, error: profilesError } = await this.client
-      .from('profiles')
-      .select('id, email, display_name')
-      .in(
-        'id',
-        rows.map((r) => r.user_id),
-      );
-    if (profilesError) throw new Error(profilesError.message);
-    const profileMap = new Map(
-      (profiles ?? []).map((p) => {
-        const row = p as { id: string; email?: string; display_name?: string };
-        return [row.id, row];
-      }),
-    );
-
-    return rows.map((r) => {
-      const profile = profileMap.get(r.user_id);
-      return {
-        userId: r.user_id,
-        role: r.role,
-        email: profile?.email,
-        displayName: profile?.display_name,
-      };
-    });
+    const ownerProfile = await this.getProfile(ownerId);
+    return [
+      {
+        userId: ownerId,
+        role: 'owner',
+        displayName: ownerProfile?.displayName,
+        email: ownerProfile?.email,
+      },
+      ...result,
+    ];
   }
 
   private toSession(s: {

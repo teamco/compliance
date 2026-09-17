@@ -161,7 +161,7 @@ export class AuthController {
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
     this.checkOrgAccess(req, org, 'read');
-    return this.authClient.listOrgMembers(orgId);
+    return this.authClient.listOrgMembers(orgId, org.userId);
   }
 
   @Post('role')
