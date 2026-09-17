@@ -373,12 +373,15 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     // manager action. Skip silently if the user has no email on record.
     const profile = await this.getProfile(userId);
     if (!profile?.email) return;
+    // ilike's pattern isn't auto-escaped -- an email containing %/_ would be
+    // interpreted as a wildcard and could match other members' invites.
+    const escapedEmail = profile.email.replace(/[%_\\]/g, (c) => `\\${c}`);
     const { error: revokeError } = await this.client
       .from('organization_invites')
       .update({ status: 'revoked' })
       .eq('org_id', orgId)
       .eq('status', 'pending')
-      .ilike('email', profile.email);
+      .ilike('email', escapedEmail);
     if (revokeError) throw new Error(revokeError.message);
   }
 
