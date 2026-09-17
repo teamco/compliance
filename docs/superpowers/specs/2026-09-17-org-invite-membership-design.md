@@ -6,7 +6,7 @@ Every signup currently ends up as the sole member of every org they create — t
 
 Two concrete gaps, both confirmed by direct code reading (not assumed):
 
-1. **No membership writer exists anywhere.** `organization_members` (created by `20260607000007_multi_org.sql`) and its TypeScript type `OrgMember` (`libs/shared/src/strategies/auth.ts:45`) already exist. `listOrgMembers` (`libs/auth-strategies/supabase/src/lib/supabase-auth.strategy.ts:194-244`) already reads it correctly — including unioning in the org's creator as an implicit owner — and was written with a comment anticipating this table would eventually be populated. But nothing ever writes to it: `FakeAuthStrategy.seedOrgMember` (`libs/shared/src/strategies/fakes/fake-auth.ts:166-169`) is test-fixture-only, never called from application code.
+1. **No membership writer exists anywhere, and the two strategies already disagree about reads.** `organization_members` (created by `20260607000007_multi_org.sql`) and its TypeScript type `OrgMember` (`libs/shared/src/strategies/auth.ts:45`) already exist. `SupabaseAuthStrategy.listOrgMembers` (`libs/auth-strategies/supabase/src/lib/supabase-auth.strategy.ts:196-244`) unions in the org's creator as an implicit owner via a direct SQL join against `org_profiles` — but `FakeAuthStrategy.listOrgMembers` (`fake-auth.ts:171-173`) does no such thing, it just returns whatever was seeded, because `FakeAuthStrategy` has no awareness of `Organization` records at all (that's `FakeNotesStrategy`'s domain, a separate strategy class). **This is a real pre-existing Fake/Supabase parity bug**, surfaced during this design's own research, not introduced by it: under `FakeAuthStrategy` (used for all local dev and every gateway unit test this session), the creator never appears as an implicit member today. `FakeAuthStrategy.seedOrgMember` (`fake-auth.ts:166-169`) is test-fixture-only, never called from application code.
 
 2. **CASL's authorization check doesn't recognize membership at all, even conceptually.** `checkOrgAccess` (`apps/api/src/app/notes/notes.controller.ts:~2095`, used by ~130 routes hardened across Notes Gateway Hardening Phases 1-3, PRs #58/#63/#64) calls `ability.can(action, subject('Organization', { id: org.id, userId: org.userId }))`, and the CASL rule underneath is keyed purely on `Organization.userId` (the creator field). This means even after `organization_members` is populated, **every hardened route in this codebase would still reject a real, valid org member who isn't the creator.** Building the invite flow without fixing this accomplishes nothing for the actual motivating problem.
 
@@ -39,7 +39,9 @@ create unique index organization_invites_pending_unique
   where status = 'pending';
 ```
 
-`role` excludes `'owner'` — a new member is never invited as owner; ownership is the creator-only concept `organization_members` already reserves implicitly (the "union in the creator" logic in `listOrgMembers` stays as-is). The partial unique index prevents two simultaneous pending invites to the same email for the same org (a resend reuses/updates the existing row rather than creating a duplicate).
+`role` excludes `'owner'` — a new member is never invited as owner; ownership is the creator-only concept `organization_members` already reserves implicitly. The partial unique index prevents two simultaneous pending invites to the same email for the same org (a resend reuses/updates the existing row rather than creating a duplicate).
+
+**Fixing the `listOrgMembers` parity bug is part of this design, not a separate cleanup.** Widen the signature to `listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]>` in the `AuthStrategy` interface. The caller (the gateway, which already has the `Organization` object at every call site) passes `org.userId` as `ownerId`. Both strategies apply the identical trivial union — "if `ownerId` is set and not already present in the result with role `'owner'`, prepend it" — as their own last step before returning, keeping the two strategies domain-isolated (neither needs to know about the other's internals) while finally behaving identically. `SupabaseAuthStrategy`'s existing SQL-join-based union is replaced by this simpler, shared-shape logic so both implementations do the same thing the same way, not two different ways that happen to currently agree only in production.
 
 New TypeScript interface, alongside `OrgMember` in `libs/shared/src/strategies/auth.ts`:
 
@@ -101,7 +103,7 @@ private async checkOrgAccess(
   const uid = req.user?.uid;
   if (org.userId === uid) return; // owner: full access, no lookup needed
 
-  const members = await this.auth.listOrgMembers(org.id);
+  const members = await this.auth.listOrgMembers(org.id, org.userId);
   const membership = members.find((m) => m.userId === uid);
   if (!membership) throw new ForbiddenException();
 
@@ -112,9 +114,11 @@ private async checkOrgAccess(
 }
 ```
 
-This reuses `listOrgMembers` (already correct, already unions in the creator) rather than adding a new single-membership-lookup method — avoids a second, potentially-inconsistent read path.
+This reuses the newly-widened `listOrgMembers` rather than adding a new single-membership-lookup method — avoids a second, potentially-inconsistent read path.
 
-**Blast radius, confirmed exactly, not estimated:** 126 existing `this.checkOrgAccess(...)` call sites across `notes.controller.ts` (2300 lines total) need `await` added, since the method itself becomes `async`. Independently verified that all 126 are already inside a method declared `async` (zero exceptions), so this is a mechanical, uniform, low-risk change — add one keyword per call site, not a structural rewrite. Same shape of work as the Notes Gateway Hardening phases themselves, just simpler (one repeated edit, not per-route judgment).
+**Blast radius, confirmed exactly, not estimated:** 126 existing `this.checkOrgAccess(...)` call sites in `notes.controller.ts` (2300 lines total) need `await` added, since the method itself becomes `async`. Independently verified that all 126 are already inside a method declared `async` (zero exceptions), so this is a mechanical, uniform, low-risk change — add one keyword per call site, not a structural rewrite. Same shape of work as the Notes Gateway Hardening phases themselves, just simpler (one repeated edit, not per-route judgment).
+
+**`checkOrgAccess` is duplicated, not singular — both copies need the same rewrite.** A second, byte-for-byte-identical private copy exists in `apps/api/src/app/auth/auth.controller.ts:234-241`, used by exactly 1 call site (`GET auth/org/members`, line 163 in the same file). Found during plan research, not assumed. Both copies get the async/membership-aware/admin-bypass rewrite identically — missing the second one would leave `GET auth/org/members` on the old creator-only check while every other route in the app recognizes membership, a subtle and easy-to-miss inconsistency if not called out explicitly.
 
 **Platform-admin bypass must be preserved.** `AbilityFactory.forUser` (`apps/api/src/app/abilities/ability.factory.ts`) currently grants a platform-role admin (`VerifiedToken.role === 'admin'`) `can('manage', 'all')` via CASL, meaning today's `checkOrgAccess` already lets a platform admin act on any org regardless of creator/membership. The rewrite must check `req.user?.role === 'admin'` and short-circuit before any membership lookup (shown in the code above) — dropping this silently regresses platform admins' existing access, a real behavior change nobody asked for.
 
@@ -146,7 +150,7 @@ The client's `OrgSwitcher` component (`apps/client/src/components/org/OrgSwitche
 
 ## Client UI
 
-1. **Org Settings → new "Members" section.** List current members (`useOrgMembers`, wraps the already-correct `listOrgMembers`) with email, role, joined date; owner/admin can change a member's role (`<Select>`) or remove a member (`AlertDialog`, since removal is destructive per this repo's overlay convention); an "Invite member" button opens a `Dialog` (email input + role `<Select>`, footer Cancel/Send per this repo's Dialog convention).
+1. **Org Settings → new "Members" section.** List current members (`useOrgMembers`, wraps the now-widened, now-parity-fixed `listOrgMembers`) with email, role, joined date; owner/admin can change a member's role (`<Select>`) or remove a member (`AlertDialog`, since removal is destructive per this repo's overlay convention); an "Invite member" button opens a `Dialog` (email input + role `<Select>`, footer Cancel/Send per this repo's Dialog convention).
 2. **Same section, pending-invites list.** Email, role, invited date, expiry, with Resend and Revoke actions (owner/admin only, same as invite creation).
 3. **New route `/accept-invite`**, reads `?token=` from the URL. Fetches the preview (`GET org-invites/:token`) before requiring auth, rendering "You've been invited to join {orgName} as {role} by {inviterName}." If not authenticated, prompts sign-up/login (existing flow), carrying the token through (query param survives the redirect). Once authenticated, an "Accept" button calls `POST org-invites/:token/accept`, then navigates into the newly-joined org's dashboard (sets it as the active org via the existing `useActiveOrgStore`).
 4. i18n additions across all 4 locales (en/ru/es/he) for: the Members section labels, the invite dialog, the accept-invite page copy, and error states (expired/already-accepted/email-mismatch).
