@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Building2, ChevronDown, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { useIsAdmin } from '@icore/template-shared';
 import { useOrganizations } from '@/queries/notes';
 import { useActiveOrgStore } from '@/stores/active-org';
 
 export function OrgSwitcher() {
   const { t } = useTranslation();
-  const isAdmin = useIsAdmin();
   const navigate = useNavigate();
   const { data: orgs } = useOrganizations();
   const { activeOrgId, setActiveOrgId } = useActiveOrgStore();
@@ -29,8 +27,6 @@ export function OrgSwitcher() {
       setActiveOrgId(orgs[0]!.id);
     }
   }, [orgs, activeOrgId, setActiveOrgId]);
-
-  if (!isAdmin) return null;
 
   const activeOrg = orgs?.find((o) => o.id === activeOrgId);
 
