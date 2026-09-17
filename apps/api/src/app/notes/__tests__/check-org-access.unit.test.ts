@@ -68,6 +68,62 @@ describe('checkOrgAccess role matrix', () => {
     await expect(controller.getPolicy(reqAs('member-1'), 'p1')).resolves.toBeDefined();
   });
 
+  it('allows an org-admin member to write', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'admin' }]),
+    };
+    const notes = makeNotes({
+      getPolicy: vi.fn().mockResolvedValue({ id: 'p1', orgId: 'org-1' }),
+      updatePolicy: vi.fn().mockResolvedValue({ id: 'p1', title: 'Updated' }),
+    });
+    const controller = makeController(notes, auth);
+    await expect(
+      controller.updatePolicy(reqAs('member-1'), 'p1', { title: 'Updated' }),
+    ).resolves.toBeDefined();
+    expect(notes.updatePolicy).toHaveBeenCalled();
+  });
+
+  it('allows a member holding the owner role to write', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'owner' }]),
+    };
+    const notes = makeNotes({
+      getPolicy: vi.fn().mockResolvedValue({ id: 'p1', orgId: 'org-1' }),
+      updatePolicy: vi.fn().mockResolvedValue({ id: 'p1', title: 'Updated' }),
+    });
+    const controller = makeController(notes, auth);
+    await expect(
+      controller.updatePolicy(reqAs('member-1'), 'p1', { title: 'Updated' }),
+    ).resolves.toBeDefined();
+    expect(notes.updatePolicy).toHaveBeenCalled();
+  });
+
+  // Regression guard: the role check must be an allowlist. OrgMember.role is an
+  // unconstrained `string`, so an unrecognized value must deny writes, not grant them.
+  it('rejects a member with an unrecognized role attempting a write', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'auditor' }]),
+    };
+    const notes = makeNotes({
+      getPolicy: vi.fn().mockResolvedValue({ id: 'p1', orgId: 'org-1' }),
+      updatePolicy: vi.fn(),
+    });
+    const controller = makeController(notes, auth);
+    await expect(controller.updatePolicy(reqAs('member-1'), 'p1', {})).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(notes.updatePolicy).not.toHaveBeenCalled();
+  });
+
+  it('allows a member with an unrecognized role read access', async () => {
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'auditor' }]),
+    };
+    const notes = makeNotes({ getPolicy: vi.fn().mockResolvedValue({ id: 'p1', orgId: 'org-1' }) });
+    const controller = makeController(notes, auth);
+    await expect(controller.getPolicy(reqAs('member-1'), 'p1')).resolves.toBeDefined();
+  });
+
   it('allows a viewer read access', async () => {
     const auth = {
       listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'member-1', role: 'viewer' }]),

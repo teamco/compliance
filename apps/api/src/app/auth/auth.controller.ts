@@ -244,7 +244,11 @@ export class AuthController {
     const membership = members.find((m) => m.userId === uid);
     if (!membership) throw new ForbiddenException();
 
-    if (membership.role === 'viewer' && action !== 'read') throw new ForbiddenException();
+    // Allowlist, not denylist: OrgMember.role is an unconstrained `string`, so an
+    // unrecognized value must deny writes rather than fall through to granting them.
+    if (action !== 'read' && membership.role !== 'owner' && membership.role !== 'admin') {
+      throw new ForbiddenException();
+    }
   }
 
   private async checkOrgOwner(
