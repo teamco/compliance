@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useSearch, Link } from '@tanstack/react-router';
 import { type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
@@ -15,11 +15,28 @@ import { Label } from '../components/ui/label';
 
 type Mode = 'password' | 'magicLinkRequest' | 'magicLinkSent' | 'register' | 'registerSent';
 
+// Only a same-origin relative path is a safe redirect target — anything else
+// (protocol-relative "//evil.com", backslash tricks, absolute URLs) is rejected.
+export function isSafeReturnTo(path: string): boolean {
+  if (!path) return false;
+  if (path === '/') return true;
+  return /^\/[^/\\]/.test(path);
+}
+
 function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const notify = useNotify();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { returnTo } = useSearch({ from: '/login' });
+
+  async function goToNext() {
+    if (returnTo && isSafeReturnTo(returnTo)) {
+      window.location.assign(returnTo);
+      return;
+    }
+    await navigate({ to: '/dashboard' });
+  }
 
   const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
@@ -42,7 +59,7 @@ function LoginPage() {
       });
       setAuth(session);
       notify.success(t('auth.login'));
-      await navigate({ to: '/dashboard' });
+      await goToNext();
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('error.unknown'));
     } finally {
@@ -73,7 +90,7 @@ function LoginPage() {
       });
       setAuth(session);
       notify.success(t('auth.register'));
-      await navigate({ to: '/dashboard' });
+      await goToNext();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       if (msg === 'email_confirmation_required') {
@@ -457,5 +474,8 @@ function LoginPage() {
 }
 
 export const Route = createFileRoute('/login')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    returnTo: typeof search['returnTo'] === 'string' ? search['returnTo'] : undefined,
+  }),
   component: LoginPage,
 });

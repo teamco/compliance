@@ -3,9 +3,9 @@ import { useAuthStore } from '@icore/template-shared';
 import { MainLayout } from '../layouts/MainLayout';
 
 export const Route = createFileRoute('/_dashboard')({
-  beforeLoad: () => {
+  beforeLoad: ({ location }) => {
     if (!useAuthStore.getState().accessToken) {
-      throw redirect({ to: '/login' });
+      throw redirect({ to: '/login', search: { returnTo: location.href } });
     }
   },
   component: () => (

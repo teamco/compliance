@@ -18,7 +18,7 @@ export const Route = createFileRoute('/accept-invite')({
   component: AcceptInvitePage,
 });
 
-function AcceptInvitePage() {
+export function AcceptInvitePage() {
   const { t } = useTranslation();
   const notify = useNotify();
   const { token } = useSearch({ from: '/accept-invite' });
@@ -57,7 +57,9 @@ function AcceptInvitePage() {
         <p>{t('acceptInvite.preview', { orgName: preview.orgName, role: preview.role })}</p>
         <p className="text-sm text-muted-foreground">{t('acceptInvite.loginPrompt')}</p>
         <Button asChild>
-          <Link to="/login">{t('auth.signIn')}</Link>
+          <Link to="/login" search={{ returnTo: `/accept-invite?token=${token}` }}>
+            {t('auth.signIn')}
+          </Link>
         </Button>
       </div>
     );
