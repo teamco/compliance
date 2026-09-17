@@ -60,6 +60,19 @@ describe('exceptions', () => {
     expect(approved.reviewedBy).toBe('approver-1');
   });
 
+  it('reassigns an exception owner', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    const reassigned = await s.reassignExceptionOwner(exc.id, 'owner-2');
+    expect(reassigned.ownerId).toBe('owner-2');
+  });
+
   it('rejects an exception', async () => {
     const exc = await s.createException('org1', 'u1', {
       controlCode: 'AC-1',

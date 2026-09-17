@@ -601,6 +601,13 @@ export class NotesController {
     return this.strategy.rejectException(payload.id, payload.approverId);
   }
 
+  @MessagePattern('notes.exceptions.reassign-owner')
+  reassignExceptionOwner(
+    @Payload() payload: { id: string; newOwnerId: string },
+  ): Promise<Exception> {
+    return this.strategy.reassignExceptionOwner(payload.id, payload.newOwnerId);
+  }
+
   @MessagePattern('notes.exceptions.delete')
   deleteException(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteException(payload.id);

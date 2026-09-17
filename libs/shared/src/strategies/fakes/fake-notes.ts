@@ -3558,6 +3558,18 @@ export class FakeNotesStrategy implements NotesStrategy {
     return rejected;
   }
 
+  async reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception> {
+    const existing = this.exceptions.get(id);
+    if (!existing) throw new Error(`exception_not_found: ${id}`);
+    const updated: Exception = {
+      ...existing,
+      ownerId: newOwnerId,
+      updatedAt: new Date().toISOString(),
+    };
+    this.exceptions.set(id, updated);
+    return updated;
+  }
+
   async deleteException(id: string): Promise<void> {
     if (!this.exceptions.has(id)) throw new Error(`exception_not_found: ${id}`);
     this.exceptions.delete(id);

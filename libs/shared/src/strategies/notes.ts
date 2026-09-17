@@ -1401,6 +1401,7 @@ export interface NotesStrategy {
   getException(id: string): Promise<Exception | null>;
   updateException(id: string, patch: ExceptionPatch): Promise<Exception>;
   approveException(id: string, approverId: string): Promise<Exception>;
+  reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception>;
   rejectException(id: string, approverId: string): Promise<Exception>;
   requestExceptionRenewal(
     exceptionId: string,

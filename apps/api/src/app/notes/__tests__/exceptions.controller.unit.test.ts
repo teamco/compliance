@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { AuthClientService } from '@icore/auth-client';
@@ -65,17 +65,23 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
       .mockResolvedValue({ ...PENDING_RENEWAL, status: 'approved' as const }),
     approveException: vi.fn().mockResolvedValue({ ...EXCEPTION, status: 'approved' }),
     rejectException: vi.fn().mockResolvedValue({ ...EXCEPTION, status: 'rejected' }),
+    reassignExceptionOwner: vi.fn().mockResolvedValue({ ...EXCEPTION, ownerId: 'owner-2' }),
     ...overrides,
   } as unknown as NotesClientService;
 }
 
-function makeController(notes: NotesClientService): NotesController {
+function makeController(
+  notes: NotesClientService,
+  auth: { listOrgMembers: ReturnType<typeof vi.fn> } = {
+    listOrgMembers: vi.fn().mockResolvedValue([]),
+  },
+): NotesController {
   return new NotesController(
     notes,
     {} as unknown as AiClientService,
     new AbilityFactory(),
     {} as unknown as StandardsQueueService,
-    { listOrgMembers: vi.fn().mockResolvedValue([]) } as unknown as AuthClientService,
+    auth as unknown as AuthClientService,
   );
 }
 
@@ -393,5 +399,50 @@ describe('exceptions org scoping (Phase 1 hardening)', () => {
         makeController(notes).getException(reqAs('org-creator'), 'missing'),
       ).rejects.toThrow(NotFoundException);
     });
+  });
+});
+
+describe('NotesController — reassignExceptionOwner', () => {
+  it('rejects a non-manager caller', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+    };
+    await expect(
+      makeController(notes, auth).reassignExceptionOwner(reqAs('viewer-1'), 'exception-1', {
+        newOwnerId: 'owner-2',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(notes.reassignExceptionOwner).not.toHaveBeenCalled();
+  });
+
+  it('rejects a new owner who is not an active org member', async () => {
+    const notes = makeNotes();
+    const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+    await expect(
+      makeController(notes, auth).reassignExceptionOwner(reqAs('org-creator'), 'exception-1', {
+        newOwnerId: 'not-a-member',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('allows the org owner to reassign', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'owner-2', role: 'viewer' }]),
+    };
+    await makeController(notes, auth).reassignExceptionOwner(reqAs('org-creator'), 'exception-1', {
+      newOwnerId: 'owner-2',
+    });
+    expect(notes.reassignExceptionOwner).toHaveBeenCalledWith('exception-1', 'owner-2');
+  });
+
+  it('throws NotFound when the exception does not exist', async () => {
+    const notes = makeNotes({ getException: vi.fn().mockResolvedValue(null) });
+    await expect(
+      makeController(notes).reassignExceptionOwner(reqAsAdmin('platform-admin'), 'missing', {
+        newOwnerId: 'owner-2',
+      }),
+    ).rejects.toThrow(NotFoundException);
   });
 });

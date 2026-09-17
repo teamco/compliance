@@ -993,6 +993,26 @@ export class NotesController {
     return this.notes.rejectException(id, userId);
   }
 
+  @Post('exceptions/:id/reassign-owner')
+  @ApiOperation({ summary: 'Reassign the owner of an exception' })
+  async reassignExceptionOwner(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newOwnerId: string },
+  ) {
+    this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newOwnerId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignExceptionOwner(id, body.newOwnerId);
+  }
+
   @Delete('exceptions/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete exception' })

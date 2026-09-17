@@ -1955,6 +1955,17 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toException(ok(data, error));
   }
 
+  async reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception> {
+    await this.getExceptionOrThrow(id);
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update({ owner_id: newOwnerId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
   async deleteException(id: string): Promise<void> {
     const { error } = await this.db.from('exceptions').delete().eq('id', id);
     if (error) throw new Error(error.message);

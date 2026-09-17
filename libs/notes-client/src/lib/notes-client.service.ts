@@ -698,6 +698,13 @@ export class NotesClientService {
     return signedSend<Exception>(this.client, 'notes.exceptions.reject', { id, approverId });
   }
 
+  reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception> {
+    return signedSend<Exception>(this.client, 'notes.exceptions.reassign-owner', {
+      id,
+      newOwnerId,
+    });
+  }
+
   deleteException(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.exceptions.delete', { id });
   }
