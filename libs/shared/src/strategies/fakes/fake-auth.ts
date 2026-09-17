@@ -174,7 +174,8 @@ export class FakeAuthStrategy implements AuthStrategy {
   async listOrgMembers(orgId: string, ownerId?: string): Promise<OrgMember[]> {
     const members = this.orgMembers.get(orgId) ?? [];
     if (!ownerId || members.some((m) => m.userId === ownerId)) return members;
-    return [{ userId: ownerId, role: 'owner' }, ...members];
+    const owner = [...this.users.values()].find((u) => u.id === ownerId);
+    return [{ userId: ownerId, role: 'owner', email: owner?.email }, ...members];
   }
 
   async listOrgIdsForMember(userId: string): Promise<string[]> {

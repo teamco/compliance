@@ -43,6 +43,19 @@ describe('FakeAuthStrategy.listOrgMembers', () => {
     expect(members).toContainEqual(expect.objectContaining({ userId: 'member-1', role: 'viewer' }));
   });
 
+  it('enriches the synthesized owner row with email when the user exists', async () => {
+    const strategy = new FakeAuthStrategy();
+    const session = await strategy.signUp('owner@example.com', 'password123');
+    const members = await strategy.listOrgMembers('org-1', session.user.id);
+    expect(members).toContainEqual(
+      expect.objectContaining({
+        userId: session.user.id,
+        role: 'owner',
+        email: 'owner@example.com',
+      }),
+    );
+  });
+
   it('does not duplicate the owner if already seeded as a member', async () => {
     const strategy = new FakeAuthStrategy();
     strategy.seedOrgMember('org-1', { userId: 'creator-1', role: 'owner' });
