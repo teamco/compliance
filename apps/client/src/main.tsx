@@ -29,7 +29,12 @@ declare module '@tanstack/react-router' {
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
 
-setApiUnauthorizedHandler(() => router.navigate({ to: '/login' }));
+setApiUnauthorizedHandler(() => {
+  // Guard against re-nesting returnTo when several protected requests 401 in a
+  // burst (e.g. after token expiry) and this handler fires more than once.
+  if (router.state.location.pathname === '/login') return;
+  void router.navigate({ to: '/login', search: { returnTo: router.state.location.href } });
+});
 
 wireShadcnNotifier();
 
