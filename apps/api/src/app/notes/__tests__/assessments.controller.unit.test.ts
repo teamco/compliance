@@ -51,6 +51,7 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     getAssessmentItemControlMapping: vi.fn().mockResolvedValue(MAPPING),
     getAssessmentType: vi.fn().mockResolvedValue(TYPE),
     approveAssessment: vi.fn().mockResolvedValue({ ...ASSESSMENT, status: 'approved' }),
+    requestChanges: vi.fn().mockResolvedValue({ ...ASSESSMENT, status: 'changes_requested' }),
     reassignAssessmentApprover: vi
       .fn()
       .mockResolvedValue({ ...ASSESSMENT, approverId: 'approver-2' }),
@@ -211,5 +212,62 @@ describe('NotesController — reassignAssessmentApprover', () => {
         newApproverId: 'approver-2',
       }),
     ).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('NotesController — assessment decision revocation gate', () => {
+  describe('approveAssessment', () => {
+    it('rejects when the approver is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).approveAssessment(reqAs('approver-1'), 'assessment-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.approveAssessment).not.toHaveBeenCalled();
+    });
+
+    it('proceeds when the approver is an active org member', async () => {
+      const notes = makeNotes();
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'approver-1', role: 'viewer' }]),
+      };
+      await makeController(notes, auth).approveAssessment(reqAs('approver-1'), 'assessment-1');
+      expect(notes.approveAssessment).toHaveBeenCalledWith('assessment-1', 'approver-1');
+    });
+
+    it('throws NotFound when the assessment does not exist', async () => {
+      const notes = makeNotes({ getAssessment: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).approveAssessment(reqAs('approver-1'), 'missing'),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('requestChanges', () => {
+    it('rejects when the approver is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).requestChanges(reqAs('approver-1'), 'assessment-1', {
+          note: 'Needs more evidence',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.requestChanges).not.toHaveBeenCalled();
+    });
+
+    it('proceeds when the approver is an active org member', async () => {
+      const notes = makeNotes();
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'approver-1', role: 'viewer' }]),
+      };
+      await makeController(notes, auth).requestChanges(reqAs('approver-1'), 'assessment-1', {
+        note: 'Needs more evidence',
+      });
+      expect(notes.requestChanges).toHaveBeenCalledWith(
+        'assessment-1',
+        'approver-1',
+        'Needs more evidence',
+      );
+    });
   });
 });

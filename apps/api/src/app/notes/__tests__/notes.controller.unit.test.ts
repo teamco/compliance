@@ -68,7 +68,10 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
 function makeController(
   notes: NotesClientService,
   auth: { listOrgMembers: ReturnType<typeof vi.fn> } = {
-    listOrgMembers: vi.fn().mockResolvedValue([]),
+    listOrgMembers: vi.fn().mockResolvedValue([
+      { userId: 'owner-1', role: 'viewer' },
+      { userId: 'validator-1', role: 'viewer' },
+    ]),
   },
 ): NotesController {
   return new NotesController(
@@ -120,6 +123,17 @@ describe('NotesController — issue validation authorization', () => {
         SUBMIT_INPUT,
       );
     });
+
+    it('rejects when the issue owner is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).submitIssueForValidation(reqAs('owner-1'), 'issue-1', {
+          ...SUBMIT_INPUT,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.submitIssueForValidation).not.toHaveBeenCalled();
+    });
   });
 
   describe('reviewIssueValidation', () => {
@@ -147,6 +161,26 @@ describe('NotesController — issue validation authorization', () => {
           decision: 'approved',
         }),
       ).rejects.toThrow('issue_validation_not_authorized_validator');
+    });
+
+    it('rejects when the validator is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).reviewIssueValidation(reqAs('validator-1'), 'val-1', {
+          decision: 'approved',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.reviewIssueValidation).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the validation does not exist', async () => {
+      const notes = makeNotes({ getIssueValidation: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).reviewIssueValidation(reqAs('validator-1'), 'missing', {
+          decision: 'approved',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

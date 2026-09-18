@@ -73,7 +73,7 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
 function makeController(
   notes: NotesClientService,
   auth: { listOrgMembers: ReturnType<typeof vi.fn> } = {
-    listOrgMembers: vi.fn().mockResolvedValue([]),
+    listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'owner-1', role: 'viewer' }]),
   },
 ): NotesController {
   return new NotesController(
@@ -125,6 +125,17 @@ describe('NotesController — exception governance authorization', () => {
         'owner-1',
         RENEWAL_INPUT,
       );
+    });
+
+    it('rejects when the exception owner is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).requestExceptionRenewal(reqAs('owner-1'), 'exception-1', {
+          ...RENEWAL_INPUT,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.requestExceptionRenewal).not.toHaveBeenCalled();
     });
   });
 
