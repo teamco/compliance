@@ -99,6 +99,23 @@ today's single-tab in-flight-promise dedup only; the rare race in that
 one case is an accepted, undocumented-elsewhere edge case, not worth a
 polyfill.
 
+### A second, independent token consumer exists: `fetchWithRefresh`
+
+`libs/template-shared/src/lib/api/fetch-with-refresh.ts` is a second,
+separate auth-aware fetch wrapper — used only by the AI chat SSE stream
+(`apps/client/src/components/ai-assistant/AiAssistant.tsx`), which can't
+go through the JSON-only `@idevconn/api-client` abstraction. It reads
+`accessToken`/`refreshToken` directly from `useAuthStore` and does its
+own inline 401→refresh→retry, duplicating (not sharing) the same
+refresh logic the main API client's fork also needs. Missed in the
+first pass of this design; both call sites need the same treatment
+(in-memory access token, cookie-driven refresh, CSRF header, Web Locks
+serialization), so this design extracts one shared
+`performSilentRefresh(baseUrl): Promise<string | null>` helper (new,
+`libs/template-shared/src/lib/api/silent-refresh.ts`) that both the
+forked `createApiClient` and `fetchWithRefresh` call, instead of each
+re-implementing the CSRF/credentials/lock dance independently.
+
 ### `@idevconn/api-client` must be forked, not configured
 
 Read the library's actual implementation (`node_modules/@idevconn/
@@ -147,10 +164,16 @@ can't do what's needed — replace the import, keep every call site
     cookie is not an error.
 - `AuthStrategy` interface (`libs/shared/src/strategies/auth.ts`) plus
   `SupabaseAuthStrategy` and `FakeAuthStrategy`: new
-  `revokeSession(refreshToken: string): Promise<void>` method. The
-  exact `supabase-js` admin call this wraps (revoke-by-refresh-token vs.
-  a scoped `signOut`) needs verifying against the installed SDK version
-  during plan-writing — not yet confirmed which surface exists.
+  `revokeSession(accessToken: string): Promise<void>` method — takes
+  the caller's own **access token** (from the logout request's own
+  `Authorization` header, already verified by the standard auth guard
+  since `/auth/logout` is not itself `@Public()`), not the refresh
+  token. Confirmed against the installed `@supabase/auth-js` (pulled in
+  by `@supabase/supabase-js@^2.116.0`) typings:
+  `GoTrueAdminApi.signOut(jwt: string, scope?: SignOutScope)` revokes
+  by JWT, not by refresh token. Calls it with `scope: 'local'` — ends
+  only this session/device's refresh chain, not the user's other active
+  sessions elsewhere, matching "log out this browser" UX expectations.
 - `apps/api/src/main.ts`: no `enableCors` call exists anywhere in this
   codebase today. Add one with an explicit `origin` (from
   `CLIENT_ORIGIN` config, never `*`) and `credentials: true` — required
@@ -166,34 +189,52 @@ can't do what's needed — replace the import, keep every call site
   value out of `document.cookie` (it's intentionally not `httpOnly`, so
   this is a plain string read, not a security boundary by itself — the
   boundary is the double-submit comparison happening server-side).
+- `libs/template-shared/src/lib/api/silent-refresh.ts` (new) — the
+  shared `performSilentRefresh(baseUrl)` helper: reads the CSRF cookie,
+  POSTs `/auth/refresh` with `credentials: 'include'` and the
+  `X-CSRF-Token` header, wrapped in a `navigator.locks.request(...)`
+  section (falling back to an unguarded call where Web Locks isn't
+  available), returns the new access token or `null`. Calls
+  `setAccessToken` itself on success so every caller stays in sync.
 - Forked replacement for `@idevconn/api-client`
   (`libs/template-shared/src/lib/api/create-api-client.ts`, new, next
   to the existing `create-api.ts`): same `createApiClient(config)`
-  shape, plus `credentials: 'include'` on both fetch call sites, an
-  `X-CSRF-Token` header attached only to the refresh call, and the
-  Web Locks serialization around the refresh call described above.
+  shape as the npm package, but its internal `doRefresh()` now calls
+  the shared `performSilentRefresh` instead of re-implementing the
+  request itself; `credentials: 'include'` added to its main request
+  path too (harmless there since those requests carry no cookie the
+  gateway reads, but keeps the client's fetch behavior uniform).
 - `create-api.ts` — imports the fork instead of the npm package,
-  `getAccessToken`/`onTokenRefreshed` wired to the new in-memory module
-  instead of `useAuthStore`.
+  `getAccessToken` wired to the new in-memory module instead of
+  `useAuthStore`; `getRefreshToken` returns a truthy placeholder (the
+  library only uses it as an "is refresh possible at all" guard — the
+  real token is never in JS to give it).
+- `fetch-with-refresh.ts` — its own inline `refreshSession()` deleted;
+  calls the same shared `performSilentRefresh` instead. Reads the
+  access token from the in-memory module instead of `useAuthStore`.
 - `useAuthStore` — drops `accessToken` and `refreshToken` fields
   entirely; keeps only `user` (still persisted, so the corner
   email/avatar can render instantly on reload before the silent refresh
   resolves — this is display-only, no request depends on it).
-- New `AuthBootstrap` wrapper (mounted high in `apps/client/src/app/
-  app.tsx`, before protected routes render): on mount, reads the CSRF
-  cookie (already present from the last login, survives reload) and
-  calls the refresh endpoint with `credentials: 'include'`; shows a
-  loading state until it resolves either way. Success populates the
-  in-memory access token and `useAuthStore.user`; failure (no valid
-  cookie) proceeds straight to the unauthenticated state — not an error
-  to surface to the user, just "not logged in."
+- New `AuthBootstrap` wrapper (mounted in `apps/client/src/main.tsx`,
+  wrapping `<RouterProvider>`/`<Toaster>` — `app.tsx` is an unused
+  placeholder in this codebase, the real bootstrap lives in
+  `main.tsx`): on mount, calls the same `performSilentRefresh`; shows a
+  loading state until it resolves either way. Success populates
+  `useAuthStore.user` (from the refresh response body) alongside the
+  in-memory access token `performSilentRefresh` already set; failure
+  (no valid cookie) proceeds straight to the unauthenticated state —
+  not an error to surface to the user, just "not logged in."
 - `auth.callback.tsx`, `auth.oauth.callback.tsx`, `login.tsx`: replace
   their `useAuthStore.setAuth(session)` token-carrying calls with
   `setAccessToken(session.accessToken)` for the token half;
   `useAuthStore` now only ever receives `user`.
-- New `POST /auth/logout` call site wired into wherever the app's
-  existing logout UI action lives; clears the in-memory access token
-  and `useAuthStore`'s `user` after the server call resolves.
+- `LayoutHeader.tsx`'s existing `handleLogout` (currently a synchronous
+  `logout(); navigate(...)`): becomes `async`, calls the new
+  `POST /auth/logout` first, then clears the in-memory access token and
+  `useAuthStore`'s `user`, then navigates — matching this codebase's
+  existing pattern of best-effort server call before local state
+  clears, not blocking navigation on the server call's success.
 
 ## Data flow
 
@@ -208,30 +249,36 @@ can't do what's needed — replace the import, keep every call site
 4. Client stores `accessToken` in memory, `user` in `useAuthStore`.
 
 **Reload / new tab (silent refresh):**
-1. `AuthBootstrap` on mount reads `icore_csrf` from `document.cookie`,
-   POSTs `/auth/refresh` with `credentials: 'include'` and
+1. `AuthBootstrap` on mount calls `performSilentRefresh(baseUrl)`,
+   which reads `icore_csrf` from `document.cookie` and POSTs
+   `/auth/refresh` with `credentials: 'include'` and
    `X-CSRF-Token: <value>`, inside a Web Locks-guarded section.
 2. Backend: the browser already attached `icore_rt` automatically;
    compares the CSRF header to the CSRF cookie, calls
    `strategy.refresh(refreshToken)`, which Supabase rotates.
 3. Backend re-issues both cookies with the new values, responds with
-   the new `accessToken`.
-4. Client sets the in-memory token, renders routes. No valid cookie ⇒
-   401/403 ⇒ render the unauthenticated state directly, no error toast.
+   `{accessToken, user}`.
+4. `performSilentRefresh` sets the in-memory token itself;
+   `AuthBootstrap` additionally populates `useAuthStore.user` from the
+   response, then renders routes. No valid cookie ⇒ 401/403 ⇒ render
+   the unauthenticated state directly, no error toast.
 
 **Ordinary API call:**
 - Unchanged: `Authorization: Bearer <in-memory token>`. The cookies'
   `Path=/api/auth` scoping means they are never even sent on these
   requests.
-- A 401 triggers the same Web-Locks-guarded refresh-and-retry path as
-  the boot sequence; final failure triggers the existing
-  `onUnauthorized` → redirect-to-login behavior, unchanged.
+- A 401 triggers the same `performSilentRefresh`-based retry path as
+  the boot sequence, from both call sites that need it (the forked
+  `createApiClient` and `fetchWithRefresh`); final failure triggers the
+  existing `onUnauthorized` → redirect-to-login behavior for the main
+  client, and `fetchWithRefresh`'s existing "keep the original 401"
+  behavior for the SSE path, both unchanged.
 
 **Logout:**
 1. `POST /auth/logout` — an ordinary Bearer-authenticated call, no CSRF
    needed (it isn't cookie-driven).
-2. Backend calls `revokeSession` with the cookie's refresh token, then
-   `clearAuthCookies(res)`.
+2. Backend calls `revokeSession` with the caller's own access token
+   (`scope: 'local'`), then `clearAuthCookies(res)`.
 3. Client clears the in-memory token and `useAuthStore.user`.
 
 ## Error handling
