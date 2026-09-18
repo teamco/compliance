@@ -57,15 +57,28 @@
     background-position: right 0.6rem center;
   }
 
-  /* Chrome/WebKit's internal layout for <input type="date"> doesn't stretch
-     the mm/dd/yyyy fields to fill the input's full width -- the calendar
-     icon sits right after them instead of pinned to the input's end, so on
-     a wide input it visually lands near the middle. Pin it to the
-     logical end (right in LTR, left in RTL) explicitly. */
+  /* Chrome's internal layout for <input type="date"> doesn't stretch the
+     mm/dd/yyyy fields to fill the input's full width -- the calendar icon
+     sits right after them instead of pinned to the input's end, so on a
+     wide input it visually lands near the middle. `margin-inline-start:
+     auto` on the indicator does NOT fix this (verified live -- Chromium's
+     internal shadow layout for this control doesn't distribute flex space
+     to it the way a normal flex child would); position it absolutely
+     against the input's own box instead, which every form here already
+     makes position:relative-safe since none of them position an inner
+     element themselves. */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    position: relative;
+  }
   input[type='date']::-webkit-calendar-picker-indicator,
   input[type='time']::-webkit-calendar-picker-indicator,
   input[type='datetime-local']::-webkit-calendar-picker-indicator {
-    margin-inline-start: auto;
+    position: absolute;
+    inset-inline-end: 0.75rem;
+    top: 50%;
+    translate: 0 -50%;
     cursor: pointer;
   }
 
