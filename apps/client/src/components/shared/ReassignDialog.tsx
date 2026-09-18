@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -38,18 +38,20 @@ export function ReassignDialog({
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = useState('');
 
+  // `open` is the single source of truth for whether the dialog is closed --
+  // resetting here (rather than inside each close handler) covers every way
+  // it can go from true to false: Radix-internal (Escape), the Cancel
+  // button, and a parent closing it externally after a successful confirm.
+  useEffect(() => {
+    if (!open) setSelectedId('');
+  }, [open]);
+
   const options = members
     .filter((m) => m.userId !== currentAssigneeId)
     .map((m) => ({ value: m.userId, label: m.displayName ?? m.email ?? m.userId }));
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) setSelectedId('');
-        onOpenChange(next);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

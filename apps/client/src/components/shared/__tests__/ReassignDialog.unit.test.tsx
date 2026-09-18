@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
@@ -71,5 +72,42 @@ describe('ReassignDialog', () => {
     fireEvent.click(screen.getByText('Bob'));
     fireEvent.click(screen.getByRole('button', { name: 'Reassign' }));
     expect(onConfirm).toHaveBeenCalledWith('user-2');
+  });
+
+  it('resets the picked member after Cancel, so reopening does not pre-select it', () => {
+    const onConfirm = vi.fn();
+
+    // Mirrors how a real caller wires ReassignDialog: it owns `open` and
+    // passes onOpenChange straight through -- so Cancel closing the dialog,
+    // then a caller reopening it, is a controlled-prop round trip, not an
+    // unmount/remount of ReassignDialog itself.
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>Reopen</button>
+          <ReassignDialog
+            open={open}
+            isPending={false}
+            title="Reassign Owner"
+            members={MEMBERS}
+            currentAssigneeId="user-1"
+            onOpenChange={setOpen}
+            onConfirm={onConfirm}
+          />
+        </>
+      );
+    }
+
+    render(wrap(<Harness />));
+
+    fireEvent.click(screen.getByRole('combobox'));
+    fireEvent.click(screen.getByText('Bob'));
+    expect(screen.getByRole('combobox').textContent).toContain('Bob');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Reopen' }));
+
+    expect(screen.getByRole('combobox').textContent).not.toContain('Bob');
   });
 });
