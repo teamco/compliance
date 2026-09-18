@@ -763,5 +763,37 @@ describe('AuthController (gateway) — org invite public/accept routes', () => {
       await controller.acceptOrgInvite(reqAs('newcomer', undefined, 'invitee@x.com'), 'tok');
       expect(auth.acceptOrgInvite).toHaveBeenCalledWith('tok', 'newcomer', 'invitee@x.com');
     });
+
+    it.each([
+      'invite_not_found',
+      'invite_not_pending',
+      'invite_expired',
+      'invite_email_mismatch',
+      'invite_already_member',
+    ])('maps a %s strategy error to BadRequestException, not a raw 500', async (message) => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        acceptOrgInvite: vi.fn().mockRejectedValue(new Error(message)),
+      });
+      await expect(
+        makeInviteController(notes, auth).acceptOrgInvite(
+          reqAs('newcomer', undefined, 'invitee@x.com'),
+          'tok',
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rethrows an unrecognized strategy error unchanged', async () => {
+      const notes = makeNotes();
+      const auth = makeInviteAuthClient({
+        acceptOrgInvite: vi.fn().mockRejectedValue(new Error('unexpected_db_error')),
+      });
+      await expect(
+        makeInviteController(notes, auth).acceptOrgInvite(
+          reqAs('newcomer', undefined, 'invitee@x.com'),
+          'tok',
+        ),
+      ).rejects.toThrow('unexpected_db_error');
+    });
   });
 });

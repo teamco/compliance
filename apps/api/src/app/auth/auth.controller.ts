@@ -286,7 +286,21 @@ export class AuthController {
     if (!invite) throw new NotFoundException('invite_not_found');
     const org = await this.notes.getOrganizationById(invite.orgId);
     if (org && org.userId === uid) throw new BadRequestException('invite_already_member');
-    return this.authClient.acceptOrgInvite(token, uid, email);
+    try {
+      return await this.authClient.acceptOrgInvite(token, uid, email);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (
+        msg === 'invite_not_found' ||
+        msg === 'invite_not_pending' ||
+        msg === 'invite_expired' ||
+        msg === 'invite_email_mismatch' ||
+        msg === 'invite_already_member'
+      ) {
+        throw new BadRequestException(msg);
+      }
+      throw err;
+    }
   }
 
   @Post('role')

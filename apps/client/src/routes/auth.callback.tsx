@@ -7,6 +7,12 @@ import { api } from '@/lib/api';
 
 type Status = 'verifying' | 'done' | 'error';
 
+interface HashSession {
+  accessToken: string;
+  refreshToken: string;
+  user: { id: string; email: string };
+}
+
 function resolveToken(params: URLSearchParams): string | null {
   const direct = params.get('token') ?? params.get('token_hash');
   if (direct) return direct;
@@ -22,6 +28,30 @@ function resolveToken(params: URLSearchParams): string | null {
   return null;
 }
 
+// Supabase's hosted /auth/v1/verify endpoint (the default emailRedirectTo
+// target) verifies the OTP server-side and redirects here with the session
+// already issued as URL-fragment params, not the query-param token this
+// route's other path expects to exchange itself.
+export function resolveHashSession(hash: string): HashSession | null {
+  const params = new URLSearchParams(hash.replace(/^#/, ''));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken || !refreshToken) return null;
+  try {
+    const payloadSegment = accessToken.split('.')[1];
+    if (!payloadSegment) return null;
+    const json =
+      typeof window === 'undefined'
+        ? Buffer.from(payloadSegment, 'base64').toString('utf8')
+        : window.atob(payloadSegment);
+    const payload = JSON.parse(json) as { sub?: string; email?: string };
+    if (!payload.sub || !payload.email) return null;
+    return { accessToken, refreshToken, user: { id: payload.sub, email: payload.email } };
+  } catch {
+    return null;
+  }
+}
+
 function CallbackPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -30,6 +60,33 @@ function CallbackPage() {
   const [status, setStatus] = useState<Status>('verifying');
 
   useEffect(() => {
+    const hashSession = resolveHashSession(window.location.hash);
+    if (hashSession) {
+      setAuth(hashSession);
+      void (async () => {
+        // The user/id/email above were decoded client-side, unverified — every
+        // real API call still re-verifies the access token server-side
+        // regardless, but backfill the server-confirmed role here too,
+        // mirroring auth.oauth.callback.tsx's identical pattern.
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${hashSession.accessToken}` },
+          });
+          if (res.ok) {
+            const me = (await res.json()) as { uid?: string; email?: string; role?: string };
+            if (me.role) {
+              setAuth({ ...hashSession, user: { ...hashSession.user, role: me.role } });
+            }
+          }
+        } catch {
+          // Non-fatal: role missing but login still succeeds.
+        }
+        setStatus('done');
+        void navigate({ to: '/dashboard' });
+      })();
+      return;
+    }
+
     const params = new URLSearchParams(window.location.search);
     const token = resolveToken(params);
     if (!token) {
