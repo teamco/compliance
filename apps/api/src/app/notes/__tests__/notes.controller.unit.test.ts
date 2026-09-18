@@ -68,7 +68,7 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
 function makeController(
   notes: NotesClientService,
   auth: { listOrgMembers: ReturnType<typeof vi.fn> } = {
-    listOrgMembers: vi.fn().mockResolvedValue([]),
+    listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'owner-1', role: 'viewer' }]),
   },
 ): NotesController {
   return new NotesController(
@@ -119,6 +119,17 @@ describe('NotesController — issue validation authorization', () => {
         'owner-1',
         SUBMIT_INPUT,
       );
+    });
+
+    it('rejects when the issue owner is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).submitIssueForValidation(reqAs('owner-1'), 'issue-1', {
+          ...SUBMIT_INPUT,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.submitIssueForValidation).not.toHaveBeenCalled();
     });
   });
 

@@ -1173,6 +1173,10 @@ export class NotesController {
     const userId = this.uid(req);
     const issue = await this.notes.getIssue(id);
     if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    if (!issue.ownerId) throw new BadRequestException('issue_owner_missing');
+    await this.assertActiveAssignee(org, issue.ownerId);
     if (issue.ownerId !== userId) throw new ForbiddenException();
     return this.notes.submitIssueForValidation(id, userId, body);
   }
