@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useAuthStore } from '@icore/template-shared';
+import { getAccessToken } from '@icore/template-shared';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -28,13 +28,13 @@ const EXPORT_OPTIONS: { value: ExportType; labelKey: string; descKey: string }[]
 
 export function ExportTab() {
   const { t } = useTranslation();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const [selected, setSelected] = useState<ExportType>('standards');
   const [loading, setLoading] = useState(false);
 
   async function handleExport() {
     setLoading(true);
     try {
+      const accessToken = getAccessToken();
       const res = await fetch(`${API_BASE}/admin/export?type=${selected}`, {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
       });

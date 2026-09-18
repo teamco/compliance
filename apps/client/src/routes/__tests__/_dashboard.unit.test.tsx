@@ -7,9 +7,7 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
   return {
     ...actual,
-    useAuthStore: Object.assign(vi.fn(), {
-      getState: () => ({ accessToken: mockAccessToken }),
-    }),
+    getAccessToken: () => mockAccessToken,
   };
 });
 

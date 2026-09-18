@@ -3,6 +3,7 @@ import { type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
 import {
+  setAccessToken,
   useAuthStore,
   useNotify,
   setStoredLocale,
@@ -27,7 +28,7 @@ function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const notify = useNotify();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
   const { returnTo } = useSearch({ from: '/login' });
 
   async function goToNext() {
@@ -50,14 +51,14 @@ function LoginPage() {
     try {
       const session = await api<{
         accessToken: string;
-        refreshToken: string;
         user: { id: string; email: string; role?: string };
       }>('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      setAuth(session);
+      setAccessToken(session.accessToken);
+      setUser(session.user);
       notify.success(t('auth.login'));
       await goToNext();
     } catch (err) {
@@ -81,14 +82,14 @@ function LoginPage() {
     try {
       const session = await api<{
         accessToken: string;
-        refreshToken: string;
         user: { id: string; email: string; role?: string };
       }>('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
-      setAuth(session);
+      setAccessToken(session.accessToken);
+      setUser(session.user);
       notify.success(t('auth.register'));
       await goToNext();
     } catch (err) {
