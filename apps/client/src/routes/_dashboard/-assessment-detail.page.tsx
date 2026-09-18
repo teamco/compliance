@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@icore/template-shared';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PageLayout } from '@/components/PageLayout';
@@ -10,6 +10,7 @@ import { useActiveOrgStore } from '@/stores/active-org';
 import { useAssessmentTypes } from '@/queries/assessment-types';
 import { AssessmentItemsPanel } from '@/components/assessments/AssessmentItemsPanel';
 import { useOrgMembers } from '@/queries/org-members';
+import { ReassignDialog } from '@/components/shared/ReassignDialog';
 import {
   useAssessment,
   useStartAssessment,
@@ -18,6 +19,7 @@ import {
   useRequestChanges,
   useCompleteAssessment,
   useArchiveAssessment,
+  useReassignAssessmentApprover,
 } from '@/queries/assessments';
 
 export function AssessmentDetailPage() {
@@ -40,6 +42,13 @@ export function AssessmentDetailPage() {
   // includeInactive: assessor/approver names must still resolve after that
   // member has been removed from the org.
   const { data: members = [] } = useOrgMembers(orgId, { includeInactive: true });
+  // Active-only list for canManage and reassignment targets — a deactivated
+  // admin must not retain manage rights or be offered as a new approver.
+  const { data: activeMembers = [] } = useOrgMembers(orgId);
+  const myMembership = activeMembers.find((m) => m.userId === currentUserId);
+  const canManage = myMembership?.role === 'owner' || myMembership?.role === 'admin';
+  const reassignApproverMut = useReassignAssessmentApprover(orgId, id);
+  const [reassignOpen, setReassignOpen] = useState(false);
 
   const [tab, setTab] = useState<'overview' | 'items'>('overview');
   const [changesNote, setChangesNote] = useState('');
@@ -154,7 +163,23 @@ export function AssessmentDetailPage() {
           <Field label={t('assessments.type')} value={typeName} />
           <Field label={t('assessments.owner')} value={memberName(assessment.ownerId)} />
           <Field label={t('assessments.businessUnit')} value={assessment.businessUnit ?? ''} />
-          <Field label={t('assessments.approver')} value={memberName(assessment.approverId)} />
+          <Field
+            label={t('assessments.approver')}
+            value={memberName(assessment.approverId)}
+            action={
+              canManage && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => setReassignOpen(true)}
+                >
+                  <UserCog size={13} />
+                  <span className="sr-only">{t('assessments.reassignApprover')}</span>
+                </Button>
+              )
+            }
+          />
           <Field label={t('assessments.dueDate')} value={assessment.dueDate?.slice(0, 10) ?? ''} />
           <Field
             label={t('assessments.colStatus')}
@@ -185,15 +210,33 @@ export function AssessmentDetailPage() {
       )}
 
       {tab === 'items' && <AssessmentItemsPanel orgId={orgId} assessmentId={id} />}
+
+      <ReassignDialog
+        open={reassignOpen}
+        isPending={reassignApproverMut.isPending}
+        title={t('assessments.reassignApprover')}
+        members={activeMembers}
+        currentAssigneeId={assessment.approverId ?? ''}
+        onOpenChange={setReassignOpen}
+        onConfirm={(newApproverId) => {
+          reassignApproverMut.mutate(
+            { newApproverId },
+            { onSuccess: () => setReassignOpen(false) },
+          );
+        }}
+      />
     </PageLayout>
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value, action }: { label: string; value: string; action?: ReactNode }) {
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="text-foreground">{value || '—'}</div>
+      <div className="text-foreground flex items-center gap-1">
+        {value || '—'}
+        {action}
+      </div>
     </div>
   );
 }
