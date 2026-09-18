@@ -57,6 +57,18 @@
     background-position: right 0.6rem center;
   }
 
+  /* Chrome/WebKit's internal layout for <input type="date"> doesn't stretch
+     the mm/dd/yyyy fields to fill the input's full width -- the calendar
+     icon sits right after them instead of pinned to the input's end, so on
+     a wide input it visually lands near the middle. Pin it to the
+     logical end (right in LTR, left in RTL) explicitly. */
+  input[type='date']::-webkit-calendar-picker-indicator,
+  input[type='time']::-webkit-calendar-picker-indicator,
+  input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    margin-inline-start: auto;
+    cursor: pointer;
+  }
+
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
