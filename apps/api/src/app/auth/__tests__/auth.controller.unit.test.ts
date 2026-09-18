@@ -64,6 +64,7 @@ function makeAuthClient(): AuthClientService {
       user: { id: 'u1', email: 'a@x.com' },
     }),
     setRole: vi.fn().mockResolvedValue(undefined),
+    revokeSession: vi.fn().mockResolvedValue(undefined),
   } as unknown as AuthClientService;
 }
 
@@ -77,10 +78,9 @@ function makeRes() {
       cookies[name] = value;
       return this;
     },
-    clearCookie() {
+    clearCookie: vi.fn((..._args: unknown[]) => {
       cookieCleared = true;
-      return this;
-    },
+    }),
     redirect(url: string) {
       redirectedTo = url;
       return this;
@@ -200,6 +200,34 @@ describe('AuthController (gateway) — refresh', () => {
     expect(result).toEqual({ accessToken: 'at', user: { id: 'u1', email: 'a@x.com' } });
     expect(res.cookies['icore_rt']).toBe('rt');
     expect(res.cookies['icore_csrf']).toBeTruthy();
+  });
+});
+
+describe('AuthController (gateway) — logout', () => {
+  it('revokes the session using the caller access token and clears both cookies', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    const req = {
+      headers: { authorization: 'Bearer access-token-1' },
+    } as unknown as import('express').Request;
+    const res = makeRes();
+    await controller.logout(req, res as unknown as import('express').Response);
+    expect(client.revokeSession).toHaveBeenCalledWith('access-token-1');
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_rt', expect.any(Object));
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_csrf', expect.any(Object));
+  });
+
+  it('is idempotent when there is no Authorization header', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    const req = { headers: {} } as unknown as import('express').Request;
+    const res = makeRes();
+    await expect(
+      controller.logout(req, res as unknown as import('express').Response),
+    ).resolves.toEqual({ ok: true });
+    expect(client.revokeSession).not.toHaveBeenCalled();
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_rt', expect.any(Object));
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_csrf', expect.any(Object));
   });
 });
 

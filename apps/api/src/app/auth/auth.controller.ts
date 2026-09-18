@@ -21,7 +21,13 @@ import type { Request, Response } from 'express';
 import { AuthClientService } from '@icore/auth-client';
 import { NotesClientService } from '@icore/notes-client';
 import type { Organization, OAuthProvider, OrgInviteRole, VerifiedToken } from '@icore/shared';
-import { setAuthCookies, generateCsrfToken, readRefreshToken, verifyCsrf } from '@icore/shared';
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  generateCsrfToken,
+  readRefreshToken,
+  verifyCsrf,
+} from '@icore/shared';
 import { Public } from './public.decorator';
 import { CheckAbility } from '../abilities/check-ability.decorator';
 import { AbilityFactory } from '../abilities/ability.factory';
@@ -122,6 +128,19 @@ export class AuthController {
     const csrfToken = generateCsrfToken();
     setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
     return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Public()
+  @Post('logout')
+  @ApiOperation({ summary: 'Revoke this session and clear the refresh cookie' })
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    if (accessToken) {
+      await this.authClient.revokeSession(accessToken);
+    }
+    clearAuthCookies(res, { isProd: this.isProd() });
+    return { ok: true };
   }
 
   @Public()
