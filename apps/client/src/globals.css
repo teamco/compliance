@@ -62,10 +62,16 @@
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    /* Without this, native form controls (date/time picker icon,
+       scrollbars) always render in the browser's light-scheme colors,
+       so the date input's calendar icon stays dark and disappears
+       against a dark background. */
+    color-scheme: light;
   }
 
   /* Dark — Trust & Authority */
   html.dark {
+    color-scheme: dark;
     --color-background: #020617;
     --color-surface: #0f172a;
     --color-foreground: #f8fafc;
