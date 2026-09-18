@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from '@tanstack/react-router';
+import { createFileRoute, useNavigate, useSearch, Link } from '@tanstack/react-router';
 import { type SyntheticEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ShieldCheck } from 'lucide-react';
@@ -15,11 +15,28 @@ import { Label } from '../components/ui/label';
 
 type Mode = 'password' | 'magicLinkRequest' | 'magicLinkSent' | 'register' | 'registerSent';
 
+// Only a same-origin relative path is a safe redirect target — anything else
+// (protocol-relative "//evil.com", backslash tricks, absolute URLs) is rejected.
+export function isSafeReturnTo(path: string): boolean {
+  if (!path) return false;
+  if (path === '/') return true;
+  return /^\/[^/\\]/.test(path);
+}
+
 function LoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const notify = useNotify();
   const setAuth = useAuthStore((s) => s.setAuth);
+  const { returnTo } = useSearch({ from: '/login' });
+
+  async function goToNext() {
+    if (returnTo && isSafeReturnTo(returnTo)) {
+      window.location.assign(returnTo);
+      return;
+    }
+    await navigate({ to: '/dashboard' });
+  }
 
   const [mode, setMode] = useState<Mode>('password');
   const [email, setEmail] = useState('');
@@ -42,7 +59,7 @@ function LoginPage() {
       });
       setAuth(session);
       notify.success(t('auth.login'));
-      await navigate({ to: '/dashboard' });
+      await goToNext();
     } catch (err) {
       notify.error(err instanceof Error ? err.message : t('error.unknown'));
     } finally {
@@ -73,7 +90,7 @@ function LoginPage() {
       });
       setAuth(session);
       notify.success(t('auth.register'));
-      await navigate({ to: '/dashboard' });
+      await goToNext();
     } catch (err) {
       const msg = err instanceof Error ? err.message : '';
       if (msg === 'email_confirmation_required') {
@@ -167,7 +184,7 @@ function LoginPage() {
                   setStoredLocale(code);
                   window.location.reload();
                 }}
-                className="text-xs px-2 py-1 rounded text-slate-500 hover:text-slate-300 transition-colors"
+                className="text-xs px-2 py-1 rounded text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
               >
                 {label}
               </button>
@@ -194,7 +211,7 @@ function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setMode('password')}
-                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                   >
                     {t('auth.switchToLogin')}
                   </button>
@@ -202,7 +219,7 @@ function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setMode('register')}
-                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                    className="text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                   >
                     {t('auth.switchToRegister')}
                   </button>
@@ -253,7 +270,7 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setMode('password')}
-                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                     mode === 'password'
                       ? 'bg-[#1e293b] text-white'
                       : 'text-slate-500 hover:text-slate-300'
@@ -264,7 +281,7 @@ function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setMode('magicLinkRequest')}
-                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer ${
                     mode === 'magicLinkRequest'
                       ? 'bg-[#1e293b] text-white'
                       : 'text-slate-500 hover:text-slate-300'
@@ -418,7 +435,7 @@ function LoginPage() {
                     setPassword('');
                     setConfirmPassword('');
                   }}
-                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                 >
                   {t('auth.magicLinkUseDifferentEmail')}
                 </button>
@@ -443,7 +460,7 @@ function LoginPage() {
                     setEmail('');
                     setMode('magicLinkRequest');
                   }}
-                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4"
+                  className="text-sm text-slate-400 hover:text-white transition-colors underline underline-offset-4 cursor-pointer"
                 >
                   {t('auth.magicLinkUseDifferentEmail')}
                 </button>
@@ -457,5 +474,8 @@ function LoginPage() {
 }
 
 export const Route = createFileRoute('/login')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    returnTo: typeof search['returnTo'] === 'string' ? search['returnTo'] : undefined,
+  }),
   component: LoginPage,
 });

@@ -7,6 +7,8 @@ import {
   type AuthStrategy,
   type OAuthProvider,
   type OAuthStartResult,
+  type OrgInvite,
+  type OrgInviteRole,
   type OrgMember,
   type VerifiedToken,
 } from '@icore/shared';
@@ -136,8 +138,59 @@ export class AuthController {
   }
 
   @MessagePattern('auth.org.members.list')
-  listOrgMembers(@Payload() payload: { orgId: string }): Promise<OrgMember[]> {
-    return this.strategy.listOrgMembers(payload.orgId);
+  listOrgMembers(
+    @Payload() payload: { orgId: string; ownerId?: string; includeInactive?: boolean },
+  ): Promise<OrgMember[]> {
+    return this.strategy.listOrgMembers(payload.orgId, payload.ownerId, payload.includeInactive);
+  }
+
+  @MessagePattern('auth.org.member.listOrgIds')
+  listOrgIdsForMember(@Payload() payload: { userId: string }): Promise<string[]> {
+    return this.strategy.listOrgIdsForMember(payload.userId);
+  }
+
+  @MessagePattern('auth.org.invites.create')
+  createOrgInvite(
+    @Payload() payload: { orgId: string; email: string; role: OrgInviteRole; invitedBy: string },
+  ): Promise<OrgInvite> {
+    return this.strategy.createOrgInvite(
+      payload.orgId,
+      payload.email,
+      payload.role,
+      payload.invitedBy,
+    );
+  }
+
+  @MessagePattern('auth.org.invites.list')
+  listOrgInvites(@Payload() payload: { orgId: string }): Promise<OrgInvite[]> {
+    return this.strategy.listOrgInvites(payload.orgId);
+  }
+
+  @MessagePattern('auth.org.invites.revoke')
+  revokeOrgInvite(@Payload() payload: { inviteId: string }): Promise<void> {
+    return this.strategy.revokeOrgInvite(payload.inviteId);
+  }
+
+  @MessagePattern('auth.org.invites.resend')
+  resendOrgInvite(@Payload() payload: { inviteId: string }): Promise<OrgInvite> {
+    return this.strategy.resendOrgInvite(payload.inviteId);
+  }
+
+  @MessagePattern('auth.org.invites.get-by-token')
+  getOrgInviteByToken(@Payload() payload: { token: string }): Promise<OrgInvite | null> {
+    return this.strategy.getOrgInviteByToken(payload.token);
+  }
+
+  @MessagePattern('auth.org.invites.accept')
+  acceptOrgInvite(
+    @Payload() payload: { token: string; userId: string; userEmail: string },
+  ): Promise<OrgMember> {
+    return this.strategy.acceptOrgInvite(payload.token, payload.userId, payload.userEmail);
+  }
+
+  @MessagePattern('auth.org.members.deactivate')
+  deactivateOrgMember(@Payload() payload: { orgId: string; userId: string }): Promise<void> {
+    return this.strategy.deactivateOrgMember(payload.orgId, payload.userId);
   }
 
   @MessagePattern('auth.profile.update')

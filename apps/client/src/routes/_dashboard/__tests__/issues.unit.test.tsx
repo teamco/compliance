@@ -3,8 +3,48 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
 import { createIcoreI18n, ICORE_LOCALES } from '@icore/template-shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { Issue } from '@/queries/issues';
+import type { Finding } from '@/queries/frameworks';
 
 const createMutate = vi.fn();
+const deleteMutate = vi.fn((id: string) => {
+  mockIssuesData = mockIssuesData.filter((i) => i.id !== id);
+});
+
+const mockGapIssue: Issue = {
+  id: 'i1',
+  orgId: 'org1',
+  userId: 'u1',
+  title: 'Gap issue',
+  description: 'From gap analysis',
+  severity: 'high',
+  reporterId: 'u1',
+  ownerId: 'u1',
+  status: 'open',
+  source: 'gap_analysis',
+  sourceId: 'f1',
+  dueDate: null,
+  resolvedAt: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const mockLinkedFinding: Finding = {
+  id: 'f1',
+  orgId: 'org1',
+  code: 'FIND-000101',
+  controlId: 'c1',
+  assessmentId: 'a1',
+  title: 'Finding title',
+  description: 'Finding description',
+  severity: 'high',
+  status: 'open',
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+let mockIssuesData: Issue[] = [];
+let mockSearchOpen: string | undefined;
 
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
@@ -15,10 +55,22 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
 });
 
 vi.mock('@/queries/issues', () => ({
-  useIssues: () => ({ data: [], isPending: false }),
+  useIssues: () => ({ data: mockIssuesData, isPending: false }),
   useCreateIssue: () => ({ mutate: createMutate, isPending: false }),
   useUpdateIssue: () => ({ mutate: vi.fn() }),
-  useDeleteIssue: () => ({ mutate: vi.fn() }),
+  useDeleteIssue: () => ({ mutate: deleteMutate }),
+}));
+
+vi.mock('@/components/issues/IssueDetailSheet', () => ({
+  IssueDetailSheet: ({ issue }: { issue: Issue }) => (
+    <div data-testid="issue-detail-sheet">{issue.title}</div>
+  ),
+}));
+
+vi.mock('@/queries/frameworks', () => ({
+  useFindingsByLink: ({ issueId }: { issueId?: string }) => ({
+    data: issueId === mockGapIssue.id ? [mockLinkedFinding] : [],
+  }),
 }));
 
 vi.mock('@/queries/org-members', () => ({
@@ -36,6 +88,25 @@ vi.mock('@/stores/active-org', () => ({
 
 vi.mock('@tanstack/react-router', () => ({
   createFileRoute: () => (opts: { component: React.ComponentType }) => ({ options: opts }),
+  useSearch: () => ({ open: mockSearchOpen }),
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params?: Record<string, string>;
+    className?: string;
+  }) => (
+    <a
+      href={Object.entries(params ?? {}).reduce((p, [k, v]) => p.replace(`$${k}`, v), to)}
+      className={className}
+    >
+      {children}
+    </a>
+  ),
 }));
 
 const i18n = createIcoreI18n({ resources: ICORE_LOCALES });
@@ -52,10 +123,12 @@ function wrap(ui: React.ReactElement) {
 describe('IssuesPage — New Issue dialog', () => {
   beforeEach(() => {
     createMutate.mockClear();
+    mockIssuesData = [];
+    mockSearchOpen = undefined;
   });
 
   it('renders all 6 fields in order when the dialog opens', async () => {
-    const { IssuesPage } = await import('../issues');
+    const { IssuesPage } = await import('../-issues.page');
     render(wrap(<IssuesPage />));
     fireEvent.click(screen.getByText('New Issue'));
 
@@ -73,7 +146,7 @@ describe('IssuesPage — New Issue dialog', () => {
   });
 
   it('does not submit without a Reporter and Owner selected', async () => {
-    const { IssuesPage } = await import('../issues');
+    const { IssuesPage } = await import('../-issues.page');
     render(wrap(<IssuesPage />));
     fireEvent.click(screen.getByText('New Issue'));
 
@@ -86,5 +159,63 @@ describe('IssuesPage — New Issue dialog', () => {
     fireEvent.click(screen.getByText('Create'));
 
     expect(createMutate).not.toHaveBeenCalled();
+  });
+});
+
+describe('IssuesPage — deleting the currently-open issue', () => {
+  beforeEach(() => {
+    deleteMutate.mockClear();
+    mockIssuesData = [mockGapIssue];
+    mockSearchOpen = undefined;
+  });
+
+  it('closes the detail sheet instead of crashing when the open issue is deleted', async () => {
+    const { IssuesPage } = await import('../-issues.page');
+    const { rerender } = render(wrap(<IssuesPage />));
+
+    fireEvent.click(screen.getByText('Gap issue'));
+    expect(screen.getByTestId('issue-detail-sheet')).toBeDefined();
+
+    fireEvent.click(screen.getByText('Delete'));
+    rerender(wrap(<IssuesPage />));
+
+    expect(screen.queryByTestId('issue-detail-sheet')).toBeNull();
+  });
+});
+
+describe('IssuesPage — reverse back-link to originating Finding', () => {
+  beforeEach(() => {
+    mockIssuesData = [mockGapIssue];
+    mockSearchOpen = undefined;
+  });
+
+  it('shows the originating Finding code as text for a gap_analysis issue', async () => {
+    const { IssuesPage } = await import('../-issues.page');
+    render(wrap(<IssuesPage />));
+
+    expect(screen.getByText('From Finding FIND-000101').tagName).toBe('SPAN');
+  });
+});
+
+describe('IssuesPage — deep link via ?open=', () => {
+  beforeEach(() => {
+    mockIssuesData = [mockGapIssue];
+    mockSearchOpen = undefined;
+  });
+
+  it('opens the detail sheet for the issue named by the open search param', async () => {
+    mockSearchOpen = mockGapIssue.id;
+    const { IssuesPage } = await import('../-issues.page');
+    render(wrap(<IssuesPage />));
+
+    expect(screen.getByTestId('issue-detail-sheet').textContent).toBe(mockGapIssue.title);
+  });
+
+  it('does not open any sheet when the open id does not match a loaded issue', async () => {
+    mockSearchOpen = 'not-a-real-id';
+    const { IssuesPage } = await import('../-issues.page');
+    render(wrap(<IssuesPage />));
+
+    expect(screen.queryByTestId('issue-detail-sheet')).toBeNull();
   });
 });

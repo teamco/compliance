@@ -28,6 +28,7 @@
 - **Playwright before "done"**: Any UI change MUST be verified in browser via Playwright MCP before reporting complete. No exceptions. "I read the code and it looks correct" is not verification.
 - **Propose architecture first**: For any non-trivial decision (routing, state shape, error flow) — write 2-3 sentence proposal + tradeoffs, wait for approval. Never pick the first idea and implement it silently.
 - **No self-report without proof**: Never say "verified", "tested", "checked" without attaching Playwright screenshot or server log as evidence.
+- **Consult design skills for layout/UX decisions**: For any non-trivial layout, spacing, or interaction-pattern decision (not just visual polish — e.g. how to lay out a group of actions, how a component should adapt to a narrow container, whether to use a button group vs. a menu), consult the `ui-ux-pro-max` skill (`python3 skills/ui-ux-pro-max/scripts/search.py "<query>" --domain ux|--stack shadcn`) and/or the `impeccable` skill (`layout`/`critique`/`polish` commands) before picking an approach. Don't guess at a CSS fix by trial and error when a documented pattern already answers the question.
 
 ## Architecture
 
@@ -69,6 +70,8 @@ const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null); // 
 ```
 
 Never combine create and edit into a single `modalMode` state — keep them separate so the components are independent.
+
+**Dialog/Sheet buttons live in the footer, and every overlay needs an explicit Cancel/Close.** The shared `Dialog` primitive has no close-X and doesn't dismiss on outside click (by design), so a step's own body must never be the only place a user can back out. Put every action button (`Cancel`, `Next`, `Back`, `Save`, `Finish`, etc.) inside `DialogFooter` (or `SheetFooter`), never inline within the form/step content, and always include a `Cancel` button that closes the overlay — even for a single-step form. Multi-step flows (wizards) render one shared footer across all steps, swapping only the step-specific action(s) based on current step.
 
 **Strategy swap** — provider is chosen at runtime via env. Never import a concrete strategy in app code; always inject via the factory token (`AuthStrategy`, `StorageStrategy`, `DBStrategy`, `AiStrategy`).
 

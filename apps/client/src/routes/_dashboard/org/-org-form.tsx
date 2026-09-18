@@ -8,11 +8,12 @@ import { OrgFormFields } from './-org-form-fields';
 interface OrgFormProps {
   initial: OrganizationInput;
   onSave: (data: OrganizationInput) => void;
+  onCancel: () => void;
   isPending: boolean;
   submitLabel: string;
 }
 
-export function OrgForm({ initial, onSave, isPending, submitLabel }: OrgFormProps) {
+export function OrgForm({ initial, onSave, onCancel, isPending, submitLabel }: OrgFormProps) {
   const { t } = useTranslation();
   const [form, setForm] = useState<OrganizationInput>(initial);
   const [errors, setErrors] = useState<{ name?: string }>({});
@@ -46,8 +47,11 @@ export function OrgForm({ initial, onSave, isPending, submitLabel }: OrgFormProp
       <div className="space-y-6 p-4">
         <OrgFormFields form={form} setForm={setForm} errors={errors} setErrors={setErrors} />
       </div>
-      <footer className="border-t border-border p-4">
-        <Button type="submit" disabled={isPending || !form.name.trim()} className="w-full">
+      <footer className="border-t border-border p-4 flex gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} className="flex-1">
+          {t('common.cancel')}
+        </Button>
+        <Button type="submit" disabled={isPending || !form.name.trim()} className="flex-1">
           <Save size={14} className="mr-2" />
           {isPending ? t('org.saving') : submitLabel}
         </Button>

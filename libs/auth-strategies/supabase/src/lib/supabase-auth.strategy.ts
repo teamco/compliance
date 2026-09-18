@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   TokenExpiredError,
@@ -7,6 +7,9 @@ import {
   type MagicLinkRequest,
   type OAuthProvider,
   type OAuthStartResult,
+  type OrgInvite,
+  type OrgInviteRole,
+  type OrgInviteStatus,
   type OrgMember,
   type VerifiedToken,
 } from '@icore/shared';
@@ -193,55 +196,219 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     return meta?.role ?? null;
   }
 
-  async listOrgMembers(orgId: string): Promise<OrgMember[]> {
-    const { data: members, error } = await this.client
+  async listOrgMembers(
+    orgId: string,
+    ownerId?: string,
+    includeInactive?: boolean,
+  ): Promise<OrgMember[]> {
+    let query = this.client
       .from('organization_members')
-      .select('user_id, role')
+      .select('user_id, role, is_active')
       .eq('org_id', orgId);
+    if (!includeInactive) query = query.eq('is_active', true);
+    const { data: members, error } = await query;
     if (error) throw new Error(error.message);
-    const rows = (members ?? []) as Array<{ user_id: string; role: string }>;
+    const rows = (members ?? []) as Array<{
+      user_id: string;
+      role: string;
+      is_active: boolean;
+    }>;
 
-    // organization_members has no writer in the app today (v1 scoping decision), so it
-    // will typically be empty. Always include the org's creator as an implicit "owner"
-    // member so the Owner picker has at least one selectable option, and so this method
-    // is correct once organization_members does get populated later.
-    const { data: orgProfile, error: orgProfileError } = await this.client
-      .from('org_profiles')
-      .select('user_id')
-      .eq('id', orgId)
-      .maybeSingle();
-    if (orgProfileError) throw new Error(orgProfileError.message);
-    const ownerId = (orgProfile as { user_id?: string } | null)?.user_id;
-    if (ownerId && !rows.some((r) => r.user_id === ownerId)) {
-      rows.push({ user_id: ownerId, role: 'owner' });
+    let result: OrgMember[] = [];
+    if (rows.length > 0) {
+      const { data: profiles, error: profilesError } = await this.client
+        .from('profiles')
+        .select('id, email, display_name')
+        .in(
+          'id',
+          rows.map((r) => r.user_id),
+        );
+      if (profilesError) throw new Error(profilesError.message);
+      const profileMap = new Map(
+        (profiles ?? []).map((p) => {
+          const row = p as { id: string; email?: string; display_name?: string };
+          return [row.id, row];
+        }),
+      );
+      result = rows.map((r) => {
+        const profile = profileMap.get(r.user_id);
+        return {
+          userId: r.user_id,
+          role: r.role,
+          email: profile?.email,
+          displayName: profile?.display_name,
+          isActive: r.is_active,
+        };
+      });
     }
 
-    if (rows.length === 0) return [];
+    // organization_members has no writer in the app today (v1 scoping decision), so it
+    // will typically be empty. Always union in the org's creator as an implicit "owner"
+    // member so the Owner picker has at least one selectable option, and so this method
+    // is correct once organization_members does get populated later.
+    if (!ownerId || result.some((m) => m.userId === ownerId)) return result;
 
-    const { data: profiles, error: profilesError } = await this.client
-      .from('profiles')
-      .select('id, email, display_name')
-      .in(
-        'id',
-        rows.map((r) => r.user_id),
-      );
-    if (profilesError) throw new Error(profilesError.message);
-    const profileMap = new Map(
-      (profiles ?? []).map((p) => {
-        const row = p as { id: string; email?: string; display_name?: string };
-        return [row.id, row];
-      }),
-    );
+    const ownerProfile = await this.getProfile(ownerId);
+    return [
+      {
+        userId: ownerId,
+        role: 'owner',
+        displayName: ownerProfile?.displayName,
+        email: ownerProfile?.email,
+      },
+      ...result,
+    ];
+  }
 
-    return rows.map((r) => {
-      const profile = profileMap.get(r.user_id);
-      return {
-        userId: r.user_id,
-        role: r.role,
-        email: profile?.email,
-        displayName: profile?.display_name,
-      };
+  async listOrgIdsForMember(userId: string): Promise<string[]> {
+    const { data, error } = await this.client
+      .from('organization_members')
+      .select('org_id')
+      .eq('user_id', userId)
+      .eq('is_active', true);
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => r['org_id'] as string);
+  }
+
+  async createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .insert({ org_id: orgId, email, role, token, invited_by: invitedBy, expires_at: expiresAt })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    await this.sendInviteEmail(email, token);
+    return this.toOrgInvite(data);
+  }
+
+  async listOrgInvites(orgId: string): Promise<OrgInvite[]> {
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'pending');
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((r) => this.toOrgInvite(r as Record<string, unknown>));
+  }
+
+  async revokeOrgInvite(inviteId: string): Promise<void> {
+    const { error } = await this.client
+      .from('organization_invites')
+      .update({ status: 'revoked' })
+      .eq('id', inviteId);
+    if (error) throw new Error(error.message);
+  }
+
+  async resendOrgInvite(inviteId: string): Promise<OrgInvite> {
+    const token = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .update({ token, expires_at: expiresAt })
+      .eq('id', inviteId)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    const invite = this.toOrgInvite(data);
+    await this.sendInviteEmail(invite.email, token);
+    return invite;
+  }
+
+  async getOrgInviteByToken(token: string): Promise<OrgInvite | null> {
+    const { data, error } = await this.client
+      .from('organization_invites')
+      .select('*')
+      .eq('token', token)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toOrgInvite(data) : null;
+  }
+
+  async acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember> {
+    const invite = await this.getOrgInviteByToken(token);
+    if (!invite) throw new Error('invite_not_found');
+    if (invite.status !== 'pending') throw new Error('invite_not_pending');
+    if (new Date(invite.expiresAt).getTime() < Date.now()) throw new Error('invite_expired');
+    if (userEmail.toLowerCase() !== invite.email.toLowerCase())
+      throw new Error('invite_email_mismatch');
+
+    const { data: existing } = await this.client
+      .from('organization_members')
+      .select('id, is_active')
+      .eq('org_id', invite.orgId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existing) {
+      if (existing['is_active'] !== false) throw new Error('invite_already_member');
+      const { error: reactivateError } = await this.client
+        .from('organization_members')
+        .update({ is_active: true, role: invite.role, deactivated_at: null })
+        .eq('id', existing['id']);
+      if (reactivateError) throw new Error(reactivateError.message);
+    } else {
+      const { error: insertError } = await this.client
+        .from('organization_members')
+        .insert({ org_id: invite.orgId, user_id: userId, role: invite.role });
+      if (insertError) throw new Error(insertError.message);
+    }
+
+    const { error: updateError } = await this.client
+      .from('organization_invites')
+      .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+      .eq('id', invite.id);
+    if (updateError) throw new Error(updateError.message);
+
+    return { userId, role: invite.role };
+  }
+
+  async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
+    // Deactivation and invite-revocation happen in a single Postgres
+    // transaction (see deactivate_org_member RPC) so a crash between two
+    // separate client round-trips can't leave a deactivated member with a
+    // still-pending invite for the same org.
+    const profile = await this.getProfile(userId);
+    const { error } = await this.client.rpc('deactivate_org_member', {
+      p_org_id: orgId,
+      p_user_id: userId,
+      p_email: profile?.email ?? null,
     });
+    if (error) throw new Error(error.message);
+  }
+
+  // Mirrors sendMagicLink's signInWithOtp + emailRedirectTo delivery mechanism --
+  // no new email vendor, same optional siteUrl config source as signUp/sendMagicLink.
+  private async sendInviteEmail(email: string, token: string): Promise<void> {
+    const emailRedirectTo = this.siteUrl
+      ? `${this.siteUrl}/accept-invite?token=${token}`
+      : undefined;
+    const { error } = await this.client.auth.signInWithOtp({
+      email,
+      options: emailRedirectTo ? { emailRedirectTo } : undefined,
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  private toOrgInvite(row: Record<string, unknown>): OrgInvite {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      email: row['email'] as string,
+      role: row['role'] as OrgInviteRole,
+      token: row['token'] as string,
+      invitedBy: row['invited_by'] as string,
+      status: row['status'] as OrgInviteStatus,
+      expiresAt: row['expires_at'] as string,
+      createdAt: row['created_at'] as string,
+      acceptedAt: row['accepted_at'] as string | null,
+    };
   }
 
   private toSession(s: {

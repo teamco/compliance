@@ -18,6 +18,7 @@ import { OrgForm } from './-org-form';
 import { EditOrgForm } from './-edit-org-form';
 import { OrgList } from './-org-list';
 import { DeleteOrgDialog } from './-delete-org-dialog';
+import { MembersSection } from './-members-section';
 
 export function OrgPage() {
   const { t } = useTranslation();
@@ -107,6 +108,7 @@ export function OrgPage() {
           <OrgForm
             initial={EMPTY_FORM}
             onSave={(data) => void handleCreate(data)}
+            onCancel={() => setCreateOpen(false)}
             isPending={create.isPending}
             submitLabel={t('org.createOrganization')}
           />
@@ -140,6 +142,12 @@ export function OrgPage() {
           if (confirmDeleteId) void handleDelete(confirmDeleteId);
         }}
       />
+
+      {activeOrgId &&
+        (() => {
+          const activeOrg = orgList.find((org) => org.id === activeOrgId);
+          return activeOrg ? <MembersSection org={activeOrg} /> : null;
+        })()}
     </div>
   );
 }

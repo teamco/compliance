@@ -47,6 +47,24 @@ export interface OrgMember {
   displayName?: string;
   email?: string;
   role: string;
+  isActive?: boolean; // absent or true = active; false = deactivated
+  deactivatedAt?: string; // ISO timestamp of the most recent deactivation; cleared on reactivation
+}
+
+export type OrgInviteStatus = 'pending' | 'accepted' | 'revoked' | 'expired';
+export type OrgInviteRole = 'admin' | 'viewer';
+
+export interface OrgInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: OrgInviteRole;
+  token: string;
+  invitedBy: string;
+  status: OrgInviteStatus;
+  expiresAt: string;
+  createdAt: string;
+  acceptedAt: string | null;
 }
 
 export interface AuthStrategy {
@@ -78,5 +96,22 @@ export interface AuthStrategy {
   verifyMagicLink(token: string): Promise<AuthSession>;
   startOAuth(provider: OAuthProvider, callbackUrl: string): Promise<OAuthStartResult>;
   completeOAuth(provider: OAuthProvider, code: string, state: string): Promise<AuthSession>;
-  listOrgMembers(orgId: string): Promise<OrgMember[]>;
+  // includeInactive is for resolving historical actor names (e.g. a past
+  // validator/approver) that must still display after that member was
+  // deactivated -- access-control call sites must never set it, since it
+  // would defeat the active-only filter membership checks rely on.
+  listOrgMembers(orgId: string, ownerId?: string, includeInactive?: boolean): Promise<OrgMember[]>;
+  listOrgIdsForMember(userId: string): Promise<string[]>;
+  createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite>;
+  listOrgInvites(orgId: string): Promise<OrgInvite[]>;
+  revokeOrgInvite(inviteId: string): Promise<void>;
+  resendOrgInvite(inviteId: string): Promise<OrgInvite>;
+  getOrgInviteByToken(token: string): Promise<OrgInvite | null>;
+  acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember>;
+  deactivateOrgMember(orgId: string, userId: string): Promise<void>;
 }

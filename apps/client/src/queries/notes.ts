@@ -6,32 +6,25 @@ import type {
   OrgSize,
   DocumentStandard,
   StandardPatch,
+  Framework,
+  FrameworkControl,
+  WorkflowStatus,
+  WorkflowTransition,
 } from '@icore/shared';
 
-export type { Organization, OrganizationInput, OrgSize, DocumentStandard, StandardPatch };
-
-export interface Framework {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  version: string;
-  category: 'security' | 'privacy' | 'cloud' | 'risk';
-  controlCount?: number;
-}
-
-export interface FrameworkControl {
-  id: string;
-  frameworkId: string;
-  code: string;
-  title: string;
-  description: string;
-  category: string;
-}
+export type {
+  Organization,
+  OrganizationInput,
+  OrgSize,
+  DocumentStandard,
+  StandardPatch,
+  Framework,
+  FrameworkControl,
+  WorkflowStatus,
+  WorkflowTransition,
+};
 
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
-export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
-export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
 
 export interface StandardsDocument {
   id: string;

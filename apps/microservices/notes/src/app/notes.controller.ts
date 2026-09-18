@@ -8,13 +8,30 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewal,
+  ExceptionRenewalRequestInput,
+  ControlFrameworkMappingInput,
+  Finding,
   Framework,
   FrameworkControl,
+  FrameworkRequirement,
+  FrameworkRequirementPatch,
+  InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
+  RequirementEvidence,
+  RequirementAssessment,
+  FrameworkActivity,
+  FrameworkInput,
+  FrameworkPatch,
   GapAnalysis,
   GapAnalysisResult,
   Issue,
   IssueInput,
   IssuePatch,
+  IssueSeverity,
+  IssueValidation,
+  IssueValidationSubmitInput,
   NotesStrategy,
   Policy,
   PolicyInput,
@@ -25,12 +42,26 @@ import type {
   Risk,
   RiskInput,
   RiskPatch,
-  RiskAssessment,
-  RiskAssessmentInput,
-  RiskAssessmentPatch,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
+  AssessmentItemWithContext,
+  AssessmentType,
+  AssessmentTypeInput,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
+  RiskMethodology,
+  RiskMethodologyInput,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskControlMapping,
+  RiskControlMappingInput,
+  RiskAcceptance,
+  RiskAcceptanceInput,
+  RiskSnapshot,
   Organization,
   OrganizationInput,
   ReportTemplate,
@@ -39,6 +70,7 @@ import type {
   StandardsDocument,
   StandardsSnapshot,
   WorkflowTransition,
+  EvidencePatch,
 } from '@icore/shared';
 
 @Controller()
@@ -46,13 +78,315 @@ export class NotesController {
   constructor(@Inject('NotesStrategy') private readonly strategy: NotesStrategy) {}
 
   @MessagePattern('notes.frameworks.list')
-  listFrameworks(): Promise<Framework[]> {
-    return this.strategy.listFrameworks();
+  listFrameworks(@Payload() payload?: { orgId?: string }): Promise<Framework[]> {
+    return this.strategy.listFrameworks(payload?.orgId);
   }
 
   @MessagePattern('notes.frameworks.get')
-  getFramework(@Payload() payload: { id: string }): Promise<Framework | null> {
-    return this.strategy.getFramework(payload.id);
+  getFramework(@Payload() payload: { id: string; orgId?: string }): Promise<Framework | null> {
+    return this.strategy.getFramework(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.create')
+  createFramework(
+    @Payload() payload: { orgId: string; input: FrameworkInput },
+  ): Promise<Framework> {
+    return this.strategy.createFramework(payload.orgId, payload.input);
+  }
+
+  @MessagePattern('notes.frameworks.update')
+  updateFramework(
+    @Payload() payload: { id: string; orgId: string; patch: FrameworkPatch },
+  ): Promise<Framework> {
+    return this.strategy.updateFramework(payload.id, payload.orgId, payload.patch);
+  }
+
+  @MessagePattern('notes.frameworks.delete')
+  deleteFramework(@Payload() payload: { id: string; orgId: string }): Promise<void> {
+    return this.strategy.deleteFramework(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.requirements.list')
+  listRequirements(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<FrameworkRequirement[]> {
+    return this.strategy.listRequirements(payload.frameworkId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.requirements.get')
+  getRequirement(
+    @Payload() payload: { frameworkId: string; reqId: string; orgId?: string },
+  ): Promise<FrameworkRequirement | null> {
+    return this.strategy.getRequirement(payload.frameworkId, payload.reqId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.requirements.update')
+  updateRequirement(
+    @Payload()
+    payload: {
+      frameworkId: string;
+      reqId: string;
+      orgId: string;
+      patch: FrameworkRequirementPatch;
+    },
+  ): Promise<FrameworkRequirement> {
+    return this.strategy.updateRequirement(
+      payload.frameworkId,
+      payload.reqId,
+      payload.orgId,
+      payload.patch,
+    );
+  }
+
+  @MessagePattern('notes.internal-controls.list')
+  listInternalControls(
+    @Payload() payload: { orgId?: string; frameworkId?: string },
+  ): Promise<InternalControl[]> {
+    return this.strategy.listInternalControls(payload?.orgId, payload?.frameworkId);
+  }
+
+  @MessagePattern('notes.internal-controls.create')
+  createInternalControl(
+    @Payload() payload: { orgId: string; data: InternalControlInput },
+  ): Promise<InternalControl> {
+    return this.strategy.createInternalControl(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.get')
+  getInternalControl(
+    @Payload() payload: { id: string; orgId?: string },
+  ): Promise<InternalControl | null> {
+    return this.strategy.getInternalControl(payload.id, payload.orgId);
+  }
+
+  @MessagePattern('notes.internal-controls.update')
+  updateInternalControl(
+    @Payload() payload: { id: string; patch: InternalControlPatch },
+  ): Promise<InternalControl> {
+    return this.strategy.updateInternalControl(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.internal-controls.delete')
+  deleteInternalControl(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteInternalControl(payload.id);
+  }
+
+  @MessagePattern('notes.internal-controls.mappings.add')
+  addControlFrameworkMapping(
+    @Payload() payload: { controlId: string; data: ControlFrameworkMappingInput },
+  ): Promise<InternalControl> {
+    return this.strategy.addControlFrameworkMapping(payload.controlId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.mappings.remove')
+  removeControlFrameworkMapping(
+    @Payload() payload: { controlId: string; mappingId: string },
+  ): Promise<InternalControl> {
+    return this.strategy.removeControlFrameworkMapping(payload.controlId, payload.mappingId);
+  }
+
+  @MessagePattern('notes.internal-controls.evidence.list')
+  listControlEvidence(@Payload() payload: { controlId: string }): Promise<RequirementEvidence[]> {
+    return this.strategy.listControlEvidence(payload.controlId);
+  }
+
+  @MessagePattern('notes.internal-controls.evidence.create')
+  createControlEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      controlId: string;
+      data: Omit<RequirementEvidence, 'id' | 'controlId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createControlEvidence(payload.orgId, payload.controlId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.assessments.list')
+  listControlAssessments(
+    @Payload() payload: { controlId: string },
+  ): Promise<RequirementAssessment[]> {
+    return this.strategy.listControlAssessments(payload.controlId);
+  }
+
+  @MessagePattern('notes.internal-controls.assessments.create')
+  createControlAssessment(
+    @Payload()
+    payload: {
+      orgId: string;
+      controlId: string;
+      data: Omit<RequirementAssessment, 'id' | 'controlId'>;
+    },
+  ): Promise<RequirementAssessment> {
+    return this.strategy.createControlAssessment(payload.orgId, payload.controlId, payload.data);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.list')
+  listControlFindings(@Payload() payload: { controlId: string }): Promise<Finding[]> {
+    return this.strategy.listControlFindings(payload.controlId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.link-risk')
+  linkFindingToRisk(@Payload() payload: { findingId: string; riskId: string }): Promise<Finding> {
+    return this.strategy.linkFindingToRisk(payload.findingId, payload.riskId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.link-issue')
+  linkFindingToIssue(@Payload() payload: { findingId: string; issueId: string }): Promise<Finding> {
+    return this.strategy.linkFindingToIssue(payload.findingId, payload.issueId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.resolve-via-exception')
+  resolveFindingViaException(
+    @Payload() payload: { findingId: string; exceptionId: string },
+  ): Promise<Finding> {
+    return this.strategy.resolveFindingViaException(payload.findingId, payload.exceptionId);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.get')
+  getFinding(@Payload() payload: { id: string }): Promise<Finding | null> {
+    return this.strategy.getFinding(payload.id);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.by-link')
+  listFindingsByLink(
+    @Payload() payload: { issueId?: string; riskId?: string; exceptionId?: string },
+  ): Promise<Finding[]> {
+    return this.strategy.listFindingsByLink(payload);
+  }
+
+  @MessagePattern('notes.internal-controls.findings.create-issue')
+  createIssueFromFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      findingId: string;
+      data: { title: string; description: string; severity: IssueSeverity; ownerId: string };
+    },
+  ): Promise<Issue> {
+    return this.strategy.createIssueFromFinding(
+      payload.orgId,
+      payload.userId,
+      payload.findingId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.internal-controls.findings.create-risk')
+  createRiskFromFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      findingId: string;
+      data: {
+        title: string;
+        description: string;
+        taxonomyCategoryId: string;
+        ownerId: string;
+        inherentLikelihood: number;
+        inherentImpact: number;
+      };
+    },
+  ): Promise<Risk> {
+    return this.strategy.createRiskFromFinding(
+      payload.orgId,
+      payload.userId,
+      payload.findingId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.internal-controls.findings.create-exception')
+  createExceptionFromFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      findingId: string;
+      data: {
+        controlCode: string;
+        frameworkId: string;
+        title: string;
+        statement: string;
+        justification: string;
+        ownerId: string;
+        compensatingControls?: string;
+      };
+    },
+  ): Promise<Exception> {
+    return this.strategy.createExceptionFromFinding(
+      payload.orgId,
+      payload.userId,
+      payload.findingId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.internal-controls.activity.list')
+  listControlActivity(@Payload() payload: { controlId: string }): Promise<FrameworkActivity[]> {
+    return this.strategy.listControlActivity(payload.controlId);
+  }
+
+  @MessagePattern('notes.assets.activity.list')
+  listAssetActivity(@Payload() payload: { assetId: string }): Promise<FrameworkActivity[]> {
+    return this.strategy.listAssetActivity(payload.assetId);
+  }
+
+  @MessagePattern('notes.frameworks.evidence.list')
+  listFrameworkEvidence(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<RequirementEvidence[]> {
+    return this.strategy.listFrameworkEvidence(payload.frameworkId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.evidence.create')
+  createFrameworkEvidence(
+    @Payload() payload: { orgId: string; data: Omit<RequirementEvidence, 'id'> },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createFrameworkEvidence(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.frameworks.assessments.list')
+  listFrameworkAssessments(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<RequirementAssessment[]> {
+    return this.strategy.listFrameworkAssessments(payload.frameworkId, payload.orgId);
+  }
+
+  @MessagePattern('notes.frameworks.assessments.get')
+  getRequirementAssessment(
+    @Payload() payload: { id: string },
+  ): Promise<RequirementAssessment | null> {
+    return this.strategy.getRequirementAssessment(payload.id);
+  }
+
+  @MessagePattern('notes.frameworks.assessments.finding')
+  createAssessmentFinding(
+    @Payload()
+    payload: {
+      orgId: string;
+      assessmentId: string;
+      findingData: {
+        title: string;
+        severity: 'critical' | 'high' | 'medium' | 'low';
+        description: string;
+      };
+    },
+  ): Promise<{ findingId: string }> {
+    return this.strategy.createAssessmentFinding(
+      payload.orgId,
+      payload.assessmentId,
+      payload.findingData,
+    );
+  }
+
+  @MessagePattern('notes.frameworks.activities.list')
+  listFrameworkActivities(
+    @Payload() payload: { frameworkId: string; orgId?: string },
+  ): Promise<FrameworkActivity[]> {
+    return this.strategy.listFrameworkActivities(payload.frameworkId, payload.orgId);
   }
 
   @MessagePattern('notes.controls.list')
@@ -258,18 +592,67 @@ export class NotesController {
   }
 
   @MessagePattern('notes.exceptions.approve')
-  approveException(@Payload() payload: { id: string }): Promise<Exception> {
-    return this.strategy.approveException(payload.id);
+  approveException(@Payload() payload: { id: string; approverId: string }): Promise<Exception> {
+    return this.strategy.approveException(payload.id, payload.approverId);
   }
 
   @MessagePattern('notes.exceptions.reject')
-  rejectException(@Payload() payload: { id: string }): Promise<Exception> {
-    return this.strategy.rejectException(payload.id);
+  rejectException(@Payload() payload: { id: string; approverId: string }): Promise<Exception> {
+    return this.strategy.rejectException(payload.id, payload.approverId);
   }
 
   @MessagePattern('notes.exceptions.delete')
   deleteException(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteException(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.renewals.request')
+  requestExceptionRenewal(
+    @Payload()
+    payload: {
+      exceptionId: string;
+      requestedBy: string;
+      data: ExceptionRenewalRequestInput;
+    },
+  ): Promise<ExceptionRenewal> {
+    return this.strategy.requestExceptionRenewal(
+      payload.exceptionId,
+      payload.requestedBy,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.exceptions.renewals.review')
+  reviewExceptionRenewal(
+    @Payload()
+    payload: {
+      id: string;
+      reviewerId: string;
+      decision: 'approved' | 'rejected';
+      reviewNotes?: string;
+    },
+  ): Promise<ExceptionRenewal> {
+    return this.strategy.reviewExceptionRenewal(
+      payload.id,
+      payload.reviewerId,
+      payload.decision,
+      payload.reviewNotes,
+    );
+  }
+
+  @MessagePattern('notes.exceptions.renewals.get')
+  getExceptionRenewal(@Payload() payload: { id: string }): Promise<ExceptionRenewal | null> {
+    return this.strategy.getExceptionRenewal(payload.id);
+  }
+
+  @MessagePattern('notes.exceptions.renewals.list')
+  listExceptionRenewals(@Payload() payload: { exceptionId: string }): Promise<ExceptionRenewal[]> {
+    return this.strategy.listExceptionRenewals(payload.exceptionId);
+  }
+
+  @MessagePattern('notes.exceptions.renewals.pending')
+  listPendingExceptionRenewals(@Payload() payload: { orgId: string }): Promise<ExceptionRenewal[]> {
+    return this.strategy.listPendingExceptionRenewals(payload.orgId);
   }
 
   // ─── Issues ──────────────────────────────────────────────────────────────
@@ -301,6 +684,46 @@ export class NotesController {
     return this.strategy.deleteIssue(payload.id);
   }
 
+  @MessagePattern('notes.issues.submit-for-validation')
+  submitIssueForValidation(
+    @Payload() payload: { id: string; ownerId: string; data: IssueValidationSubmitInput },
+  ): Promise<Issue> {
+    return this.strategy.submitIssueForValidation(payload.id, payload.ownerId, payload.data);
+  }
+
+  @MessagePattern('notes.issues.review-validation')
+  reviewIssueValidation(
+    @Payload()
+    payload: {
+      id: string;
+      validatorId: string;
+      decision: 'approved' | 'rejected';
+      reviewNotes?: string;
+    },
+  ): Promise<IssueValidation> {
+    return this.strategy.reviewIssueValidation(
+      payload.id,
+      payload.validatorId,
+      payload.decision,
+      payload.reviewNotes,
+    );
+  }
+
+  @MessagePattern('notes.issues.validations.get')
+  getIssueValidation(@Payload() payload: { id: string }): Promise<IssueValidation | null> {
+    return this.strategy.getIssueValidation(payload.id);
+  }
+
+  @MessagePattern('notes.issues.validations.list')
+  listIssueValidations(@Payload() payload: { issueId: string }): Promise<IssueValidation[]> {
+    return this.strategy.listIssueValidations(payload.issueId);
+  }
+
+  @MessagePattern('notes.issues.validations.pending')
+  listPendingIssueValidations(@Payload() payload: { orgId: string }): Promise<IssueValidation[]> {
+    return this.strategy.listPendingIssueValidations(payload.orgId);
+  }
+
   // ─── Assets ──────────────────────────────────────────────────────────────
 
   @MessagePattern('notes.assets.list')
@@ -330,6 +753,58 @@ export class NotesController {
     return this.strategy.deleteAsset(payload.id);
   }
 
+  @MessagePattern('notes.assets.evidence.list')
+  listAssetEvidence(@Payload() payload: { assetId: string }): Promise<RequirementEvidence[]> {
+    return this.strategy.listAssetEvidence(payload.assetId);
+  }
+
+  @MessagePattern('notes.assets.evidence.create')
+  createAssetEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      assetId: string;
+      data: Omit<RequirementEvidence, 'id' | 'assetId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createAssetEvidence(payload.orgId, payload.assetId, payload.data);
+  }
+
+  @MessagePattern('notes.evidence.get')
+  getEvidence(@Payload() payload: { id: string }): Promise<RequirementEvidence | null> {
+    return this.strategy.getEvidence(payload.id);
+  }
+
+  @MessagePattern('notes.evidence.update')
+  updateEvidence(
+    @Payload() payload: { id: string; patch: EvidencePatch },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.updateEvidence(payload.id, payload.patch);
+  }
+
+  @MessagePattern('notes.evidence.delete')
+  deleteEvidence(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.deleteEvidence(payload.id);
+  }
+
+  @MessagePattern('notes.evidence.review')
+  reviewEvidence(
+    @Payload()
+    payload: {
+      id: string;
+      reviewerId: string;
+      decision: 'verified' | 'rejected';
+      reviewNotes?: string;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.reviewEvidence(
+      payload.id,
+      payload.reviewerId,
+      payload.decision,
+      payload.reviewNotes,
+    );
+  }
+
   // ─── Risks ───────────────────────────────────────────────────────────────
 
   @MessagePattern('notes.risks.list')
@@ -350,8 +825,16 @@ export class NotesController {
   }
 
   @MessagePattern('notes.risks.update')
-  updateRisk(@Payload() payload: { id: string; patch: RiskPatch }): Promise<Risk> {
-    return this.strategy.updateRisk(payload.id, payload.patch);
+  updateRisk(
+    @Payload()
+    payload: {
+      id: string;
+      patch: RiskPatch;
+      changedBy: string;
+      reason?: string;
+    },
+  ): Promise<Risk> {
+    return this.strategy.updateRisk(payload.id, payload.patch, payload.changedBy, payload.reason);
   }
 
   @MessagePattern('notes.risks.delete')
@@ -359,59 +842,322 @@ export class NotesController {
     return this.strategy.deleteRisk(payload.id);
   }
 
+  @MessagePattern('notes.risks.methodology.get')
+  getRiskMethodology(@Payload() payload: { orgId: string }): Promise<RiskMethodology | null> {
+    return this.strategy.getRiskMethodology(payload.orgId);
+  }
+
+  @MessagePattern('notes.risks.methodology.upsert')
+  upsertRiskMethodology(
+    @Payload() payload: { orgId: string; data: RiskMethodologyInput },
+  ): Promise<RiskMethodology> {
+    return this.strategy.upsertRiskMethodology(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.list')
+  listRiskTaxonomy(@Payload() payload: { orgId: string }): Promise<RiskTaxonomyCategory[]> {
+    return this.strategy.listRiskTaxonomy(payload.orgId);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.get')
+  getRiskTaxonomyCategory(
+    @Payload() payload: { id: string },
+  ): Promise<RiskTaxonomyCategory | null> {
+    return this.strategy.getRiskTaxonomyCategory(payload.id);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.create')
+  createRiskTaxonomyCategory(
+    @Payload() payload: { orgId: string; data: RiskTaxonomyCategoryInput },
+  ): Promise<RiskTaxonomyCategory> {
+    return this.strategy.createRiskTaxonomyCategory(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.taxonomy.archive')
+  archiveRiskTaxonomyCategory(@Payload() payload: { id: string }): Promise<RiskTaxonomyCategory> {
+    return this.strategy.archiveRiskTaxonomyCategory(payload.id);
+  }
+
+  @MessagePattern('notes.risks.mappings.list')
+  listRiskControlMappings(@Payload() payload: { riskId: string }): Promise<RiskControlMapping[]> {
+    return this.strategy.listRiskControlMappings(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.mappings.add')
+  addRiskControlMapping(
+    @Payload() payload: { riskId: string; data: RiskControlMappingInput },
+  ): Promise<RiskControlMapping> {
+    return this.strategy.addRiskControlMapping(payload.riskId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.mappings.remove')
+  removeRiskControlMapping(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.removeRiskControlMapping(payload.id);
+  }
+
+  @MessagePattern('notes.risks.acceptance.create')
+  createRiskAcceptance(
+    @Payload()
+    payload: {
+      orgId: string;
+      riskId: string;
+      requestedBy: string;
+      data: RiskAcceptanceInput;
+    },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.createRiskAcceptance(
+      payload.orgId,
+      payload.riskId,
+      payload.requestedBy,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.risks.acceptance.active')
+  getActiveRiskAcceptance(@Payload() payload: { riskId: string }): Promise<RiskAcceptance | null> {
+    return this.strategy.getActiveRiskAcceptance(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.acceptance.get')
+  getRiskAcceptance(@Payload() payload: { id: string }): Promise<RiskAcceptance | null> {
+    return this.strategy.getRiskAcceptance(payload.id);
+  }
+
+  @MessagePattern('notes.risks.acceptance.review')
+  reviewRiskAcceptance(
+    @Payload() payload: { id: string; reviewedBy: string; reviewNotes?: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.reviewRiskAcceptance(payload.id, payload.reviewedBy, payload.reviewNotes);
+  }
+
+  @MessagePattern('notes.risks.acceptance.approve')
+  approveRiskAcceptance(
+    @Payload() payload: { id: string; userId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.approveRiskAcceptance(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.risks.acceptance.reject')
+  rejectRiskAcceptance(
+    @Payload() payload: { id: string; userId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.rejectRiskAcceptance(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.risks.snapshots.list')
+  listRiskSnapshots(@Payload() payload: { riskId: string }): Promise<RiskSnapshot[]> {
+    return this.strategy.listRiskSnapshots(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.evidence.list')
+  listRiskEvidence(@Payload() payload: { riskId: string }): Promise<RequirementEvidence[]> {
+    return this.strategy.listRiskEvidence(payload.riskId);
+  }
+
+  @MessagePattern('notes.risks.evidence.create')
+  createRiskEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      riskId: string;
+      data: Omit<RequirementEvidence, 'id' | 'riskId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createRiskEvidence(payload.orgId, payload.riskId, payload.data);
+  }
+
+  @MessagePattern('notes.risks.assessment-items.list')
+  listAssessmentItemsForRisk(
+    @Payload() payload: { riskId: string },
+  ): Promise<AssessmentItemWithContext[]> {
+    return this.strategy.listAssessmentItemsForRisk(payload.riskId);
+  }
+
+  @MessagePattern('notes.assessments.items.evidence.list')
+  listAssessmentItemEvidence(
+    @Payload() payload: { itemId: string },
+  ): Promise<RequirementEvidence[]> {
+    return this.strategy.listAssessmentItemEvidence(payload.itemId);
+  }
+
+  @MessagePattern('notes.assessments.items.evidence.create')
+  createAssessmentItemEvidence(
+    @Payload()
+    payload: {
+      orgId: string;
+      itemId: string;
+      data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>;
+    },
+  ): Promise<RequirementEvidence> {
+    return this.strategy.createAssessmentItemEvidence(payload.orgId, payload.itemId, payload.data);
+  }
+
   // ─── Risk Assessments ────────────────────────────────────────────────────
 
   @MessagePattern('notes.assessments.list')
-  listAssessments(@Payload() p: { orgId: string }): Promise<RiskAssessment[]> {
+  listAssessments(@Payload() p: { orgId: string }): Promise<Assessment[]> {
     return this.strategy.listAssessments(p.orgId);
   }
 
   @MessagePattern('notes.assessments.create')
   createAssessment(
-    @Payload() p: { orgId: string; userId: string; data: RiskAssessmentInput },
-  ): Promise<RiskAssessment> {
+    @Payload() p: { orgId: string; userId: string; data: AssessmentInput },
+  ): Promise<Assessment> {
     return this.strategy.createAssessment(p.orgId, p.userId, p.data);
   }
 
   @MessagePattern('notes.assessments.get')
-  getAssessment(@Payload() p: { id: string }): Promise<RiskAssessment | null> {
+  getAssessment(@Payload() p: { id: string }): Promise<Assessment | null> {
     return this.strategy.getAssessment(p.id);
   }
 
   @MessagePattern('notes.assessments.update')
-  updateAssessment(
-    @Payload() p: { id: string; patch: RiskAssessmentPatch },
-  ): Promise<RiskAssessment> {
+  updateAssessment(@Payload() p: { id: string; patch: AssessmentPatch }): Promise<Assessment> {
     return this.strategy.updateAssessment(p.id, p.patch);
   }
 
   @MessagePattern('notes.assessments.delete')
-  deleteAssessment(@Payload() p: { id: string }): Promise<void> {
-    return this.strategy.deleteAssessment(p.id);
+  deleteAssessment(@Payload() p: { id: string; userId: string }): Promise<void> {
+    return this.strategy.deleteAssessment(p.id, p.userId);
   }
 
   @MessagePattern('notes.assessments.items.list')
-  listAssessmentItems(@Payload() p: { assessmentId: string }): Promise<RiskAssessmentItem[]> {
+  listAssessmentItems(@Payload() p: { assessmentId: string }): Promise<AssessmentItem[]> {
     return this.strategy.listAssessmentItems(p.assessmentId);
   }
 
+  @MessagePattern('notes.assessments.items.get')
+  getAssessmentItem(@Payload() p: { id: string }): Promise<AssessmentItem | null> {
+    return this.strategy.getAssessmentItem(p.id);
+  }
+
   @MessagePattern('notes.assessments.items.add')
-  addAssessmentItem(
-    @Payload() p: { assessmentId: string; data: RiskAssessmentItemInput },
-  ): Promise<RiskAssessmentItem> {
-    return this.strategy.addAssessmentItem(p.assessmentId, p.data);
+  createAssessmentItem(
+    @Payload() p: { assessmentId: string; data: AssessmentItemInput },
+  ): Promise<AssessmentItem> {
+    return this.strategy.createAssessmentItem(p.assessmentId, p.data);
   }
 
   @MessagePattern('notes.assessments.items.update')
   updateAssessmentItem(
-    @Payload() p: { id: string; patch: RiskAssessmentItemPatch },
-  ): Promise<RiskAssessmentItem> {
+    @Payload() p: { id: string; patch: AssessmentItemPatch },
+  ): Promise<AssessmentItem> {
     return this.strategy.updateAssessmentItem(p.id, p.patch);
   }
 
   @MessagePattern('notes.assessments.items.delete')
   deleteAssessmentItem(@Payload() p: { id: string }): Promise<void> {
     return this.strategy.deleteAssessmentItem(p.id);
+  }
+
+  @MessagePattern('notes.assessment-types.list')
+  listAssessmentTypes(@Payload() payload: { orgId: string }): Promise<AssessmentType[]> {
+    return this.strategy.listAssessmentTypes(payload.orgId);
+  }
+
+  @MessagePattern('notes.assessment-types.get')
+  getAssessmentType(@Payload() payload: { id: string }): Promise<AssessmentType | null> {
+    return this.strategy.getAssessmentType(payload.id);
+  }
+
+  @MessagePattern('notes.assessment-types.create')
+  createAssessmentType(
+    @Payload() payload: { orgId: string; data: AssessmentTypeInput },
+  ): Promise<AssessmentType> {
+    return this.strategy.createAssessmentType(payload.orgId, payload.data);
+  }
+
+  @MessagePattern('notes.assessment-types.archive')
+  archiveAssessmentType(@Payload() payload: { id: string }): Promise<AssessmentType> {
+    return this.strategy.archiveAssessmentType(payload.id);
+  }
+
+  @MessagePattern('notes.assessments.start')
+  startAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.startAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.submit-for-review')
+  submitForReview(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.submitForReview(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.approve')
+  approveAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.approveAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.request-changes')
+  requestChanges(
+    @Payload() payload: { id: string; userId: string; note: string },
+  ): Promise<Assessment> {
+    return this.strategy.requestChanges(payload.id, payload.userId, payload.note);
+  }
+
+  @MessagePattern('notes.assessments.complete')
+  completeAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.completeAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.archive')
+  archiveAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
+    return this.strategy.archiveAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.list')
+  listAssessmentItemControlMappings(
+    @Payload() payload: { itemId: string },
+  ): Promise<AssessmentItemControlMapping[]> {
+    return this.strategy.listAssessmentItemControlMappings(payload.itemId);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.get')
+  getAssessmentItemControlMapping(
+    @Payload() payload: { id: string },
+  ): Promise<AssessmentItemControlMapping | null> {
+    return this.strategy.getAssessmentItemControlMapping(payload.id);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.add')
+  addAssessmentItemControlMapping(
+    @Payload() payload: { itemId: string; data: AssessmentItemControlMappingInput },
+  ): Promise<AssessmentItemControlMapping> {
+    return this.strategy.addAssessmentItemControlMapping(payload.itemId, payload.data);
+  }
+
+  @MessagePattern('notes.assessments.items.mappings.remove')
+  removeAssessmentItemControlMapping(@Payload() payload: { id: string }): Promise<void> {
+    return this.strategy.removeAssessmentItemControlMapping(payload.id);
+  }
+
+  @MessagePattern('notes.assessments.items.risk.create')
+  createRiskFromAssessmentItem(
+    @Payload()
+    payload: {
+      orgId: string;
+      userId: string;
+      itemId: string;
+      data: { taxonomyCategoryId: string };
+    },
+  ): Promise<Risk> {
+    return this.strategy.createRiskFromAssessmentItem(
+      payload.orgId,
+      payload.userId,
+      payload.itemId,
+      payload.data,
+    );
+  }
+
+  @MessagePattern('notes.assessments.items.risk.link')
+  linkAssessmentItemToRisk(
+    @Payload() payload: { itemId: string; riskId: string },
+  ): Promise<AssessmentItem> {
+    return this.strategy.linkAssessmentItemToRisk(payload.itemId, payload.riskId);
+  }
+
+  @MessagePattern('notes.assessments.items.risk.unlink')
+  unlinkAssessmentItemFromRisk(@Payload() payload: { itemId: string }): Promise<AssessmentItem> {
+    return this.strategy.unlinkAssessmentItemFromRisk(payload.itemId);
   }
 
   // ─── Policies ────────────────────────────────────────────────────────────
@@ -467,6 +1213,11 @@ export class NotesController {
     return this.strategy.addPolicyControl(p.policyId, p.data);
   }
 
+  @MessagePattern('notes.policies.controls.get')
+  getPolicyControl(@Payload() p: { id: string }): Promise<PolicyControl | null> {
+    return this.strategy.getPolicyControl(p.id);
+  }
+
   @MessagePattern('notes.policies.controls.remove')
   removePolicyControl(@Payload() p: { id: string }): Promise<void> {
     return this.strategy.removePolicyControl(p.id);
@@ -474,8 +1225,20 @@ export class NotesController {
 
   @MessagePattern('notes.policies.for-control')
   listPoliciesForControl(
-    @Payload() p: { controlCode: string; frameworkId: string },
+    @Payload() p: { controlCode: string; frameworkId: string; orgId: string },
   ): Promise<Policy[]> {
-    return this.strategy.listPoliciesForControl(p.controlCode, p.frameworkId);
+    return this.strategy.listPoliciesForControl(p.controlCode, p.frameworkId, p.orgId);
+  }
+
+  @MessagePattern('notes.policies.transition-workflow')
+  transitionPolicyWorkflow(
+    @Payload() p: { id: string; transition: WorkflowTransition; userId: string },
+  ): Promise<Policy> {
+    return this.strategy.transitionPolicyWorkflow(p.id, p.transition, p.userId);
+  }
+
+  @MessagePattern('notes.policies.activity.list')
+  listPolicyActivity(@Payload() p: { policyId: string }): Promise<FrameworkActivity[]> {
+    return this.strategy.listPolicyActivity(p.policyId);
   }
 }

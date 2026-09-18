@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   ClipboardList,
   FileText,
+  Inbox,
 } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 
@@ -32,6 +33,7 @@ interface NavSection {
 
 type NavKey =
   | 'nav.dashboard'
+  | 'nav.myWork'
   | 'nav.analytics'
   | 'nav.frameworks'
   | 'nav.org'
@@ -70,6 +72,7 @@ const NAV: NavSection[] = [
     titleKey: 'nav.sectionPlatform',
     items: [
       { labelKey: 'nav.dashboard', to: '/dashboard', icon: LayoutDashboard },
+      { labelKey: 'nav.myWork', to: '/my-work', icon: Inbox },
       { labelKey: 'nav.analytics', to: '/analytics', icon: BarChart3, soon: true },
     ],
   },
@@ -218,7 +221,7 @@ export function LayoutSider() {
         type="button"
         onClick={toggle}
         aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        className="absolute -right-3 top-[72px] z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors shadow-md"
+        className="absolute -right-3 top-[72px] z-10 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-surface text-muted-foreground hover:text-foreground hover:border-muted-foreground transition-colors shadow-md cursor-pointer"
       >
         {collapsed ? <PanelLeftOpen size={12} /> : <PanelLeftClose size={12} />}
       </button>

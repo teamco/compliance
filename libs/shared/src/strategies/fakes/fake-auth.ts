@@ -4,6 +4,8 @@ import type {
   MagicLinkRequest,
   OAuthProvider,
   OAuthStartResult,
+  OrgInvite,
+  OrgInviteRole,
   OrgMember,
   VerifiedToken,
 } from '../auth';
@@ -33,6 +35,7 @@ export class FakeAuthStrategy implements AuthStrategy {
   private readonly oauthCodes = new Map<string, string>();
   private lastOAuthState: string | null = null;
   private readonly orgMembers = new Map<string, OrgMember[]>();
+  private orgInvites = new Map<string, OrgInvite>();
 
   async signUp(email: string, password: string): Promise<AuthSession> {
     if (this.users.has(email)) throw new Error('user_exists');
@@ -168,8 +171,140 @@ export class FakeAuthStrategy implements AuthStrategy {
     this.orgMembers.set(orgId, [...existing, member]);
   }
 
-  async listOrgMembers(orgId: string): Promise<OrgMember[]> {
-    return this.orgMembers.get(orgId) ?? [];
+  async listOrgMembers(
+    orgId: string,
+    ownerId?: string,
+    includeInactive?: boolean,
+  ): Promise<OrgMember[]> {
+    const all = this.orgMembers.get(orgId) ?? [];
+    const filtered = includeInactive ? all : all.filter((m) => m.isActive !== false);
+    // Stored membership rows only carry userId/role/isActive (set at invite
+    // acceptance time) -- enrich with email/displayName here, same as the
+    // Supabase strategy's profiles join, so the UI never falls back to a raw
+    // uid for an otherwise-resolvable member.
+    const members = filtered.map((m) => {
+      const user = [...this.users.values()].find((u) => u.id === m.userId);
+      return {
+        ...m,
+        email: m.email ?? user?.email,
+        displayName: m.displayName ?? user?.displayName,
+      };
+    });
+    if (!ownerId || members.some((m) => m.userId === ownerId)) return members;
+    const owner = [...this.users.values()].find((u) => u.id === ownerId);
+    return [{ userId: ownerId, role: 'owner', email: owner?.email }, ...members];
+  }
+
+  async listOrgIdsForMember(userId: string): Promise<string[]> {
+    const result: string[] = [];
+    for (const [orgId, members] of this.orgMembers.entries()) {
+      if (members.some((m) => m.userId === userId && m.isActive !== false)) result.push(orgId);
+    }
+    return result;
+  }
+
+  async createOrgInvite(
+    orgId: string,
+    email: string,
+    role: OrgInviteRole,
+    invitedBy: string,
+  ): Promise<OrgInvite> {
+    const invite: OrgInvite = {
+      id: `invite-${this.orgInvites.size + 1}`,
+      orgId,
+      email,
+      role,
+      token: `token-${Math.random().toString(36).slice(2)}`,
+      invitedBy,
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      createdAt: new Date().toISOString(),
+      acceptedAt: null,
+    };
+    this.orgInvites.set(invite.id, invite);
+    return invite;
+  }
+
+  async listOrgInvites(orgId: string): Promise<OrgInvite[]> {
+    return [...this.orgInvites.values()].filter((i) => i.orgId === orgId && i.status === 'pending');
+  }
+
+  async revokeOrgInvite(inviteId: string): Promise<void> {
+    const invite = this.orgInvites.get(inviteId);
+    if (invite) invite.status = 'revoked';
+  }
+
+  async resendOrgInvite(inviteId: string): Promise<OrgInvite> {
+    const existing = this.orgInvites.get(inviteId);
+    if (!existing) throw new Error('invite_not_found');
+    // Store a new object rather than mutating `existing` in place -- callers may still
+    // hold a reference to the invite returned by createOrgInvite, and mutating that same
+    // object would make its `.token` change out from under them too.
+    const invite: OrgInvite = {
+      ...existing,
+      token: `token-${Math.random().toString(36).slice(2)}`,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    };
+    this.orgInvites.set(inviteId, invite);
+    return invite;
+  }
+
+  async getOrgInviteByToken(token: string): Promise<OrgInvite | null> {
+    return [...this.orgInvites.values()].find((i) => i.token === token) ?? null;
+  }
+
+  async acceptOrgInvite(token: string, userId: string, userEmail: string): Promise<OrgMember> {
+    const invite = await this.getOrgInviteByToken(token);
+    if (!invite) throw new Error('invite_not_found');
+    if (invite.status !== 'pending') throw new Error('invite_not_pending');
+    if (new Date(invite.expiresAt).getTime() < Date.now()) throw new Error('invite_expired');
+    if (userEmail.toLowerCase() !== invite.email.toLowerCase())
+      throw new Error('invite_email_mismatch');
+
+    const existingMembers = this.orgMembers.get(invite.orgId) ?? [];
+    const existing = existingMembers.find((m) => m.userId === userId);
+    let member: OrgMember;
+    if (existing) {
+      if (existing.isActive !== false) throw new Error('invite_already_member');
+      existing.isActive = true;
+      existing.role = invite.role;
+      existing.deactivatedAt = undefined;
+      member = existing;
+    } else {
+      member = { userId, role: invite.role, isActive: true };
+      this.orgMembers.set(invite.orgId, [...existingMembers, member]);
+    }
+    invite.status = 'accepted';
+    invite.acceptedAt = new Date().toISOString();
+    return member;
+  }
+
+  async deactivateOrgMember(orgId: string, userId: string): Promise<void> {
+    const member = (this.orgMembers.get(orgId) ?? []).find((m) => m.userId === userId);
+    if (!member) return;
+    member.isActive = false;
+    member.deactivatedAt = new Date().toISOString();
+
+    // Revoke any pending invites for this same org + email so a reactivation
+    // can't smuggle the removed member back in at a higher role with zero
+    // manager action. Skip silently if the user has no email on record.
+    let email: string | undefined;
+    try {
+      email = this.findById(userId).email;
+    } catch {
+      email = undefined;
+    }
+    if (!email) return;
+    const lowerEmail = email.toLowerCase();
+    for (const invite of this.orgInvites.values()) {
+      if (
+        invite.orgId === orgId &&
+        invite.status === 'pending' &&
+        invite.email.toLowerCase() === lowerEmail
+      ) {
+        invite.status = 'revoked';
+      }
+    }
   }
 
   private findById(uid: string): StoredUser {

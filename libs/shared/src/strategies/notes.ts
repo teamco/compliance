@@ -1,6 +1,55 @@
-export type FrameworkCategory = 'security' | 'privacy' | 'cloud' | 'risk';
+export type FrameworkCategory = 'security' | 'privacy' | 'regulatory' | 'cloud' | 'risk';
 export type OrgSize = 'startup' | 'smb' | 'enterprise';
 export type StandardsStatus = 'pending' | 'completed' | 'failed';
+
+export type FrameworkStatus = 'available' | 'enabled' | 'configured' | 'in_assessment';
+export type FrameworkApplicabilityStatus = 'applicable' | 'not_applicable' | 'not_determined';
+export type ImplementationStatus =
+  'not_implemented' | 'planned' | 'partially_implemented' | 'implemented' | 'not_applicable';
+export type EffectivenessStatus =
+  'effective' | 'partially_effective' | 'ineffective' | 'not_tested';
+
+export interface FrameworkVersion {
+  id: string;
+  frameworkId: string;
+  version: string;
+  releaseDate?: string;
+  status?: 'active' | 'deprecated' | 'draft';
+  isCurrent?: boolean;
+}
+
+export interface FrameworkSection {
+  id: string;
+  frameworkId: string;
+  code: string;
+  title: string;
+  description?: string;
+  parentSectionId?: string;
+  orderIndex?: number;
+}
+
+export interface RequirementMapping {
+  id?: string;
+  sourceRequirementId?: string;
+  sourceFrameworkId?: string;
+  sourceRequirementCode?: string;
+  targetFrameworkId: string;
+  targetFrameworkName: string;
+  targetRequirementCode: string;
+  targetRequirementTitle?: string;
+  mappingType?: 'identical' | 'superset' | 'subset' | 'equivalent' | 'related';
+  notes?: string;
+}
+
+export interface ControlImplementation {
+  id: string;
+  orgId?: string;
+  controlId: string;
+  implementationStatus: ImplementationStatus;
+  description?: string;
+  owner?: string;
+  lastAssessed?: string;
+}
 
 export interface Framework {
   id: string;
@@ -9,7 +58,20 @@ export interface Framework {
   description: string;
   version: string;
   category: FrameworkCategory;
+  status?: FrameworkStatus;
+  lastUpdated?: string;
   controlCount?: number;
+  functionsCount?: number;
+  categoriesCount?: number;
+  requirementsCount?: number;
+  applicableCount?: number;
+  notApplicableCount?: number;
+  notReviewedCount?: number;
+  isCustom?: boolean;
+  versions?: FrameworkVersion[];
+  sections?: FrameworkSection[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // A framework control (seed data — not AI-generated).
@@ -20,6 +82,273 @@ export interface FrameworkControl {
   title: string;
   description: string;
   category: string;
+}
+
+export interface FrameworkRequirement {
+  id: string;
+  frameworkId: string;
+  code: string;
+  title: string;
+  description: string;
+  functionCode?: string;
+  functionName?: string;
+  categoryCode?: string;
+  categoryName?: string;
+  guidance?: string;
+  references?: string[];
+  applicability: FrameworkApplicabilityStatus;
+  applicabilityRationale?: string;
+  notApplicableReason?: string;
+  scopeBusinessUnits?: string[];
+  scopeSystems?: string[];
+  scopeLocations?: string[];
+  scopeLegalEntities?: string[];
+  implementationStatus: ImplementationStatus;
+  implementationDescription?: string;
+  controlOwner?: string;
+  controlOperator?: string;
+  reviewFrequency?: string;
+  lastAssessed?: string;
+  nextAssessment?: string;
+  evidenceCount?: number;
+  mappedControlsCount?: number;
+  openFindingsCount?: number;
+  crossFrameworkMappings?: RequirementMapping[];
+}
+
+export interface FrameworkRequirementPatch {
+  applicability?: FrameworkApplicabilityStatus;
+  applicabilityRationale?: string;
+  notApplicableReason?: string;
+  scopeBusinessUnits?: string[];
+  scopeSystems?: string[];
+  scopeLocations?: string[];
+  scopeLegalEntities?: string[];
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+  controlOwner?: string;
+  controlOperator?: string;
+  reviewFrequency?: string;
+  lastAssessed?: string;
+  nextAssessment?: string;
+}
+
+export type ControlCriticality = 'critical' | 'high' | 'medium' | 'low';
+export type ControlType = 'preventive' | 'detective' | 'corrective';
+export type ControlExecution = 'manual' | 'automated' | 'hybrid';
+export type ControlFrequency =
+  'continuous' | 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'annual' | 'event_driven';
+export type ControlNature = 'technical' | 'administrative' | 'physical';
+export type FrameworkMappingType = 'direct' | 'partial' | 'supporting';
+export type MappingValidation = 'ai_suggested' | 'human_validated';
+
+export interface InternalControl {
+  id: string;
+  orgId?: string;
+  code: string;
+  title: string;
+  description: string;
+  domain?: string;
+  owner: string;
+  operator?: string;
+  criticality?: ControlCriticality;
+  controlType?: ControlType;
+  execution?: ControlExecution;
+  frequency?: ControlFrequency;
+  nature?: ControlNature;
+  keyControl?: boolean;
+  parentControlId?: string | null;
+  category: string;
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+  designEffectiveness?: EffectivenessStatus;
+  operatingEffectiveness?: EffectivenessStatus;
+  frameworkMappings?: Array<{
+    id?: string;
+    frameworkId: string;
+    frameworkName: string;
+    requirementCode: string;
+    requirementTitle?: string;
+    mappingType?: FrameworkMappingType;
+    validation?: MappingValidation;
+  }>;
+  coverageBenefit?: string;
+  frameworkCount?: number;
+  requirementCount?: number;
+  evidenceCount?: number;
+  findingsCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface InternalControlInput {
+  code: string;
+  title: string;
+  description: string;
+  domain: string;
+  owner: string;
+  operator?: string;
+  criticality: ControlCriticality;
+  controlType: ControlType;
+  execution: ControlExecution;
+  frequency: ControlFrequency;
+  nature: ControlNature;
+  keyControl?: boolean;
+  parentControlId?: string | null;
+  category: string;
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+}
+
+export interface InternalControlPatch {
+  title?: string;
+  description?: string;
+  domain?: string;
+  owner?: string;
+  operator?: string;
+  criticality?: ControlCriticality;
+  controlType?: ControlType;
+  execution?: ControlExecution;
+  frequency?: ControlFrequency;
+  nature?: ControlNature;
+  keyControl?: boolean;
+  parentControlId?: string | null;
+  implementationStatus?: ImplementationStatus;
+  implementationDescription?: string;
+  designEffectiveness?: EffectivenessStatus;
+  operatingEffectiveness?: EffectivenessStatus;
+}
+
+export interface ControlFrameworkMappingInput {
+  frameworkId: string;
+  frameworkName: string;
+  requirementCode: string;
+  requirementTitle?: string;
+  mappingType: FrameworkMappingType;
+  validation: MappingValidation;
+}
+
+export interface RequirementEvidence {
+  id: string;
+  orgId?: string;
+  controlId?: string;
+  riskId?: string;
+  assessmentItemId?: string;
+  frameworkId?: string;
+  requirementId?: string;
+  assetId?: string;
+  title: string;
+  owner: string;
+  evidenceType: string;
+  source: string;
+  collectionDate: string;
+  periodCovered: string;
+  expirationDate: string;
+  verificationStatus: 'verified' | 'pending_review' | 'rejected' | 'expired';
+  url?: string;
+  createdBy: string;
+  verifiedBy: string | null;
+  verifiedAt: string | null;
+  reviewNotes: string | null;
+  linkedControls?: string[];
+  linkedRequirements?: string[];
+}
+
+export interface EvidencePatch {
+  title?: string;
+  owner?: string;
+  evidenceType?: string;
+  source?: string;
+  collectionDate?: string;
+  periodCovered?: string;
+  expirationDate?: string;
+  url?: string;
+}
+
+export interface RequirementAssessment {
+  id: string;
+  orgId?: string;
+  controlId?: string;
+  frameworkId?: string;
+  requirementId?: string;
+  cycleName: string;
+  status: 'completed' | 'in_progress' | 'scheduled';
+  implementationStatus: ImplementationStatus;
+  designEffectiveness: EffectivenessStatus;
+  operatingEffectiveness: EffectivenessStatus;
+  assessor: string;
+  assessmentDate: string;
+  observation: string;
+  findingId?: string;
+  findingTitle?: string;
+  findingSeverity?: 'critical' | 'high' | 'medium' | 'low';
+}
+
+export interface FrameworkActivity {
+  id: string;
+  frameworkId?: string;
+  controlId?: string;
+  assetId?: string;
+  policyId?: string;
+  action: string;
+  details: string;
+  actor: string;
+  timestamp: string;
+}
+
+// ─── Findings ──────────────────────────────────────────────────────────────
+
+export type FindingStatus = 'open' | 'remediated' | 'accepted';
+
+export interface Finding {
+  id: string;
+  orgId: string;
+  code: string;
+  controlId: string;
+  assessmentId: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: FindingStatus;
+  linkedIssueId?: string;
+  linkedExceptionId?: string;
+  linkedRiskId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FindingInput {
+  controlId: string;
+  assessmentId: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+}
+
+export interface FrameworkInput {
+  slug: string;
+  name: string;
+  description: string;
+  version: string;
+  category: FrameworkCategory;
+  status?: FrameworkStatus;
+  requirements?: Array<{
+    code: string;
+    title: string;
+    description: string;
+    functionCode?: string;
+    functionName?: string;
+    categoryCode?: string;
+    categoryName?: string;
+    guidance?: string;
+    references?: string[];
+  }>;
+}
+
+export interface FrameworkPatch {
+  status?: FrameworkStatus;
+  description?: string;
+  name?: string;
 }
 
 // An organization stored in the notes DB.
@@ -48,8 +377,8 @@ export interface DocumentStandard {
   frameworkMappings: { frameworkId: string; standardCode: string }[];
 }
 
-export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published';
-export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish';
+export type WorkflowStatus = 'draft' | 'in_review' | 'approved' | 'published' | 'superseded';
+export type WorkflowTransition = 'submit' | 'approve' | 'reject' | 'publish' | 'supersede';
 
 export const WORKFLOW_TRANSITIONS: Record<
   WorkflowTransition,
@@ -59,9 +388,15 @@ export const WORKFLOW_TRANSITIONS: Record<
   approve: { from: 'in_review', to: 'approved' },
   reject: { from: 'in_review', to: 'draft' },
   publish: { from: 'approved', to: 'published' },
+  supersede: { from: 'published', to: 'superseded' },
 };
 
-export const ADMIN_TRANSITIONS: WorkflowTransition[] = ['approve', 'reject', 'publish'];
+export const ADMIN_TRANSITIONS: WorkflowTransition[] = [
+  'approve',
+  'reject',
+  'publish',
+  'supersede',
+];
 
 export interface StandardsDocument {
   id: string;
@@ -127,6 +462,10 @@ export interface Exception {
   compensatingControls?: string;
   status: ExceptionStatus;
   expiresAt: string | null;
+  riskId: string | null;
+  reviewFrequencyDays: number | null;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -141,6 +480,8 @@ export interface ExceptionInput {
   ownerId: string;
   compensatingControls?: string;
   expiresAt?: string;
+  riskId?: string;
+  reviewFrequencyDays?: number;
 }
 
 export interface ExceptionPatch {
@@ -150,13 +491,53 @@ export interface ExceptionPatch {
   ownerId?: string;
   compensatingControls?: string;
   expiresAt?: string | null;
+  riskId?: string | null;
+  reviewFrequencyDays?: number | null;
+}
+
+export function effectiveExceptionStatus(
+  exception: Pick<Exception, 'status' | 'expiresAt'>,
+): ExceptionStatus {
+  const isLapsed =
+    exception.expiresAt !== null && new Date(exception.expiresAt).getTime() < Date.now();
+  return exception.status === 'approved' && isLapsed ? 'expired' : exception.status;
+}
+
+export type ExceptionRenewalStatus = 'pending' | 'approved' | 'rejected';
+
+export interface ExceptionRenewal {
+  id: string;
+  exceptionId: string;
+  orgId: string;
+  requestedBy: string;
+  proposedExpiresAt: string;
+  justification: string;
+  status: ExceptionRenewalStatus;
+  reviewedBy: string | null;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface ExceptionRenewalRequestInput {
+  proposedExpiresAt: string;
+  justification: string;
 }
 
 // ─── Issues ────────────────────────────────────────────────────────────────
 
 export type IssueSeverity = 'critical' | 'high' | 'medium' | 'low' | 'info';
-export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'wont_fix';
+export type IssueStatus = 'open' | 'in_progress' | 'pending_validation' | 'closed' | 'wont_fix';
 export type IssueSource = 'manual' | 'gap_analysis' | 'vendor_risk';
+
+export type RootCauseCategory =
+  | 'process_gap'
+  | 'control_design_failure'
+  | 'control_operating_failure'
+  | 'human_error'
+  | 'system_technical_failure'
+  | 'third_party'
+  | 'other';
 
 export interface Issue {
   id: string;
@@ -173,6 +554,8 @@ export interface Issue {
   sourceId: string | null;
   dueDate: string | null;
   resolvedAt: string | null;
+  rootCause: string | null;
+  rootCauseCategory: RootCauseCategory | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -196,153 +579,475 @@ export interface IssuePatch {
   reporterId?: string;
   ownerId?: string;
   affectedAssets?: string;
-  status?: IssueStatus;
+  status?: Exclude<IssueStatus, 'pending_validation' | 'closed'>;
   dueDate?: string | null;
   resolvedAt?: string | null;
 }
 
+export type IssueValidationStatus = 'pending' | 'approved' | 'rejected';
+
+export interface IssueValidation {
+  id: string;
+  issueId: string;
+  orgId: string;
+  requestedBy: string;
+  validatorId: string;
+  status: IssueValidationStatus;
+  reviewNotes: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface IssueValidationSubmitInput {
+  rootCause: string;
+  rootCauseCategory: RootCauseCategory;
+  validatorId: string;
+}
+
 // ─── Assets ────────────────────────────────────────────────────────────────
 
-export type AssetType = 'service' | 'application' | 'infrastructure' | 'data' | 'device' | 'other';
+export type AssetType =
+  | 'service'
+  | 'application'
+  | 'infrastructure'
+  | 'server'
+  | 'database'
+  | 'cloud_service'
+  | 'cloud_resource'
+  | 'network'
+  | 'endpoint'
+  | 'api'
+  | 'web_app'
+  | 'data_asset'
+  | 'facility'
+  | 'data'
+  | 'device'
+  | 'other';
+
 export type AssetCriticality = 'critical' | 'high' | 'medium' | 'low';
+export type AssetStatus = 'planned' | 'active' | 'maintenance' | 'retiring' | 'retired';
+export type DataClassification = 'public' | 'internal' | 'confidential' | 'restricted';
+export type CiaImpact = 'low' | 'moderate' | 'high' | 'critical';
 
 export interface Asset {
   id: string;
   orgId: string;
   userId: string;
+  code?: string;
   name: string;
   type: AssetType;
   criticality: AssetCriticality;
   description: string;
   owner: string;
+  businessOwner?: string;
+  technicalOwner?: string;
+  department?: string;
+  status: AssetStatus;
+  dataClassification?: DataClassification;
+  dataTypes?: string[];
+  ciaConfidentiality?: CiaImpact;
+  ciaIntegrity?: CiaImpact;
+  ciaAvailability?: CiaImpact;
+  hostingType?: string;
+  environment?: string;
+  location?: string;
+  internetFacing?: boolean;
+  isProduction?: boolean;
+  vendorId?: string | null;
+  vendorName?: string;
+  vendorIds?: string[];
+  relatedAssetIds?: string[];
+  complianceScope?: string[];
   tags: string[];
   createdAt: string;
   updatedAt: string;
 }
 
 export interface AssetInput {
+  code?: string;
   name: string;
   type: AssetType;
   criticality: AssetCriticality;
   description: string;
   owner: string;
+  businessOwner?: string;
+  technicalOwner?: string;
+  department?: string;
+  status?: AssetStatus;
+  dataClassification?: DataClassification;
+  dataTypes?: string[];
+  ciaConfidentiality?: CiaImpact;
+  ciaIntegrity?: CiaImpact;
+  ciaAvailability?: CiaImpact;
+  hostingType?: string;
+  environment?: string;
+  location?: string;
+  internetFacing?: boolean;
+  isProduction?: boolean;
+  vendorId?: string | null;
+  vendorName?: string;
+  vendorIds?: string[];
+  relatedAssetIds?: string[];
+  complianceScope?: string[];
   tags?: string[];
 }
 
 export interface AssetPatch {
+  code?: string;
   name?: string;
   type?: AssetType;
   criticality?: AssetCriticality;
   description?: string;
   owner?: string;
+  businessOwner?: string;
+  technicalOwner?: string;
+  department?: string;
+  status?: AssetStatus;
+  dataClassification?: DataClassification;
+  dataTypes?: string[];
+  ciaConfidentiality?: CiaImpact;
+  ciaIntegrity?: CiaImpact;
+  ciaAvailability?: CiaImpact;
+  hostingType?: string;
+  environment?: string;
+  location?: string;
+  internetFacing?: boolean;
+  isProduction?: boolean;
+  vendorId?: string | null;
+  vendorName?: string;
+  vendorIds?: string[];
+  relatedAssetIds?: string[];
+  complianceScope?: string[];
   tags?: string[];
 }
 
-// ─── Risks ─────────────────────────────────────────────────────────────────
+// ─── Risk Methodology ──────────────────────────────────────────────────────
 
-export type RiskLikelihood = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-export type RiskImpact = 'very_low' | 'low' | 'medium' | 'high' | 'very_high';
-export type RiskTreatment = 'accept' | 'mitigate' | 'transfer' | 'avoid';
+export type RiskScoreLabel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface RiskThresholdBand {
+  maxScore: number;
+  label: RiskScoreLabel;
+}
+
+export interface RiskMethodology {
+  id: string;
+  orgId: string;
+  version: number;
+  isActive: boolean;
+  scaleSize: 3 | 4 | 5;
+  likelihoodLabels: string[];
+  impactLabels: string[];
+  thresholds: RiskThresholdBand[];
+  appetiteThreshold: number;
+  createdAt: string;
+}
+
+export interface RiskMethodologyInput {
+  scaleSize: 3 | 4 | 5;
+  likelihoodLabels: string[];
+  impactLabels: string[];
+  thresholds: RiskThresholdBand[];
+  appetiteThreshold: number;
+}
+
+// ─── Risk Taxonomy ─────────────────────────────────────────────────────────
+
+export interface RiskTaxonomyCategory {
+  id: string;
+  orgId: string;
+  name: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface RiskTaxonomyCategoryInput {
+  name: string;
+}
+
+export type RiskStatus = 'open' | 'monitoring' | 'closed';
+export type RiskSource =
+  | 'manual'
+  | 'risk_assessment'
+  | 'gap_analysis'
+  | 'internal_audit'
+  | 'external_audit'
+  | 'vendor_assessment'
+  | 'security_incident'
+  | 'vulnerability'
+  | 'issue'
+  | 'regulatory_change'
+  | 'management_review'
+  | 'threat_intelligence';
+export type RiskTreatmentStrategy = 'avoid' | 'mitigate' | 'transfer' | 'accept' | 'monitor';
 
 export interface Risk {
   id: string;
+  riskId: string;
   orgId: string;
   userId: string;
   title: string;
-  description: string;
-  category: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  riskScore: number;
-  treatment: RiskTreatment;
-  assetId: string | null;
+  riskStatement: string;
+  taxonomyCategoryId: string;
+  ownerId: string;
+  businessUnit?: string;
+  source: RiskSource;
+  sourceRef?: string;
+  assetIds: string[];
+  vendorIds: string[];
+
+  methodologyId: string;
+  inherentLikelihood: number;
+  inherentImpact: number;
+  inherentScore: number;
+  inherentLabel: RiskScoreLabel;
+
+  residualLikelihood?: number;
+  residualImpact?: number;
+  residualScore?: number;
+  residualLabel?: RiskScoreLabel;
+  aboveAppetite?: boolean;
+
+  treatmentStrategy?: RiskTreatmentStrategy;
+  treatmentOwner?: string;
+  treatmentPlan?: string;
+  targetScore?: number;
+  targetDate?: string;
+
+  status: RiskStatus;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface RiskInput {
   title: string;
-  description: string;
-  category: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  treatment?: RiskTreatment;
-  assetId?: string;
+  riskStatement: string;
+  taxonomyCategoryId: string;
+  ownerId: string;
+  businessUnit?: string;
+  source?: RiskSource;
+  sourceRef?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  inherentLikelihood: number;
+  inherentImpact: number;
 }
 
 export interface RiskPatch {
   title?: string;
-  description?: string;
-  category?: string;
-  likelihood?: RiskLikelihood;
-  impact?: RiskImpact;
-  treatment?: RiskTreatment;
-  assetId?: string | null;
+  riskStatement?: string;
+  taxonomyCategoryId?: string;
+  ownerId?: string;
+  businessUnit?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  inherentLikelihood?: number;
+  inherentImpact?: number;
+  residualLikelihood?: number;
+  residualImpact?: number;
+  treatmentStrategy?: RiskTreatmentStrategy;
+  treatmentOwner?: string;
+  treatmentPlan?: string;
+  targetScore?: number;
+  targetDate?: string;
+  status?: RiskStatus;
+}
+
+// ─── Risk ↔ Control ─────────────────────────────────────────────────────────
+
+export interface RiskControlMapping {
+  id: string;
+  riskId: string;
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
+  createdAt: string;
+}
+
+export interface RiskControlMappingInput {
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
+}
+
+// ─── Risk Acceptance ────────────────────────────────────────────────────────
+
+export type RiskAcceptanceStatus = 'requested' | 'reviewed' | 'approved' | 'rejected';
+
+export interface RiskAcceptance {
+  id: string;
+  riskId: string;
+  orgId: string;
+  requestedBy: string;
+  justification: string;
+  compensatingControls: string;
+  expiresAt: string;
+  approverId: string;
+  status: RiskAcceptanceStatus;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RiskAcceptanceInput {
+  justification: string;
+  compensatingControls: string;
+  expiresAt: string;
+  approverId: string;
+}
+
+// ─── Risk History ───────────────────────────────────────────────────────────
+
+export interface RiskSnapshot {
+  id: string;
+  riskId: string;
+  inherentScore: number;
+  inherentLabel: RiskScoreLabel;
+  residualScore?: number;
+  residualLabel?: RiskScoreLabel;
+  treatmentStrategy?: RiskTreatmentStrategy;
+  changedBy: string;
+  reason?: string;
+  createdAt: string;
 }
 
 // ─── Risk Assessments ──────────────────────────────────────────────────────
 
-export type AssessmentType = 'cvra' | 'ctra';
-export type AssessmentStatus = 'draft' | 'in_review' | 'completed';
-
-export interface RiskAssessment {
+export interface AssessmentType {
   id: string;
   orgId: string;
+  name: string;
+  itemNounSingular: string;
+  itemNounPlural: string;
+  archived: boolean;
+  createdAt: string;
+}
+
+export interface AssessmentTypeInput {
+  name: string;
+  itemNounSingular: string;
+  itemNounPlural: string;
+}
+export type AssessmentStatus =
+  | 'draft'
+  | 'in_progress'
+  | 'pending_review'
+  | 'changes_requested'
+  | 'approved'
+  | 'completed'
+  | 'archived';
+
+export interface Assessment {
+  id: string;
+  assessmentCode: string;
+  orgId: string;
   userId: string;
-  type: AssessmentType;
   title: string;
-  scope: string;
+  assessmentTypeId: string;
+  ownerId: string;
+  businessUnit?: string;
+  assetIds: string[];
+  vendorIds: string[];
+  dueDate?: string;
+  approverId?: string;
+  methodologyId: string;
   status: AssessmentStatus;
-  riskScore: number;
   itemCount: number;
+  highestInherentScore?: number;
+  highestInherentLabel?: RiskScoreLabel;
+  highestResidualScore?: number;
+  highestResidualLabel?: RiskScoreLabel;
+  lastReviewNote?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface RiskAssessmentInput {
-  type: AssessmentType;
+export interface AssessmentInput {
   title: string;
-  scope: string;
+  assessmentTypeId: string;
+  ownerId: string;
+  businessUnit?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  dueDate?: string;
+  approverId?: string;
 }
 
-export interface RiskAssessmentPatch {
+export interface AssessmentPatch {
   title?: string;
-  scope?: string;
-  status?: AssessmentStatus;
+  businessUnit?: string;
+  assetIds?: string[];
+  vendorIds?: string[];
+  dueDate?: string;
 }
 
-export interface RiskAssessmentItem {
+export interface AssessmentItem {
   id: string;
   assessmentId: string;
+  orgId: string;
   subject: string;
   description: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  itemScore: number;
-  mitigations: string;
+  inherentLikelihood: number;
+  inherentImpact: number;
+  inherentScore: number;
+  inherentLabel: RiskScoreLabel;
+  residualLikelihood?: number;
+  residualImpact?: number;
+  residualScore?: number;
+  residualLabel?: RiskScoreLabel;
+  linkedRiskId?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface RiskAssessmentItemInput {
-  subject: string;
-  description: string;
-  likelihood: RiskLikelihood;
-  impact: RiskImpact;
-  mitigations?: string;
+export interface AssessmentItemWithContext extends AssessmentItem {
+  assessmentCode: string;
+  assessmentTitle: string;
+  assessmentStatus: AssessmentStatus;
 }
 
-export interface RiskAssessmentItemPatch {
+export interface AssessmentItemInput {
+  subject: string;
+  description: string;
+  inherentLikelihood: number;
+  inherentImpact: number;
+}
+
+export interface AssessmentItemPatch {
   subject?: string;
   description?: string;
-  likelihood?: RiskLikelihood;
-  impact?: RiskImpact;
-  mitigations?: string;
+  inherentLikelihood?: number;
+  inherentImpact?: number;
+  residualLikelihood?: number;
+  residualImpact?: number;
+}
+
+// ─── Assessment Item ↔ Control ──────────────────────────────────────────────
+
+export interface AssessmentItemControlMapping {
+  id: string;
+  itemId: string;
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
+  createdAt: string;
+}
+
+export interface AssessmentItemControlMappingInput {
+  controlId: string;
+  controlCode: string;
+  controlTitle: string;
+  effectivenessNote?: string;
 }
 
 // ─── Policies ──────────────────────────────────────────────────────────────
-
-export type PolicyStatus = 'draft' | 'approved';
 
 export interface Policy {
   id: string;
@@ -351,7 +1056,7 @@ export interface Policy {
   frameworkId: string;
   title: string;
   content: string;
-  status: PolicyStatus;
+  workflowStatus: WorkflowStatus;
   version: number;
   templateId: string | null;
   createdAt: string;
@@ -368,7 +1073,6 @@ export interface PolicyInput {
 export interface PolicyPatch {
   title?: string;
   content?: string;
-  status?: PolicyStatus;
 }
 
 // ─── Policy Templates ──────────────────────────────────────────────────────
@@ -458,10 +1162,144 @@ export interface AiUsageTimeseriesPoint {
 }
 
 export interface NotesStrategy {
-  listFrameworks(): Promise<Framework[]>;
-  getFramework(id: string): Promise<Framework | null>;
+  listFrameworks(orgId?: string): Promise<Framework[]>;
+  getFramework(id: string, orgId?: string): Promise<Framework | null>;
+  createFramework(orgId: string, input: FrameworkInput): Promise<Framework>;
+  updateFramework(id: string, orgId: string, patch: FrameworkPatch): Promise<Framework>;
+  deleteFramework(id: string, orgId: string): Promise<void>;
   listControlsByFramework(frameworkId: string): Promise<FrameworkControl[]>;
   listStandardsByFramework(orgId: string, frameworkId: string): Promise<DocumentStandard[]>;
+
+  // Framework Workspace & GRC methods
+  listRequirements(frameworkId: string, orgId?: string): Promise<FrameworkRequirement[]>;
+  getRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId?: string,
+  ): Promise<FrameworkRequirement | null>;
+  updateRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId: string,
+    patch: FrameworkRequirementPatch,
+  ): Promise<FrameworkRequirement>;
+  listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]>;
+  getInternalControl(id: string, orgId?: string): Promise<InternalControl | null>;
+  createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl>;
+  updateInternalControl(id: string, patch: InternalControlPatch): Promise<InternalControl>;
+  deleteInternalControl(id: string): Promise<void>;
+  addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
+  ): Promise<InternalControl>;
+  removeControlFrameworkMapping(controlId: string, mappingId: string): Promise<InternalControl>;
+
+  listControlEvidence(controlId: string): Promise<RequirementEvidence[]>;
+  createControlEvidence(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence>;
+  listRiskEvidence(riskId: string): Promise<RequirementEvidence[]>;
+  createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence>;
+  listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]>;
+  createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence>;
+  createAssetEvidence(
+    orgId: string,
+    assetId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assetId'>,
+  ): Promise<RequirementEvidence>;
+  listAssetEvidence(assetId: string): Promise<RequirementEvidence[]>;
+  getEvidence(id: string): Promise<RequirementEvidence | null>;
+  updateEvidence(id: string, patch: EvidencePatch): Promise<RequirementEvidence>;
+  deleteEvidence(id: string): Promise<void>;
+  reviewEvidence(
+    id: string,
+    reviewerId: string,
+    decision: 'verified' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<RequirementEvidence>;
+
+  listControlAssessments(controlId: string): Promise<RequirementAssessment[]>;
+  createControlAssessment(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment>;
+
+  listControlFindings(controlId: string): Promise<Finding[]>;
+  linkFindingToRisk(findingId: string, riskId: string): Promise<Finding>;
+  linkFindingToIssue(findingId: string, issueId: string): Promise<Finding>;
+  resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding>;
+
+  getFinding(id: string): Promise<Finding | null>;
+  listFindingsByLink(params: {
+    issueId?: string;
+    riskId?: string;
+    exceptionId?: string;
+  }): Promise<Finding[]>;
+  createIssueFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ): Promise<Issue>;
+  createRiskFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ): Promise<Risk>;
+  createExceptionFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ): Promise<Exception>;
+
+  listControlActivity(controlId: string): Promise<FrameworkActivity[]>;
+  listAssetActivity(assetId: string): Promise<FrameworkActivity[]>;
+  listPolicyActivity(policyId: string): Promise<FrameworkActivity[]>;
+  listFrameworkEvidence(frameworkId: string, orgId?: string): Promise<RequirementEvidence[]>;
+  createFrameworkEvidence(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Promise<RequirementEvidence>;
+  listFrameworkAssessments(frameworkId: string, orgId?: string): Promise<RequirementAssessment[]>;
+  getRequirementAssessment(id: string): Promise<RequirementAssessment | null>;
+  createAssessmentFinding(
+    orgId: string,
+    assessmentId: string,
+    findingData: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ): Promise<{ findingId: string }>;
+  listFrameworkActivities(frameworkId: string, orgId?: string): Promise<FrameworkActivity[]>;
 
   listOrganizations(userId: string): Promise<Organization[]>;
   createOrganization(userId: string, data: OrganizationInput): Promise<Organization>;
@@ -562,8 +1400,23 @@ export interface NotesStrategy {
   createException(orgId: string, userId: string, data: ExceptionInput): Promise<Exception>;
   getException(id: string): Promise<Exception | null>;
   updateException(id: string, patch: ExceptionPatch): Promise<Exception>;
-  approveException(id: string): Promise<Exception>;
-  rejectException(id: string): Promise<Exception>;
+  approveException(id: string, approverId: string): Promise<Exception>;
+  rejectException(id: string, approverId: string): Promise<Exception>;
+  requestExceptionRenewal(
+    exceptionId: string,
+    requestedBy: string,
+    data: ExceptionRenewalRequestInput,
+  ): Promise<ExceptionRenewal>;
+  reviewExceptionRenewal(
+    id: string,
+    reviewerId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<ExceptionRenewal>;
+  getExceptionRenewal(id: string): Promise<ExceptionRenewal | null>;
+  getActiveExceptionRenewal(exceptionId: string): Promise<ExceptionRenewal | null>;
+  listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]>;
+  listPendingExceptionRenewals(orgId: string): Promise<ExceptionRenewal[]>;
   deleteException(id: string): Promise<void>;
 
   // Issues
@@ -572,6 +1425,21 @@ export interface NotesStrategy {
   getIssue(id: string): Promise<Issue | null>;
   updateIssue(id: string, patch: IssuePatch): Promise<Issue>;
   deleteIssue(id: string): Promise<void>;
+  submitIssueForValidation(
+    id: string,
+    ownerId: string,
+    data: IssueValidationSubmitInput,
+  ): Promise<Issue>;
+  reviewIssueValidation(
+    id: string,
+    validatorId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<IssueValidation>;
+  getIssueValidation(id: string): Promise<IssueValidation | null>;
+  getActiveIssueValidation(issueId: string): Promise<IssueValidation | null>;
+  listIssueValidations(issueId: string): Promise<IssueValidation[]>;
+  listPendingIssueValidations(orgId: string): Promise<IssueValidation[]>;
 
   // Assets
   listAssets(orgId: string): Promise<Asset[]>;
@@ -580,32 +1448,98 @@ export interface NotesStrategy {
   updateAsset(id: string, patch: AssetPatch): Promise<Asset>;
   deleteAsset(id: string): Promise<void>;
 
+  // Risk Methodology
+  getRiskMethodology(orgId: string): Promise<RiskMethodology | null>;
+  upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology>;
+
+  // Risk Taxonomy
+  listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]>;
+  getRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory | null>;
+  createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory>;
+  archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory>;
+
   // Risks
   listRisks(orgId: string): Promise<Risk[]>;
   createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk>;
   getRisk(id: string): Promise<Risk | null>;
-  updateRisk(id: string, patch: RiskPatch): Promise<Risk>;
+  updateRisk(id: string, patch: RiskPatch, changedBy: string, reason?: string): Promise<Risk>;
   deleteRisk(id: string): Promise<void>;
 
-  // Risk Assessments
-  listAssessments(orgId: string): Promise<RiskAssessment[]>;
-  createAssessment(
+  // Risk ↔ Control mapping
+  listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]>;
+  addRiskControlMapping(riskId: string, data: RiskControlMappingInput): Promise<RiskControlMapping>;
+  removeRiskControlMapping(id: string): Promise<void>;
+
+  // Risk Acceptance
+  createRiskAcceptance(
     orgId: string,
-    userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment>;
-  getAssessment(id: string): Promise<RiskAssessment | null>;
-  updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment>;
-  deleteAssessment(id: string): Promise<void>;
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance>;
+  getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null>;
+  getRiskAcceptance(id: string): Promise<RiskAcceptance | null>;
+  reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance>;
+  approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+  rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+
+  // Risk history
+  listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]>;
+
+  // Assessment Types
+  listAssessmentTypes(orgId: string): Promise<AssessmentType[]>;
+  getAssessmentType(id: string): Promise<AssessmentType | null>;
+  createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType>;
+  archiveAssessmentType(id: string): Promise<AssessmentType>;
+
+  // Assessments
+  listAssessments(orgId: string): Promise<Assessment[]>;
+  createAssessment(orgId: string, userId: string, data: AssessmentInput): Promise<Assessment>;
+  getAssessment(id: string): Promise<Assessment | null>;
+  updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment>;
+  deleteAssessment(id: string, userId: string): Promise<void>;
+
+  // Assessment lifecycle
+  startAssessment(id: string, userId: string): Promise<Assessment>;
+  submitForReview(id: string, userId: string): Promise<Assessment>;
+  approveAssessment(id: string, userId: string): Promise<Assessment>;
+  requestChanges(id: string, userId: string, note: string): Promise<Assessment>;
+  completeAssessment(id: string, userId: string): Promise<Assessment>;
+  archiveAssessment(id: string, userId: string): Promise<Assessment>;
 
   // Assessment items
-  listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]>;
-  addAssessmentItem(
-    assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem>;
-  updateAssessmentItem(id: string, patch: RiskAssessmentItemPatch): Promise<RiskAssessmentItem>;
+  listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]>;
+  getAssessmentItem(id: string): Promise<AssessmentItem | null>;
+  createAssessmentItem(assessmentId: string, data: AssessmentItemInput): Promise<AssessmentItem>;
+  updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem>;
   deleteAssessmentItem(id: string): Promise<void>;
+
+  // Assessment item <-> Risk bridge
+  createRiskFromAssessmentItem(
+    orgId: string,
+    userId: string,
+    itemId: string,
+    data: { taxonomyCategoryId: string },
+  ): Promise<Risk>;
+  linkAssessmentItemToRisk(itemId: string, riskId: string): Promise<AssessmentItem>;
+  unlinkAssessmentItemFromRisk(itemId: string): Promise<AssessmentItem>;
+  listAssessmentItemsForRisk(riskId: string): Promise<AssessmentItemWithContext[]>;
+
+  // Item <-> control mapping
+  listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]>;
+  getAssessmentItemControlMapping(id: string): Promise<AssessmentItemControlMapping | null>;
+  addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping>;
+  removeAssessmentItemControlMapping(id: string): Promise<void>;
 
   // Policies
   listPolicies(orgId: string): Promise<Policy[]>;
@@ -613,6 +1547,11 @@ export interface NotesStrategy {
   getPolicy(id: string): Promise<Policy | null>;
   updatePolicy(id: string, patch: PolicyPatch): Promise<Policy>;
   deletePolicy(id: string): Promise<void>;
+  transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy>;
   cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy>;
 
   // Policy templates (platform-wide seed data)
@@ -621,8 +1560,13 @@ export interface NotesStrategy {
   // Controls ↔ Policies
   listPolicyControls(policyId: string): Promise<PolicyControl[]>;
   addPolicyControl(policyId: string, data: PolicyControlInput): Promise<PolicyControl>;
+  getPolicyControl(id: string): Promise<PolicyControl | null>;
   removePolicyControl(id: string): Promise<void>;
-  listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]>;
+  listPoliciesForControl(
+    controlCode: string,
+    frameworkId: string,
+    orgId: string,
+  ): Promise<Policy[]>;
 }
 
 // ─── Chat history types ────────────────────────────────────────────────────

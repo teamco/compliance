@@ -1,0 +1,35 @@
+name: 'Keep Supabase Alive'
+
+# Supabase free-tier projects auto-pause after 7 days with no database
+# activity. This runs a harmless, read-only connection to the remote DB
+# once a day so the project never goes idle long enough to pause.
+
+on:
+  schedule:
+    - cron: '17 4 * * *' # once daily, off-the-hour to avoid GH Actions' peak-minute queueing delays
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: 'Ping Supabase DB'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1 (v1 is a moving branch, not a tag -- pinned to its current commit)
+        with:
+          version: 2.117.0
+      - name: Link to Supabase project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+      - name: Read-only connection to reset the inactivity timer
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        # --dry-run makes a real DB connection to compare migration state
+        # without writing anything -- same command already proven working
+        # against this project in the db-migrate job, just never applying.
+        run: supabase db push --dry-run

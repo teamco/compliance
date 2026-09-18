@@ -17,13 +17,42 @@ import type {
   Exception,
   ExceptionInput,
   ExceptionPatch,
+  ExceptionRenewal,
+  ExceptionRenewalStatus,
+  ExceptionRenewalRequestInput,
   Framework,
   FrameworkControl,
+  FrameworkRequirement,
+  FrameworkRequirementPatch,
+  InternalControl,
+  InternalControlInput,
+  InternalControlPatch,
+  ControlFrameworkMappingInput,
+  ControlCriticality,
+  ControlType,
+  ControlExecution,
+  ControlFrequency,
+  ControlNature,
+  FrameworkMappingType,
+  MappingValidation,
+  ImplementationStatus,
+  EffectivenessStatus,
+  RequirementEvidence,
+  EvidencePatch,
+  RequirementAssessment,
+  FrameworkActivity,
+  Finding,
+  FrameworkInput,
+  FrameworkPatch,
   GapAnalysis,
   GapAnalysisResult,
   Issue,
   IssueInput,
   IssuePatch,
+  IssueValidation,
+  IssueValidationStatus,
+  IssueValidationSubmitInput,
+  IssueSeverity,
   NotesStrategy,
   Organization,
   OrganizationInput,
@@ -32,18 +61,35 @@ import type {
   ReportTemplateInput,
   RetentionPrefsPayload,
   Risk,
-  RiskAssessment,
-  RiskAssessmentInput,
-  RiskAssessmentItem,
-  RiskAssessmentItemInput,
-  RiskAssessmentItemPatch,
-  RiskAssessmentPatch,
+  Assessment,
+  AssessmentInput,
+  AssessmentPatch,
   AssessmentType,
+  AssessmentTypeInput,
   AssessmentStatus,
-  RiskImpact,
+  AssessmentItem,
+  AssessmentItemInput,
+  AssessmentItemPatch,
+  AssessmentItemWithContext,
+  AssessmentItemControlMapping,
+  AssessmentItemControlMappingInput,
+  RiskAcceptance,
+  RiskAcceptanceInput,
+  RiskAcceptanceStatus,
+  RiskControlMapping,
+  RiskControlMappingInput,
   RiskInput,
-  RiskLikelihood,
+  RiskMethodology,
+  RiskMethodologyInput,
   RiskPatch,
+  RiskScoreLabel,
+  RiskSnapshot,
+  RiskSource,
+  RiskStatus,
+  RiskTaxonomyCategory,
+  RiskTaxonomyCategoryInput,
+  RiskThresholdBand,
+  RiskTreatmentStrategy,
   StandardPatch,
   StandardsDocument,
   StandardsSnapshot,
@@ -58,7 +104,12 @@ import type {
   PolicyControl,
   PolicyControlInput,
 } from '@icore/shared';
-import { DEFAULT_RETENTION_PREFS, DEFAULT_USER_PREFS, WORKFLOW_TRANSITIONS } from '@icore/shared';
+import {
+  DEFAULT_RETENTION_PREFS,
+  DEFAULT_USER_PREFS,
+  WORKFLOW_TRANSITIONS,
+  ADMIN_TRANSITIONS,
+} from '@icore/shared';
 
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
@@ -67,18 +118,6 @@ function ok<T>(data: T | null, error: { message: string } | null): T {
 
 export class SupabaseNotesStrategy implements NotesStrategy {
   constructor(private readonly db: SupabaseClient) {}
-
-  private computeRiskScore(likelihood: RiskLikelihood, impact: RiskImpact): number {
-    const L: Record<RiskLikelihood, number> = {
-      very_low: 1,
-      low: 2,
-      medium: 3,
-      high: 4,
-      very_high: 5,
-    };
-    const I: Record<RiskImpact, number> = { very_low: 1, low: 2, medium: 3, high: 4, very_high: 5 };
-    return L[likelihood] * I[impact];
-  }
 
   async listFrameworks(): Promise<Framework[]> {
     const { data, error } = await this.db
@@ -139,6 +178,788 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       description: r.description,
       version: r.version,
       category: r.category as Framework['category'],
+    };
+  }
+
+  async createFramework(orgId: string, input: FrameworkInput): Promise<Framework> {
+    const id = globalThis.crypto.randomUUID();
+    const now = new Date().toISOString();
+    const { data: row, error } = await this.db
+      .from('frameworks')
+      .insert({
+        id,
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        version: input.version,
+        category: input.category,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      return {
+        id,
+        slug: input.slug,
+        name: input.name,
+        description: input.description,
+        version: input.version,
+        category: input.category,
+        status: input.status ?? 'enabled',
+        lastUpdated: new Date().getFullYear().toString(),
+        controlCount: input.requirements?.length ?? 0,
+        requirementsCount: input.requirements?.length ?? 0,
+        applicableCount: input.requirements?.length ?? 0,
+        notApplicableCount: 0,
+        notReviewedCount: 0,
+        isCustom: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
+
+    const r = row as {
+      id: string;
+      slug: string;
+      name: string;
+      description: string;
+      version: string;
+      category: string;
+    };
+    return {
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      version: r.version,
+      category: r.category as Framework['category'],
+      status: input.status ?? 'enabled',
+      controlCount: input.requirements?.length ?? 0,
+      requirementsCount: input.requirements?.length ?? 0,
+      applicableCount: input.requirements?.length ?? 0,
+      isCustom: true,
+    };
+  }
+
+  async updateFramework(id: string, _orgId: string, patch: FrameworkPatch): Promise<Framework> {
+    const existing = await this.getFramework(id);
+    if (!existing) throw new Error(`framework_not_found: ${id}`);
+    return { ...existing, ...patch };
+  }
+
+  async deleteFramework(id: string, _orgId: string): Promise<void> {
+    await this.db.from('frameworks').delete().eq('id', id);
+  }
+
+  async listRequirements(frameworkId: string, _orgId?: string): Promise<FrameworkRequirement[]> {
+    const controls = await this.listControlsByFramework(frameworkId);
+    return controls.map((c) => ({
+      id: c.id,
+      frameworkId: c.frameworkId,
+      code: c.code,
+      title: c.title,
+      description: c.description,
+      categoryCode: c.code.split('-')[0] ?? c.code,
+      categoryName: c.category,
+      applicability: 'applicable',
+      implementationStatus: 'implemented',
+      evidenceCount: 1,
+      mappedControlsCount: 1,
+      openFindingsCount: 0,
+    }));
+  }
+
+  async getRequirement(
+    frameworkId: string,
+    reqId: string,
+    orgId?: string,
+  ): Promise<FrameworkRequirement | null> {
+    const reqs = await this.listRequirements(frameworkId, orgId);
+    return reqs.find((r) => r.id === reqId || r.code === reqId) ?? null;
+  }
+
+  async updateRequirement(
+    frameworkId: string,
+    reqId: string,
+    _orgId: string,
+    patch: FrameworkRequirementPatch,
+  ): Promise<FrameworkRequirement> {
+    const req = await this.getRequirement(frameworkId, reqId);
+    if (!req) throw new Error(`requirement_not_found: ${reqId}`);
+    return { ...req, ...patch };
+  }
+
+  async listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {
+    let query = this.db
+      .from('internal_controls')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (orgId) query = query.eq('org_id', orgId);
+    const { data, error } = await query;
+    const controls = await Promise.all(ok(data, error).map((row) => this.toInternalControl(row)));
+    if (!frameworkId) return controls;
+    return controls.filter((c) => c.frameworkMappings?.some((m) => m.frameworkId === frameworkId));
+  }
+
+  async getInternalControl(id: string, _orgId?: string): Promise<InternalControl | null> {
+    const { data, error } = await this.db
+      .from('internal_controls')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toInternalControl(data) : null;
+  }
+
+  async createInternalControl(orgId: string, data: InternalControlInput): Promise<InternalControl> {
+    const { data: row, error } = await this.db
+      .from('internal_controls')
+      .insert({
+        org_id: orgId,
+        code: data.code,
+        title: data.title,
+        description: data.description,
+        domain: data.domain,
+        owner: data.owner,
+        operator: data.operator ?? '',
+        criticality: data.criticality,
+        control_type: data.controlType,
+        execution: data.execution,
+        frequency: data.frequency,
+        nature: data.nature,
+        key_control: data.keyControl ?? false,
+        parent_control_id: data.parentControlId ?? null,
+        category: data.category,
+        implementation_status: data.implementationStatus ?? 'not_implemented',
+        implementation_description: data.implementationDescription ?? '',
+      })
+      .select()
+      .single();
+    return this.toInternalControl(ok(row, error));
+  }
+
+  async updateInternalControl(id: string, patch: InternalControlPatch): Promise<InternalControl> {
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.title !== undefined) update['title'] = patch.title;
+    if (patch.description !== undefined) update['description'] = patch.description;
+    if (patch.domain !== undefined) update['domain'] = patch.domain;
+    if (patch.owner !== undefined) update['owner'] = patch.owner;
+    if (patch.operator !== undefined) update['operator'] = patch.operator;
+    if (patch.criticality !== undefined) update['criticality'] = patch.criticality;
+    if (patch.controlType !== undefined) update['control_type'] = patch.controlType;
+    if (patch.execution !== undefined) update['execution'] = patch.execution;
+    if (patch.frequency !== undefined) update['frequency'] = patch.frequency;
+    if (patch.nature !== undefined) update['nature'] = patch.nature;
+    if (patch.keyControl !== undefined) update['key_control'] = patch.keyControl;
+    if ('parentControlId' in patch) update['parent_control_id'] = patch.parentControlId;
+    if (patch.implementationStatus !== undefined)
+      update['implementation_status'] = patch.implementationStatus;
+    if (patch.implementationDescription !== undefined)
+      update['implementation_description'] = patch.implementationDescription;
+    if (patch.designEffectiveness !== undefined)
+      update['design_effectiveness'] = patch.designEffectiveness;
+    if (patch.operatingEffectiveness !== undefined)
+      update['operating_effectiveness'] = patch.operatingEffectiveness;
+
+    const { data, error } = await this.db
+      .from('internal_controls')
+      .update(update)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toInternalControl(ok(data, error));
+  }
+
+  async deleteInternalControl(id: string): Promise<void> {
+    const { error } = await this.db.from('internal_controls').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async addControlFrameworkMapping(
+    controlId: string,
+    data: ControlFrameworkMappingInput,
+  ): Promise<InternalControl> {
+    const { error } = await this.db.from('internal_control_framework_mappings').insert({
+      control_id: controlId,
+      framework_id: data.frameworkId,
+      requirement_code: data.requirementCode,
+      requirement_title: data.requirementTitle ?? null,
+      mapping_type: data.mappingType,
+      validation: data.validation,
+    });
+    if (error) throw new Error(error.message);
+    const control = await this.getInternalControl(controlId);
+    if (!control) throw new Error(`internal_control_not_found: ${controlId}`);
+    return control;
+  }
+
+  async removeControlFrameworkMapping(
+    controlId: string,
+    mappingId: string,
+  ): Promise<InternalControl> {
+    const { error } = await this.db
+      .from('internal_control_framework_mappings')
+      .delete()
+      .eq('id', mappingId);
+    if (error) throw new Error(error.message);
+    const control = await this.getInternalControl(controlId);
+    if (!control) throw new Error(`internal_control_not_found: ${controlId}`);
+    return control;
+  }
+
+  private async toInternalControl(row: Record<string, unknown>): Promise<InternalControl> {
+    const { data: mappingRows, error } = await this.db
+      .from('internal_control_framework_mappings')
+      .select(
+        'id, framework_id, requirement_code, requirement_title, mapping_type, validation, frameworks(name)',
+      )
+      .eq('control_id', row['id'] as string);
+    if (error) throw new Error(error.message);
+    const frameworkMappings = (mappingRows ?? []).map((m: Record<string, unknown>) => ({
+      id: m['id'] as string,
+      frameworkId: m['framework_id'] as string,
+      frameworkName:
+        ((m['frameworks'] as Record<string, unknown> | null)?.['name'] as string) ?? '',
+      requirementCode: m['requirement_code'] as string,
+      requirementTitle: m['requirement_title'] as string | undefined,
+      mappingType: m['mapping_type'] as FrameworkMappingType,
+      validation: m['validation'] as MappingValidation,
+    }));
+
+    const { count: evidenceCount } = await this.db
+      .from('requirement_evidence')
+      .select('id', { count: 'exact', head: true })
+      .eq('control_id', row['id'] as string);
+    const { count: findingsCount } = await this.db
+      .from('findings')
+      .select('id', { count: 'exact', head: true })
+      .eq('control_id', row['id'] as string);
+
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      code: row['code'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      domain: row['domain'] as string,
+      owner: row['owner'] as string,
+      operator: row['operator'] as string,
+      criticality: row['criticality'] as ControlCriticality,
+      controlType: row['control_type'] as ControlType,
+      execution: row['execution'] as ControlExecution,
+      frequency: row['frequency'] as ControlFrequency,
+      nature: row['nature'] as ControlNature,
+      keyControl: row['key_control'] as boolean,
+      parentControlId: row['parent_control_id'] as string | null,
+      category: row['category'] as string,
+      implementationStatus: row['implementation_status'] as ImplementationStatus,
+      implementationDescription: row['implementation_description'] as string,
+      designEffectiveness: row['design_effectiveness'] as EffectivenessStatus,
+      operatingEffectiveness: row['operating_effectiveness'] as EffectivenessStatus,
+      frameworkMappings,
+      frameworkCount: new Set(frameworkMappings.map((m) => m.frameworkId)).size,
+      requirementCount: frameworkMappings.length,
+      evidenceCount: evidenceCount ?? 0,
+      findingsCount: findingsCount ?? 0,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  async listFrameworkEvidence(
+    frameworkId: string,
+    _orgId?: string,
+  ): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('framework_id', frameworkId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createFrameworkEvidence(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert(this.evidenceInsertPayload(orgId, data))
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listControlEvidence(controlId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('control_id', controlId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createControlEvidence(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementEvidence, 'id' | 'controlId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), control_id: controlId })
+      .select()
+      .single();
+    const evidence = this.toRequirementEvidence(ok(row, error));
+    await this.db.from('framework_activities').insert({
+      control_id: controlId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+    });
+    return evidence;
+  }
+
+  private evidenceInsertPayload(
+    orgId: string,
+    data: Omit<RequirementEvidence, 'id'>,
+  ): Record<string, unknown> {
+    return {
+      org_id: orgId,
+      framework_id: data.frameworkId ?? null,
+      requirement_id: data.requirementId ?? null,
+      title: data.title,
+      owner: data.owner,
+      evidence_type: data.evidenceType,
+      source: data.source,
+      collection_date: data.collectionDate || new Date().toISOString(),
+      period_covered: data.periodCovered,
+      expiration_date: data.expirationDate || null,
+      verification_status: data.verificationStatus,
+      url: data.url ?? null,
+      created_by: data.createdBy,
+    };
+  }
+
+  private toRequirementEvidence(row: Record<string, unknown>): RequirementEvidence {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      controlId: row['control_id'] as string | undefined,
+      frameworkId: row['framework_id'] as string | undefined,
+      requirementId: row['requirement_id'] as string | undefined,
+      riskId: row['risk_id'] as string | undefined,
+      assessmentItemId: row['assessment_item_id'] as string | undefined,
+      assetId: row['asset_id'] as string | undefined,
+      title: row['title'] as string,
+      owner: row['owner'] as string,
+      evidenceType: row['evidence_type'] as string,
+      source: row['source'] as string,
+      collectionDate: row['collection_date'] as string,
+      periodCovered: row['period_covered'] as string,
+      expirationDate: row['expiration_date'] as string,
+      verificationStatus: row['verification_status'] as RequirementEvidence['verificationStatus'],
+      url: row['url'] as string | undefined,
+      createdBy: row['created_by'] as string,
+      verifiedBy: (row['verified_by'] as string | null) ?? null,
+      verifiedAt: (row['verified_at'] as string | null) ?? null,
+      reviewNotes: (row['review_notes'] as string | null) ?? null,
+    };
+  }
+
+  async listFrameworkAssessments(
+    frameworkId: string,
+    _orgId?: string,
+  ): Promise<RequirementAssessment[]> {
+    const { data, error } = await this.db
+      .from('requirement_assessments')
+      .select('*')
+      .eq('framework_id', frameworkId);
+    return ok(data, error).map((row) => this.toRequirementAssessment(row));
+  }
+
+  async getRequirementAssessment(id: string): Promise<RequirementAssessment | null> {
+    const { data, error } = await this.db
+      .from('requirement_assessments')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRequirementAssessment(data) : null;
+  }
+
+  async createAssessmentFinding(
+    orgId: string,
+    assessmentId: string,
+    findingData: {
+      title: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      description: string;
+    },
+  ): Promise<{ findingId: string }> {
+    const { data: asmRow, error: asmError } = await this.db
+      .from('requirement_assessments')
+      .select('control_id, framework_id, org_id')
+      .eq('id', assessmentId)
+      .single();
+    if (asmError || !asmRow) {
+      throw new Error(`requirement_assessment_not_found: ${assessmentId}`);
+    }
+    if (asmRow['org_id'] && asmRow['org_id'] !== orgId) {
+      throw new Error('requirement_assessment_belongs_to_different_org');
+    }
+    if (!asmRow['control_id']) {
+      throw new Error(`requirement_assessment_missing_control: ${assessmentId}`);
+    }
+
+    const { data: latestFinding, error: countError } = await this.db
+      .from('findings')
+      .select('code')
+      .eq('org_id', orgId)
+      .like('code', 'FIND-______')
+      .order('code', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (countError) throw new Error(countError.message);
+    const latestSuffix = latestFinding?.['code']
+      ? /^FIND-(\d{6})$/.exec(String(latestFinding['code']))?.[1]
+      : undefined;
+    const maxSuffix = latestSuffix ? parseInt(latestSuffix, 10) : 100;
+    const code = `FIND-${String(maxSuffix + 1).padStart(6, '0')}`;
+
+    const { data: row, error } = await this.db
+      .from('findings')
+      .insert({
+        org_id: orgId,
+        code,
+        control_id: asmRow['control_id'],
+        assessment_id: assessmentId,
+        title: findingData.title,
+        description: findingData.description,
+        severity: findingData.severity,
+        status: 'open',
+      })
+      .select()
+      .single();
+    const finding = this.toFinding(ok(row, error));
+
+    await this.db.from('framework_activities').insert({
+      framework_id: asmRow['framework_id'],
+      control_id: asmRow['control_id'],
+      action: 'Finding Logged',
+      details: `${finding.code}: ${finding.title}`,
+      actor: 'system',
+    });
+
+    return { findingId: finding.id };
+  }
+
+  async listControlAssessments(controlId: string): Promise<RequirementAssessment[]> {
+    const { data, error } = await this.db
+      .from('requirement_assessments')
+      .select('*')
+      .eq('control_id', controlId);
+    return ok(data, error).map((row) => this.toRequirementAssessment(row));
+  }
+
+  async createControlAssessment(
+    orgId: string,
+    controlId: string,
+    data: Omit<RequirementAssessment, 'id' | 'controlId'>,
+  ): Promise<RequirementAssessment> {
+    const { data: row, error } = await this.db
+      .from('requirement_assessments')
+      .insert({
+        org_id: orgId,
+        control_id: controlId,
+        cycle_name: data.cycleName,
+        status: data.status,
+        implementation_status: data.implementationStatus,
+        design_effectiveness: data.designEffectiveness,
+        operating_effectiveness: data.operatingEffectiveness,
+        assessor: data.assessor,
+        assessment_date: data.assessmentDate,
+        observation: data.observation,
+      })
+      .select()
+      .single();
+    const assessment = this.toRequirementAssessment(ok(row, error));
+
+    await this.db
+      .from('internal_controls')
+      .update({
+        design_effectiveness: data.designEffectiveness,
+        operating_effectiveness: data.operatingEffectiveness,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', controlId);
+
+    if (
+      data.operatingEffectiveness === 'ineffective' ||
+      data.operatingEffectiveness === 'partially_effective'
+    ) {
+      const control = await this.getInternalControl(controlId);
+      const findingNum = Math.floor(1000 + Math.random() * 9000);
+      const { data: findingRow, error: findingError } = await this.db
+        .from('findings')
+        .insert({
+          org_id: orgId,
+          code: `FIND-${new Date().getFullYear()}-${findingNum}`,
+          control_id: controlId,
+          assessment_id: assessment.id,
+          title: `${control?.title ?? 'Control'} — ${data.operatingEffectiveness.replace('_', ' ')}`,
+          description: data.observation,
+          severity: data.operatingEffectiveness === 'ineffective' ? 'high' : 'medium',
+        })
+        .select()
+        .single();
+      const finding = ok(findingRow, findingError);
+      await this.db
+        .from('requirement_assessments')
+        .update({ finding_id: finding['id'] })
+        .eq('id', assessment.id);
+      assessment.findingId = finding['id'] as string;
+      assessment.findingTitle = finding['title'] as string;
+      assessment.findingSeverity = finding['severity'] as RequirementAssessment['findingSeverity'];
+    }
+
+    await this.db.from('framework_activities').insert({
+      control_id: controlId,
+      action: 'Assessment Completed',
+      details: `Cycle "${data.cycleName}" — operating effectiveness: ${data.operatingEffectiveness}.`,
+      actor: data.assessor,
+    });
+
+    return assessment;
+  }
+
+  private toRequirementAssessment(row: Record<string, unknown>): RequirementAssessment {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      controlId: row['control_id'] as string | undefined,
+      frameworkId: row['framework_id'] as string | undefined,
+      requirementId: row['requirement_id'] as string | undefined,
+      cycleName: row['cycle_name'] as string,
+      status: row['status'] as RequirementAssessment['status'],
+      implementationStatus: row['implementation_status'] as ImplementationStatus,
+      designEffectiveness: row['design_effectiveness'] as EffectivenessStatus,
+      operatingEffectiveness: row['operating_effectiveness'] as EffectivenessStatus,
+      assessor: row['assessor'] as string,
+      assessmentDate: row['assessment_date'] as string,
+      observation: row['observation'] as string,
+      findingId: row['finding_id'] as string | undefined,
+    };
+  }
+
+  async listControlFindings(controlId: string): Promise<Finding[]> {
+    const { data, error } = await this.db.from('findings').select('*').eq('control_id', controlId);
+    return ok(data, error).map((row) => this.toFinding(row));
+  }
+
+  async linkFindingToRisk(findingId: string, riskId: string): Promise<Finding> {
+    const { data, error } = await this.db
+      .from('findings')
+      .update({ linked_risk_id: riskId, updated_at: new Date().toISOString() })
+      .eq('id', findingId)
+      .select()
+      .single();
+    return this.toFinding(ok(data, error));
+  }
+
+  async linkFindingToIssue(findingId: string, issueId: string): Promise<Finding> {
+    const { data, error } = await this.db
+      .from('findings')
+      .update({ linked_issue_id: issueId, updated_at: new Date().toISOString() })
+      .eq('id', findingId)
+      .select()
+      .single();
+    return this.toFinding(ok(data, error));
+  }
+
+  async resolveFindingViaException(findingId: string, exceptionId: string): Promise<Finding> {
+    const exception = await this.getException(exceptionId);
+    if (!exception) throw new Error(`exception_not_found: ${exceptionId}`);
+    if (exception.status !== 'approved') throw new Error('exception_not_approved');
+    const { data, error } = await this.db
+      .from('findings')
+      .update({
+        linked_exception_id: exceptionId,
+        status: 'accepted',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', findingId)
+      .select()
+      .single();
+    return this.toFinding(ok(data, error));
+  }
+
+  async getFinding(id: string): Promise<Finding | null> {
+    const { data, error } = await this.db.from('findings').select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toFinding(data) : null;
+  }
+
+  async listFindingsByLink(params: {
+    issueId?: string;
+    riskId?: string;
+    exceptionId?: string;
+  }): Promise<Finding[]> {
+    let query = this.db.from('findings').select('*');
+    if (params.issueId) query = query.eq('linked_issue_id', params.issueId);
+    else if (params.riskId) query = query.eq('linked_risk_id', params.riskId);
+    else if (params.exceptionId) query = query.eq('linked_exception_id', params.exceptionId);
+    else return [];
+    const { data, error } = await query;
+    return ok(data, error).map((row) => this.toFinding(row));
+  }
+
+  async createIssueFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: { title: string; description: string; severity: IssueSeverity; ownerId: string },
+  ): Promise<Issue> {
+    const finding = await this.getFinding(findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    const issue = await this.createIssue(orgId, userId, {
+      title: data.title,
+      description: data.description,
+      severity: data.severity,
+      reporterId: userId,
+      ownerId: data.ownerId,
+      source: 'gap_analysis',
+      sourceId: findingId,
+    });
+    const { error: linkError } = await this.db
+      .from('findings')
+      .update({ linked_issue_id: issue.id, updated_at: new Date().toISOString() })
+      .eq('id', findingId);
+    if (linkError) throw new Error(linkError.message);
+    return issue;
+  }
+
+  async createRiskFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      title: string;
+      description: string;
+      taxonomyCategoryId: string;
+      ownerId: string;
+      inherentLikelihood: number;
+      inherentImpact: number;
+    },
+  ): Promise<Risk> {
+    const finding = await this.getFinding(findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    const risk = await this.createRisk(orgId, userId, {
+      title: data.title,
+      riskStatement: data.description,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: data.ownerId,
+      inherentLikelihood: data.inherentLikelihood,
+      inherentImpact: data.inherentImpact,
+      source: 'gap_analysis',
+      sourceRef: findingId,
+    });
+    const { error: linkError } = await this.db
+      .from('findings')
+      .update({ linked_risk_id: risk.id, updated_at: new Date().toISOString() })
+      .eq('id', findingId);
+    if (linkError) throw new Error(linkError.message);
+    return risk;
+  }
+
+  async createExceptionFromFinding(
+    orgId: string,
+    userId: string,
+    findingId: string,
+    data: {
+      controlCode: string;
+      frameworkId: string;
+      title: string;
+      statement: string;
+      justification: string;
+      ownerId: string;
+      compensatingControls?: string;
+    },
+  ): Promise<Exception> {
+    const finding = await this.getFinding(findingId);
+    if (!finding) throw new Error(`finding_not_found: ${findingId}`);
+    if (finding.orgId !== orgId) throw new Error('finding_belongs_to_different_org');
+    return this.createException(orgId, userId, data);
+  }
+
+  private toFinding(row: Record<string, unknown>): Finding {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      code: row['code'] as string,
+      controlId: row['control_id'] as string,
+      assessmentId: row['assessment_id'] as string,
+      title: row['title'] as string,
+      description: row['description'] as string,
+      severity: row['severity'] as Finding['severity'],
+      status: row['status'] as Finding['status'],
+      linkedIssueId: row['linked_issue_id'] as string | undefined,
+      linkedExceptionId: row['linked_exception_id'] as string | undefined,
+      linkedRiskId: row['linked_risk_id'] as string | undefined,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  async listFrameworkActivities(
+    frameworkId: string,
+    _orgId?: string,
+  ): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('framework_id', frameworkId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
+  async listControlActivity(controlId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('control_id', controlId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
+  async listAssetActivity(assetId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('asset_id', assetId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
+  async listPolicyActivity(policyId: string): Promise<FrameworkActivity[]> {
+    const { data, error } = await this.db
+      .from('framework_activities')
+      .select('*')
+      .eq('policy_id', policyId)
+      .order('timestamp', { ascending: false });
+    return ok(data, error).map((row) => this.toFrameworkActivity(row));
+  }
+
+  private toFrameworkActivity(row: Record<string, unknown>): FrameworkActivity {
+    return {
+      id: row['id'] as string,
+      frameworkId: row['framework_id'] as string | undefined,
+      controlId: row['control_id'] as string | undefined,
+      assetId: row['asset_id'] as string | undefined,
+      policyId: row['policy_id'] as string | undefined,
+      action: row['action'] as string,
+      details: row['details'] as string,
+      actor: row['actor'] as string,
+      timestamp: row['timestamp'] as string,
     };
   }
 
@@ -325,6 +1146,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async transitionWorkflow(id: string, transition: WorkflowTransition): Promise<StandardsDocument> {
     const doc = await this.getStandardsDocument(id);
     if (!doc) throw new Error('doc_not_found');
+    if (transition === 'supersede') {
+      throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
+    }
     const { from, to } = WORKFLOW_TRANSITIONS[transition];
     if (doc.workflowStatus !== from) {
       throw new Error(`invalid_transition: ${doc.workflowStatus} → ${transition}`);
@@ -1054,6 +1878,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
         owner_id: data.ownerId,
         compensating_controls: data.compensatingControls ?? null,
         expires_at: data.expiresAt ?? null,
+        risk_id: data.riskId || null,
+        review_frequency_days: data.reviewFrequencyDays ?? null,
       })
       .select()
       .single();
@@ -1075,6 +1901,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.compensatingControls !== undefined)
       update['compensating_controls'] = patch.compensatingControls;
     if ('expiresAt' in patch) update['expires_at'] = patch.expiresAt;
+    if ('riskId' in patch) update['risk_id'] = patch.riskId;
+    if ('reviewFrequencyDays' in patch) update['review_frequency_days'] = patch.reviewFrequencyDays;
     const { data, error } = await this.db
       .from('exceptions')
       .update(update)
@@ -1084,20 +1912,43 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toException(ok(data, error));
   }
 
-  async approveException(id: string): Promise<Exception> {
+  private async getExceptionOrThrow(id: string): Promise<Exception> {
+    const { data, error } = await this.db.from('exceptions').select('*').eq('id', id).single();
+    return this.toException(ok(data, error));
+  }
+
+  async approveException(id: string, approverId: string): Promise<Exception> {
+    const current = await this.getExceptionOrThrow(id);
+    if (current.ownerId === approverId) {
+      throw new Error('exception_self_approval_forbidden');
+    }
     const { data, error } = await this.db
       .from('exceptions')
-      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .update({
+        status: 'approved',
+        reviewed_by: approverId,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
       .select()
       .single();
     return this.toException(ok(data, error));
   }
 
-  async rejectException(id: string): Promise<Exception> {
+  async rejectException(id: string, approverId: string): Promise<Exception> {
+    const current = await this.getExceptionOrThrow(id);
+    if (current.ownerId === approverId) {
+      throw new Error('exception_self_approval_forbidden');
+    }
     const { data, error } = await this.db
       .from('exceptions')
-      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .update({
+        status: 'rejected',
+        reviewed_by: approverId,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', id)
       .select()
       .single();
@@ -1124,8 +1975,147 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       compensatingControls: row['compensating_controls'] as string | undefined,
       status: row['status'] as Exception['status'],
       expiresAt: row['expires_at'] as string | null,
+      riskId: row['risk_id'] as string | null,
+      reviewFrequencyDays: row['review_frequency_days'] as number | null,
+      reviewedBy: row['reviewed_by'] as string | null,
+      reviewedAt: row['reviewed_at'] as string | null,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Exception Renewals ──────────────────────────────────────────────────
+
+  async requestExceptionRenewal(
+    exceptionId: string,
+    requestedBy: string,
+    data: ExceptionRenewalRequestInput,
+  ): Promise<ExceptionRenewal> {
+    const exception = await this.getExceptionOrThrow(exceptionId);
+    if (exception.ownerId !== requestedBy) {
+      throw new Error('exception_renewal_only_owner_can_request');
+    }
+    const { data: row, error } = await this.db
+      .from('exception_renewals')
+      .insert({
+        exception_id: exceptionId,
+        org_id: exception.orgId,
+        requested_by: requestedBy,
+        proposed_expires_at: data.proposedExpiresAt,
+        justification: data.justification,
+      })
+      .select()
+      .single();
+    return this.toExceptionRenewal(ok(row, error));
+  }
+
+  private async getExceptionRenewalOrThrow(id: string): Promise<ExceptionRenewal> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toExceptionRenewal(ok(data, error));
+  }
+
+  async reviewExceptionRenewal(
+    id: string,
+    reviewerId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<ExceptionRenewal> {
+    const current = await this.getExceptionRenewalOrThrow(id);
+    if (current.status !== 'pending') {
+      throw new Error(`exception_renewal_already_decided: ${id}`);
+    }
+    if (current.requestedBy === reviewerId) {
+      throw new Error('exception_renewal_self_review_forbidden');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('exception_renewal_review_notes_required');
+    }
+
+    if (decision === 'approved') {
+      const { error: exceptionUpdateError } = await this.db
+        .from('exceptions')
+        .update({
+          expires_at: current.proposedExpiresAt,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', current.exceptionId);
+      if (exceptionUpdateError) throw new Error(exceptionUpdateError.message);
+    }
+
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .update({
+        status: decision,
+        reviewed_by: reviewerId,
+        review_notes: reviewNotes ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('status', 'pending')
+      .select()
+      .single();
+    return this.toExceptionRenewal(ok(data, error));
+  }
+
+  async getExceptionRenewal(id: string): Promise<ExceptionRenewal | null> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toExceptionRenewal(data) : null;
+  }
+
+  async getActiveExceptionRenewal(exceptionId: string): Promise<ExceptionRenewal | null> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('exception_id', exceptionId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toExceptionRenewal(data) : null;
+  }
+
+  async listExceptionRenewals(exceptionId: string): Promise<ExceptionRenewal[]> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('exception_id', exceptionId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toExceptionRenewal(row));
+  }
+
+  async listPendingExceptionRenewals(orgId: string): Promise<ExceptionRenewal[]> {
+    const { data, error } = await this.db
+      .from('exception_renewals')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toExceptionRenewal(row));
+  }
+
+  private toExceptionRenewal(row: Record<string, unknown>): ExceptionRenewal {
+    return {
+      id: row['id'] as string,
+      exceptionId: row['exception_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      proposedExpiresAt: row['proposed_expires_at'] as string,
+      justification: row['justification'] as string,
+      status: row['status'] as ExceptionRenewalStatus,
+      reviewedBy: row['reviewed_by'] as string | null,
+      reviewNotes: row['review_notes'] as string | null,
+      reviewedAt: row['reviewed_at'] as string | null,
+      createdAt: row['created_at'] as string,
     };
   }
 
@@ -1176,9 +2166,15 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
     if (patch.affectedAssets !== undefined) update['affected_assets'] = patch.affectedAssets;
     if (patch.status !== undefined) {
+      if (
+        (patch.status as string) === 'pending_validation' ||
+        (patch.status as string) === 'closed'
+      ) {
+        throw new Error('issue_status_change_requires_workflow');
+      }
       update['status'] = patch.status;
       if (!('resolvedAt' in patch)) {
-        update['resolved_at'] = patch.status === 'resolved' ? new Date().toISOString() : null;
+        update['resolved_at'] = null;
       }
     }
     if ('resolvedAt' in patch) update['resolved_at'] = patch.resolvedAt;
@@ -1213,8 +2209,158 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       sourceId: row['source_id'] as string | null,
       dueDate: row['due_date'] as string | null,
       resolvedAt: row['resolved_at'] as string | null,
+      rootCause: row['root_cause'] as string | null,
+      rootCauseCategory: row['root_cause_category'] as Issue['rootCauseCategory'],
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
+    };
+  }
+
+  // ─── Issue Validations ──────────────────────────────────────────────────
+
+  async submitIssueForValidation(
+    id: string,
+    ownerId: string,
+    data: IssueValidationSubmitInput,
+  ): Promise<Issue> {
+    if (data.validatorId === ownerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const issue = await this.getIssue(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    const activePending = await this.getActiveIssueValidation(id);
+    if (activePending) {
+      throw new Error('issue_validation_already_pending');
+    }
+    if (issue.status !== 'open' && issue.status !== 'in_progress') {
+      throw new Error('issue_status_invalid_for_submission');
+    }
+    const { error: validationError } = await this.db.from('issue_validations').insert({
+      issue_id: id,
+      org_id: issue.orgId,
+      requested_by: ownerId,
+      validator_id: data.validatorId,
+    });
+    if (validationError) throw new Error(validationError.message);
+
+    const { data: issueRow, error: issueError } = await this.db
+      .from('issues')
+      .update({
+        status: 'pending_validation',
+        root_cause: data.rootCause,
+        root_cause_category: data.rootCauseCategory,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toIssue(ok(issueRow, issueError));
+  }
+
+  private async getIssueValidationOrThrow(id: string): Promise<IssueValidation> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toIssueValidation(ok(data, error));
+  }
+
+  async getIssueValidation(id: string): Promise<IssueValidation | null> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toIssueValidation(data) : null;
+  }
+
+  async reviewIssueValidation(
+    id: string,
+    validatorId: string,
+    decision: 'approved' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<IssueValidation> {
+    const current = await this.getIssueValidationOrThrow(id);
+    if (current.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${id}`);
+    }
+    if (current.validatorId !== validatorId) {
+      throw new Error('issue_validation_not_authorized_validator');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('issue_validation_review_notes_required');
+    }
+
+    const { error: issueUpdateError } = await this.db
+      .from('issues')
+      .update({
+        status: decision === 'approved' ? 'closed' : 'in_progress',
+        ...(decision === 'approved' ? { resolved_at: new Date().toISOString() } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', current.issueId);
+    if (issueUpdateError) throw new Error(issueUpdateError.message);
+
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .update({
+        status: decision,
+        review_notes: reviewNotes ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('validator_id', validatorId)
+      .eq('status', 'pending')
+      .select()
+      .single();
+    return this.toIssueValidation(ok(data, error));
+  }
+
+  async getActiveIssueValidation(issueId: string): Promise<IssueValidation | null> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('issue_id', issueId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toIssueValidation(data) : null;
+  }
+
+  async listIssueValidations(issueId: string): Promise<IssueValidation[]> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('issue_id', issueId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toIssueValidation(row));
+  }
+
+  async listPendingIssueValidations(orgId: string): Promise<IssueValidation[]> {
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((row) => this.toIssueValidation(row));
+  }
+
+  private toIssueValidation(row: Record<string, unknown>): IssueValidation {
+    return {
+      id: row['id'] as string,
+      issueId: row['issue_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      validatorId: row['validator_id'] as string,
+      status: row['status'] as IssueValidationStatus,
+      reviewNotes: row['review_notes'] as string | null,
+      reviewedAt: row['reviewed_at'] as string | null,
+      createdAt: row['created_at'] as string,
     };
   }
 
@@ -1235,16 +2381,43 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .insert({
         org_id: orgId,
         user_id: userId,
+        code: data.code,
         name: data.name,
         type: data.type,
         criticality: data.criticality,
         description: data.description,
-        owner: data.owner,
+        owner: data.owner || data.businessOwner || '',
+        business_owner: data.businessOwner,
+        technical_owner: data.technicalOwner,
+        department: data.department,
+        status: data.status ?? 'active',
+        data_classification: data.dataClassification,
+        data_types: data.dataTypes ?? [],
+        cia_confidentiality: data.ciaConfidentiality,
+        cia_integrity: data.ciaIntegrity,
+        cia_availability: data.ciaAvailability,
+        hosting_type: data.hostingType,
+        environment: data.environment,
+        location: data.location,
+        internet_facing: data.internetFacing,
+        is_production: data.isProduction,
+        vendor_id: data.vendorId,
+        vendor_name: data.vendorName,
+        vendor_ids: data.vendorIds ?? (data.vendorId ? [data.vendorId] : []),
+        related_asset_ids: data.relatedAssetIds ?? [],
+        compliance_scope: data.complianceScope ?? [],
         tags: data.tags ?? [],
       })
       .select()
       .single();
-    return this.toAsset(ok(row, error));
+    const asset = this.toAsset(ok(row, error));
+    await this.db.from('framework_activities').insert({
+      asset_id: asset.id,
+      action: 'Asset Registered',
+      details: `Asset "${asset.name}" (${asset.code}) added to the catalog.`,
+      actor: asset.owner,
+    });
+    return asset;
   }
 
   async getAsset(id: string): Promise<Asset | null> {
@@ -1255,11 +2428,33 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
   async updateAsset(id: string, patch: AssetPatch): Promise<Asset> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (patch.code !== undefined) update['code'] = patch.code;
     if (patch.name !== undefined) update['name'] = patch.name;
     if (patch.type !== undefined) update['type'] = patch.type;
     if (patch.criticality !== undefined) update['criticality'] = patch.criticality;
     if (patch.description !== undefined) update['description'] = patch.description;
     if (patch.owner !== undefined) update['owner'] = patch.owner;
+    if (patch.businessOwner !== undefined) update['business_owner'] = patch.businessOwner;
+    if (patch.technicalOwner !== undefined) update['technical_owner'] = patch.technicalOwner;
+    if (patch.department !== undefined) update['department'] = patch.department;
+    if (patch.status !== undefined) update['status'] = patch.status;
+    if (patch.dataClassification !== undefined)
+      update['data_classification'] = patch.dataClassification;
+    if (patch.dataTypes !== undefined) update['data_types'] = patch.dataTypes;
+    if (patch.ciaConfidentiality !== undefined)
+      update['cia_confidentiality'] = patch.ciaConfidentiality;
+    if (patch.ciaIntegrity !== undefined) update['cia_integrity'] = patch.ciaIntegrity;
+    if (patch.ciaAvailability !== undefined) update['cia_availability'] = patch.ciaAvailability;
+    if (patch.hostingType !== undefined) update['hosting_type'] = patch.hostingType;
+    if (patch.environment !== undefined) update['environment'] = patch.environment;
+    if (patch.location !== undefined) update['location'] = patch.location;
+    if (patch.internetFacing !== undefined) update['internet_facing'] = patch.internetFacing;
+    if (patch.isProduction !== undefined) update['is_production'] = patch.isProduction;
+    if (patch.vendorId !== undefined) update['vendor_id'] = patch.vendorId;
+    if (patch.vendorName !== undefined) update['vendor_name'] = patch.vendorName;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.relatedAssetIds !== undefined) update['related_asset_ids'] = patch.relatedAssetIds;
+    if (patch.complianceScope !== undefined) update['compliance_scope'] = patch.complianceScope;
     if (patch.tags !== undefined) update['tags'] = patch.tags;
     const { data, error } = await this.db
       .from('assets')
@@ -1267,7 +2462,17 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', id)
       .select()
       .single();
-    return this.toAsset(ok(data, error));
+    const asset = this.toAsset(ok(data, error));
+    await this.db.from('framework_activities').insert({
+      asset_id: id,
+      action: 'Asset Updated',
+      details:
+        patch.criticality !== undefined
+          ? `Criticality set to ${patch.criticality.toUpperCase()}.`
+          : `Asset "${asset.name}" details updated.`,
+      actor: asset.owner,
+    });
+    return asset;
   }
 
   async deleteAsset(id: string): Promise<void> {
@@ -1280,12 +2485,32 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       id: row['id'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
+      code: row['code'] as string | undefined,
       name: row['name'] as string,
       type: row['type'] as Asset['type'],
       criticality: row['criticality'] as Asset['criticality'],
-      description: row['description'] as string,
-      owner: row['owner'] as string,
-      tags: row['tags'] as string[],
+      description: (row['description'] as string) || '',
+      owner: (row['owner'] as string) || (row['business_owner'] as string) || '',
+      businessOwner: row['business_owner'] as string | undefined,
+      technicalOwner: row['technical_owner'] as string | undefined,
+      department: row['department'] as string | undefined,
+      status: (row['status'] as Asset['status']) || 'active',
+      dataClassification: row['data_classification'] as Asset['dataClassification'],
+      dataTypes: (row['data_types'] as string[]) || [],
+      ciaConfidentiality: row['cia_confidentiality'] as Asset['ciaConfidentiality'],
+      ciaIntegrity: row['cia_integrity'] as Asset['ciaIntegrity'],
+      ciaAvailability: row['cia_availability'] as Asset['ciaAvailability'],
+      hostingType: row['hosting_type'] as string | undefined,
+      environment: (row['environment'] as string) || 'production',
+      location: row['location'] as string | undefined,
+      internetFacing: Boolean(row['internet_facing']),
+      isProduction: row['is_production'] !== undefined ? Boolean(row['is_production']) : true,
+      vendorId: (row['vendor_id'] as string) || null,
+      vendorName: row['vendor_name'] as string | undefined,
+      vendorIds: (row['vendor_ids'] as string[]) || [],
+      relatedAssetIds: (row['related_asset_ids'] as string[]) || [],
+      complianceScope: (row['compliance_scope'] as string[]) || [],
+      tags: (row['tags'] as string[]) || [],
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
@@ -1298,29 +2523,74 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .from('risks')
       .select('*')
       .eq('org_id', orgId)
-      .order('risk_score', { ascending: false });
+      .order('inherent_score', { ascending: false });
     return ok(data, error).map((row) => this.toRisk(row));
   }
 
   async createRisk(orgId: string, userId: string, data: RiskInput): Promise<Risk> {
-    const riskScore = this.computeRiskScore(data.likelihood, data.impact);
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+    const { data: lastRisk } = await this.db
+      .from('risks')
+      .select('risk_id')
+      .eq('org_id', orgId)
+      .order('risk_id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const lastSuffix = lastRisk?.['risk_id']
+      ? parseInt(String(lastRisk['risk_id']).slice('RSK-'.length), 10)
+      : 100;
+    const riskId = `RSK-${String(lastSuffix + 1).padStart(6, '0')}`;
+
     const { data: row, error } = await this.db
       .from('risks')
       .insert({
         org_id: orgId,
         user_id: userId,
+        risk_id: riskId,
         title: data.title,
-        description: data.description,
-        category: data.category,
-        likelihood: data.likelihood,
-        impact: data.impact,
-        risk_score: riskScore,
-        treatment: data.treatment ?? 'mitigate',
-        asset_id: data.assetId ?? null,
+        risk_statement: data.riskStatement,
+        taxonomy_category_id: data.taxonomyCategoryId,
+        owner_id: data.ownerId,
+        business_unit: data.businessUnit ?? null,
+        source: data.source ?? 'manual',
+        source_ref: data.sourceRef ?? null,
+        asset_ids: data.assetIds ?? [],
+        vendor_ids: data.vendorIds ?? [],
+        methodology_id: methodology.id,
+        inherent_likelihood: data.inherentLikelihood,
+        inherent_impact: data.inherentImpact,
+        inherent_score: score,
+        inherent_label: label,
+        above_appetite: score > methodology.appetiteThreshold,
+        status: 'open',
+        // legacy columns kept populated for backward compatibility with any
+        // code path still reading the pre-rebuild columns directly:
+        description: data.riskStatement,
+        category: data.taxonomyCategoryId,
+        likelihood: 'medium',
+        impact: 'medium',
+        risk_score: score,
+        treatment: 'mitigate',
       })
       .select()
       .single();
     return this.toRisk(ok(row, error));
+  }
+
+  private scoreRisk(
+    methodology: RiskMethodology,
+    likelihood: number,
+    impact: number,
+  ): { score: number; label: RiskScoreLabel } {
+    const score = likelihood * impact;
+    const band = methodology.thresholds.find((t) => score <= t.maxScore);
+    return { score, label: band?.label ?? 'critical' };
   }
 
   async getRisk(id: string): Promise<Risk | null> {
@@ -1329,22 +2599,96 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.toRisk(data) : null;
   }
 
-  async updateRisk(id: string, patch: RiskPatch): Promise<Risk> {
+  async updateRisk(
+    id: string,
+    patch: RiskPatch,
+    changedBy: string,
+    reason?: string,
+  ): Promise<Risk> {
     const current = await this.getRisk(id);
     if (!current) throw new Error('risk_not_found');
-    const newLikelihood = patch.likelihood ?? current.likelihood;
-    const newImpact = patch.impact ?? current.impact;
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      risk_score: this.computeRiskScore(newLikelihood, newImpact),
-    };
+
+    const scoreFieldsChanging =
+      patch.inherentLikelihood !== undefined ||
+      patch.inherentImpact !== undefined ||
+      patch.residualLikelihood !== undefined ||
+      patch.residualImpact !== undefined ||
+      patch.treatmentStrategy !== undefined;
+
+    if (scoreFieldsChanging) {
+      await this.db.from('risk_snapshots').insert({
+        risk_id: id,
+        inherent_score: current.inherentScore,
+        inherent_label: current.inherentLabel,
+        residual_score: current.residualScore ?? null,
+        residual_label: current.residualLabel ?? null,
+        treatment_strategy: current.treatmentStrategy ?? null,
+        changed_by: changedBy,
+        reason: reason ?? null,
+      });
+    }
+
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.description !== undefined) update['description'] = patch.description;
-    if (patch.category !== undefined) update['category'] = patch.category;
-    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
-    if (patch.impact !== undefined) update['impact'] = patch.impact;
-    if (patch.treatment !== undefined) update['treatment'] = patch.treatment;
-    if ('assetId' in patch) update['asset_id'] = patch.assetId;
+    if (patch.riskStatement !== undefined) update['risk_statement'] = patch.riskStatement;
+    if (patch.taxonomyCategoryId !== undefined)
+      update['taxonomy_category_id'] = patch.taxonomyCategoryId;
+    if (patch.ownerId !== undefined) update['owner_id'] = patch.ownerId;
+    if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
+    if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.treatmentStrategy !== undefined)
+      update['treatment_strategy'] = patch.treatmentStrategy;
+    if (patch.treatmentOwner !== undefined) update['treatment_owner'] = patch.treatmentOwner;
+    if (patch.treatmentPlan !== undefined) update['treatment_plan'] = patch.treatmentPlan;
+    if (patch.targetScore !== undefined) update['target_score'] = patch.targetScore;
+    if (patch.targetDate !== undefined) update['target_date'] = patch.targetDate;
+    if (patch.status !== undefined) update['status'] = patch.status;
+
+    const methodology = await this.getRiskMethodology(current.orgId);
+    if (methodology) {
+      let scoresChanged = false;
+      let effectiveScore = current.residualScore ?? current.inherentScore;
+
+      const newInherentLikelihood = patch.inherentLikelihood ?? current.inherentLikelihood;
+      const newInherentImpact = patch.inherentImpact ?? current.inherentImpact;
+      if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          newInherentLikelihood,
+          newInherentImpact,
+        );
+        update['inherent_likelihood'] = newInherentLikelihood;
+        update['inherent_impact'] = newInherentImpact;
+        update['inherent_score'] = score;
+        update['inherent_label'] = label;
+        scoresChanged = true;
+        effectiveScore = current.residualScore ?? score;
+      }
+      const newResidualLikelihood = patch.residualLikelihood ?? current.residualLikelihood;
+      const newResidualImpact = patch.residualImpact ?? current.residualImpact;
+      if (
+        (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+        newResidualLikelihood !== undefined &&
+        newResidualImpact !== undefined
+      ) {
+        const { score, label } = this.scoreRisk(
+          methodology,
+          newResidualLikelihood,
+          newResidualImpact,
+        );
+        update['residual_likelihood'] = newResidualLikelihood;
+        update['residual_impact'] = newResidualImpact;
+        update['residual_score'] = score;
+        update['residual_label'] = label;
+        scoresChanged = true;
+        effectiveScore = score;
+      }
+      if (scoresChanged) {
+        update['above_appetite'] = effectiveScore > methodology.appetiteThreshold;
+      }
+    }
+
     const { data, error } = await this.db
       .from('risks')
       .update(update)
@@ -1362,24 +2706,279 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   private toRisk(row: Record<string, unknown>): Risk {
     return {
       id: row['id'] as string,
+      riskId: row['risk_id'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
       title: row['title'] as string,
-      description: row['description'] as string,
-      category: row['category'] as string,
-      likelihood: row['likelihood'] as Risk['likelihood'],
-      impact: row['impact'] as Risk['impact'],
-      riskScore: row['risk_score'] as number,
-      treatment: row['treatment'] as Risk['treatment'],
-      assetId: row['asset_id'] as string | null,
+      riskStatement: row['risk_statement'] as string,
+      taxonomyCategoryId: row['taxonomy_category_id'] as string,
+      ownerId: row['owner_id'] as string,
+      businessUnit: row['business_unit'] as string | undefined,
+      source: row['source'] as RiskSource,
+      sourceRef: row['source_ref'] as string | undefined,
+      assetIds: (row['asset_ids'] as string[]) ?? [],
+      vendorIds: (row['vendor_ids'] as string[]) ?? [],
+      methodologyId: row['methodology_id'] as string,
+      inherentLikelihood: row['inherent_likelihood'] as number,
+      inherentImpact: row['inherent_impact'] as number,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualLikelihood: row['residual_likelihood'] as number | undefined,
+      residualImpact: row['residual_impact'] as number | undefined,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      aboveAppetite: row['above_appetite'] as boolean | undefined,
+      treatmentStrategy: row['treatment_strategy'] as RiskTreatmentStrategy | undefined,
+      treatmentOwner: row['treatment_owner'] as string | undefined,
+      treatmentPlan: row['treatment_plan'] as string | undefined,
+      targetScore: row['target_score'] as number | undefined,
+      targetDate: row['target_date'] as string | undefined,
+      status: row['status'] as RiskStatus,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
   }
 
+  // ─── Risk Methodology ──────────────────────────────────────────────────────
+
+  async getRiskMethodology(orgId: string): Promise<RiskMethodology | null> {
+    const { data, error } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('is_active', true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (data) return this.toRiskMethodology(data);
+
+    const seeded = {
+      org_id: orgId,
+      scale_size: 5,
+      likelihood_labels: ['Rare', 'Unlikely', 'Possible', 'Likely', 'Almost Certain'],
+      impact_labels: ['Insignificant', 'Minor', 'Moderate', 'Major', 'Severe'],
+      thresholds: [
+        { maxScore: 4, label: 'low' },
+        { maxScore: 9, label: 'medium' },
+        { maxScore: 16, label: 'high' },
+        { maxScore: 25, label: 'critical' },
+      ],
+      appetite_threshold: 9,
+    };
+    const { data: row, error: insertError } = await this.db
+      .from('risk_methodologies')
+      .insert(seeded)
+      .select()
+      .single();
+    return this.toRiskMethodology(ok(row, insertError));
+  }
+
+  async upsertRiskMethodology(orgId: string, data: RiskMethodologyInput): Promise<RiskMethodology> {
+    const current = await this.getRiskMethodology(orgId);
+    const nextVersion = (current?.version ?? 0) + 1;
+    const { data: row, error } = await this.db
+      .from('risk_methodologies')
+      .insert({
+        org_id: orgId,
+        version: nextVersion,
+        is_active: true,
+        scale_size: data.scaleSize,
+        likelihood_labels: data.likelihoodLabels,
+        impact_labels: data.impactLabels,
+        thresholds: data.thresholds,
+        appetite_threshold: data.appetiteThreshold,
+      })
+      .select()
+      .single();
+    const result = this.toRiskMethodology(ok(row, error));
+    if (current) {
+      await this.db.from('risk_methodologies').update({ is_active: false }).eq('id', current.id);
+    }
+    return result;
+  }
+
+  private toRiskMethodology(row: Record<string, unknown>): RiskMethodology {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      version: row['version'] as number,
+      isActive: row['is_active'] as boolean,
+      scaleSize: row['scale_size'] as 3 | 4 | 5,
+      likelihoodLabels: row['likelihood_labels'] as string[],
+      impactLabels: row['impact_labels'] as string[],
+      thresholds: row['thresholds'] as RiskThresholdBand[],
+      appetiteThreshold: row['appetite_threshold'] as number,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk Taxonomy ─────────────────────────────────────────────────────────
+
+  async listRiskTaxonomy(orgId: string): Promise<RiskTaxonomyCategory[]> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    const rows = ok(data, error);
+    if (rows.length > 0) return rows.map((r) => this.toRiskTaxonomyCategory(r));
+
+    const defaults = [
+      'Identity & Access',
+      'Vulnerability Management',
+      'Network Security',
+      'Application Security',
+      'Data Security',
+      'Security Operations',
+      'Incident Response',
+      'Availability',
+      'Infrastructure',
+      'Architecture',
+      'Change',
+      'Cloud',
+      'Technical Debt',
+      'Supplier Security',
+      'Concentration',
+      'Supply Chain',
+      'Outsourcing',
+      'Privacy',
+      'Compliance / Regulatory',
+      'Operational',
+      'Business Continuity / Resilience',
+      'Strategic',
+      'Financial',
+    ];
+    const { data: inserted, error: insertError } = await this.db
+      .from('risk_taxonomy_categories')
+      .insert(defaults.map((name) => ({ org_id: orgId, name })))
+      .select();
+    return ok(inserted, insertError).map((r) => this.toRiskTaxonomyCategory(r));
+  }
+
+  async createRiskTaxonomyCategory(
+    orgId: string,
+    data: RiskTaxonomyCategoryInput,
+  ): Promise<RiskTaxonomyCategory> {
+    const { data: row, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .insert({ org_id: orgId, name: data.name })
+      .select()
+      .single();
+    return this.toRiskTaxonomyCategory(ok(row, error));
+  }
+
+  async archiveRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .update({ archived: true })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRiskTaxonomyCategory(ok(data, error));
+  }
+
+  async getRiskTaxonomyCategory(id: string): Promise<RiskTaxonomyCategory | null> {
+    const { data, error } = await this.db
+      .from('risk_taxonomy_categories')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskTaxonomyCategory(data) : null;
+  }
+
+  private toRiskTaxonomyCategory(row: Record<string, unknown>): RiskTaxonomyCategory {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      name: row['name'] as string,
+      archived: row['archived'] as boolean,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Assessment Types ──────────────────────────────────────────────────────
+
+  async listAssessmentTypes(orgId: string): Promise<AssessmentType[]> {
+    const { data, error } = await this.db
+      .from('assessment_types')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    const rows = ok(data, error);
+    if (rows.length > 0) return rows.map((r) => this.toAssessmentType(r));
+
+    const defaults: Array<[string, string, string]> = [
+      ['Cyber Vulnerability Risk Assessment', 'Vulnerability', 'Vulnerabilities'],
+      ['Cyber Threat Risk Assessment', 'Threat Scenario', 'Threat Scenarios'],
+    ];
+    const { error: seedError } = await this.db.from('assessment_types').upsert(
+      defaults.map(([name, singular, plural]) => ({
+        org_id: orgId,
+        name,
+        item_noun_singular: singular,
+        item_noun_plural: plural,
+      })),
+      { onConflict: 'org_id,name', ignoreDuplicates: true },
+    );
+    if (seedError) throw new Error(seedError.message);
+
+    const { data: seeded, error: seededError } = await this.db
+      .from('assessment_types')
+      .select('*')
+      .eq('org_id', orgId)
+      .order('name');
+    return ok(seeded, seededError).map((r) => this.toAssessmentType(r));
+  }
+
+  async createAssessmentType(orgId: string, data: AssessmentTypeInput): Promise<AssessmentType> {
+    const { data: row, error } = await this.db
+      .from('assessment_types')
+      .insert({
+        org_id: orgId,
+        name: data.name,
+        item_noun_singular: data.itemNounSingular,
+        item_noun_plural: data.itemNounPlural,
+      })
+      .select()
+      .single();
+    return this.toAssessmentType(ok(row, error));
+  }
+
+  async archiveAssessmentType(id: string): Promise<AssessmentType> {
+    const { data, error } = await this.db
+      .from('assessment_types')
+      .update({ archived: true })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessmentType(ok(data, error));
+  }
+
+  async getAssessmentType(id: string): Promise<AssessmentType | null> {
+    const { data, error } = await this.db
+      .from('assessment_types')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAssessmentType(data) : null;
+  }
+
+  private toAssessmentType(row: Record<string, unknown>): AssessmentType {
+    return {
+      id: row['id'] as string,
+      orgId: row['org_id'] as string,
+      name: row['name'] as string,
+      itemNounSingular: row['item_noun_singular'] as string,
+      itemNounPlural: row['item_noun_plural'] as string,
+      archived: row['archived'] as boolean,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
   // ─── Risk Assessments ──────────────────────────────────────────────────────
 
-  async listAssessments(orgId: string): Promise<RiskAssessment[]> {
+  async listAssessments(orgId: string): Promise<Assessment[]> {
     const { data, error } = await this.db
       .from('risk_assessments')
       .select('*')
@@ -1391,23 +2990,46 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async createAssessment(
     orgId: string,
     userId: string,
-    data: RiskAssessmentInput,
-  ): Promise<RiskAssessment> {
+    data: AssessmentInput,
+  ): Promise<Assessment> {
+    const methodology = await this.getRiskMethodology(orgId);
+    if (!methodology) throw new Error('risk_methodology_not_found');
+    const { data: existing, error: countError } = await this.db
+      .from('risk_assessments')
+      .select('assessment_code')
+      .eq('org_id', orgId)
+      .order('assessment_code', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (countError) throw new Error(countError.message);
+    const maxSuffix = existing?.assessment_code
+      ? parseInt(String(existing.assessment_code).replace('ASM-', ''), 10)
+      : 100;
+    const assessmentCode = `ASM-${String(maxSuffix + 1).padStart(6, '0')}`;
+
     const { data: row, error } = await this.db
       .from('risk_assessments')
       .insert({
         org_id: orgId,
         user_id: userId,
-        type: data.type,
+        assessment_code: assessmentCode,
         title: data.title,
-        scope: data.scope,
+        assessment_type_id: data.assessmentTypeId,
+        owner_id: data.ownerId,
+        business_unit: data.businessUnit ?? null,
+        asset_ids: data.assetIds ?? [],
+        vendor_ids: data.vendorIds ?? [],
+        due_date: data.dueDate || null,
+        approver_id: data.approverId ?? null,
+        methodology_id: methodology.id,
+        status: 'draft',
       })
       .select()
       .single();
     return this.toAssessment(ok(row, error));
   }
 
-  async getAssessment(id: string): Promise<RiskAssessment | null> {
+  async getAssessment(id: string): Promise<Assessment | null> {
     const { data, error } = await this.db
       .from('risk_assessments')
       .select('*')
@@ -1417,11 +3039,14 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return data ? this.toAssessment(data) : null;
   }
 
-  async updateAssessment(id: string, patch: RiskAssessmentPatch): Promise<RiskAssessment> {
+  async updateAssessment(id: string, patch: AssessmentPatch): Promise<Assessment> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.scope !== undefined) update['scope'] = patch.scope;
-    if (patch.status !== undefined) update['status'] = patch.status;
+    if (patch.businessUnit !== undefined) update['business_unit'] = patch.businessUnit;
+    if (patch.assetIds !== undefined) update['asset_ids'] = patch.assetIds;
+    if (patch.vendorIds !== undefined) update['vendor_ids'] = patch.vendorIds;
+    if (patch.dueDate !== undefined) update['due_date'] = patch.dueDate || null;
+
     const { data, error } = await this.db
       .from('risk_assessments')
       .update(update)
@@ -1431,140 +3056,614 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toAssessment(ok(data, error));
   }
 
-  async deleteAssessment(id: string): Promise<void> {
-    const { error } = await this.db.from('risk_assessments').delete().eq('id', id);
+  async deleteAssessment(id: string, userId: string): Promise<void> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .delete()
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .eq('status', 'draft')
+      .select('id');
     if (error) throw new Error(error.message);
+    if (!data || data.length === 0) {
+      throw new Error('not_authorized_owner_or_not_draft');
+    }
   }
 
-  async listAssessmentItems(assessmentId: string): Promise<RiskAssessmentItem[]> {
+  async startAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .eq('status', 'draft')
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_owner_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async submitForReview(id: string, userId: string): Promise<Assessment> {
+    const current = await this.getAssessment(id);
+    if (!current) throw new Error('assessment_not_found');
+    if (current.ownerId !== userId) throw new Error('not_authorized_owner');
+    if (current.status !== 'in_progress' && current.status !== 'changes_requested') {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (!current.approverId) throw new Error('approver_required');
+    if (current.itemCount < 1) throw new Error('at_least_one_item_required');
+
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'pending_review', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .in('status', ['in_progress', 'changes_requested'])
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  private async getAssessmentOrThrow(id: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async approveAssessment(id: string, userId: string): Promise<Assessment> {
+    const current = await this.getAssessmentOrThrow(id);
+    if (current.status !== 'pending_review') {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (current.ownerId === userId) {
+      throw new Error('assessment_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('not_authorized_approver');
+    }
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async requestChanges(id: string, userId: string, note: string): Promise<Assessment> {
+    if (!note || note.trim() === '') throw new Error('note_required');
+    const current = await this.getAssessmentOrThrow(id);
+    if (current.status !== 'pending_review') {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (current.ownerId === userId) {
+      throw new Error('assessment_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('not_authorized_approver');
+    }
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({
+        status: 'changes_requested',
+        last_review_note: note,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async completeAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .eq('status', 'approved')
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_owner_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async archiveAssessment(id: string, userId: string): Promise<Assessment> {
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ status: 'archived', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('owner_id', userId)
+      .in('status', ['draft', 'completed'])
+      .select()
+      .single();
+    if (error || !data) throw new Error('not_authorized_owner_or_invalid_transition');
+    return this.toAssessment(data);
+  }
+
+  async listAssessmentItems(assessmentId: string): Promise<AssessmentItem[]> {
     const { data, error } = await this.db
       .from('risk_assessment_items')
       .select('*')
       .eq('assessment_id', assessmentId)
-      .order('item_score', { ascending: false });
+      .order('inherent_score', { ascending: false });
     return ok(data, error).map(this.toAssessmentItem);
   }
 
-  async addAssessmentItem(
+  async getAssessmentItem(id: string): Promise<AssessmentItem | null> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return null;
+    const item = this.toAssessmentItem(data);
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    item.orgId = assessment.orgId;
+    return item;
+  }
+
+  async createAssessmentItem(
     assessmentId: string,
-    data: RiskAssessmentItemInput,
-  ): Promise<RiskAssessmentItem> {
-    const itemScore = this.computeRiskScore(data.likelihood, data.impact);
+    data: AssessmentItemInput,
+  ): Promise<AssessmentItem> {
+    const assessment = await this.getAssessment(assessmentId);
+    if (!assessment) throw new Error('assessment_not_found');
+    const { data: methodologyRow, error: methodologyError } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('id', assessment.methodologyId)
+      .single();
+    const methodology = this.toRiskMethodology(ok(methodologyRow, methodologyError));
+    const { score, label } = this.scoreRisk(
+      methodology,
+      data.inherentLikelihood,
+      data.inherentImpact,
+    );
+
     const { data: row, error } = await this.db
       .from('risk_assessment_items')
       .insert({
         assessment_id: assessmentId,
         subject: data.subject,
         description: data.description,
-        likelihood: data.likelihood,
-        impact: data.impact,
-        item_score: itemScore,
-        mitigations: data.mitigations ?? '',
+        inherent_likelihood: data.inherentLikelihood,
+        inherent_impact: data.inherentImpact,
+        inherent_score: score,
+        inherent_label: label,
       })
       .select()
       .single();
     const item = this.toAssessmentItem(ok(row, error));
-    await this.recomputeAssessmentScore(assessmentId);
+    await this.recomputeAssessmentSummary(assessmentId);
     return item;
   }
 
-  async updateAssessmentItem(
-    id: string,
-    patch: RiskAssessmentItemPatch,
-  ): Promise<RiskAssessmentItem> {
-    const existing = await this.db
+  private async recomputeAssessmentSummary(assessmentId: string): Promise<void> {
+    const { data: items, error } = await this.db
       .from('risk_assessment_items')
-      .select('likelihood, impact, assessment_id')
+      .select('inherent_score, inherent_label, residual_score, residual_label')
+      .eq('assessment_id', assessmentId);
+    const rows = ok(items, error);
+    const update: Record<string, unknown> = {
+      item_count: rows.length,
+      updated_at: new Date().toISOString(),
+    };
+    if (rows.length === 0) {
+      update['highest_inherent_score'] = null;
+      update['highest_inherent_label'] = null;
+      update['highest_residual_score'] = null;
+      update['highest_residual_label'] = null;
+    } else {
+      const topInherent = rows.reduce((max, r) =>
+        (r['inherent_score'] as number) > (max['inherent_score'] as number) ? r : max,
+      );
+      update['highest_inherent_score'] = topInherent['inherent_score'];
+      update['highest_inherent_label'] = topInherent['inherent_label'];
+      const withResidual = rows.filter((r) => r['residual_score'] != null);
+      if (withResidual.length > 0) {
+        const topResidual = withResidual.reduce((max, r) =>
+          (r['residual_score'] as number) > (max['residual_score'] as number) ? r : max,
+        );
+        update['highest_residual_score'] = topResidual['residual_score'];
+        update['highest_residual_label'] = topResidual['residual_label'];
+      } else {
+        update['highest_residual_score'] = null;
+        update['highest_residual_label'] = null;
+      }
+    }
+    const { error: updateError } = await this.db
+      .from('risk_assessments')
+      .update(update)
+      .eq('id', assessmentId);
+    if (updateError) throw new Error(updateError.message);
+  }
+
+  async updateAssessmentItem(id: string, patch: AssessmentItemPatch): Promise<AssessmentItem> {
+    const { data: currentRow, error: currentError } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
       .eq('id', id)
       .single();
-    if (existing.error) throw new Error(existing.error.message);
-    const newLikelihood = patch.likelihood ?? (existing.data['likelihood'] as RiskLikelihood);
-    const newImpact = patch.impact ?? (existing.data['impact'] as RiskImpact);
-    const update: Record<string, unknown> = {
-      updated_at: new Date().toISOString(),
-      item_score: this.computeRiskScore(newLikelihood, newImpact),
-    };
+    const current = this.toAssessmentItem(ok(currentRow, currentError));
+
+    const { data: assessmentRow, error: assessmentError } = await this.db
+      .from('risk_assessments')
+      .select('methodology_id')
+      .eq('id', current.assessmentId)
+      .single();
+    const methodologyId = ok(assessmentRow, assessmentError)['methodology_id'] as string;
+    const { data: methodologyRow, error: methodologyError } = await this.db
+      .from('risk_methodologies')
+      .select('*')
+      .eq('id', methodologyId)
+      .single();
+    const methodology = this.toRiskMethodology(ok(methodologyRow, methodologyError));
+
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.subject !== undefined) update['subject'] = patch.subject;
     if (patch.description !== undefined) update['description'] = patch.description;
-    if (patch.likelihood !== undefined) update['likelihood'] = patch.likelihood;
-    if (patch.impact !== undefined) update['impact'] = patch.impact;
-    if (patch.mitigations !== undefined) update['mitigations'] = patch.mitigations;
-    const { data: row, error } = await this.db
+
+    const newInherentLikelihood = patch.inherentLikelihood ?? current.inherentLikelihood;
+    const newInherentImpact = patch.inherentImpact ?? current.inherentImpact;
+    if (patch.inherentLikelihood !== undefined || patch.inherentImpact !== undefined) {
+      const { score, label } = this.scoreRisk(
+        methodology,
+        newInherentLikelihood,
+        newInherentImpact,
+      );
+      update['inherent_likelihood'] = newInherentLikelihood;
+      update['inherent_impact'] = newInherentImpact;
+      update['inherent_score'] = score;
+      update['inherent_label'] = label;
+    }
+
+    const newResidualLikelihood = patch.residualLikelihood ?? current.residualLikelihood;
+    const newResidualImpact = patch.residualImpact ?? current.residualImpact;
+    if (
+      (patch.residualLikelihood !== undefined || patch.residualImpact !== undefined) &&
+      newResidualLikelihood !== undefined &&
+      newResidualImpact !== undefined
+    ) {
+      const { score, label } = this.scoreRisk(
+        methodology,
+        newResidualLikelihood,
+        newResidualImpact,
+      );
+      update['residual_likelihood'] = newResidualLikelihood;
+      update['residual_impact'] = newResidualImpact;
+      update['residual_score'] = score;
+      update['residual_label'] = label;
+    }
+
+    const { data, error } = await this.db
       .from('risk_assessment_items')
       .update(update)
       .eq('id', id)
       .select()
       .single();
-    const item = this.toAssessmentItem(ok(row, error));
-    await this.recomputeAssessmentScore(existing.data['assessment_id'] as string);
+    const item = this.toAssessmentItem(ok(data, error));
+    await this.recomputeAssessmentSummary(item.assessmentId);
     return item;
   }
 
   async deleteAssessmentItem(id: string): Promise<void> {
-    const { data: existing } = await this.db
+    const { data: row } = await this.db
       .from('risk_assessment_items')
       .select('assessment_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     const { error } = await this.db.from('risk_assessment_items').delete().eq('id', id);
     if (error) throw new Error(error.message);
-    if (existing) await this.recomputeAssessmentScore(existing['assessment_id'] as string);
+    if (row) await this.recomputeAssessmentSummary(row['assessment_id'] as string);
   }
 
-  private async recomputeAssessmentScore(assessmentId: string): Promise<void> {
-    const { data: items } = await this.db
+  // ─── Risk ↔ Assessment Item bridge ──────────────────────────────────────────
+
+  async createRiskFromAssessmentItem(
+    orgId: string,
+    userId: string,
+    itemId: string,
+    data: { taxonomyCategoryId: string },
+  ): Promise<Risk> {
+    const { data: itemRow, error: itemError } = await this.db
       .from('risk_assessment_items')
-      .select('item_score')
-      .eq('assessment_id', assessmentId);
-    const rows = items ?? [];
-    const riskScore =
-      rows.length > 0
-        ? Math.round(
-            rows.reduce(
-              (s: number, r: Record<string, unknown>) => s + (r['item_score'] as number),
-              0,
-            ) / rows.length,
-          )
-        : 0;
-    await this.db
-      .from('risk_assessments')
-      .update({
-        risk_score: riskScore,
-        item_count: rows.length,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', assessmentId);
+      .select('*')
+      .eq('id', itemId)
+      .single();
+    const item = this.toAssessmentItem(ok(itemRow, itemError));
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    if (assessment.orgId !== orgId) throw new Error('risk_belongs_to_different_org');
+    const risk = await this.createRisk(orgId, userId, {
+      title: item.subject,
+      riskStatement: item.description || item.subject,
+      taxonomyCategoryId: data.taxonomyCategoryId,
+      ownerId: assessment.ownerId,
+      businessUnit: assessment.businessUnit,
+      assetIds: assessment.assetIds,
+      vendorIds: assessment.vendorIds,
+      inherentLikelihood: item.inherentLikelihood,
+      inherentImpact: item.inherentImpact,
+      source: 'risk_assessment',
+      sourceRef: item.id,
+    });
+    const { error: linkError } = await this.db
+      .from('risk_assessment_items')
+      .update({ linked_risk_id: risk.id })
+      .eq('id', itemId);
+    if (linkError) throw new Error(linkError.message);
+    return risk;
   }
 
-  private toAssessment(row: Record<string, unknown>): RiskAssessment {
+  async linkAssessmentItemToRisk(itemId: string, riskId: string): Promise<AssessmentItem> {
+    const { data: itemRow, error: itemError } = await this.db
+      .from('risk_assessment_items')
+      .select('*')
+      .eq('id', itemId)
+      .single();
+    const item = this.toAssessmentItem(ok(itemRow, itemError));
+    const assessment = await this.getAssessment(item.assessmentId);
+    if (!assessment) throw new Error(`assessment_not_found: ${item.assessmentId}`);
+    const { data: riskRow, error: riskError } = await this.db
+      .from('risks')
+      .select('org_id')
+      .eq('id', riskId)
+      .single();
+    const risk = ok(riskRow, riskError);
+    if (risk['org_id'] !== assessment.orgId) throw new Error('risk_belongs_to_different_org');
+    const { data: updated, error } = await this.db
+      .from('risk_assessment_items')
+      .update({ linked_risk_id: riskId })
+      .eq('id', itemId)
+      .select()
+      .single();
+    return this.toAssessmentItem(ok(updated, error));
+  }
+
+  async unlinkAssessmentItemFromRisk(itemId: string): Promise<AssessmentItem> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .update({ linked_risk_id: null })
+      .eq('id', itemId)
+      .select()
+      .single();
+    return this.toAssessmentItem(ok(data, error));
+  }
+
+  async listAssessmentItemsForRisk(riskId: string): Promise<AssessmentItemWithContext[]> {
+    const { data, error } = await this.db
+      .from('risk_assessment_items')
+      .select('*, risk_assessments(assessment_code, title, status)')
+      .eq('linked_risk_id', riskId);
+    return ok(data, error).map((row: Record<string, unknown>) => {
+      const assessment = row['risk_assessments'] as Record<string, unknown> | null;
+      return {
+        ...this.toAssessmentItem(row),
+        assessmentCode: (assessment?.['assessment_code'] as string) ?? '',
+        assessmentTitle: (assessment?.['title'] as string) ?? '',
+        assessmentStatus: (assessment?.['status'] as AssessmentStatus) ?? 'draft',
+      };
+    });
+  }
+
+  private toAssessment(row: Record<string, unknown>): Assessment {
     return {
       id: row['id'] as string,
+      assessmentCode: row['assessment_code'] as string,
       orgId: row['org_id'] as string,
       userId: row['user_id'] as string,
-      type: row['type'] as AssessmentType,
       title: row['title'] as string,
-      scope: row['scope'] as string,
+      assessmentTypeId: row['assessment_type_id'] as string,
+      ownerId: row['owner_id'] as string,
+      businessUnit: row['business_unit'] as string | undefined,
+      assetIds: (row['asset_ids'] as string[]) ?? [],
+      vendorIds: (row['vendor_ids'] as string[]) ?? [],
+      dueDate: row['due_date'] as string | undefined,
+      approverId: row['approver_id'] as string | undefined,
+      methodologyId: row['methodology_id'] as string,
       status: row['status'] as AssessmentStatus,
-      riskScore: row['risk_score'] as number,
       itemCount: row['item_count'] as number,
+      highestInherentScore: row['highest_inherent_score'] as number | undefined,
+      highestInherentLabel: row['highest_inherent_label'] as RiskScoreLabel | undefined,
+      highestResidualScore: row['highest_residual_score'] as number | undefined,
+      highestResidualLabel: row['highest_residual_label'] as RiskScoreLabel | undefined,
+      lastReviewNote: row['last_review_note'] as string | undefined,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
   }
 
-  private toAssessmentItem(row: Record<string, unknown>): RiskAssessmentItem {
+  private toAssessmentItem(row: Record<string, unknown>): AssessmentItem {
     return {
       id: row['id'] as string,
       assessmentId: row['assessment_id'] as string,
+      orgId: '', // populated by callers that need it; not stored redundantly on this table
       subject: row['subject'] as string,
       description: row['description'] as string,
-      likelihood: row['likelihood'] as RiskAssessmentItem['likelihood'],
-      impact: row['impact'] as RiskAssessmentItem['impact'],
-      itemScore: row['item_score'] as number,
-      mitigations: row['mitigations'] as string,
+      inherentLikelihood: row['inherent_likelihood'] as number,
+      inherentImpact: row['inherent_impact'] as number,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualLikelihood: row['residual_likelihood'] as number | undefined,
+      residualImpact: row['residual_impact'] as number | undefined,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      linkedRiskId: row['linked_risk_id'] as string | undefined,
       createdAt: row['created_at'] as string,
       updatedAt: row['updated_at'] as string,
     };
+  }
+
+  // ─── Risk history and risk-scoped evidence ──────────────────────────────────
+
+  async listRiskSnapshots(riskId: string): Promise<RiskSnapshot[]> {
+    const { data, error } = await this.db
+      .from('risk_snapshots')
+      .select('*')
+      .eq('risk_id', riskId)
+      .order('created_at', { ascending: false });
+    return ok(data, error).map((r) => this.toRiskSnapshot(r));
+  }
+
+  private toRiskSnapshot(row: Record<string, unknown>): RiskSnapshot {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      inherentScore: row['inherent_score'] as number,
+      inherentLabel: row['inherent_label'] as RiskScoreLabel,
+      residualScore: row['residual_score'] as number | undefined,
+      residualLabel: row['residual_label'] as RiskScoreLabel | undefined,
+      treatmentStrategy: row['treatment_strategy'] as RiskTreatmentStrategy | undefined,
+      changedBy: row['changed_by'] as string,
+      reason: row['reason'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  async listRiskEvidence(riskId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('risk_id', riskId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createRiskEvidence(
+    orgId: string,
+    riskId: string,
+    data: Omit<RequirementEvidence, 'id' | 'riskId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), risk_id: riskId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listAssessmentItemEvidence(itemId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('assessment_item_id', itemId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createAssessmentItemEvidence(
+    orgId: string,
+    itemId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assessmentItemId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), assessment_item_id: itemId })
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(row, error));
+  }
+
+  async listAssetEvidence(assetId: string): Promise<RequirementEvidence[]> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('asset_id', assetId);
+    return ok(data, error).map((row) => this.toRequirementEvidence(row));
+  }
+
+  async createAssetEvidence(
+    orgId: string,
+    assetId: string,
+    data: Omit<RequirementEvidence, 'id' | 'assetId'>,
+  ): Promise<RequirementEvidence> {
+    const { data: row, error } = await this.db
+      .from('requirement_evidence')
+      .insert({ ...this.evidenceInsertPayload(orgId, data), asset_id: assetId })
+      .select()
+      .single();
+    const evidence = this.toRequirementEvidence(ok(row, error));
+    await this.db.from('framework_activities').insert({
+      asset_id: assetId,
+      action: 'Evidence Uploaded',
+      details: `Evidence item "${data.title}" added by ${data.owner}.`,
+      actor: data.owner,
+    });
+    return evidence;
+  }
+
+  private async getEvidenceOrThrow(id: string): Promise<RequirementEvidence> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toRequirementEvidence(ok(data, error));
+  }
+
+  async getEvidence(id: string): Promise<RequirementEvidence | null> {
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRequirementEvidence(data) : null;
+  }
+
+  async updateEvidence(id: string, patch: EvidencePatch): Promise<RequirementEvidence> {
+    const payload: Record<string, unknown> = {};
+    if (patch.title !== undefined) payload['title'] = patch.title;
+    if (patch.owner !== undefined) payload['owner'] = patch.owner;
+    if (patch.evidenceType !== undefined) payload['evidence_type'] = patch.evidenceType;
+    if (patch.source !== undefined) payload['source'] = patch.source;
+    if (patch.collectionDate !== undefined) payload['collection_date'] = patch.collectionDate;
+    if (patch.periodCovered !== undefined) payload['period_covered'] = patch.periodCovered;
+    if (patch.expirationDate !== undefined) payload['expiration_date'] = patch.expirationDate;
+    if (patch.url !== undefined) payload['url'] = patch.url;
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .update(payload)
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(data, error));
+  }
+
+  async deleteEvidence(id: string): Promise<void> {
+    const { error } = await this.db.from('requirement_evidence').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async reviewEvidence(
+    id: string,
+    reviewerId: string,
+    decision: 'verified' | 'rejected',
+    reviewNotes?: string,
+  ): Promise<RequirementEvidence> {
+    const current = await this.getEvidenceOrThrow(id);
+    if (current.createdBy === reviewerId) {
+      throw new Error('evidence_self_review_forbidden');
+    }
+    if (decision === 'rejected' && !reviewNotes) {
+      throw new Error('evidence_review_notes_required');
+    }
+    const { data, error } = await this.db
+      .from('requirement_evidence')
+      .update({
+        verification_status: decision,
+        verified_by: reviewerId,
+        verified_at: new Date().toISOString(),
+        review_notes: reviewNotes ?? null,
+      })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toRequirementEvidence(ok(data, error));
   }
 
   // ─── Policies ──────────────────────────────────────────────────────────────
@@ -1603,7 +3702,6 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updatePolicy(id: string, patch: PolicyPatch): Promise<Policy> {
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
     if (patch.title !== undefined) update['title'] = patch.title;
-    if (patch.status !== undefined) update['status'] = patch.status;
     if (patch.content !== undefined) {
       update['content'] = patch.content;
       const cur = await this.db.from('policies').select('version').eq('id', id).single();
@@ -1621,6 +3719,48 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async deletePolicy(id: string): Promise<void> {
     const { error } = await this.db.from('policies').delete().eq('id', id);
     if (error) throw new Error(error.message);
+  }
+
+  private policyActivityLabel(transition: WorkflowTransition): string {
+    const labels: Record<WorkflowTransition, string> = {
+      submit: 'Submitted for Review',
+      approve: 'Approved',
+      reject: 'Rejected',
+      publish: 'Published',
+      supersede: 'Superseded',
+    };
+    return labels[transition];
+  }
+
+  async transitionPolicyWorkflow(
+    id: string,
+    transition: WorkflowTransition,
+    userId: string,
+  ): Promise<Policy> {
+    const policy = await this.getPolicy(id);
+    if (!policy) throw new Error('policy_not_found');
+    const { from, to } = WORKFLOW_TRANSITIONS[transition];
+    if (policy.workflowStatus !== from) {
+      throw new Error(`invalid_transition: ${policy.workflowStatus} -> ${transition}`);
+    }
+    if (ADMIN_TRANSITIONS.includes(transition) && policy.userId === userId) {
+      throw new Error('policy_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('policies')
+      .update({ workflow_status: to, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    const updated = this.toPolicy(ok(data, error));
+    const { error: activityError } = await this.db.from('framework_activities').insert({
+      policy_id: id,
+      action: this.policyActivityLabel(transition),
+      details: `Policy "${policy.title}" moved from ${from} to ${to}.`,
+      actor: userId,
+    });
+    if (activityError) throw new Error(activityError.message);
+    return updated;
   }
 
   async cloneTemplate(orgId: string, userId: string, templateId: string): Promise<Policy> {
@@ -1672,12 +3812,26 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toPolicyControl(ok(row, error));
   }
 
+  async getPolicyControl(id: string): Promise<PolicyControl | null> {
+    const { data, error } = await this.db
+      .from('policy_controls')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toPolicyControl(data) : null;
+  }
+
   async removePolicyControl(id: string): Promise<void> {
     const { error } = await this.db.from('policy_controls').delete().eq('id', id);
     if (error) throw new Error(error.message);
   }
 
-  async listPoliciesForControl(controlCode: string, frameworkId: string): Promise<Policy[]> {
+  async listPoliciesForControl(
+    controlCode: string,
+    frameworkId: string,
+    orgId: string,
+  ): Promise<Policy[]> {
     const { data, error } = await this.db
       .from('policy_controls')
       .select('policy_id')
@@ -1688,7 +3842,8 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const { data: policies, error: pErr } = await this.db
       .from('policies')
       .select('*')
-      .in('id', policyIds);
+      .in('id', policyIds)
+      .eq('org_id', orgId);
     return ok(policies, pErr).map(this.toPolicy);
   }
 
@@ -1700,7 +3855,7 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       frameworkId: row['framework_id'] as string,
       title: row['title'] as string,
       content: row['content'] as string,
-      status: row['status'] as Policy['status'],
+      workflowStatus: row['workflow_status'] as Policy['workflowStatus'],
       version: row['version'] as number,
       templateId: row['template_id'] as string | null,
       createdAt: row['created_at'] as string,
@@ -1715,6 +3870,253 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       controlCode: row['control_code'] as string,
       frameworkId: row['framework_id'] as string,
       createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk ↔ Control mapping ─────────────────────────────────────────────────
+
+  async listRiskControlMappings(riskId: string): Promise<RiskControlMapping[]> {
+    const { data, error } = await this.db
+      .from('risk_control_mappings')
+      .select('*')
+      .eq('risk_id', riskId);
+    return ok(data, error).map((r) => this.toRiskControlMapping(r));
+  }
+
+  async addRiskControlMapping(
+    riskId: string,
+    data: RiskControlMappingInput,
+  ): Promise<RiskControlMapping> {
+    const { data: row, error } = await this.db
+      .from('risk_control_mappings')
+      .insert({
+        risk_id: riskId,
+        control_id: data.controlId,
+        control_code: data.controlCode,
+        control_title: data.controlTitle,
+        effectiveness_note: data.effectivenessNote ?? null,
+      })
+      .select()
+      .single();
+    return this.toRiskControlMapping(ok(row, error));
+  }
+
+  async removeRiskControlMapping(id: string): Promise<void> {
+    const { error } = await this.db.from('risk_control_mappings').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  private toRiskControlMapping(row: Record<string, unknown>): RiskControlMapping {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      controlId: row['control_id'] as string,
+      controlCode: row['control_code'] as string,
+      controlTitle: row['control_title'] as string,
+      effectivenessNote: row['effectiveness_note'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  async listAssessmentItemControlMappings(itemId: string): Promise<AssessmentItemControlMapping[]> {
+    const { data, error } = await this.db
+      .from('assessment_item_control_mappings')
+      .select('*')
+      .eq('item_id', itemId);
+    return ok(data, error).map((r) => this.toAssessmentItemControlMapping(r));
+  }
+
+  async addAssessmentItemControlMapping(
+    itemId: string,
+    data: AssessmentItemControlMappingInput,
+  ): Promise<AssessmentItemControlMapping> {
+    const { data: row, error } = await this.db
+      .from('assessment_item_control_mappings')
+      .insert({
+        item_id: itemId,
+        control_id: data.controlId,
+        control_code: data.controlCode,
+        control_title: data.controlTitle,
+        effectiveness_note: data.effectivenessNote ?? null,
+      })
+      .select()
+      .single();
+    return this.toAssessmentItemControlMapping(ok(row, error));
+  }
+
+  async removeAssessmentItemControlMapping(id: string): Promise<void> {
+    const { error } = await this.db.from('assessment_item_control_mappings').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+  }
+
+  async getAssessmentItemControlMapping(id: string): Promise<AssessmentItemControlMapping | null> {
+    const { data, error } = await this.db
+      .from('assessment_item_control_mappings')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toAssessmentItemControlMapping(data) : null;
+  }
+
+  private toAssessmentItemControlMapping(
+    row: Record<string, unknown>,
+  ): AssessmentItemControlMapping {
+    return {
+      id: row['id'] as string,
+      itemId: row['item_id'] as string,
+      controlId: row['control_id'] as string,
+      controlCode: row['control_code'] as string,
+      controlTitle: row['control_title'] as string,
+      effectivenessNote: row['effectiveness_note'] as string | undefined,
+      createdAt: row['created_at'] as string,
+    };
+  }
+
+  // ─── Risk Acceptance ────────────────────────────────────────────────────────
+
+  async createRiskAcceptance(
+    orgId: string,
+    riskId: string,
+    requestedBy: string,
+    data: RiskAcceptanceInput,
+  ): Promise<RiskAcceptance> {
+    const { data: row, error } = await this.db
+      .from('risk_acceptances')
+      .insert({
+        risk_id: riskId,
+        org_id: orgId,
+        requested_by: requestedBy,
+        justification: data.justification,
+        compensating_controls: data.compensatingControls,
+        expires_at: data.expiresAt,
+        approver_id: data.approverId,
+      })
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(row, error));
+  }
+
+  async getActiveRiskAcceptance(riskId: string): Promise<RiskAcceptance | null> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('risk_id', riskId)
+      .neq('status', 'rejected')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskAcceptance(data) : null;
+  }
+
+  async getRiskAcceptance(id: string): Promise<RiskAcceptance | null> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return data ? this.toRiskAcceptance(data) : null;
+  }
+
+  async reviewRiskAcceptance(
+    id: string,
+    reviewedBy: string,
+    reviewNotes?: string,
+  ): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, reviewedBy);
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({
+        status: 'reviewed',
+        reviewed_by: reviewedBy,
+        reviewed_at: new Date().toISOString(),
+        review_notes: reviewNotes ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('approver_id', reviewedBy)
+      .in('status', ['requested', 'reviewed'])
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private async getRiskAcceptanceOrThrow(id: string): Promise<RiskAcceptance> {
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .select('*')
+      .eq('id', id)
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private assertCanDecideRiskAcceptance(current: RiskAcceptance, userId: string): void {
+    if (current.status === 'approved' || current.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${current.id}`);
+    }
+    if (current.requestedBy === userId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    if (current.approverId !== userId) {
+      throw new Error('risk_acceptance_not_authorized_approver');
+    }
+  }
+
+  async approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, userId);
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+        approved_by: userId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('approver_id', userId)
+      .in('status', ['requested', 'reviewed'])
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    this.assertCanDecideRiskAcceptance(current, userId);
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({ status: 'rejected', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('approver_id', userId)
+      .in('status', ['requested', 'reviewed'])
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  private toRiskAcceptance(row: Record<string, unknown>): RiskAcceptance {
+    return {
+      id: row['id'] as string,
+      riskId: row['risk_id'] as string,
+      orgId: row['org_id'] as string,
+      requestedBy: row['requested_by'] as string,
+      justification: row['justification'] as string,
+      compensatingControls: row['compensating_controls'] as string,
+      expiresAt: row['expires_at'] as string,
+      approverId: row['approver_id'] as string,
+      status: row['status'] as RiskAcceptanceStatus,
+      reviewedBy: row['reviewed_by'] as string | undefined,
+      reviewedAt: row['reviewed_at'] as string | undefined,
+      reviewNotes: row['review_notes'] as string | undefined,
+      approvedAt: row['approved_at'] as string | undefined,
+      approvedBy: row['approved_by'] as string | undefined,
+      createdAt: row['created_at'] as string,
+      updatedAt: row['updated_at'] as string,
     };
   }
 }

@@ -53,7 +53,7 @@ export function LayoutHeader() {
           type="button"
           onClick={toggle}
           aria-label="Toggle sidebar"
-          className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+          className="flex items-center justify-center w-8 h-8 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0 cursor-pointer"
         >
           <Menu size={18} />
         </button>
@@ -77,7 +77,7 @@ export function LayoutHeader() {
                 setStoredLocale(code);
                 window.location.reload();
               }}
-              className="text-[11px] px-1.5 py-1 rounded text-muted-foreground/50 hover:text-foreground transition-colors font-medium"
+              className="text-[11px] px-1.5 py-1 rounded text-muted-foreground/50 hover:text-foreground transition-colors font-medium cursor-pointer"
             >
               {label}
             </button>

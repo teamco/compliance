@@ -2,8 +2,10 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
+  HttpCode,
   NotFoundException,
   Param,
   Post,
@@ -16,10 +18,9 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle, seconds } from '@nestjs/throttler';
 import { ApiBody, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
-import { subject } from '@casl/ability';
 import { AuthClientService } from '@icore/auth-client';
 import { NotesClientService } from '@icore/notes-client';
-import type { Organization, OAuthProvider, VerifiedToken } from '@icore/shared';
+import type { Organization, OAuthProvider, OrgInviteRole, VerifiedToken } from '@icore/shared';
 import { Public } from './public.decorator';
 import { CheckAbility } from '../abilities/check-ability.decorator';
 import { AbilityFactory } from '../abilities/ability.factory';
@@ -156,12 +157,136 @@ export class AuthController {
   async listOrgMembers(
     @Req() req: Request & { user?: VerifiedToken },
     @Query('orgId') orgId: string,
+    @Query('includeInactive') includeInactive?: string,
   ) {
     if (!orgId) throw new BadRequestException('orgId required');
     const org = await this.notes.getOrganizationById(orgId);
     if (!org) throw new NotFoundException();
-    this.checkOrgAccess(req, org, 'read');
-    return this.authClient.listOrgMembers(orgId);
+    await this.checkOrgAccess(req, org, 'read');
+    return this.authClient.listOrgMembers(orgId, org.userId, includeInactive === 'true');
+  }
+
+  @Post('org/invites')
+  @ApiOperation({ summary: 'Invite a user to an org by email' })
+  async createOrgInvite(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Body() body: { email: string; role: OrgInviteRole },
+  ) {
+    const uid = this.uid(req);
+    if (!orgId) throw new BadRequestException('orgId required');
+    if (body.role !== 'admin' && body.role !== 'viewer') {
+      throw new BadRequestException('invalid_role');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      throw new BadRequestException('invalid_email');
+    }
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    return this.authClient.createOrgInvite(orgId, body.email, body.role, uid);
+  }
+
+  @Get('org/invites')
+  @ApiOperation({ summary: 'List pending invites for an org' })
+  async listOrgInvites(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    return this.authClient.listOrgInvites(orgId);
+  }
+
+  @Delete('org/invites/:inviteId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Revoke a pending invite' })
+  async revokeOrgInvite(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('inviteId') inviteId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const invites = await this.authClient.listOrgInvites(orgId);
+    if (!invites.some((i) => i.id === inviteId)) throw new NotFoundException();
+    return this.authClient.revokeOrgInvite(inviteId);
+  }
+
+  @Post('org/invites/:inviteId/resend')
+  @ApiOperation({ summary: 'Resend a pending invite with a fresh token' })
+  async resendOrgInvite(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('inviteId') inviteId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const invites = await this.authClient.listOrgInvites(orgId);
+    if (!invites.some((i) => i.id === inviteId)) throw new NotFoundException();
+    return this.authClient.resendOrgInvite(inviteId);
+  }
+
+  @Delete('org/members/:userId')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Deactivate an org member, or leave an org by removing yourself' })
+  async deactivateOrgMember(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Query('orgId') orgId: string,
+    @Param('userId') userId: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    if (userId === org.userId) throw new ForbiddenException('cannot_deactivate_owner');
+
+    const actorUid = this.uid(req);
+    if (actorUid !== userId) {
+      await this.checkOrgManage(req, org);
+    }
+
+    const members = await this.authClient.listOrgMembers(orgId, org.userId);
+    if (!members.some((m) => m.userId === userId)) throw new NotFoundException();
+
+    return this.authClient.deactivateOrgMember(orgId, userId);
+  }
+
+  @Public()
+  @Get('org-invites/:token')
+  @ApiOperation({ summary: 'Preview an invite before authenticating' })
+  async previewOrgInvite(@Param('token') token: string) {
+    const invite = await this.authClient.getOrgInviteByToken(token);
+    if (!invite || invite.status !== 'pending') throw new NotFoundException('invite_not_found');
+    const org = await this.notes.getOrganizationById(invite.orgId);
+    if (!org) throw new NotFoundException('invite_not_found');
+    return {
+      orgName: org.name,
+      role: invite.role,
+      email: invite.email,
+      expiresAt: invite.expiresAt,
+    };
+  }
+
+  @Post('org-invites/:token/accept')
+  @ApiOperation({ summary: 'Accept a pending invite, creating org membership' })
+  async acceptOrgInvite(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('token') token: string,
+  ) {
+    const uid = this.uid(req);
+    const email = req.user?.email;
+    if (!email) throw new BadRequestException('email required on session');
+    const invite = await this.authClient.getOrgInviteByToken(token);
+    if (!invite) throw new NotFoundException('invite_not_found');
+    const org = await this.notes.getOrganizationById(invite.orgId);
+    if (org && org.userId === uid) throw new BadRequestException('invite_already_member');
+    return this.authClient.acceptOrgInvite(token, uid, email);
   }
 
   @Post('role')
@@ -231,14 +356,49 @@ export class AuthController {
     return res.redirect(`${origin}/auth/oauth/callback#${fragment.toString()}`);
   }
 
-  private checkOrgAccess(
+  private async checkOrgAccess(
     req: Request & { user?: VerifiedToken },
     org: Organization,
     action: 'read' | 'update' | 'delete',
-  ): void {
-    const ability = this.abilityFactory.forUser(req.user);
-    if (!ability.can(action, subject('Organization', { id: org.id, userId: org.userId }))) {
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+
+    const uid = req.user?.uid;
+    if (org.userId === uid) return;
+
+    const members = await this.authClient.listOrgMembers(org.id, org.userId);
+    const membership = members.find((m) => m.userId === uid);
+    if (!membership) throw new ForbiddenException();
+
+    // Allowlist, not denylist: OrgMember.role is an unconstrained `string`, so an
+    // unrecognized value must deny writes rather than fall through to granting them.
+    if (action !== 'read' && membership.role !== 'owner' && membership.role !== 'admin') {
       throw new ForbiddenException();
     }
+  }
+
+  private async checkOrgOwner(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+    if (org.userId !== req.user?.uid) throw new ForbiddenException();
+  }
+
+  private async checkOrgManage(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+    if (org.userId === req.user?.uid) return;
+
+    const members = await this.authClient.listOrgMembers(org.id, org.userId);
+    const membership = members.find((m) => m.userId === req.user?.uid);
+    if (!membership || membership.role !== 'admin') throw new ForbiddenException();
+  }
+
+  private uid(req: Request & { user?: VerifiedToken }): string {
+    if (!req.user?.uid) throw new UnauthorizedException('missing_user');
+    return req.user.uid;
   }
 }
