@@ -137,9 +137,30 @@ export class AuthController {
     const authHeader = req.headers.authorization;
     const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
     if (accessToken) {
-      await this.authClient.revokeSession(accessToken);
+      try {
+        await this.authClient.revokeSession(accessToken);
+      } catch {
+        // Logout must always succeed for the caller -- swallow revoke failures
+        // (e.g. an already-expired access token) and still clear cookies below.
+      }
     }
-    clearAuthCookies(res, { isProd: this.isProd() });
+
+    // This route is @Public() (no Authorization header required), so in prod
+    // (SameSite=None; Secure cookies) a cross-site request can ride the
+    // icore_rt/icore_csrf cookies here without a matching x-csrf-token header.
+    // Distinguish "no CSRF cookie at all" (benign -- already logged out, or a
+    // client defensively calling logout with no session) from "CSRF cookie
+    // present but the header is missing/mismatched" (a forged cross-site
+    // request, since only same-origin JS can read the cookie to echo it back
+    // in the header). Only the latter skips the cookie-clear; either way the
+    // response stays {ok:true} so a forged request learns nothing and a
+    // legitimate client's logout is never blocked.
+    const csrfCookie = (req.cookies as Record<string, string> | undefined)?.['icore_csrf'];
+    const csrfForged = !!csrfCookie && !verifyCsrf(req);
+    if (!csrfForged) {
+      clearAuthCookies(res, { isProd: this.isProd() });
+    }
+
     return { ok: true };
   }
 

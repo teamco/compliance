@@ -229,6 +229,53 @@ describe('AuthController (gateway) — logout', () => {
     expect(res.clearCookie).toHaveBeenCalledWith('icore_rt', expect.any(Object));
     expect(res.clearCookie).toHaveBeenCalledWith('icore_csrf', expect.any(Object));
   });
+
+  it('clears cookies when there is no CSRF cookie at all (benign -- no session/already logged out)', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    // No icore_csrf cookie and no x-csrf-token header -- absence, not a mismatch.
+    const req = { headers: {}, cookies: {} } as unknown as import('express').Request;
+    const res = makeRes();
+    await expect(
+      controller.logout(req, res as unknown as import('express').Response),
+    ).resolves.toEqual({ ok: true });
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_rt', expect.any(Object));
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_csrf', expect.any(Object));
+  });
+
+  it('does NOT clear cookies when the CSRF cookie is present but the header is missing/mismatched (forged cross-site logout)', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    // A cross-site request rides icore_csrf as an ambient cookie but cannot read
+    // it to set a matching x-csrf-token header.
+    const req = {
+      headers: {},
+      cookies: { icore_csrf: 'csrf-1' },
+    } as unknown as import('express').Request;
+    const res = makeRes();
+    await expect(
+      controller.logout(req, res as unknown as import('express').Response),
+    ).resolves.toEqual({ ok: true });
+    expect(res.clearCookie).not.toHaveBeenCalled();
+  });
+
+  it('tolerates revokeSession rejecting (e.g. an already-expired access token) and still succeeds', async () => {
+    const client = makeAuthClient();
+    (client.revokeSession as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('token_expired'),
+    );
+    const controller = new AuthController(client, makeConfig({}));
+    const req = {
+      headers: { authorization: 'Bearer expired-token' },
+    } as unknown as import('express').Request;
+    const res = makeRes();
+    await expect(
+      controller.logout(req, res as unknown as import('express').Response),
+    ).resolves.toEqual({ ok: true });
+    expect(client.revokeSession).toHaveBeenCalledWith('expired-token');
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_rt', expect.any(Object));
+    expect(res.clearCookie).toHaveBeenCalledWith('icore_csrf', expect.any(Object));
+  });
 });
 
 describe('AuthController (gateway) — OAuth', () => {
