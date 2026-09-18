@@ -104,3 +104,39 @@ export function useReviewIssueValidation(orgId: string) {
     },
   });
 }
+
+export function useReassignIssueOwner(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<Issue, Error, { id: string; newOwnerId: string }>({
+    mutationFn: ({ id, newOwnerId }) =>
+      api<Issue>(`/notes/issues/${id}/reassign-owner`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newOwnerId }),
+      }),
+    onSuccess: (_result, { id }) => {
+      qc.invalidateQueries({ queryKey: ['issues', orgId] });
+      qc.invalidateQueries({ queryKey: ['issues', id, 'validations'] });
+    },
+  });
+}
+
+export function useReassignIssueValidator(orgId: string) {
+  const qc = useQueryClient();
+  return useMutation<
+    IssueValidation,
+    Error,
+    { id: string; issueId: string; newValidatorId: string }
+  >({
+    mutationFn: ({ id, newValidatorId }) =>
+      api<IssueValidation>(`/notes/issue-validations/${id}/reassign-validator`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newValidatorId }),
+      }),
+    onSuccess: (_result, { issueId }) => {
+      qc.invalidateQueries({ queryKey: ['issues', orgId] });
+      qc.invalidateQueries({ queryKey: ['issues', issueId, 'validations'] });
+    },
+  });
+}

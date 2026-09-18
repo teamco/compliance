@@ -187,6 +187,19 @@ export function useApproveRiskAcceptance(riskId: string) {
   });
 }
 
+export function useReassignRiskAcceptanceApprover(riskId: string) {
+  const qc = useQueryClient();
+  return useMutation<RiskAcceptance, Error, { id: string; newApproverId: string }>({
+    mutationFn: ({ id, newApproverId }) =>
+      api<RiskAcceptance>(`/notes/risk-acceptances/${id}/reassign-approver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newApproverId }),
+      }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['risks', riskId, 'acceptance'] }),
+  });
+}
+
 export function useRejectRiskAcceptance(riskId: string) {
   const qc = useQueryClient();
   return useMutation<RiskAcceptance, Error, string>({

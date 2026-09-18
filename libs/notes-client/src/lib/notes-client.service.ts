@@ -698,6 +698,13 @@ export class NotesClientService {
     return signedSend<Exception>(this.client, 'notes.exceptions.reject', { id, approverId });
   }
 
+  reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception> {
+    return signedSend<Exception>(this.client, 'notes.exceptions.reassign-owner', {
+      id,
+      newOwnerId,
+    });
+  }
+
   deleteException(id: string): Promise<void> {
     return signedSend<void>(this.client, 'notes.exceptions.delete', { id });
   }
@@ -780,6 +787,10 @@ export class NotesClientService {
     });
   }
 
+  reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue> {
+    return signedSend<Issue>(this.client, 'notes.issues.reassign-owner', { id, newOwnerId });
+  }
+
   reviewIssueValidation(
     id: string,
     validatorId: string,
@@ -791,6 +802,13 @@ export class NotesClientService {
       validatorId,
       decision,
       reviewNotes,
+    });
+  }
+
+  reassignIssueValidator(id: string, newValidatorId: string): Promise<IssueValidation> {
+    return signedSend<IssueValidation>(this.client, 'notes.issues.reassign-validator', {
+      id,
+      newValidatorId,
     });
   }
 
@@ -986,6 +1004,13 @@ export class NotesClientService {
     });
   }
 
+  reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
+    return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reassign-approver', {
+      id,
+      newApproverId,
+    });
+  }
+
   rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     return signedSend<RiskAcceptance>(this.client, 'notes.risks.acceptance.reject', {
       id,
@@ -1117,6 +1142,13 @@ export class NotesClientService {
 
   approveAssessment(id: string, userId: string): Promise<Assessment> {
     return signedSend<Assessment>(this.client, 'notes.assessments.approve', { id, userId });
+  }
+
+  reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
+    return signedSend<Assessment>(this.client, 'notes.assessments.reassign-approver', {
+      id,
+      newApproverId,
+    });
   }
 
   requestChanges(id: string, userId: string, note: string): Promise<Assessment> {

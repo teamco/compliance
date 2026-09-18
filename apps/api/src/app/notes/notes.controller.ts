@@ -993,6 +993,26 @@ export class NotesController {
     return this.notes.rejectException(id, userId);
   }
 
+  @Post('exceptions/:id/reassign-owner')
+  @ApiOperation({ summary: 'Reassign the owner of an exception' })
+  async reassignExceptionOwner(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newOwnerId: string },
+  ) {
+    this.uid(req);
+    const exception = await this.notes.getException(id);
+    if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newOwnerId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignExceptionOwner(id, body.newOwnerId);
+  }
+
   @Delete('exceptions/:id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete exception' })
@@ -1154,6 +1174,26 @@ export class NotesController {
     return this.notes.submitIssueForValidation(id, userId, body);
   }
 
+  @Post('issues/:id/reassign-owner')
+  @ApiOperation({ summary: 'Reassign the owner of an issue' })
+  async reassignIssueOwner(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newOwnerId: string },
+  ) {
+    this.uid(req);
+    const issue = await this.notes.getIssue(id);
+    if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newOwnerId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignIssueOwner(id, body.newOwnerId);
+  }
+
   @Post('issue-validations/:id/review')
   @ApiOperation({ summary: 'Validator approves or rejects a pending issue validation' })
   async reviewIssueValidation(
@@ -1163,6 +1203,26 @@ export class NotesController {
   ) {
     const userId = this.uid(req);
     return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
+  }
+
+  @Post('issue-validations/:id/reassign-validator')
+  @ApiOperation({ summary: 'Reassign the validator of a pending issue validation' })
+  async reassignIssueValidator(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newValidatorId: string },
+  ) {
+    this.uid(req);
+    const validation = await this.notes.getIssueValidation(id);
+    if (!validation) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(validation.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newValidatorId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignIssueValidator(id, body.newValidatorId);
   }
 
   @Get('issues/:id/validations')
@@ -1590,6 +1650,26 @@ export class NotesController {
     return this.notes.getActiveRiskAcceptance(id);
   }
 
+  @Post('risk-acceptances/:id/reassign-approver')
+  @ApiOperation({ summary: 'Reassign the approver of a risk acceptance' })
+  async reassignRiskAcceptanceApprover(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newApproverId: string },
+  ) {
+    this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newApproverId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignRiskAcceptanceApprover(id, body.newApproverId);
+  }
+
   @Post('risk-acceptances/:id/review')
   @ApiOperation({ summary: 'Review a risk acceptance request' })
   reviewRiskAcceptance(
@@ -1865,6 +1945,26 @@ export class NotesController {
   approveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
     return this.notes.approveAssessment(id, userId);
+  }
+
+  @Post('assessments/:id/reassign-approver')
+  @ApiOperation({ summary: 'Reassign the approver of an assessment' })
+  async reassignAssessmentApprover(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Body() body: { newApproverId: string },
+  ) {
+    this.uid(req);
+    const assessment = await this.notes.getAssessment(id);
+    if (!assessment) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgManage(req, org);
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === body.newApproverId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
+    return this.notes.reassignAssessmentApprover(id, body.newApproverId);
   }
 
   @Post('assessments/:id/request-changes')
@@ -2322,5 +2422,16 @@ export class NotesController {
   ): Promise<void> {
     if (req.user?.role === 'admin') return;
     if (org.userId !== req.user?.uid) throw new ForbiddenException();
+  }
+
+  private async checkOrgManage(
+    req: Request & { user?: VerifiedToken },
+    org: Organization,
+  ): Promise<void> {
+    if (req.user?.role === 'admin') return;
+    if (org.userId === req.user?.uid) return;
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    const membership = members.find((m) => m.userId === req.user?.uid);
+    if (!membership || membership.role !== 'admin') throw new ForbiddenException();
   }
 }

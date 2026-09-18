@@ -115,6 +115,19 @@ export function useApproveAssessment(orgId: string, id: string) {
   });
 }
 
+export function useReassignAssessmentApprover(orgId: string, id: string) {
+  const qc = useQueryClient();
+  return useMutation<Assessment, Error, { newApproverId: string }>({
+    mutationFn: (body) =>
+      api<Assessment>(`/notes/assessments/${id}/reassign-approver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => invalidateAssessment(qc, orgId, id),
+  });
+}
+
 export function useRequestChanges(orgId: string, id: string) {
   const qc = useQueryClient();
   return useMutation<Assessment, Error, { note: string }>({

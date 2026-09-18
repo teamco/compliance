@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UserCog } from 'lucide-react';
 import { useAuthStore, useNotify } from '@icore/template-shared';
 import { type Exception } from '@icore/shared';
 import { effectiveExceptionStatus } from '@icore/shared/client';
@@ -11,8 +12,11 @@ import {
   useReviewExceptionRenewal,
   useApproveException,
   useRejectException,
+  useReassignExceptionOwner,
 } from '@/queries/exceptions';
 import { useRisks } from '@/queries/risks';
+import { useOrgMembers } from '@/queries/org-members';
+import { ReassignDialog } from '@/components/shared/ReassignDialog';
 
 type DetailTab = 'overview' | 'renewal';
 
@@ -32,15 +36,24 @@ export function ExceptionDetailSheet({
   const currentUserId = useAuthStore((s) => s.user?.id);
   const { data: risks = [] } = useRisks(orgId);
   const { data: renewals = [] } = useExceptionRenewals(exception.id);
+  const { data: members = [] } = useOrgMembers(orgId);
+  // Renewal history can reference an owner who has since been removed from
+  // the org; their name must still resolve, so this list stays separate from
+  // `members` (active-only, used to compute `canManage` below).
+  const { data: allMembers = [] } = useOrgMembers(orgId, { includeInactive: true });
+  const myMembership = members.find((m) => m.userId === currentUserId);
+  const canManage = myMembership?.role === 'owner' || myMembership?.role === 'admin';
   const requestMut = useRequestExceptionRenewal(orgId);
   const reviewMut = useReviewExceptionRenewal(orgId);
   const approveMut = useApproveException(orgId);
   const rejectMut = useRejectException(orgId);
+  const reassignOwnerMut = useReassignExceptionOwner(orgId);
 
   const [tab, setTab] = useState<DetailTab>('overview');
   const [proposedExpiresAt, setProposedExpiresAt] = useState('');
   const [renewalJustification, setRenewalJustification] = useState('');
   const [rejectNotes, setRejectNotes] = useState('');
+  const [reassignOpen, setReassignOpen] = useState(false);
 
   const status = effectiveExceptionStatus(exception);
   const linkedRisk = risks.find((r) => r.id === exception.riskId);
@@ -53,6 +66,11 @@ export function ExceptionDetailSheet({
     !pendingRenewal &&
     !!proposedExpiresAt &&
     !!renewalJustification;
+
+  function resolveMemberName(userId: string): string {
+    const member = allMembers.find((m) => m.userId === userId);
+    return member?.displayName ?? member?.email ?? userId;
+  }
 
   const tabs: DetailTab[] = ['overview', 'renewal'];
 
@@ -166,6 +184,21 @@ export function ExceptionDetailSheet({
                 <strong>
                   {linkedRisk ? linkedRisk.title : t('exceptions.detail.noLinkedRisk')}
                 </strong>
+              </p>
+              <p className="flex items-center gap-2">
+                {t('exceptions.detail.owner')}:{' '}
+                <strong>{resolveMemberName(exception.ownerId)}</strong>
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setReassignOpen(true)}
+                  >
+                    <UserCog size={13} />
+                    <span className="sr-only">{t('exceptions.detail.reassignOwner')}</span>
+                  </Button>
+                )}
               </p>
             </div>
           )}
@@ -292,6 +325,23 @@ export function ExceptionDetailSheet({
           )}
         </footer>
       </SheetContent>
+      <ReassignDialog
+        open={reassignOpen}
+        isPending={reassignOwnerMut.isPending}
+        title={t('exceptions.detail.reassignOwner')}
+        members={members}
+        currentAssigneeId={exception.ownerId}
+        onOpenChange={setReassignOpen}
+        onConfirm={(newOwnerId) => {
+          reassignOwnerMut.mutate(
+            { id: exception.id, newOwnerId },
+            {
+              onSuccess: () => setReassignOpen(false),
+              onError: () => notify.error(t('error.unknown')),
+            },
+          );
+        }}
+      />
     </Sheet>
   );
 }
