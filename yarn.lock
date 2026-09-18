@@ -2180,6 +2180,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@idevconn/api-client@npm:^0.3.3":
+  version: 0.3.3
+  resolution: "@idevconn/api-client@npm:0.3.3"
+  checksum: 10c0/3fdf7d22534c93175a21c3023c0b84481ba6554385b5522f55baa8a447b0f5744a7a40c9c35ff5ddfcdb1952341b585bda5e7c116d5dced2de596a4828174e83
+  languageName: node
+  linkType: hard
+
 "@idevconn/isubscribe-widget-react@npm:^2.5.2":
   version: 2.5.2
   resolution: "@idevconn/isubscribe-widget-react@npm:2.5.2"
@@ -9707,7 +9714,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@icore/vite-plugins": "workspace:*"
     "@idevconn/ai-usage": "npm:^0.4.0"
-    "@idevconn/api-client": "npm:^0.3.2"
+    "@idevconn/api-client": "npm:^0.3.3"
     "@idevconn/isubscribe-widget-react": "npm:^2.5.2"
     "@idevconn/use-draft": "npm:^0.2.3"
     "@nestjs/common": "npm:^11.2.5"
