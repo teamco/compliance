@@ -1,23 +1,42 @@
 import { createApiClient } from '@idevconn/api-client';
-import { useAuthStore } from '../stores/auth.store.js';
+import { getAccessToken, setAccessToken } from './access-token.js';
+import { readCsrfCookie } from './csrf.js';
 
 export function createIcoreApi(opts: { baseUrl: string; onUnauthorized?: () => void }) {
   return createApiClient({
     baseUrl: opts.baseUrl,
-    getAccessToken: () => useAuthStore.getState().accessToken,
-    getRefreshToken: () => useAuthStore.getState().refreshToken,
-    onTokenRefreshed: ({ accessToken, refreshToken }) => {
-      const user = useAuthStore.getState().user;
-      if (user) useAuthStore.getState().setAuth({ accessToken, refreshToken, user });
+    credentials: 'include',
+    getAccessToken: () => getAccessToken(),
+    getRefreshToken: () => 'cookie', // real token lives only in the httpOnly cookie; this is just a truthy guard
+    getRefreshHeaders: () => {
+      const csrf = readCsrfCookie();
+      const headers: Record<string, string> = {};
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+      return headers;
     },
+    onTokenRefreshed: ({ accessToken }) => setAccessToken(accessToken),
     onUnauthorized: () => {
-      useAuthStore.getState().logout();
+      setAccessToken(null);
       opts.onUnauthorized?.();
     },
-    refreshRequestField: 'refreshToken',
-    accessTokenField: 'accessToken',
-    refreshTokenField: 'refreshToken',
+    refreshPath: '/auth/refresh',
   });
 }
+
+// NOTE: this does NOT route through performSilentRefresh/Web Locks — the
+// underlying @idevconn/api-client library still owns its own refresh call
+// internally (it exposes credentials/getRefreshHeaders passthrough, not a
+// pluggable refresh implementation). This means the main JSON API client and
+// fetchWithRefresh have two independent refresh code paths that could race
+// across tabs against each other specifically (both hitting /auth/refresh at
+// once from different code paths in the same tab is already deduped by the
+// library's own inFlightRefresh, but a fetchWithRefresh call in one tab
+// racing this client's own refresh in another tab is not covered by Web
+// Locks here). This is a known, accepted residual gap versus the spec's
+// "fixed via Web Locks" intent for this one call path — the race's
+// consequence is just an extra login-again for one tab, same as the
+// original documented limitation. Not patched here; would require
+// @idevconn/api-client itself to accept a pluggable refresh function instead
+// of two config fields.
 
 export { ApiError } from '@idevconn/api-client';
