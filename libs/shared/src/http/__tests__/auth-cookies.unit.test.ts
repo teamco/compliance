@@ -33,24 +33,22 @@ describe('setAuthCookies', () => {
     const res = makeRes();
     setAuthCookies(res, { refreshToken: 'rt-1', csrfToken: 'csrf-1', isProd: true });
 
-    const rtCall = (res.cookie as ReturnType<typeof vi.fn>).mock.calls.find(
-      (c) => c[0] === 'icore_rt',
+    expect(res.cookie).toHaveBeenCalledWith(
+      'icore_rt',
+      expect.anything(),
+      expect.objectContaining({ secure: true, sameSite: 'none' }),
     );
-    if (rtCall) {
-      expect(rtCall[2]).toMatchObject({ secure: true, sameSite: 'none' });
-    }
   });
 
   it('uses no Secure + SameSite=Lax outside production', () => {
     const res = makeRes();
     setAuthCookies(res, { refreshToken: 'rt-1', csrfToken: 'csrf-1', isProd: false });
 
-    const rtCall = (res.cookie as ReturnType<typeof vi.fn>).mock.calls.find(
-      (c) => c[0] === 'icore_rt',
+    expect(res.cookie).toHaveBeenCalledWith(
+      'icore_rt',
+      expect.anything(),
+      expect.objectContaining({ secure: false, sameSite: 'lax' }),
     );
-    if (rtCall) {
-      expect(rtCall[2]).toMatchObject({ secure: false, sameSite: 'lax' });
-    }
   });
 });
 
