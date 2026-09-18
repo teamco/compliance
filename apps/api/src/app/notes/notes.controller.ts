@@ -1210,6 +1210,11 @@ export class NotesController {
     @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
   ) {
     const userId = this.uid(req);
+    const validation = await this.notes.getIssueValidation(id);
+    if (!validation) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(validation.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, validation.validatorId);
     return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
   }
 
