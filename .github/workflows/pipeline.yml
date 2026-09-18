@@ -25,12 +25,12 @@ jobs:
       projects: ${{ steps.affected.outputs.projects }}
       has-affected: ${{ steps.affected.outputs.has-affected }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup
       - name: Set SHAs
-        uses: nrwl/nx-set-shas@v4
+        uses: nrwl/nx-set-shas@v5
       - name: Get affected projects
         id: affected
         run: |
@@ -65,7 +65,7 @@ jobs:
       matrix:
         task: [lint, test, 'format:check']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Run ${{ matrix.task }}
         run: yarn ${{ matrix.task }}
@@ -91,7 +91,7 @@ jobs:
         continue-on-error: true
         run: |
           echo '${{ needs.detect-affected.outputs.projects }}' | jq -e --arg p "${{ matrix.project }}" 'index($p) != null'
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: steps.gate.outcome == 'success'
       - uses: ./.github/actions/setup
         if: steps.gate.outcome == 'success'
@@ -137,7 +137,7 @@ jobs:
       github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: supabase/setup-cli@v1
@@ -174,7 +174,7 @@ jobs:
       tag: ${{ steps.release_management.outputs.tag }}
       bump_type: ${{ steps.release_management.outputs.bump_type }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
@@ -185,7 +185,7 @@ jobs:
         with:
           token: ${{ secrets.REPO_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.release_management.outputs.tag }}
           name: ${{ steps.release_management.outputs.tag }}
