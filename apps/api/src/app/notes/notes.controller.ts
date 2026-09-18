@@ -1036,6 +1036,9 @@ export class NotesController {
     const userId = this.uid(req);
     const exception = await this.notes.getException(id);
     if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, exception.ownerId);
     if (exception.ownerId !== userId) throw new ForbiddenException();
     return this.notes.requestExceptionRenewal(id, userId, body);
   }
@@ -2433,5 +2436,12 @@ export class NotesController {
     const members = await this.auth.listOrgMembers(org.id, org.userId);
     const membership = members.find((m) => m.userId === req.user?.uid);
     if (!membership || membership.role !== 'admin') throw new ForbiddenException();
+  }
+
+  private async assertActiveAssignee(org: Organization, assigneeId: string): Promise<void> {
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === assigneeId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
   }
 }
