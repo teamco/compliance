@@ -63,8 +63,27 @@ function CallbackPage() {
     const hashSession = resolveHashSession(window.location.hash);
     if (hashSession) {
       setAuth(hashSession);
-      setStatus('done');
-      void navigate({ to: '/dashboard' });
+      void (async () => {
+        // The user/id/email above were decoded client-side, unverified — every
+        // real API call still re-verifies the access token server-side
+        // regardless, but backfill the server-confirmed role here too,
+        // mirroring auth.oauth.callback.tsx's identical pattern.
+        try {
+          const res = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${hashSession.accessToken}` },
+          });
+          if (res.ok) {
+            const me = (await res.json()) as { uid?: string; email?: string; role?: string };
+            if (me.role) {
+              setAuth({ ...hashSession, user: { ...hashSession.user, role: me.role } });
+            }
+          }
+        } catch {
+          // Non-fatal: role missing but login still succeeds.
+        }
+        setStatus('done');
+        void navigate({ to: '/dashboard' });
+      })();
       return;
     }
 
