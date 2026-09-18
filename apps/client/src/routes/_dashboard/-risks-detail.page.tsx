@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@icore/template-shared';
+import { useAuthStore, useNotify } from '@icore/template-shared';
 import { UserCog } from 'lucide-react';
 import { PageLayout } from '@/components/PageLayout';
 import { ScrollableRow } from '@/components/ui/scrollable-row';
@@ -42,6 +42,7 @@ type Tab =
 
 export function RiskDetailPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { id } = useParams({ from: '/_dashboard/risks_/$id' });
   const { activeOrgId } = useActiveOrgStore();
   const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
@@ -346,13 +347,16 @@ export function RiskDetailPage() {
               open={reassignOpen}
               isPending={reassignApproverMut.isPending}
               title={t('risks.reassignApprover')}
-              members={activeMembers}
+              members={activeMembers.filter((m) => m.userId !== activeAcceptance.requestedBy)}
               currentAssigneeId={activeAcceptance.approverId}
               onOpenChange={setReassignOpen}
               onConfirm={(newApproverId) => {
                 reassignApproverMut.mutate(
                   { id: activeAcceptance.id, newApproverId },
-                  { onSuccess: () => setReassignOpen(false) },
+                  {
+                    onSuccess: () => setReassignOpen(false),
+                    onError: () => notify.error(t('error.unknown')),
+                  },
                 );
               }}
             />

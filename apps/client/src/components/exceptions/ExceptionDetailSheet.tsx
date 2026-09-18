@@ -335,7 +335,10 @@ export function ExceptionDetailSheet({
         onConfirm={(newOwnerId) => {
           reassignOwnerMut.mutate(
             { id: exception.id, newOwnerId },
-            { onSuccess: () => setReassignOpen(false) },
+            {
+              onSuccess: () => setReassignOpen(false),
+              onError: () => notify.error(t('error.unknown')),
+            },
           );
         }}
       />

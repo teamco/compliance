@@ -4287,6 +4287,9 @@ export class FakeNotesStrategy implements NotesStrategy {
   async reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
     const acceptance = this.riskAcceptances.find((a) => a.id === id);
     if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.status === 'approved' || acceptance.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
     if (acceptance.requestedBy === newApproverId) {
       throw new Error('risk_acceptance_self_approval_forbidden');
     }
@@ -4416,6 +4419,9 @@ export class FakeNotesStrategy implements NotesStrategy {
   async reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
     const a = this.assessments.find((x) => x.id === id);
     if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.status === 'approved' || a.status === 'completed' || a.status === 'archived') {
+      throw new Error(`invalid_transition_from_${a.status}`);
+    }
     if (a.ownerId === newApproverId) throw new Error('assessment_self_approval_forbidden');
     a.approverId = newApproverId;
     a.updatedAt = new Date().toISOString();

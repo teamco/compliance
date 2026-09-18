@@ -1212,6 +1212,30 @@ describe('Assessment lifecycle (Phase B.1)', () => {
     );
   });
 
+  it('forbids reassigning the approver on an already-approved assessment', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+    await strategy.approveAssessment(assessment.id, 'approver-1');
+
+    await expect(strategy.reassignAssessmentApprover(assessment.id, 'approver-2')).rejects.toThrow(
+      'invalid_transition_from_approved',
+    );
+  });
+
   it('requestChanges records a note and returns the assessment to changes_requested', async () => {
     const strategy = new FakeNotesStrategy();
     const types = await strategy.listAssessmentTypes('org-1');
@@ -2566,6 +2590,31 @@ describe('Risk Register lifecycle', () => {
     await expect(strategy.reassignRiskAcceptanceApprover(acceptance.id, 'user-1')).rejects.toThrow(
       'risk_acceptance_self_approval_forbidden',
     );
+  });
+
+  it('forbids reassigning the approver on an already-decided risk acceptance', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    await strategy.approveRiskAcceptance(acceptance.id, 'ciso-1');
+
+    await expect(
+      strategy.reassignRiskAcceptanceApprover(acceptance.id, 'someone-else'),
+    ).rejects.toThrow(`risk_acceptance_already_decided: ${acceptance.id}`);
   });
 
   it('rejects reviewing a risk acceptance as its own requester', async () => {

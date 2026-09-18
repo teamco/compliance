@@ -349,13 +349,16 @@ export function IssueDetailSheet({
         open={reassignTarget === 'owner'}
         isPending={reassignOwnerMut.isPending}
         title={t('issues.detail.reassignOwner')}
-        members={members}
+        members={members.filter((m) => m.userId !== pendingValidation?.validatorId)}
         currentAssigneeId={issue.ownerId ?? ''}
         onOpenChange={(open) => !open && setReassignTarget(null)}
         onConfirm={(newOwnerId) => {
           reassignOwnerMut.mutate(
             { id: issue.id, newOwnerId },
-            { onSuccess: () => setReassignTarget(null) },
+            {
+              onSuccess: () => setReassignTarget(null),
+              onError: () => notify.error(t('error.unknown')),
+            },
           );
         }}
       />
@@ -364,13 +367,16 @@ export function IssueDetailSheet({
           open={reassignTarget === 'validator'}
           isPending={reassignValidatorMut.isPending}
           title={t('issues.detail.reassignValidator')}
-          members={members}
+          members={members.filter((m) => m.userId !== issue.ownerId)}
           currentAssigneeId={pendingValidation.validatorId}
           onOpenChange={(open) => !open && setReassignTarget(null)}
           onConfirm={(newValidatorId) => {
             reassignValidatorMut.mutate(
               { id: pendingValidation.id, issueId: issue.id, newValidatorId },
-              { onSuccess: () => setReassignTarget(null) },
+              {
+                onSuccess: () => setReassignTarget(null),
+                onError: () => notify.error(t('error.unknown')),
+              },
             );
           }}
         />

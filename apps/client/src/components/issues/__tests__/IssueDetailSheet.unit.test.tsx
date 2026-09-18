@@ -29,7 +29,7 @@ vi.mock('@icore/template-shared', async () => {
 });
 
 const activeMembers = [
-  { userId: 'owner-1', displayName: 'Owner One', email: 'owner@example.com' },
+  { userId: 'owner-1', displayName: 'Owner One', email: 'owner@example.com', role: 'owner' },
   { userId: 'validator-1', displayName: 'Validator One', email: 'validator@example.com' },
   { userId: 'validator-no-name', email: 'no-name@example.com' },
 ];
@@ -279,5 +279,6 @@ describe('IssueDetailSheet', () => {
   it('shows an Owner row on the overview tab with a reassign control for a manager', () => {
     renderSheet(baseIssue);
     expect(screen.getByText('Owner One')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'issues.detail.reassignOwner' })).toBeDefined();
   });
 });

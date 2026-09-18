@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useParams, useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@icore/template-shared';
+import { useAuthStore, useNotify } from '@icore/template-shared';
 import { ArrowLeft, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,7 @@ import {
 
 export function AssessmentDetailPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { id } = useParams({ from: '/_dashboard/assessments_/$id' });
   const navigate = useNavigate();
   const { activeOrgId } = useActiveOrgStore();
@@ -167,7 +168,10 @@ export function AssessmentDetailPage() {
             label={t('assessments.approver')}
             value={memberName(assessment.approverId)}
             action={
-              canManage && (
+              canManage &&
+              assessment.status !== 'approved' &&
+              assessment.status !== 'completed' &&
+              assessment.status !== 'archived' && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -215,13 +219,16 @@ export function AssessmentDetailPage() {
         open={reassignOpen}
         isPending={reassignApproverMut.isPending}
         title={t('assessments.reassignApprover')}
-        members={activeMembers}
+        members={activeMembers.filter((m) => m.userId !== assessment.ownerId)}
         currentAssigneeId={assessment.approverId ?? ''}
         onOpenChange={setReassignOpen}
         onConfirm={(newApproverId) => {
           reassignApproverMut.mutate(
             { newApproverId },
-            { onSuccess: () => setReassignOpen(false) },
+            {
+              onSuccess: () => setReassignOpen(false),
+              onError: () => notify.error(t('error.unknown')),
+            },
           );
         }}
       />

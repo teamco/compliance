@@ -3183,6 +3183,13 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
   async reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
     const current = await this.getAssessmentOrThrow(id);
+    if (
+      current.status === 'approved' ||
+      current.status === 'completed' ||
+      current.status === 'archived'
+    ) {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
     if (current.ownerId === newApproverId) {
       throw new Error('assessment_self_approval_forbidden');
     }
@@ -4149,6 +4156,9 @@ export class SupabaseNotesStrategy implements NotesStrategy {
 
   async reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
     const current = await this.getRiskAcceptanceOrThrow(id);
+    if (current.status === 'approved' || current.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
     if (current.requestedBy === newApproverId) {
       throw new Error('risk_acceptance_self_approval_forbidden');
     }
