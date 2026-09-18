@@ -52,6 +52,15 @@ vi.mock('@/stores/active-org', () => ({
   useActiveOrgStore: () => ({ activeOrgId: 'org1' }),
 }));
 
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({
+    data: [
+      { userId: 'Carol', displayName: 'Carol', email: 'carol@example.com', role: 'owner' },
+      { userId: 'Dave', displayName: 'Dave', email: 'dave@example.com', role: 'member' },
+    ],
+  }),
+}));
+
 vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
   return {
@@ -221,6 +230,7 @@ let mockActiveAcceptance: RiskAcceptance | null = null;
 
 const mockCreateAcceptanceMutate = vi.fn();
 const mockApproveAcceptanceMutate = vi.fn();
+const mockReassignApproverMutate = vi.fn();
 const mockRejectAcceptanceMutate = vi.fn();
 const mockUpdateMutate = vi.fn();
 
@@ -239,6 +249,10 @@ vi.mock('@/queries/risks', () => ({
   useCreateRiskAcceptance: () => ({ mutate: mockCreateAcceptanceMutate, isPending: false }),
   useApproveRiskAcceptance: () => ({ mutate: mockApproveAcceptanceMutate, isPending: false }),
   useRejectRiskAcceptance: () => ({ mutate: mockRejectAcceptanceMutate, isPending: false }),
+  useReassignRiskAcceptanceApprover: () => ({
+    mutate: mockReassignApproverMutate,
+    isPending: false,
+  }),
   useRiskEvidence: () => ({ data: mockEvidence }),
   useCreateRiskEvidence: () => ({ mutate: vi.fn(), isPending: false }),
   useRiskSnapshots: () => ({ data: mockSnapshots }),
@@ -369,6 +383,25 @@ describe('RiskDetailPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
     expect(mockRejectAcceptanceMutate).toHaveBeenCalledWith('acc-1');
+  });
+
+  it('shows a reassign control next to the Approver in the acceptance panel', async () => {
+    mockActiveAcceptance = {
+      id: 'acc-1',
+      riskId: 'r1',
+      orgId: 'org1',
+      requestedBy: 'Alice',
+      justification: 'Compensating controls in place.',
+      compensatingControls: 'EDR + quarterly access review',
+      expiresAt: '2026-12-31T00:00:00Z',
+      approverId: 'Carol',
+      status: 'requested',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    await renderDetailPage();
+    fireEvent.click(screen.getByText('Treatment'));
+    expect(screen.getByRole('button', { name: /reassign approver/i })).toBeDefined();
   });
 
   it('renders Evidence tab fixture data', async () => {

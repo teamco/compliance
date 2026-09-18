@@ -40,7 +40,7 @@ const EXEMPT_ROUTES: Record<string, string> = {
 
 const ROUTE_DECORATOR_RE = /^\s*@(Get|Post|Patch|Put|Delete)\((.*)\)\s*$/;
 
-const ORG_CHECK_HELPERS = ['checkOrgAccess(', 'checkOrgOwner('];
+const ORG_CHECK_HELPERS = ['checkOrgAccess(', 'checkOrgOwner(', 'checkOrgManage('];
 
 interface RouteChunk {
   key: string;

@@ -601,6 +601,13 @@ export class NotesController {
     return this.strategy.rejectException(payload.id, payload.approverId);
   }
 
+  @MessagePattern('notes.exceptions.reassign-owner')
+  reassignExceptionOwner(
+    @Payload() payload: { id: string; newOwnerId: string },
+  ): Promise<Exception> {
+    return this.strategy.reassignExceptionOwner(payload.id, payload.newOwnerId);
+  }
+
   @MessagePattern('notes.exceptions.delete')
   deleteException(@Payload() payload: { id: string }): Promise<void> {
     return this.strategy.deleteException(payload.id);
@@ -691,6 +698,11 @@ export class NotesController {
     return this.strategy.submitIssueForValidation(payload.id, payload.ownerId, payload.data);
   }
 
+  @MessagePattern('notes.issues.reassign-owner')
+  reassignIssueOwner(@Payload() payload: { id: string; newOwnerId: string }): Promise<Issue> {
+    return this.strategy.reassignIssueOwner(payload.id, payload.newOwnerId);
+  }
+
   @MessagePattern('notes.issues.review-validation')
   reviewIssueValidation(
     @Payload()
@@ -707,6 +719,13 @@ export class NotesController {
       payload.decision,
       payload.reviewNotes,
     );
+  }
+
+  @MessagePattern('notes.issues.reassign-validator')
+  reassignIssueValidator(
+    @Payload() payload: { id: string; newValidatorId: string },
+  ): Promise<IssueValidation> {
+    return this.strategy.reassignIssueValidator(payload.id, payload.newValidatorId);
   }
 
   @MessagePattern('notes.issues.validations.get')
@@ -937,6 +956,13 @@ export class NotesController {
     return this.strategy.approveRiskAcceptance(payload.id, payload.userId);
   }
 
+  @MessagePattern('notes.risks.acceptance.reassign-approver')
+  reassignRiskAcceptanceApprover(
+    @Payload() payload: { id: string; newApproverId: string },
+  ): Promise<RiskAcceptance> {
+    return this.strategy.reassignRiskAcceptanceApprover(payload.id, payload.newApproverId);
+  }
+
   @MessagePattern('notes.risks.acceptance.reject')
   rejectRiskAcceptance(
     @Payload() payload: { id: string; userId: string },
@@ -1085,6 +1111,13 @@ export class NotesController {
   @MessagePattern('notes.assessments.approve')
   approveAssessment(@Payload() payload: { id: string; userId: string }): Promise<Assessment> {
     return this.strategy.approveAssessment(payload.id, payload.userId);
+  }
+
+  @MessagePattern('notes.assessments.reassign-approver')
+  reassignAssessmentApprover(
+    @Payload() payload: { id: string; newApproverId: string },
+  ): Promise<Assessment> {
+    return this.strategy.reassignAssessmentApprover(payload.id, payload.newApproverId);
   }
 
   @MessagePattern('notes.assessments.request-changes')

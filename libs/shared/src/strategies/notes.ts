@@ -1401,6 +1401,7 @@ export interface NotesStrategy {
   getException(id: string): Promise<Exception | null>;
   updateException(id: string, patch: ExceptionPatch): Promise<Exception>;
   approveException(id: string, approverId: string): Promise<Exception>;
+  reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception>;
   rejectException(id: string, approverId: string): Promise<Exception>;
   requestExceptionRenewal(
     exceptionId: string,
@@ -1430,12 +1431,14 @@ export interface NotesStrategy {
     ownerId: string,
     data: IssueValidationSubmitInput,
   ): Promise<Issue>;
+  reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue>;
   reviewIssueValidation(
     id: string,
     validatorId: string,
     decision: 'approved' | 'rejected',
     reviewNotes?: string,
   ): Promise<IssueValidation>;
+  reassignIssueValidator(validationId: string, newValidatorId: string): Promise<IssueValidation>;
   getIssueValidation(id: string): Promise<IssueValidation | null>;
   getActiveIssueValidation(issueId: string): Promise<IssueValidation | null>;
   listIssueValidations(issueId: string): Promise<IssueValidation[]>;
@@ -1488,6 +1491,7 @@ export interface NotesStrategy {
     reviewNotes?: string,
   ): Promise<RiskAcceptance>;
   approveRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
+  reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance>;
   rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance>;
 
   // Risk history
@@ -1510,6 +1514,7 @@ export interface NotesStrategy {
   startAssessment(id: string, userId: string): Promise<Assessment>;
   submitForReview(id: string, userId: string): Promise<Assessment>;
   approveAssessment(id: string, userId: string): Promise<Assessment>;
+  reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment>;
   requestChanges(id: string, userId: string, note: string): Promise<Assessment>;
   completeAssessment(id: string, userId: string): Promise<Assessment>;
   archiveAssessment(id: string, userId: string): Promise<Assessment>;

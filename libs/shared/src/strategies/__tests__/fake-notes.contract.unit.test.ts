@@ -60,6 +60,19 @@ describe('exceptions', () => {
     expect(approved.reviewedBy).toBe('approver-1');
   });
 
+  it('reassigns an exception owner', async () => {
+    const exc = await s.createException('org1', 'u1', {
+      controlCode: 'AC-1',
+      frameworkId: 'fw1',
+      title: 'T',
+      justification: 'J',
+      statement: 'S',
+      ownerId: 'owner-1',
+    });
+    const reassigned = await s.reassignExceptionOwner(exc.id, 'owner-2');
+    expect(reassigned.ownerId).toBe('owner-2');
+  });
+
   it('rejects an exception', async () => {
     const exc = await s.createException('org1', 'u1', {
       controlCode: 'AC-1',
@@ -340,6 +353,93 @@ describe('issues', () => {
     const updatedIssue = await s.getIssue(issue.id);
     expect(updatedIssue!.status).toBe('closed');
     expect(updatedIssue!.resolvedAt).not.toBeNull();
+  });
+
+  it('reassigns an issue owner', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    const reassigned = await s.reassignIssueOwner(issue.id, 'owner-2');
+    expect(reassigned.ownerId).toBe('owner-2');
+  });
+
+  it("forbids reassigning the issue owner to the pending validation's validator", async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    await expect(s.reassignIssueOwner(issue.id, 'validator-1')).rejects.toThrow(
+      'issue_validation_self_validation_forbidden',
+    );
+  });
+
+  it('reassigns a pending validation to a new validator', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    const reassigned = await s.reassignIssueValidator(validation!.id, 'validator-2');
+    expect(reassigned.validatorId).toBe('validator-2');
+  });
+
+  it('forbids reassigning a validator to the issue owner', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await expect(s.reassignIssueValidator(validation!.id, 'owner-1')).rejects.toThrow(
+      'issue_validation_self_validation_forbidden',
+    );
+  });
+
+  it('refuses to reassign an already-decided validation', async () => {
+    const issue = await s.createIssue('org1', 'u1', {
+      title: 'T',
+      description: 'D',
+      severity: 'low',
+      reporterId: 'reporter-1',
+      ownerId: 'owner-1',
+    });
+    await s.submitIssueForValidation(issue.id, 'owner-1', {
+      rootCause: 'Change control was skipped',
+      rootCauseCategory: 'process_gap',
+      validatorId: 'validator-1',
+    });
+    const validation = await s.getActiveIssueValidation(issue.id);
+    await s.reviewIssueValidation(validation!.id, 'validator-1', 'approved');
+    await expect(s.reassignIssueValidator(validation!.id, 'validator-2')).rejects.toThrow(
+      `issue_validation_already_decided: ${validation!.id}`,
+    );
   });
 
   it('clears resolvedAt when a closed issue is reopened via generic update', async () => {
@@ -1083,6 +1183,57 @@ describe('Assessment lifecycle (Phase B.1)', () => {
 
     const archived = await strategy.archiveAssessment(assessment.id, 'owner-1');
     expect(archived.status).toBe('archived');
+  });
+
+  it('reassigns an assessment approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    const reassigned = await strategy.reassignAssessmentApprover(assessment.id, 'approver-2');
+    expect(reassigned.approverId).toBe('approver-2');
+  });
+
+  it('forbids reassigning the approver to the assessment owner', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await expect(strategy.reassignAssessmentApprover(assessment.id, 'owner-1')).rejects.toThrow(
+      'assessment_self_approval_forbidden',
+    );
+  });
+
+  it('forbids reassigning the approver on an already-approved assessment', async () => {
+    const strategy = new FakeNotesStrategy();
+    const types = await strategy.listAssessmentTypes('org-1');
+    const assessment = await strategy.createAssessment('org-1', 'owner-1', {
+      title: 'Assessment',
+      assessmentTypeId: types[0]!.id,
+      ownerId: 'owner-1',
+      approverId: 'approver-1',
+    });
+    await strategy.createAssessmentItem(assessment.id, {
+      subject: 'Subject',
+      description: 'Description',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    await strategy.startAssessment(assessment.id, 'owner-1');
+    await strategy.submitForReview(assessment.id, 'owner-1');
+    await strategy.approveAssessment(assessment.id, 'approver-1');
+
+    await expect(strategy.reassignAssessmentApprover(assessment.id, 'approver-2')).rejects.toThrow(
+      'invalid_transition_from_approved',
+    );
   });
 
   it('requestChanges records a note and returns the assessment to changes_requested', async () => {
@@ -2394,6 +2545,76 @@ describe('Risk Register lifecycle', () => {
 
     const active = await strategy.getActiveRiskAcceptance(risk.id);
     expect(active?.id).toBe(acceptance.id);
+  });
+
+  it('reassigns a risk acceptance approver', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    const reassigned = await strategy.reassignRiskAcceptanceApprover(acceptance.id, 'ciso-2');
+    expect(reassigned.approverId).toBe('ciso-2');
+  });
+
+  it('forbids reassigning the approver to the requester', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    await expect(strategy.reassignRiskAcceptanceApprover(acceptance.id, 'user-1')).rejects.toThrow(
+      'risk_acceptance_self_approval_forbidden',
+    );
+  });
+
+  it('forbids reassigning the approver on an already-decided risk acceptance', async () => {
+    const strategy = new FakeNotesStrategy();
+    const taxonomy = await strategy.listRiskTaxonomy('org-1');
+    const risk = await strategy.createRisk('org-1', 'user-1', {
+      title: 'Risk',
+      riskStatement: 'Statement',
+      taxonomyCategoryId: taxonomy[0]!.id,
+      ownerId: 'user-1',
+      inherentLikelihood: 3,
+      inherentImpact: 3,
+    });
+    const future = new Date(Date.now() + 86400_000).toISOString();
+    const acceptance = await strategy.createRiskAcceptance('org-1', risk.id, 'user-1', {
+      justification: 'Business need outweighs residual exposure',
+      compensatingControls: 'Manual monthly review',
+      expiresAt: future,
+      approverId: 'ciso-1',
+    });
+    await strategy.approveRiskAcceptance(acceptance.id, 'ciso-1');
+
+    await expect(
+      strategy.reassignRiskAcceptanceApprover(acceptance.id, 'someone-else'),
+    ).rejects.toThrow(`risk_acceptance_already_decided: ${acceptance.id}`);
   });
 
   it('rejects reviewing a risk acceptance as its own requester', async () => {

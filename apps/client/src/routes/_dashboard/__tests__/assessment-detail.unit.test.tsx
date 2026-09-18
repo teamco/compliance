@@ -154,6 +154,7 @@ const mockArchiveMutate = vi.fn();
 const mockCreateItemMutate = vi.fn();
 const mockUpdateItemMutate = vi.fn();
 const mockDeleteItemMutate = vi.fn();
+const mockReassignApproverMutate = vi.fn();
 
 vi.mock('@/queries/assessments', () => ({
   useAssessment: () => ({ data: mockAssessment, isPending: false }),
@@ -167,6 +168,7 @@ vi.mock('@/queries/assessments', () => ({
   useRequestChanges: () => ({ mutate: mockRequestChangesMutate, isPending: false }),
   useCompleteAssessment: () => ({ mutate: mockCompleteMutate, isPending: false }),
   useArchiveAssessment: () => ({ mutate: mockArchiveMutate, isPending: false }),
+  useReassignAssessmentApprover: () => ({ mutate: mockReassignApproverMutate, isPending: false }),
   useAssessmentItemControlMappings: () => ({ data: mockMappings }),
   useAssessmentItemEvidence: () => ({ data: [] }),
   useCreateAssessmentItemEvidence: () => ({ mutate: vi.fn(), isPending: false }),
@@ -293,5 +295,11 @@ describe('AssessmentDetailPage', () => {
     // AssessmentItemsPanel's internals (expand, link control, residual scoring,
     // delete, evidence) are covered by AssessmentItemsPanel.unit.test.tsx.
     expect(screen.getByText('Unpatched endpoints')).toBeDefined();
+  });
+
+  it('shows a reassign control next to the Approver field for a manager', async () => {
+    mockAssessment = { ...mockAssessment, status: 'pending_review', approverId: 'Carol' };
+    await renderDetailPage();
+    expect(screen.getByRole('button', { name: /reassign approver/i })).toBeDefined();
   });
 });

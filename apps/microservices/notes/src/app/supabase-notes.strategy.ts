@@ -1955,6 +1955,17 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toException(ok(data, error));
   }
 
+  async reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception> {
+    await this.getExceptionOrThrow(id);
+    const { data, error } = await this.db
+      .from('exceptions')
+      .update({ owner_id: newOwnerId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toException(ok(data, error));
+  }
+
   async deleteException(id: string): Promise<void> {
     const { error } = await this.db.from('exceptions').delete().eq('id', id);
     if (error) throw new Error(error.message);
@@ -2188,6 +2199,22 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     return this.toIssue(ok(data, error));
   }
 
+  async reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue> {
+    const issue = await this.getIssue(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    const activePending = await this.getActiveIssueValidation(id);
+    if (activePending && activePending.validatorId === newOwnerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('issues')
+      .update({ owner_id: newOwnerId, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toIssue(ok(data, error));
+  }
+
   async deleteIssue(id: string): Promise<void> {
     const { error } = await this.db.from('issues').delete().eq('id', id);
     if (error) throw new Error(error.message);
@@ -2313,6 +2340,27 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', id)
       .eq('validator_id', validatorId)
       .eq('status', 'pending')
+      .select()
+      .single();
+    return this.toIssueValidation(ok(data, error));
+  }
+
+  async reassignIssueValidator(
+    validationId: string,
+    newValidatorId: string,
+  ): Promise<IssueValidation> {
+    const current = await this.getIssueValidationOrThrow(validationId);
+    if (current.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${validationId}`);
+    }
+    const issue = await this.getIssue(current.issueId);
+    if (issue && issue.ownerId === newValidatorId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('issue_validations')
+      .update({ validator_id: newValidatorId })
+      .eq('id', validationId)
       .select()
       .single();
     return this.toIssueValidation(ok(data, error));
@@ -3127,6 +3175,27 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const { data, error } = await this.db
       .from('risk_assessments')
       .update({ status: 'approved', updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+    return this.toAssessment(ok(data, error));
+  }
+
+  async reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
+    const current = await this.getAssessmentOrThrow(id);
+    if (
+      current.status === 'approved' ||
+      current.status === 'completed' ||
+      current.status === 'archived'
+    ) {
+      throw new Error(`invalid_transition_from_${current.status}`);
+    }
+    if (current.ownerId === newApproverId) {
+      throw new Error('assessment_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('risk_assessments')
+      .update({ approver_id: newApproverId, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
       .single();
@@ -4080,6 +4149,23 @@ export class SupabaseNotesStrategy implements NotesStrategy {
       .eq('id', id)
       .eq('approver_id', userId)
       .in('status', ['requested', 'reviewed'])
+      .select()
+      .single();
+    return this.toRiskAcceptance(ok(data, error));
+  }
+
+  async reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
+    const current = await this.getRiskAcceptanceOrThrow(id);
+    if (current.status === 'approved' || current.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
+    if (current.requestedBy === newApproverId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    const { data, error } = await this.db
+      .from('risk_acceptances')
+      .update({ approver_id: newApproverId, updated_at: new Date().toISOString() })
+      .eq('id', id)
       .select()
       .single();
     return this.toRiskAcceptance(ok(data, error));

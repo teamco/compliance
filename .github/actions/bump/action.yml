@@ -33,35 +33,31 @@ runs:
         git fetch --tags
         LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
         if [ -z "$LAST_TAG" ]; then
-          COMMITS=$(git log --pretty=format:"* %s" -n 20)
-          RAW_COMMITS=$(git log --format="%s%n%b%n---COMMIT-END---" -n 20)
+          git log --pretty=format:"* %s" -n 20 > .commit_list.txt
+          git log --format="%s%n%b%n---COMMIT-END---" -n 20 > .raw_commit_log.txt
         else
-          COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"* %s")
-          RAW_COMMITS=$(git log ${LAST_TAG}..HEAD --format="%s%n%b%n---COMMIT-END---")
+          git log "${LAST_TAG}..HEAD" --pretty=format:"* %s" > .commit_list.txt
+          git log "${LAST_TAG}..HEAD" --format="%s%n%b%n---COMMIT-END---" > .raw_commit_log.txt
         fi
-        if [ -z "$COMMITS" ] || [ "$COMMITS" = " " ]; then
-          COMMITS="* maintenance: minor updates"
-          RAW_COMMITS=$'maintenance: minor updates\n---COMMIT-END---'
+        if [ ! -s .commit_list.txt ] || [ "$(cat .commit_list.txt)" = " " ]; then
+          echo "* maintenance: minor updates" > .commit_list.txt
+          printf 'maintenance: minor updates\n---COMMIT-END---\n' > .raw_commit_log.txt
         fi
-        {
-          echo "list<<EOF"
-          echo "$COMMITS"
-          echo "EOF"
-        } >> $GITHUB_OUTPUT
-        {
-          echo "raw<<EOF"
-          echo "$RAW_COMMITS"
-          echo "EOF"
-        } >> $GITHUB_OUTPUT
 
     - name: Bump version & create tag
       id: version-bump
       shell: bash
       env:
-        COMMIT_LIST: ${{ steps.commits.outputs.list }}
-        RAW_COMMIT_LOG: ${{ steps.commits.outputs.raw }}
         ACTOR: ${{ github.actor }}
       run: |
+        # Commit history since the last tag is read from the files the
+        # previous step wrote (.commit_list.txt / .raw_commit_log.txt), not
+        # from env vars -- a long-lived release cadence (or a burst of
+        # commits between releases) can push that history well past the
+        # kernel's combined argv+envp size limit, which fails the *next*
+        # process spawn with "Argument list too long" before any script
+        # code even runs. Files have no such limit.
+
         # 1. Annotate every non-merge commit with the actor handle for the changelog.
         PROCESSED_COMMITS=""
         while IFS= read -r line; do
@@ -70,19 +66,19 @@ runs:
           else
             PROCESSED_COMMITS+="$line, by @${ACTOR}"$'\n'
           fi
-        done <<< "$COMMIT_LIST"
+        done < .commit_list.txt
 
         # 2. Detect the highest semver bump required by the commit range.
         #    feat(...)!: or BREAKING CHANGE: -> major
         #    feat(...):                      -> minor
         #    anything else                   -> patch
         BUMP_TYPE="patch"
-        if printf "%s\n" "$RAW_COMMIT_LOG" | grep -Eq '(^[^[:space:]]+(\([^)]+\))?!:)|(BREAKING CHANGE:)'; then
+        if grep -Eq '(^[^[:space:]]+(\([^)]+\))?!:)|(BREAKING CHANGE:)' .raw_commit_log.txt; then
           BUMP_TYPE="major"
-        elif printf "%s\n" "$RAW_COMMIT_LOG" | grep -Eq '^feat(\([^)]+\))?:'; then
+        elif grep -Eq '^feat(\([^)]+\))?:' .raw_commit_log.txt; then
           BUMP_TYPE="minor"
         fi
-        echo "bump_type=$BUMP_TYPE" >> $GITHUB_OUTPUT
+        echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
 
         # 3. Bump root package.json only. --no-git-tag-version stops npm from
         #    auto-creating a commit + tag (we do it ourselves with a richer
@@ -94,7 +90,7 @@ runs:
 
         NEW_V=$(node -p "require('./package.json').version")
         TAG="v$NEW_V"
-        echo "tag=$TAG" >> $GITHUB_OUTPUT
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
         git add package.json
 
@@ -105,11 +101,15 @@ runs:
           echo "release_body<<EOF"
           printf "## Changes\n\n%s\n" "$PROCESSED_COMMITS"
           echo "EOF"
-        } >> $GITHUB_OUTPUT
+        } >> "$GITHUB_OUTPUT"
 
         # 5. Commit and tag.
         git commit -F .commit_msg
         git tag -af "$TAG" -F .commit_msg
+
+        # 6. These were only ever scratch state for this action -- drop them
+        #    so they don't linger in the working tree for the next step.
+        rm -f .commit_list.txt .raw_commit_log.txt
 
     - name: Push commit + tag
       shell: bash

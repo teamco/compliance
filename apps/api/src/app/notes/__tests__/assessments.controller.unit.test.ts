@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import type { Request } from 'express';
 import type { AiClientService } from '@icore/ai-client';
 import type { AuthClientService } from '@icore/auth-client';
@@ -51,6 +51,9 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
     getAssessmentItemControlMapping: vi.fn().mockResolvedValue(MAPPING),
     getAssessmentType: vi.fn().mockResolvedValue(TYPE),
     approveAssessment: vi.fn().mockResolvedValue({ ...ASSESSMENT, status: 'approved' }),
+    reassignAssessmentApprover: vi
+      .fn()
+      .mockResolvedValue({ ...ASSESSMENT, approverId: 'approver-2' }),
     removeAssessmentItemControlMapping: vi.fn().mockResolvedValue(undefined),
     archiveAssessmentType: vi.fn().mockResolvedValue({ ...TYPE, archived: true }),
     updateAssessmentItem: vi.fn().mockResolvedValue(ITEM),
@@ -59,13 +62,16 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
   } as unknown as NotesClientService;
 }
 
-function makeController(notes: NotesClientService): NotesController {
+function makeController(
+  notes: NotesClientService,
+  auth: Partial<AuthClientService> = { listOrgMembers: vi.fn().mockResolvedValue([]) },
+): NotesController {
   return new NotesController(
     notes,
     {} as unknown as AiClientService,
     new AbilityFactory(),
     {} as unknown as StandardsQueueService,
-    { listOrgMembers: vi.fn().mockResolvedValue([]) } as unknown as AuthClientService,
+    auth as unknown as AuthClientService,
   );
 }
 
@@ -158,5 +164,52 @@ describe('NotesController — assessment org scoping (Phase 1 hardening)', () =>
         makeController(notes).deleteAssessmentItem(reqAs('org-creator'), 'item-1'),
       ).resolves.toBeUndefined();
     });
+  });
+});
+
+describe('NotesController — reassignAssessmentApprover', () => {
+  it('rejects a non-manager caller', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'viewer-1', role: 'viewer' }]),
+    };
+    await expect(
+      makeController(notes, auth).reassignAssessmentApprover(reqAs('viewer-1'), 'assessment-1', {
+        newApproverId: 'approver-2',
+      }),
+    ).rejects.toThrow(ForbiddenException);
+    expect(notes.reassignAssessmentApprover).not.toHaveBeenCalled();
+  });
+
+  it('rejects a new approver who is not an active org member', async () => {
+    const notes = makeNotes();
+    const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+    await expect(
+      makeController(notes, auth).reassignAssessmentApprover(reqAs('org-creator'), 'assessment-1', {
+        newApproverId: 'not-a-member',
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('allows the org owner to reassign', async () => {
+    const notes = makeNotes();
+    const auth = {
+      listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'approver-2', role: 'viewer' }]),
+    };
+    await makeController(notes, auth).reassignAssessmentApprover(
+      reqAs('org-creator'),
+      'assessment-1',
+      { newApproverId: 'approver-2' },
+    );
+    expect(notes.reassignAssessmentApprover).toHaveBeenCalledWith('assessment-1', 'approver-2');
+  });
+
+  it('throws NotFound when the assessment does not exist', async () => {
+    const notes = makeNotes({ getAssessment: vi.fn().mockResolvedValue(null) });
+    await expect(
+      makeController(notes).reassignAssessmentApprover(reqAsAdmin('platform-admin'), 'missing', {
+        newApproverId: 'approver-2',
+      }),
+    ).rejects.toThrow(NotFoundException);
   });
 });

@@ -3558,6 +3558,18 @@ export class FakeNotesStrategy implements NotesStrategy {
     return rejected;
   }
 
+  async reassignExceptionOwner(id: string, newOwnerId: string): Promise<Exception> {
+    const existing = this.exceptions.get(id);
+    if (!existing) throw new Error(`exception_not_found: ${id}`);
+    const updated: Exception = {
+      ...existing,
+      ownerId: newOwnerId,
+      updatedAt: new Date().toISOString(),
+    };
+    this.exceptions.set(id, updated);
+    return updated;
+  }
+
   async deleteException(id: string): Promise<void> {
     if (!this.exceptions.has(id)) throw new Error(`exception_not_found: ${id}`);
     this.exceptions.delete(id);
@@ -3751,6 +3763,20 @@ export class FakeNotesStrategy implements NotesStrategy {
     return updated;
   }
 
+  async reassignIssueOwner(id: string, newOwnerId: string): Promise<Issue> {
+    const issue = this.issues.get(id);
+    if (!issue) throw new Error(`issue_not_found: ${id}`);
+    const activePending = this.issueValidations.find(
+      (v) => v.issueId === id && v.status === 'pending',
+    );
+    if (activePending && activePending.validatorId === newOwnerId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    const updated: Issue = { ...issue, ownerId: newOwnerId, updatedAt: new Date().toISOString() };
+    this.issues.set(id, updated);
+    return updated;
+  }
+
   async reviewIssueValidation(
     id: string,
     validatorId: string,
@@ -3782,6 +3808,23 @@ export class FakeNotesStrategy implements NotesStrategy {
       };
       this.issues.set(issue.id, updated);
     }
+    return validation;
+  }
+
+  async reassignIssueValidator(
+    validationId: string,
+    newValidatorId: string,
+  ): Promise<IssueValidation> {
+    const validation = this.issueValidations.find((v) => v.id === validationId);
+    if (!validation) throw new Error(`issue_validation_not_found: ${validationId}`);
+    if (validation.status !== 'pending') {
+      throw new Error(`issue_validation_already_decided: ${validationId}`);
+    }
+    const issue = this.issues.get(validation.issueId);
+    if (issue && issue.ownerId === newValidatorId) {
+      throw new Error('issue_validation_self_validation_forbidden');
+    }
+    validation.validatorId = newValidatorId;
     return validation;
   }
 
@@ -4241,6 +4284,20 @@ export class FakeNotesStrategy implements NotesStrategy {
     return acceptance;
   }
 
+  async reassignRiskAcceptanceApprover(id: string, newApproverId: string): Promise<RiskAcceptance> {
+    const acceptance = this.riskAcceptances.find((a) => a.id === id);
+    if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
+    if (acceptance.status === 'approved' || acceptance.status === 'rejected') {
+      throw new Error(`risk_acceptance_already_decided: ${id}`);
+    }
+    if (acceptance.requestedBy === newApproverId) {
+      throw new Error('risk_acceptance_self_approval_forbidden');
+    }
+    acceptance.approverId = newApproverId;
+    acceptance.updatedAt = new Date().toISOString();
+    return acceptance;
+  }
+
   async rejectRiskAcceptance(id: string, userId: string): Promise<RiskAcceptance> {
     const acceptance = this.riskAcceptances.find((a) => a.id === id);
     if (!acceptance) throw new Error(`risk_acceptance_not_found: ${id}`);
@@ -4355,6 +4412,18 @@ export class FakeNotesStrategy implements NotesStrategy {
     if (a.ownerId === userId) throw new Error('assessment_self_approval_forbidden');
     if (a.approverId !== userId) throw new Error('not_authorized_approver');
     a.status = 'approved';
+    a.updatedAt = new Date().toISOString();
+    return a;
+  }
+
+  async reassignAssessmentApprover(id: string, newApproverId: string): Promise<Assessment> {
+    const a = this.assessments.find((x) => x.id === id);
+    if (!a) throw new Error(`assessment_not_found: ${id}`);
+    if (a.status === 'approved' || a.status === 'completed' || a.status === 'archived') {
+      throw new Error(`invalid_transition_from_${a.status}`);
+    }
+    if (a.ownerId === newApproverId) throw new Error('assessment_self_approval_forbidden');
+    a.approverId = newApproverId;
     a.updatedAt = new Date().toISOString();
     return a;
   }

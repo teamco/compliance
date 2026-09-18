@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@icore/template-shared';
+import { useAuthStore, useNotify } from '@icore/template-shared';
+import { UserCog } from 'lucide-react';
 import { PageLayout } from '@/components/PageLayout';
 import { ScrollableRow } from '@/components/ui/scrollable-row';
 import {
@@ -13,15 +14,18 @@ import {
   useCreateRiskAcceptance,
   useApproveRiskAcceptance,
   useRejectRiskAcceptance,
+  useReassignRiskAcceptanceApprover,
   useRiskSnapshots,
   useAssessmentItemsForRisk,
 } from '@/queries/risks';
 import { useFindingsByLink } from '@/queries/frameworks';
 import { useAssets } from '@/queries/assets';
 import { useVendors } from '@/queries/vendors';
+import { useOrgMembers } from '@/queries/org-members';
 import { Button } from '@/components/ui/button';
 import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 import { AppetiteBadge } from '@/components/risks/AppetiteBadge';
+import { ReassignDialog } from '@/components/shared/ReassignDialog';
 import {
   Dialog,
   DialogContent,
@@ -38,6 +42,7 @@ type Tab =
 
 export function RiskDetailPage() {
   const { t } = useTranslation();
+  const notify = useNotify();
   const { id } = useParams({ from: '/_dashboard/risks_/$id' });
   const { activeOrgId } = useActiveOrgStore();
   const currentUserId = useAuthStore((s) => s.user?.id) ?? '';
@@ -49,8 +54,23 @@ export function RiskDetailPage() {
   const createAcceptanceMut = useCreateRiskAcceptance(activeOrgId ?? '', id);
   const approveAcceptanceMut = useApproveRiskAcceptance(id);
   const rejectAcceptanceMut = useRejectRiskAcceptance(id);
+  const reassignApproverMut = useReassignRiskAcceptanceApprover(id);
   const { data: snapshots = [] } = useRiskSnapshots(id);
   const { data: assessmentItems = [] } = useAssessmentItemsForRisk(id);
+  // includeInactive: the approver's name must still resolve after that
+  // member has been removed from the org.
+  const { data: members = [] } = useOrgMembers(activeOrgId ?? '', { includeInactive: true });
+  // Active-only list for canManage and reassignment targets — a deactivated
+  // admin must not retain manage rights or be offered as a new approver.
+  const { data: activeMembers = [] } = useOrgMembers(activeOrgId ?? '');
+  const myMembership = activeMembers.find((m) => m.userId === currentUserId);
+  const canManage = myMembership?.role === 'owner' || myMembership?.role === 'admin';
+  const [reassignOpen, setReassignOpen] = useState(false);
+
+  function resolveMemberName(userId: string): string {
+    const member = members.find((m) => m.userId === userId);
+    return member?.displayName ?? member?.email ?? userId;
+  }
   const { data: linkedFindings = [] } = useFindingsByLink({
     riskId: risk?.source === 'gap_analysis' ? risk.id : undefined,
   });
@@ -281,6 +301,21 @@ export function RiskDetailPage() {
                 <p className="text-xs text-muted-foreground">
                   {t('risks.expiresAt')}: {activeAcceptance.expiresAt.slice(0, 10)}
                 </p>
+                <p className="flex items-center gap-2">
+                  {t('risks.approver')}:{' '}
+                  <strong>{resolveMemberName(activeAcceptance.approverId)}</strong>
+                  {canManage && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => setReassignOpen(true)}
+                    >
+                      <UserCog size={13} />
+                      <span className="sr-only">{t('risks.reassignApprover')}</span>
+                    </Button>
+                  )}
+                </p>
                 {activeAcceptance.status !== 'approved' &&
                   activeAcceptance.status !== 'rejected' &&
                   currentUserId === activeAcceptance.approverId && (
@@ -307,6 +342,25 @@ export function RiskDetailPage() {
               </Button>
             )}
           </div>
+          {activeAcceptance && (
+            <ReassignDialog
+              open={reassignOpen}
+              isPending={reassignApproverMut.isPending}
+              title={t('risks.reassignApprover')}
+              members={activeMembers.filter((m) => m.userId !== activeAcceptance.requestedBy)}
+              currentAssigneeId={activeAcceptance.approverId}
+              onOpenChange={setReassignOpen}
+              onConfirm={(newApproverId) => {
+                reassignApproverMut.mutate(
+                  { id: activeAcceptance.id, newApproverId },
+                  {
+                    onSuccess: () => setReassignOpen(false),
+                    onError: () => notify.error(t('error.unknown')),
+                  },
+                );
+              }}
+            />
+          )}
         </div>
       )}
 
