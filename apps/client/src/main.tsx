@@ -11,6 +11,7 @@ import {
 } from '@icore/template-shared';
 import { I18nextProvider } from 'react-i18next';
 import { Toaster } from 'sonner';
+import { AuthBootstrap } from './app/auth-bootstrap';
 import { routeTree } from './routeTree.gen';
 import { setApiUnauthorizedHandler } from './lib/api';
 import { wireShadcnNotifier } from './lib/notify';
@@ -61,8 +62,10 @@ createRoot(rootElement).render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <AbilityProvider>
-          <RouterProvider router={router} />
-          <Toaster richColors />
+          <AuthBootstrap>
+            <RouterProvider router={router} />
+            <Toaster richColors />
+          </AuthBootstrap>
         </AbilityProvider>
       </QueryClientProvider>
     </I18nextProvider>
