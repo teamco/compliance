@@ -21,6 +21,7 @@ import type { Request, Response } from 'express';
 import { AuthClientService } from '@icore/auth-client';
 import { NotesClientService } from '@icore/notes-client';
 import type { Organization, OAuthProvider, OrgInviteRole, VerifiedToken } from '@icore/shared';
+import { setAuthCookies, generateCsrfToken } from '@icore/shared';
 import { Public } from './public.decorator';
 import { CheckAbility } from '../abilities/check-ability.decorator';
 import { AbilityFactory } from '../abilities/ability.factory';
@@ -62,9 +63,19 @@ export class AuthController {
       },
     },
   })
-  async register(@Body() body: { email: string; password: string }) {
+  async register(
+    @Body() body: { email: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      return await this.authClient.signup(body.email, body.password);
+      const session = await this.authClient.signup(body.email, body.password);
+      const csrfToken = generateCsrfToken();
+      setAuthCookies(res, {
+        refreshToken: session.refreshToken,
+        csrfToken,
+        isProd: this.isProd(),
+      });
+      return { accessToken: session.accessToken, user: session.user };
     } catch (err) {
       const msg =
         (err as { message?: string; code?: string })?.message ??
@@ -90,8 +101,14 @@ export class AuthController {
       },
     },
   })
-  login(@Body() body: { email: string; password: string }) {
-    return this.authClient.login(body.email, body.password);
+  async login(
+    @Body() body: { email: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.authClient.login(body.email, body.password);
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
+    return { accessToken: session.accessToken, user: session.user };
   }
 
   @Public()
@@ -134,8 +151,14 @@ export class AuthController {
       properties: { token: { type: 'string' } },
     },
   })
-  verifyMagicLink(@Body() body: { token: string }) {
-    return this.authClient.verifyMagicLink(body.token);
+  async verifyMagicLink(
+    @Body() body: { token: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.authClient.verifyMagicLink(body.token);
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
+    return { accessToken: session.accessToken, user: session.user };
   }
 
   @Get('me')
@@ -414,5 +437,9 @@ export class AuthController {
   private uid(req: Request & { user?: VerifiedToken }): string {
     if (!req.user?.uid) throw new UnauthorizedException('missing_user');
     return req.user.uid;
+  }
+
+  private isProd(): boolean {
+    return this.cfg.get<string>('NODE_ENV') === 'production';
   }
 }
