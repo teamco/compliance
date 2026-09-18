@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { UserCog } from 'lucide-react';
 import { useAuthStore, useNotify } from '@icore/template-shared';
 import type { Issue, RootCauseCategory } from '@icore/shared';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,11 @@ import {
   useIssueValidations,
   useSubmitIssueForValidation,
   useReviewIssueValidation,
+  useReassignIssueOwner,
+  useReassignIssueValidator,
 } from '@/queries/issues';
 import { useOrgMembers } from '@/queries/org-members';
+import { ReassignDialog } from '@/components/shared/ReassignDialog';
 
 const ROOT_CAUSE_CATEGORIES: RootCauseCategory[] = [
   'process_gap',
@@ -50,6 +54,10 @@ export function IssueDetailSheet({
   // from the org; their name must still resolve, so this list stays separate
   // from `members` (active-only, used for the validator picker below).
   const { data: allMembers = [] } = useOrgMembers(orgId, { includeInactive: true });
+  const myMembership = members.find((m) => m.userId === currentUserId);
+  const canManage = myMembership?.role === 'owner' || myMembership?.role === 'admin';
+  const reassignOwnerMut = useReassignIssueOwner(orgId);
+  const reassignValidatorMut = useReassignIssueValidator(orgId);
   const { data: validations = [] } = useIssueValidations(issue.id);
   const submitMut = useSubmitIssueForValidation(orgId);
   const reviewMut = useReviewIssueValidation(orgId);
@@ -61,6 +69,7 @@ export function IssueDetailSheet({
   );
   const [validatorId, setValidatorId] = useState('');
   const [rejectNotes, setRejectNotes] = useState('');
+  const [reassignTarget, setReassignTarget] = useState<'owner' | 'validator' | null>(null);
 
   const pendingValidation = validations.find((v) => v.status === 'pending');
   const isOwner = currentUserId === issue.ownerId;
@@ -169,6 +178,21 @@ export function IssueDetailSheet({
               <p>
                 {t('issues.detail.status')}: <strong>{t(`issues.status.${issue.status}`)}</strong>
               </p>
+              <p className="flex items-center gap-2">
+                {t('issues.detail.owner')}:{' '}
+                <strong>{resolveMemberName(issue.ownerId ?? '')}</strong>
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setReassignTarget('owner')}
+                  >
+                    <UserCog size={13} />
+                    <span className="sr-only">{t('issues.detail.reassignOwner')}</span>
+                  </Button>
+                )}
+              </p>
             </div>
           )}
 
@@ -214,10 +238,21 @@ export function IssueDetailSheet({
             <div className="space-y-4">
               {pendingValidation ? (
                 <div className="border border-border rounded-lg p-3 space-y-2 text-sm">
-                  <p>
+                  <p className="flex items-center gap-2">
                     {t('issues.detail.pendingValidationFor', {
                       name: resolveMemberName(pendingValidation.validatorId),
                     })}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => setReassignTarget('validator')}
+                      >
+                        <UserCog size={13} />
+                        <span className="sr-only">{t('issues.detail.reassignValidator')}</span>
+                      </Button>
+                    )}
                   </p>
                   {isAssignedValidator && (
                     <textarea
@@ -310,6 +345,36 @@ export function IssueDetailSheet({
                 ))}
         </footer>
       </SheetContent>
+      <ReassignDialog
+        open={reassignTarget === 'owner'}
+        isPending={reassignOwnerMut.isPending}
+        title={t('issues.detail.reassignOwner')}
+        members={members}
+        currentAssigneeId={issue.ownerId ?? ''}
+        onOpenChange={(open) => !open && setReassignTarget(null)}
+        onConfirm={(newOwnerId) => {
+          reassignOwnerMut.mutate(
+            { id: issue.id, newOwnerId },
+            { onSuccess: () => setReassignTarget(null) },
+          );
+        }}
+      />
+      {pendingValidation && (
+        <ReassignDialog
+          open={reassignTarget === 'validator'}
+          isPending={reassignValidatorMut.isPending}
+          title={t('issues.detail.reassignValidator')}
+          members={members}
+          currentAssigneeId={pendingValidation.validatorId}
+          onOpenChange={(open) => !open && setReassignTarget(null)}
+          onConfirm={(newValidatorId) => {
+            reassignValidatorMut.mutate(
+              { id: pendingValidation.id, issueId: issue.id, newValidatorId },
+              { onSuccess: () => setReassignTarget(null) },
+            );
+          }}
+        />
+      )}
     </Sheet>
   );
 }
