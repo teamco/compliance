@@ -1976,8 +1976,15 @@ export class NotesController {
 
   @Post('assessments/:id/approve')
   @ApiOperation({ summary: 'Approve an assessment' })
-  approveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async approveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const assessment = await this.notes.getAssessment(id);
+    if (!assessment) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
+    if (!org) throw new NotFoundException();
+    if (assessment.approverId) {
+      await this.assertActiveAssignee(org, assessment.approverId);
+    }
     return this.notes.approveAssessment(id, userId);
   }
 
@@ -2003,12 +2010,19 @@ export class NotesController {
 
   @Post('assessments/:id/request-changes')
   @ApiOperation({ summary: 'Request changes on an assessment' })
-  requestChanges(
+  async requestChanges(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { note: string },
   ) {
     const userId = this.uid(req);
+    const assessment = await this.notes.getAssessment(id);
+    if (!assessment) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
+    if (!org) throw new NotFoundException();
+    if (assessment.approverId) {
+      await this.assertActiveAssignee(org, assessment.approverId);
+    }
     return this.notes.requestChanges(id, userId, body.note);
   }
 
