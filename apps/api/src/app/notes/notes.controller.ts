@@ -1685,26 +1685,47 @@ export class NotesController {
 
   @Post('risk-acceptances/:id/review')
   @ApiOperation({ summary: 'Review a risk acceptance request' })
-  reviewRiskAcceptance(
+  async reviewRiskAcceptance(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { reviewNotes?: string },
   ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, acceptance.approverId);
     return this.notes.reviewRiskAcceptance(id, userId, body.reviewNotes);
   }
 
   @Post('risk-acceptances/:id/approve')
   @ApiOperation({ summary: 'Approve a risk acceptance request' })
-  approveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async approveRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, acceptance.approverId);
     return this.notes.approveRiskAcceptance(id, userId);
   }
 
   @Post('risk-acceptances/:id/reject')
   @ApiOperation({ summary: 'Reject a risk acceptance request' })
-  rejectRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async rejectRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, acceptance.approverId);
     return this.notes.rejectRiskAcceptance(id, userId);
   }
 
