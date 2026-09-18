@@ -20,6 +20,20 @@ export function createIcoreApi(opts: { baseUrl: string; onUnauthorized?: () => v
       opts.onUnauthorized?.();
     },
     refreshPath: '/auth/refresh',
+    // The gateway's real POST /auth/refresh response is `{ accessToken, user }`
+    // — camelCase, and with NO refresh-token field at all (the real refresh
+    // token lives only in the httpOnly cookie, never in a JSON body). The
+    // library's internal doRefresh() defaults to reading `access_token` /
+    // `refresh_token` and returns null (forcing onUnauthorized()) if either is
+    // missing, so both fields must be remapped onto the one field the gateway
+    // actually sends. Pointing refreshTokenField at 'accessToken' too is a
+    // deliberate trick, not a bug: it only needs to satisfy doRefresh()'s
+    // `typeof nextRefresh !== 'string'` guard with *some* string — the value
+    // is never used, since onTokenRefreshed above destructures only
+    // `accessToken` and ignores `refreshToken` entirely. No real refresh
+    // token or new data is ever exposed in a JSON body by doing this.
+    accessTokenField: 'accessToken',
+    refreshTokenField: 'accessToken',
   });
 }
 
