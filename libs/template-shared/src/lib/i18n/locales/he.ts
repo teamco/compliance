@@ -746,6 +746,8 @@ export const he = {
       expiresAt: 'תפוגה',
       linkedRisk: 'סיכון מקושר',
       noLinkedRisk: 'אין סיכון מקושר',
+      owner: 'בעלים',
+      reassignOwner: 'הקצה בעלים מחדש',
       approved: 'החריגה אושרה',
       rejected: 'החריגה נדחתה',
       proposedExpiresAt: 'תאריך תפוגה מוצע חדש',

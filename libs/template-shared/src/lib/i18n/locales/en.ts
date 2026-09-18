@@ -795,6 +795,8 @@ export const en = {
       expiresAt: 'Expires',
       linkedRisk: 'Linked Risk',
       noLinkedRisk: 'No linked risk',
+      owner: 'Owner',
+      reassignOwner: 'Reassign Owner',
       approved: 'Exception approved',
       rejected: 'Exception rejected',
       proposedExpiresAt: 'Proposed New Expiry Date',

@@ -761,6 +761,8 @@ export const ru = {
       expiresAt: 'Истекает',
       linkedRisk: 'Связанный риск',
       noLinkedRisk: 'Нет связанного риска',
+      owner: 'Владелец',
+      reassignOwner: 'Переназначить владельца',
       approved: 'Исключение одобрено',
       rejected: 'Исключение отклонено',
       proposedExpiresAt: 'Предлагаемая новая дата истечения',

@@ -22,10 +22,30 @@ vi.mock('@/queries/risks', () => ({
   }),
 }));
 
+vi.mock('@/queries/org-members', () => ({
+  useOrgMembers: () => ({
+    data: [
+      {
+        userId: 'owner-1',
+        displayName: 'Org Owner',
+        email: 'org-owner@example.com',
+        role: 'owner',
+      },
+      {
+        userId: 'reviewer-1',
+        displayName: 'Reviewer One',
+        email: 'reviewer@example.com',
+        role: 'viewer',
+      },
+    ],
+  }),
+}));
+
 const mockRequest = vi.fn();
 const mockReview = vi.fn();
 const mockApprove = vi.fn();
 const mockReject = vi.fn();
+const mockReassignOwner = vi.fn();
 let mockRenewals: unknown[] = [];
 
 vi.mock('@/queries/exceptions', () => ({
@@ -34,6 +54,7 @@ vi.mock('@/queries/exceptions', () => ({
   useReviewExceptionRenewal: () => ({ mutate: mockReview, isPending: false }),
   useApproveException: () => ({ mutate: mockApprove, isPending: false }),
   useRejectException: () => ({ mutate: mockReject, isPending: false }),
+  useReassignExceptionOwner: () => ({ mutate: mockReassignOwner, isPending: false }),
 }));
 
 const baseException: Exception = {
@@ -78,8 +99,18 @@ describe('ExceptionDetailSheet', () => {
     mockReview.mockClear();
     mockApprove.mockClear();
     mockReject.mockClear();
+    mockReassignOwner.mockClear();
     mockRenewals = [];
     mockCurrentUserId = 'owner-1';
+  });
+
+  it('shows an Owner row with a reassign control for a manager', () => {
+    renderSheet(baseException);
+    expect(screen.getByText('Org Owner')).toBeDefined();
+    // This suite has no i18next instance mocked, so `t()` returns the raw
+    // key (same convention as every other assertion here, e.g.
+    // 'exceptions.status.pending') rather than translated copy.
+    expect(screen.getByRole('button', { name: 'exceptions.detail.reassignOwner' })).toBeDefined();
   });
 
   it('renders the overview tab with statement/justification/status/linked-risk by default', () => {

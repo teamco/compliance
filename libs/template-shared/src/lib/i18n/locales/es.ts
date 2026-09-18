@@ -780,6 +780,8 @@ export const es = {
       expiresAt: 'Vence',
       linkedRisk: 'Riesgo vinculado',
       noLinkedRisk: 'Sin riesgo vinculado',
+      owner: 'Propietario',
+      reassignOwner: 'Reasignar propietario',
       approved: 'Excepción aprobada',
       rejected: 'Excepción rechazada',
       proposedExpiresAt: 'Nueva fecha de vencimiento propuesta',
