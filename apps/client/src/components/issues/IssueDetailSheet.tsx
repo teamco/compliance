@@ -22,6 +22,7 @@ import {
 } from '@/queries/issues';
 import { useOrgMembers } from '@/queries/org-members';
 import { ReassignDialog } from '@/components/shared/ReassignDialog';
+import { getApiErrorMessage } from '@/lib/api-error-message';
 
 const ROOT_CAUSE_CATEGORIES: RootCauseCategory[] = [
   'process_gap',
@@ -108,7 +109,7 @@ export function IssueDetailSheet({
       { id: issue.id, data: { rootCause, rootCauseCategory, validatorId } },
       {
         onSuccess: () => notify.success(t('issues.detail.submitted')),
-        onError: () => notify.error(t('error.unknown')),
+        onError: (err) => notify.error(getApiErrorMessage(err, t)),
       },
     );
   }
@@ -119,7 +120,7 @@ export function IssueDetailSheet({
       { id: pendingValidation.id, issueId: issue.id, decision: 'approved' },
       {
         onSuccess: () => notify.success(t('issues.detail.approved')),
-        onError: () => notify.error(t('error.unknown')),
+        onError: (err) => notify.error(getApiErrorMessage(err, t)),
       },
     );
   }
@@ -138,7 +139,7 @@ export function IssueDetailSheet({
           notify.success(t('issues.detail.rejected'));
           setRejectNotes('');
         },
-        onError: () => notify.error(t('error.unknown')),
+        onError: (err) => notify.error(getApiErrorMessage(err, t)),
       },
     );
   }
@@ -357,7 +358,7 @@ export function IssueDetailSheet({
             { id: issue.id, newOwnerId },
             {
               onSuccess: () => setReassignTarget(null),
-              onError: () => notify.error(t('error.unknown')),
+              onError: (err) => notify.error(getApiErrorMessage(err, t)),
             },
           );
         }}
@@ -375,7 +376,7 @@ export function IssueDetailSheet({
               { id: pendingValidation.id, issueId: issue.id, newValidatorId },
               {
                 onSuccess: () => setReassignTarget(null),
-                onError: () => notify.error(t('error.unknown')),
+                onError: (err) => notify.error(getApiErrorMessage(err, t)),
               },
             );
           }}

@@ -11,6 +11,7 @@ import { useAssessmentTypes } from '@/queries/assessment-types';
 import { AssessmentItemsPanel } from '@/components/assessments/AssessmentItemsPanel';
 import { useOrgMembers } from '@/queries/org-members';
 import { ReassignDialog } from '@/components/shared/ReassignDialog';
+import { getApiErrorMessage } from '@/lib/api-error-message';
 import {
   useAssessment,
   useStartAssessment,
@@ -227,7 +228,7 @@ export function AssessmentDetailPage() {
             { newApproverId },
             {
               onSuccess: () => setReassignOpen(false),
-              onError: () => notify.error(t('error.unknown')),
+              onError: (err) => notify.error(getApiErrorMessage(err, t)),
             },
           );
         }}

@@ -1313,6 +1313,8 @@ export const es = {
     accessDenied: 'Acceso denegado',
     accessDeniedHint: 'No tienes permiso para ver esta página.',
     unknown: 'Algo salió mal.',
+    assigneeNotActiveMember:
+      'Esta persona ya no es miembro activo de la organización. Reasigna antes de continuar.',
   },
   acceptInvite: {
     notFound: 'Este enlace de invitación no es válido o ha caducado.',

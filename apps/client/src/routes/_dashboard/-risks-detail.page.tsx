@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button';
 import { EvidencePanel } from '@/components/evidence/EvidencePanel';
 import { AppetiteBadge } from '@/components/risks/AppetiteBadge';
 import { ReassignDialog } from '@/components/shared/ReassignDialog';
+import { getApiErrorMessage } from '@/lib/api-error-message';
 import {
   Dialog,
   DialogContent,
@@ -355,7 +356,7 @@ export function RiskDetailPage() {
                   { id: activeAcceptance.id, newApproverId },
                   {
                     onSuccess: () => setReassignOpen(false),
-                    onError: () => notify.error(t('error.unknown')),
+                    onError: (err) => notify.error(getApiErrorMessage(err, t)),
                   },
                 );
               }}
