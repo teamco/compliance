@@ -65,6 +65,7 @@ function makeAuthClient(): AuthClientService {
     }),
     setRole: vi.fn().mockResolvedValue(undefined),
     revokeSession: vi.fn().mockResolvedValue(undefined),
+    verify: vi.fn().mockResolvedValue({ uid: 'u1', email: 'a@x.com', role: 'user' }),
   } as unknown as AuthClientService;
 }
 
@@ -156,6 +157,40 @@ describe('AuthController (gateway) — magic-link', () => {
     );
     expect(session).toEqual({ accessToken: 'at', user: { id: 'u1', email: 'a@x.com' } });
     expect(res.cookies['icore_rt']).toBe('rt');
+  });
+});
+
+describe('AuthController (gateway) — session/adopt', () => {
+  it('verifies the access token, sets both cookies, and returns accessToken+user', async () => {
+    const client = makeAuthClient();
+    const controller = new AuthController(client, makeConfig({}));
+    const res = makeRes();
+    const result = await controller.adoptSession(
+      { accessToken: 'supabase-at', refreshToken: 'supabase-rt' },
+      res as unknown as import('express').Response,
+    );
+    expect(client.verify).toHaveBeenCalledWith('supabase-at');
+    expect(result).toEqual({
+      accessToken: 'supabase-at',
+      user: { id: 'u1', email: 'a@x.com', role: 'user' },
+    });
+    expect(res.cookies['icore_rt']).toBe('supabase-rt');
+    expect(res.cookies['icore_csrf']).toBeTruthy();
+  });
+
+  it('rejects with 401 and sets no cookies when the access token fails verification', async () => {
+    const client = makeAuthClient();
+    (client.verify as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('invalid_jwt'));
+    const controller = new AuthController(client, makeConfig({}));
+    const res = makeRes();
+    await expect(
+      controller.adoptSession(
+        { accessToken: 'garbage', refreshToken: 'rt' },
+        res as unknown as import('express').Response,
+      ),
+    ).rejects.toThrow(UnauthorizedException);
+    expect(res.cookies['icore_rt']).toBeUndefined();
+    expect(res.cookies['icore_csrf']).toBeUndefined();
   });
 });
 

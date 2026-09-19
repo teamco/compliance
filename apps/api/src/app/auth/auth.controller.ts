@@ -200,6 +200,34 @@ export class AuthController {
     return { accessToken: session.accessToken, user: session.user };
   }
 
+  @Public()
+  @Post('session/adopt')
+  @ApiOperation({
+    summary:
+      'Adopt a Supabase-issued session (from the magic-link/OAuth implicit-flow hash fragment) by setting httpOnly cookies',
+  })
+  async adoptSession(
+    @Body() body: { accessToken: string; refreshToken: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    let verified: VerifiedToken;
+    try {
+      verified = await this.authClient.verify(body.accessToken);
+    } catch {
+      throw new UnauthorizedException('invalid_token');
+    }
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, {
+      refreshToken: body.refreshToken,
+      csrfToken,
+      isProd: this.isProd(),
+    });
+    return {
+      accessToken: body.accessToken,
+      user: { id: verified.uid, email: verified.email, role: verified.role },
+    };
+  }
+
   @Get('me')
   @ApiOperation({ summary: 'Return current user; assigns initial role on first call' })
   async me(@Req() req: Request & { user?: VerifiedToken }): Promise<VerifiedToken> {
