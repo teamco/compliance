@@ -17,6 +17,7 @@ import {
 import { useRisks } from '@/queries/risks';
 import { useOrgMembers } from '@/queries/org-members';
 import { ReassignDialog } from '@/components/shared/ReassignDialog';
+import { getApiErrorMessage } from '@/lib/api-error-message';
 
 type DetailTab = 'overview' | 'renewal';
 
@@ -77,14 +78,14 @@ export function ExceptionDetailSheet({
   function handleApprove() {
     approveMut.mutate(exception.id, {
       onSuccess: () => notify.success(t('exceptions.detail.approved')),
-      onError: () => notify.error(t('error.unknown')),
+      onError: (err) => notify.error(getApiErrorMessage(err, t)),
     });
   }
 
   function handleReject() {
     rejectMut.mutate(exception.id, {
       onSuccess: () => notify.success(t('exceptions.detail.rejected')),
-      onError: () => notify.error(t('error.unknown')),
+      onError: (err) => notify.error(getApiErrorMessage(err, t)),
     });
   }
 
@@ -98,7 +99,7 @@ export function ExceptionDetailSheet({
           setProposedExpiresAt('');
           setRenewalJustification('');
         },
-        onError: () => notify.error(t('error.unknown')),
+        onError: (err) => notify.error(getApiErrorMessage(err, t)),
       },
     );
   }
@@ -109,7 +110,7 @@ export function ExceptionDetailSheet({
       { id: pendingRenewal.id, exceptionId: exception.id, decision: 'approved' },
       {
         onSuccess: () => notify.success(t('exceptions.detail.renewalApproved')),
-        onError: () => notify.error(t('error.unknown')),
+        onError: (err) => notify.error(getApiErrorMessage(err, t)),
       },
     );
   }
@@ -128,7 +129,7 @@ export function ExceptionDetailSheet({
           notify.success(t('exceptions.detail.renewalRejected'));
           setRejectNotes('');
         },
-        onError: () => notify.error(t('error.unknown')),
+        onError: (err) => notify.error(getApiErrorMessage(err, t)),
       },
     );
   }
@@ -337,7 +338,7 @@ export function ExceptionDetailSheet({
             { id: exception.id, newOwnerId },
             {
               onSuccess: () => setReassignOpen(false),
-              onError: () => notify.error(t('error.unknown')),
+              onError: (err) => notify.error(getApiErrorMessage(err, t)),
             },
           );
         }}

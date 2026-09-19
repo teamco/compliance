@@ -1331,6 +1331,8 @@ export const en = {
     accessDenied: 'Access denied',
     accessDeniedHint: 'You do not have permission to view this page.',
     unknown: 'Something went wrong.',
+    assigneeNotActiveMember:
+      'This person is no longer an active member of the organization. Reassign before continuing.',
   },
   acceptInvite: {
     notFound: 'This invite link is invalid or has expired.',

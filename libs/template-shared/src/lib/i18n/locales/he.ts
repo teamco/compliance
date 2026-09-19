@@ -1273,6 +1273,7 @@ export const he = {
     accessDenied: 'גישה נדחתה',
     accessDeniedHint: 'אין לך הרשאה לצפות בדף זה.',
     unknown: 'משהו השתבש.',
+    assigneeNotActiveMember: 'משתמש זה כבר אינו חבר פעיל בארגון. הקצה מחדש לפני שתמשיך.',
   },
   acceptInvite: {
     notFound: 'קישור ההזמנה הזה אינו תקין או שפג תוקפו.',
