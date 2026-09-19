@@ -140,20 +140,33 @@ export class NotesController {
 
   @Get('frameworks/:id/requirements')
   @ApiOperation({ summary: 'List requirements for a framework' })
-  listRequirements(@Param('id') id: string, @Query('orgId') orgId?: string) {
+  async listRequirements(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+    @Query('orgId') orgId?: string,
+  ) {
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgAccess(req, org, 'read');
     return this.notes.listRequirements(id, orgId);
   }
 
   @Get('frameworks/:id/requirements/:reqId')
   @ApiOperation({ summary: 'Get specific requirement details' })
   async getRequirement(
+    @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Param('reqId') reqId: string,
     @Query('orgId') orgId?: string,
   ) {
-    const req = await this.notes.getRequirement(id, reqId, orgId);
-    if (!req) throw new NotFoundException('Requirement not found');
-    return req;
+    if (!orgId) throw new BadRequestException('orgId required');
+    const org = await this.notes.getOrganizationById(orgId);
+    if (!org) throw new NotFoundException();
+    await this.checkOrgAccess(req, org, 'read');
+    const requirement = await this.notes.getRequirement(id, reqId, orgId);
+    if (!requirement) throw new NotFoundException('Requirement not found');
+    return requirement;
   }
 
   @Patch('frameworks/:id/requirements/:reqId')

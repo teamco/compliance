@@ -369,30 +369,39 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     const req = await this.getRequirement(frameworkId, reqId, orgId);
     if (!req) throw new Error(`requirement_not_found: ${reqId}`);
 
-    const merged: FrameworkRequirement = { ...req, ...patch };
-    const { error } = await this.db.from('org_requirement_status').upsert(
-      {
-        org_id: orgId,
-        control_id: req.id,
-        applicability: merged.applicability,
-        applicability_rationale: merged.applicabilityRationale ?? '',
-        not_applicable_reason: merged.notApplicableReason ?? '',
-        scope_business_units: merged.scopeBusinessUnits ?? [],
-        scope_systems: merged.scopeSystems ?? [],
-        scope_locations: merged.scopeLocations ?? [],
-        scope_legal_entities: merged.scopeLegalEntities ?? [],
-        implementation_status: merged.implementationStatus,
-        implementation_description: merged.implementationDescription ?? '',
-        control_owner: merged.controlOwner ?? '',
-        control_operator: merged.controlOperator ?? '',
-        review_frequency: merged.reviewFrequency ?? 'Annual',
-        last_assessed: merged.lastAssessed || null,
-        next_assessment: merged.nextAssessment || null,
-      },
-      { onConflict: 'org_id,control_id' },
-    );
+    const columnPatch: Record<string, unknown> = {
+      org_id: orgId,
+      control_id: req.id,
+      updated_at: new Date().toISOString(),
+    };
+    if (patch.applicability !== undefined) columnPatch.applicability = patch.applicability;
+    if (patch.applicabilityRationale !== undefined)
+      columnPatch.applicability_rationale = patch.applicabilityRationale;
+    if (patch.notApplicableReason !== undefined)
+      columnPatch.not_applicable_reason = patch.notApplicableReason;
+    if (patch.scopeBusinessUnits !== undefined)
+      columnPatch.scope_business_units = patch.scopeBusinessUnits;
+    if (patch.scopeSystems !== undefined) columnPatch.scope_systems = patch.scopeSystems;
+    if (patch.scopeLocations !== undefined) columnPatch.scope_locations = patch.scopeLocations;
+    if (patch.scopeLegalEntities !== undefined)
+      columnPatch.scope_legal_entities = patch.scopeLegalEntities;
+    if (patch.implementationStatus !== undefined)
+      columnPatch.implementation_status = patch.implementationStatus;
+    if (patch.implementationDescription !== undefined)
+      columnPatch.implementation_description = patch.implementationDescription;
+    if (patch.controlOwner !== undefined) columnPatch.control_owner = patch.controlOwner;
+    if (patch.controlOperator !== undefined) columnPatch.control_operator = patch.controlOperator;
+    if (patch.reviewFrequency !== undefined) columnPatch.review_frequency = patch.reviewFrequency;
+    if (patch.lastAssessed !== undefined) columnPatch.last_assessed = patch.lastAssessed || null;
+    if (patch.nextAssessment !== undefined)
+      columnPatch.next_assessment = patch.nextAssessment || null;
+
+    const { error } = await this.db
+      .from('org_requirement_status')
+      .upsert(columnPatch, { onConflict: 'org_id,control_id' });
     if (error) throw new Error(error.message);
-    return merged;
+
+    return { ...req, ...patch };
   }
 
   async listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {

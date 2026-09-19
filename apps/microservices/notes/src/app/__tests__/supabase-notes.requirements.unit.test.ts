@@ -108,6 +108,39 @@ describe('SupabaseNotesStrategy.listRequirements', () => {
       controlOwner: 'CISO',
     });
   });
+
+  it("does not leak another org's override data into a different org's read", async () => {
+    const db = createMockNotesDb({
+      controls: [CONTROL_A],
+      org_requirement_status: [
+        {
+          org_id: 'org-2',
+          control_id: 'ctrl-1',
+          applicability: 'applicable',
+          applicability_rationale: 'org-2 confidential rationale',
+          not_applicable_reason: '',
+          scope_business_units: [],
+          scope_systems: [],
+          scope_locations: [],
+          scope_legal_entities: [],
+          implementation_status: 'implemented',
+          implementation_description: '',
+          control_owner: 'org-2-owner',
+          control_operator: '',
+          review_frequency: 'Annual',
+          last_assessed: null,
+          next_assessment: null,
+        },
+      ],
+    });
+    const strategy = new SupabaseNotesStrategy(db);
+
+    const result = await strategy.listRequirements('fw-1', 'org-1');
+
+    expect(result[0].applicability).toBe('not_determined');
+    expect(result[0].controlOwner).toBe('');
+    expect(result[0].applicabilityRationale).toBe('');
+  });
 });
 
 describe('SupabaseNotesStrategy.getRequirement', () => {
