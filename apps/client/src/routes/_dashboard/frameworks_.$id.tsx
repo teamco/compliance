@@ -344,7 +344,8 @@ function FrameworkWorkspacePage() {
             </Button>
             <Button
               size="sm"
-              onClick={() => setSelectedReqId(requirements[0]?.id || 'nist-gv-po-01')}
+              disabled={requirements.length === 0}
+              onClick={() => requirements[0] && setSelectedReqId(requirements[0].id)}
               className="bg-green-600 hover:bg-green-500 text-white text-xs gap-1.5 h-8"
             >
               <Sparkles size={13} />
