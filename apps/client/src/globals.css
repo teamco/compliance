@@ -94,6 +94,14 @@
     color-scheme: light;
   }
 
+  /* body's own color-scheme declaration above wins over html.dark's for
+     body and its descendants (native controls included), so it must be
+     re-asserted here or every dark-mode date/time picker icon stays
+     rendered in light-scheme colors. */
+  html.dark body {
+    color-scheme: dark;
+  }
+
   /* Dark — Trust & Authority */
   html.dark {
     color-scheme: dark;
