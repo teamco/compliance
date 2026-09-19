@@ -363,12 +363,36 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updateRequirement(
     frameworkId: string,
     reqId: string,
-    _orgId: string,
+    orgId: string,
     patch: FrameworkRequirementPatch,
   ): Promise<FrameworkRequirement> {
-    const req = await this.getRequirement(frameworkId, reqId);
+    const req = await this.getRequirement(frameworkId, reqId, orgId);
     if (!req) throw new Error(`requirement_not_found: ${reqId}`);
-    return { ...req, ...patch };
+
+    const merged: FrameworkRequirement = { ...req, ...patch };
+    const { error } = await this.db.from('org_requirement_status').upsert(
+      {
+        org_id: orgId,
+        control_id: req.id,
+        applicability: merged.applicability,
+        applicability_rationale: merged.applicabilityRationale ?? '',
+        not_applicable_reason: merged.notApplicableReason ?? '',
+        scope_business_units: merged.scopeBusinessUnits ?? [],
+        scope_systems: merged.scopeSystems ?? [],
+        scope_locations: merged.scopeLocations ?? [],
+        scope_legal_entities: merged.scopeLegalEntities ?? [],
+        implementation_status: merged.implementationStatus,
+        implementation_description: merged.implementationDescription ?? '',
+        control_owner: merged.controlOwner ?? '',
+        control_operator: merged.controlOperator ?? '',
+        review_frequency: merged.reviewFrequency ?? 'Annual',
+        last_assessed: merged.lastAssessed || null,
+        next_assessment: merged.nextAssessment || null,
+      },
+      { onConflict: 'org_id,control_id' },
+    );
+    if (error) throw new Error(error.message);
+    return merged;
   }
 
   async listInternalControls(orgId?: string, frameworkId?: string): Promise<InternalControl[]> {

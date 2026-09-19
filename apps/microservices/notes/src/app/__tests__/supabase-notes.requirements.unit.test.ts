@@ -109,3 +109,68 @@ describe('SupabaseNotesStrategy.listRequirements', () => {
     });
   });
 });
+
+describe('SupabaseNotesStrategy.getRequirement', () => {
+  it('finds a requirement by code within a framework', async () => {
+    const db = createMockNotesDb({ controls: [CONTROL_A], org_requirement_status: [] });
+    const strategy = new SupabaseNotesStrategy(db);
+
+    const result = await strategy.getRequirement('fw-1', 'GV.PO-01', 'org-1');
+
+    expect(result?.id).toBe('ctrl-1');
+  });
+
+  it('returns null for an unknown requirement', async () => {
+    const db = createMockNotesDb({ controls: [CONTROL_A], org_requirement_status: [] });
+    const strategy = new SupabaseNotesStrategy(db);
+
+    const result = await strategy.getRequirement('fw-1', 'does-not-exist', 'org-1');
+
+    expect(result).toBeNull();
+  });
+});
+
+describe('SupabaseNotesStrategy.updateRequirement', () => {
+  it('persists the patch so a later read reflects it', async () => {
+    const db = createMockNotesDb({ controls: [CONTROL_A], org_requirement_status: [] });
+    const strategy = new SupabaseNotesStrategy(db);
+
+    await strategy.updateRequirement('fw-1', 'ctrl-1', 'org-1', {
+      applicability: 'applicable',
+      implementationStatus: 'implemented',
+      controlOwner: 'CISO',
+    });
+    const reread = await strategy.getRequirement('fw-1', 'ctrl-1', 'org-1');
+
+    expect(reread).toMatchObject({
+      applicability: 'applicable',
+      implementationStatus: 'implemented',
+      controlOwner: 'CISO',
+    });
+  });
+
+  it("applying a second patch does not lose the first patch's other fields", async () => {
+    const db = createMockNotesDb({ controls: [CONTROL_A], org_requirement_status: [] });
+    const strategy = new SupabaseNotesStrategy(db);
+
+    await strategy.updateRequirement('fw-1', 'ctrl-1', 'org-1', { controlOwner: 'CISO' });
+    await strategy.updateRequirement('fw-1', 'ctrl-1', 'org-1', {
+      implementationStatus: 'implemented',
+    });
+    const reread = await strategy.getRequirement('fw-1', 'ctrl-1', 'org-1');
+
+    expect(reread).toMatchObject({
+      controlOwner: 'CISO',
+      implementationStatus: 'implemented',
+    });
+  });
+
+  it('throws requirement_not_found for an unknown requirement', async () => {
+    const db = createMockNotesDb({ controls: [CONTROL_A], org_requirement_status: [] });
+    const strategy = new SupabaseNotesStrategy(db);
+
+    await expect(strategy.updateRequirement('fw-1', 'does-not-exist', 'org-1', {})).rejects.toThrow(
+      'requirement_not_found',
+    );
+  });
+});
