@@ -129,9 +129,9 @@ describe('NotesController — framework instance-data org scoping', () => {
 
     it('rejects when orgId is missing', async () => {
       const notes = makeNotes();
-      await expect(
-        makeController(notes).listRequirements(reqAs('anyone'), 'fw-1'),
-      ).rejects.toThrow(BadRequestException);
+      await expect(makeController(notes).listRequirements(reqAs('anyone'), 'fw-1')).rejects.toThrow(
+        BadRequestException,
+      );
       expect(notes.listRequirements).not.toHaveBeenCalled();
     });
 
