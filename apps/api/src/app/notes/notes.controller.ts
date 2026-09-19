@@ -1076,7 +1076,10 @@ export class NotesController {
     const isPartyToException =
       exception.ownerId === userId ||
       renewals.some((r) => r.requestedBy === userId || r.reviewedBy === userId);
-    if (org.userId !== userId && !isPartyToException) throw new ForbiddenException();
+    if (org.userId !== userId && !isPartyToException) {
+      const members = await this.auth.listOrgMembers(org.id, org.userId);
+      if (!members.some((m) => m.userId === userId)) throw new ForbiddenException();
+    }
     return renewals;
   }
 
