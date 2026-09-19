@@ -12,10 +12,6 @@ import { join } from 'path';
 const EXEMPT_ROUTES: Record<string, string> = {
   "Get 'frameworks'": 'Platform-wide catalog; Supabase strategy applies no org filter',
   "Get 'frameworks/:id'": 'Platform-wide catalog; Supabase strategy applies no org filter',
-  "Get 'frameworks/:id/requirements'":
-    'Platform-wide catalog; Supabase strategy applies no org filter',
-  "Get 'frameworks/:id/requirements/:reqId'":
-    'Platform-wide catalog; Supabase strategy applies no org filter',
   "Get 'frameworks/:id/controls'":
     'Catalog controls table, no org column, no org filter in the query',
   "Get 'orgs'": "Filtered server-side by the caller's own uid, nothing attacker-controlled",

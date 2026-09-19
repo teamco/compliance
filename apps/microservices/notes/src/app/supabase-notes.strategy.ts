@@ -36,6 +36,8 @@ import type {
   FrameworkMappingType,
   MappingValidation,
   ImplementationStatus,
+  FrameworkApplicabilityStatus,
+  RequirementMapping,
   EffectivenessStatus,
   RequirementEvidence,
   EvidencePatch,
@@ -114,6 +116,76 @@ import {
 function ok<T>(data: T | null, error: { message: string } | null): T {
   if (error) throw new Error(error.message);
   return data as T;
+}
+
+interface ControlCatalogRow {
+  id: string;
+  framework_id: string;
+  code: string;
+  title: string;
+  description: string;
+  category: string;
+  category_code: string | null;
+  function_code: string | null;
+  function_name: string | null;
+  guidance: string | null;
+  informative_references: string[] | null;
+  cross_framework_mappings: RequirementMapping[] | null;
+}
+
+interface OrgRequirementStatusRow {
+  control_id: string;
+  applicability: FrameworkApplicabilityStatus;
+  applicability_rationale: string;
+  not_applicable_reason: string;
+  scope_business_units: string[];
+  scope_systems: string[];
+  scope_locations: string[];
+  scope_legal_entities: string[];
+  implementation_status: ImplementationStatus;
+  implementation_description: string;
+  control_owner: string;
+  control_operator: string;
+  review_frequency: string;
+  last_assessed: string | null;
+  next_assessment: string | null;
+}
+
+function toFrameworkRequirement(
+  c: ControlCatalogRow,
+  o: OrgRequirementStatusRow | undefined,
+): FrameworkRequirement {
+  return {
+    id: c.id,
+    frameworkId: c.framework_id,
+    code: c.code,
+    title: c.title,
+    description: c.description,
+    functionCode: c.function_code ?? undefined,
+    functionName: c.function_name ?? undefined,
+    categoryCode: c.category_code ?? c.code.split('-')[0] ?? c.code,
+    categoryName: c.category,
+    guidance: c.guidance ?? undefined,
+    references: c.informative_references ?? undefined,
+    crossFrameworkMappings: c.cross_framework_mappings ?? undefined,
+    applicability: o?.applicability ?? 'not_determined',
+    applicabilityRationale: o?.applicability_rationale ?? '',
+    notApplicableReason: o?.not_applicable_reason ?? '',
+    scopeBusinessUnits: o?.scope_business_units ?? [],
+    scopeSystems: o?.scope_systems ?? [],
+    scopeLocations: o?.scope_locations ?? [],
+    scopeLegalEntities: o?.scope_legal_entities ?? [],
+    implementationStatus: o?.implementation_status ?? 'not_implemented',
+    implementationDescription: o?.implementation_description ?? '',
+    controlOwner: o?.control_owner ?? '',
+    controlOperator: o?.control_operator ?? '',
+    reviewFrequency: o?.review_frequency ?? 'Annual',
+    lastAssessed: o?.last_assessed ?? undefined,
+    nextAssessment: o?.next_assessment ?? undefined,
+    evidenceCount: 0,
+    mappedControlsCount: 0,
+    openFindingsCount: 0,
+  };
 }
 
 export class SupabaseNotesStrategy implements NotesStrategy {
@@ -251,22 +323,32 @@ export class SupabaseNotesStrategy implements NotesStrategy {
     await this.db.from('frameworks').delete().eq('id', id);
   }
 
-  async listRequirements(frameworkId: string, _orgId?: string): Promise<FrameworkRequirement[]> {
-    const controls = await this.listControlsByFramework(frameworkId);
-    return controls.map((c) => ({
-      id: c.id,
-      frameworkId: c.frameworkId,
-      code: c.code,
-      title: c.title,
-      description: c.description,
-      categoryCode: c.code.split('-')[0] ?? c.code,
-      categoryName: c.category,
-      applicability: 'applicable',
-      implementationStatus: 'implemented',
-      evidenceCount: 1,
-      mappedControlsCount: 1,
-      openFindingsCount: 0,
-    }));
+  async listRequirements(frameworkId: string, orgId?: string): Promise<FrameworkRequirement[]> {
+    const { data, error } = await this.db
+      .from('controls')
+      .select(
+        'id, framework_id, code, title, description, category, category_code, function_code, function_name, guidance, informative_references, cross_framework_mappings',
+      )
+      .eq('framework_id', frameworkId)
+      .order('code');
+    const controls = ok(data, error) as ControlCatalogRow[];
+    if (controls.length === 0 || !orgId) {
+      return controls.map((c) => toFrameworkRequirement(c, undefined));
+    }
+
+    const { data: statusData, error: statusError } = await this.db
+      .from('org_requirement_status')
+      .select(
+        'control_id, applicability, applicability_rationale, not_applicable_reason, scope_business_units, scope_systems, scope_locations, scope_legal_entities, implementation_status, implementation_description, control_owner, control_operator, review_frequency, last_assessed, next_assessment',
+      )
+      .eq('org_id', orgId)
+      .in(
+        'control_id',
+        controls.map((c) => c.id),
+      );
+    const statuses = ok(statusData, statusError) as OrgRequirementStatusRow[];
+    const byControlId = new Map(statuses.map((s) => [s.control_id, s]));
+    return controls.map((c) => toFrameworkRequirement(c, byControlId.get(c.id)));
   }
 
   async getRequirement(
@@ -281,11 +363,44 @@ export class SupabaseNotesStrategy implements NotesStrategy {
   async updateRequirement(
     frameworkId: string,
     reqId: string,
-    _orgId: string,
+    orgId: string,
     patch: FrameworkRequirementPatch,
   ): Promise<FrameworkRequirement> {
-    const req = await this.getRequirement(frameworkId, reqId);
+    const req = await this.getRequirement(frameworkId, reqId, orgId);
     if (!req) throw new Error(`requirement_not_found: ${reqId}`);
+
+    const columnPatch: Record<string, unknown> = {
+      org_id: orgId,
+      control_id: req.id,
+      updated_at: new Date().toISOString(),
+    };
+    if (patch.applicability !== undefined) columnPatch.applicability = patch.applicability;
+    if (patch.applicabilityRationale !== undefined)
+      columnPatch.applicability_rationale = patch.applicabilityRationale;
+    if (patch.notApplicableReason !== undefined)
+      columnPatch.not_applicable_reason = patch.notApplicableReason;
+    if (patch.scopeBusinessUnits !== undefined)
+      columnPatch.scope_business_units = patch.scopeBusinessUnits;
+    if (patch.scopeSystems !== undefined) columnPatch.scope_systems = patch.scopeSystems;
+    if (patch.scopeLocations !== undefined) columnPatch.scope_locations = patch.scopeLocations;
+    if (patch.scopeLegalEntities !== undefined)
+      columnPatch.scope_legal_entities = patch.scopeLegalEntities;
+    if (patch.implementationStatus !== undefined)
+      columnPatch.implementation_status = patch.implementationStatus;
+    if (patch.implementationDescription !== undefined)
+      columnPatch.implementation_description = patch.implementationDescription;
+    if (patch.controlOwner !== undefined) columnPatch.control_owner = patch.controlOwner;
+    if (patch.controlOperator !== undefined) columnPatch.control_operator = patch.controlOperator;
+    if (patch.reviewFrequency !== undefined) columnPatch.review_frequency = patch.reviewFrequency;
+    if (patch.lastAssessed !== undefined) columnPatch.last_assessed = patch.lastAssessed || null;
+    if (patch.nextAssessment !== undefined)
+      columnPatch.next_assessment = patch.nextAssessment || null;
+
+    const { error } = await this.db
+      .from('org_requirement_status')
+      .upsert(columnPatch, { onConflict: 'org_id,control_id' });
+    if (error) throw new Error(error.message);
+
     return { ...req, ...patch };
   }
 

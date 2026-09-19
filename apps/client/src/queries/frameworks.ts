@@ -115,26 +115,22 @@ export function useDeleteFramework(orgId: string) {
 export function useFrameworkRequirements(frameworkId: string, orgId?: string) {
   return useQuery<FrameworkRequirement[]>({
     queryKey: ['frameworks', frameworkId, 'requirements', orgId ?? 'all'],
-    queryFn: () => {
-      const url = orgId
-        ? `/notes/frameworks/${encodeURIComponent(frameworkId)}/requirements?orgId=${encodeURIComponent(orgId)}`
-        : `/notes/frameworks/${encodeURIComponent(frameworkId)}/requirements`;
-      return api<FrameworkRequirement[]>(url);
-    },
-    enabled: !!frameworkId,
+    queryFn: () =>
+      api<FrameworkRequirement[]>(
+        `/notes/frameworks/${encodeURIComponent(frameworkId)}/requirements?orgId=${encodeURIComponent(orgId ?? '')}`,
+      ),
+    enabled: !!frameworkId && !!orgId,
   });
 }
 
 export function useFrameworkRequirement(frameworkId: string, reqId: string, orgId?: string) {
   return useQuery<FrameworkRequirement>({
     queryKey: ['frameworks', frameworkId, 'requirements', reqId, orgId ?? 'all'],
-    queryFn: () => {
-      const url = orgId
-        ? `/notes/frameworks/${encodeURIComponent(frameworkId)}/requirements/${encodeURIComponent(reqId)}?orgId=${encodeURIComponent(orgId)}`
-        : `/notes/frameworks/${encodeURIComponent(frameworkId)}/requirements/${encodeURIComponent(reqId)}`;
-      return api<FrameworkRequirement>(url);
-    },
-    enabled: !!frameworkId && !!reqId,
+    queryFn: () =>
+      api<FrameworkRequirement>(
+        `/notes/frameworks/${encodeURIComponent(frameworkId)}/requirements/${encodeURIComponent(reqId)}?orgId=${encodeURIComponent(orgId ?? '')}`,
+      ),
+    enabled: !!frameworkId && !!reqId && !!orgId,
   });
 }
 

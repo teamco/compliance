@@ -43,7 +43,7 @@ export function AssessmentTypesSheet({ orgId }: { orgId: string }) {
           <SheetHeader>
             <SheetTitle>{t('assessments.manageTypes')}</SheetTitle>
           </SheetHeader>
-          <div className="space-y-2 mt-4">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-2">
             {types.map((ty) => (
               <div key={ty.id} className="flex items-center justify-between text-sm py-1">
                 <div className={ty.archived ? 'line-through text-muted-foreground' : ''}>
