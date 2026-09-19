@@ -21,7 +21,11 @@ export function setAuthCookies(
   res: Response,
   opts: { refreshToken: string; csrfToken: string; isProd: boolean },
 ): void {
-  res.cookie(REFRESH_COOKIE, opts.refreshToken, cookieOptions(opts.isProd, true, REFRESH_COOKIE_PATH));
+  res.cookie(
+    REFRESH_COOKIE,
+    opts.refreshToken,
+    cookieOptions(opts.isProd, true, REFRESH_COOKIE_PATH),
+  );
   res.cookie(CSRF_COOKIE, opts.csrfToken, cookieOptions(opts.isProd, false, CSRF_COOKIE_PATH));
 }
 
