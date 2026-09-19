@@ -295,6 +295,21 @@ describe('NotesController — exception governance authorization', () => {
       ).resolves.toEqual([PENDING_RENEWAL]);
     });
 
+    it('allows an active org member who is neither the org creator nor a party to the exception', async () => {
+      const notes = makeNotes({
+        listExceptionRenewals: vi.fn().mockResolvedValue([PENDING_RENEWAL]),
+      });
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([
+          { userId: 'owner-1', role: 'viewer' },
+          { userId: 'invited-admin', role: 'admin' },
+        ]),
+      };
+      await expect(
+        makeController(notes, auth).listExceptionRenewals(reqAs('invited-admin'), 'exception-1'),
+      ).resolves.toEqual([PENDING_RENEWAL]);
+    });
+
     it('throws NotFound when the exception does not exist', async () => {
       const notes = makeNotes({ getException: vi.fn().mockResolvedValue(null) });
       await expect(

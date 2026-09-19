@@ -22,7 +22,7 @@ const EXEMPT_ROUTES: Record<string, string> = {
   "Post 'orgs'": 'Creates an org owned by uid(req); no existing org to check access against yet',
   "Post 'exceptions/:id/renewals'": 'Hand-rolled: exception.ownerId !== userId check',
   "Get 'exceptions/:id/renewals'":
-    'Hand-rolled: org.userId or isPartyToException (owner/requester/reviewer) check',
+    'Hand-rolled: org.userId, isPartyToException (owner/requester/reviewer), or active org membership',
   "Post 'issues/:id/submit-for-validation'": 'Hand-rolled: issue.ownerId !== userId check',
   "Post 'issue-validations/:id/review'":
     'Strategy layer enforces validatorId match (supabase-notes.strategy.ts)',
