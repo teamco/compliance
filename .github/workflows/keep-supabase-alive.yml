@@ -14,7 +14,7 @@ jobs:
     name: 'Ping Supabase DB'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 1
       - uses: supabase/setup-cli@ab058987d8d6c725971f6cf9d0b5c98467e30bd1 # v1.7.1 (v1 is a moving branch, not a tag -- pinned to its current commit)

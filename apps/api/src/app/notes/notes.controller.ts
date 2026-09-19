@@ -1036,6 +1036,9 @@ export class NotesController {
     const userId = this.uid(req);
     const exception = await this.notes.getException(id);
     if (!exception) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(exception.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, exception.ownerId);
     if (exception.ownerId !== userId) throw new ForbiddenException();
     return this.notes.requestExceptionRenewal(id, userId, body);
   }
@@ -1073,7 +1076,10 @@ export class NotesController {
     const isPartyToException =
       exception.ownerId === userId ||
       renewals.some((r) => r.requestedBy === userId || r.reviewedBy === userId);
-    if (org.userId !== userId && !isPartyToException) throw new ForbiddenException();
+    if (org.userId !== userId && !isPartyToException) {
+      const members = await this.auth.listOrgMembers(org.id, org.userId);
+      if (!members.some((m) => m.userId === userId)) throw new ForbiddenException();
+    }
     return renewals;
   }
 
@@ -1170,6 +1176,11 @@ export class NotesController {
     const userId = this.uid(req);
     const issue = await this.notes.getIssue(id);
     if (!issue) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(issue.orgId);
+    if (!org) throw new NotFoundException();
+    if (issue.ownerId) {
+      await this.assertActiveAssignee(org, issue.ownerId);
+    }
     if (issue.ownerId !== userId) throw new ForbiddenException();
     return this.notes.submitIssueForValidation(id, userId, body);
   }
@@ -1202,6 +1213,11 @@ export class NotesController {
     @Body() body: { decision: 'approved' | 'rejected'; reviewNotes?: string },
   ) {
     const userId = this.uid(req);
+    const validation = await this.notes.getIssueValidation(id);
+    if (!validation) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(validation.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, validation.validatorId);
     return this.notes.reviewIssueValidation(id, userId, body.decision, body.reviewNotes);
   }
 
@@ -1672,26 +1688,47 @@ export class NotesController {
 
   @Post('risk-acceptances/:id/review')
   @ApiOperation({ summary: 'Review a risk acceptance request' })
-  reviewRiskAcceptance(
+  async reviewRiskAcceptance(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { reviewNotes?: string },
   ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, acceptance.approverId);
     return this.notes.reviewRiskAcceptance(id, userId, body.reviewNotes);
   }
 
   @Post('risk-acceptances/:id/approve')
   @ApiOperation({ summary: 'Approve a risk acceptance request' })
-  approveRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async approveRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, acceptance.approverId);
     return this.notes.approveRiskAcceptance(id, userId);
   }
 
   @Post('risk-acceptances/:id/reject')
   @ApiOperation({ summary: 'Reject a risk acceptance request' })
-  rejectRiskAcceptance(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async rejectRiskAcceptance(
+    @Req() req: Request & { user?: VerifiedToken },
+    @Param('id') id: string,
+  ) {
     const userId = this.uid(req);
+    const acceptance = await this.notes.getRiskAcceptance(id);
+    if (!acceptance) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(acceptance.orgId);
+    if (!org) throw new NotFoundException();
+    await this.assertActiveAssignee(org, acceptance.approverId);
     return this.notes.rejectRiskAcceptance(id, userId);
   }
 
@@ -1942,8 +1979,15 @@ export class NotesController {
 
   @Post('assessments/:id/approve')
   @ApiOperation({ summary: 'Approve an assessment' })
-  approveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
+  async approveAssessment(@Req() req: Request & { user?: VerifiedToken }, @Param('id') id: string) {
     const userId = this.uid(req);
+    const assessment = await this.notes.getAssessment(id);
+    if (!assessment) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
+    if (!org) throw new NotFoundException();
+    if (assessment.approverId) {
+      await this.assertActiveAssignee(org, assessment.approverId);
+    }
     return this.notes.approveAssessment(id, userId);
   }
 
@@ -1969,12 +2013,19 @@ export class NotesController {
 
   @Post('assessments/:id/request-changes')
   @ApiOperation({ summary: 'Request changes on an assessment' })
-  requestChanges(
+  async requestChanges(
     @Req() req: Request & { user?: VerifiedToken },
     @Param('id') id: string,
     @Body() body: { note: string },
   ) {
     const userId = this.uid(req);
+    const assessment = await this.notes.getAssessment(id);
+    if (!assessment) throw new NotFoundException();
+    const org = await this.notes.getOrganizationById(assessment.orgId);
+    if (!org) throw new NotFoundException();
+    if (assessment.approverId) {
+      await this.assertActiveAssignee(org, assessment.approverId);
+    }
     return this.notes.requestChanges(id, userId, body.note);
   }
 
@@ -2433,5 +2484,12 @@ export class NotesController {
     const members = await this.auth.listOrgMembers(org.id, org.userId);
     const membership = members.find((m) => m.userId === req.user?.uid);
     if (!membership || membership.role !== 'admin') throw new ForbiddenException();
+  }
+
+  private async assertActiveAssignee(org: Organization, assigneeId: string): Promise<void> {
+    const members = await this.auth.listOrgMembers(org.id, org.userId);
+    if (!members.some((m) => m.userId === assigneeId)) {
+      throw new BadRequestException('assignee_not_active_member');
+    }
   }
 }

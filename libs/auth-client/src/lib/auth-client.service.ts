@@ -38,6 +38,12 @@ export class AuthClientService {
     );
   }
 
+  revokeSession(accessToken: string): Promise<void> {
+    return signedSend<{ ok: boolean }>(this.client, 'auth.revokeSession', { accessToken }).then(
+      () => undefined,
+    );
+  }
+
   ensureRole(
     uid: string,
     email: string,

@@ -73,7 +73,7 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
 function makeController(
   notes: NotesClientService,
   auth: { listOrgMembers: ReturnType<typeof vi.fn> } = {
-    listOrgMembers: vi.fn().mockResolvedValue([]),
+    listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'owner-1', role: 'viewer' }]),
   },
 ): NotesController {
   return new NotesController(
@@ -125,6 +125,17 @@ describe('NotesController — exception governance authorization', () => {
         'owner-1',
         RENEWAL_INPUT,
       );
+    });
+
+    it('rejects when the exception owner is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).requestExceptionRenewal(reqAs('owner-1'), 'exception-1', {
+          ...RENEWAL_INPUT,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.requestExceptionRenewal).not.toHaveBeenCalled();
     });
   });
 
@@ -281,6 +292,21 @@ describe('NotesController — exception governance authorization', () => {
       });
       await expect(
         makeController(notes).listExceptionRenewals(reqAs('org-creator'), 'exception-1'),
+      ).resolves.toEqual([PENDING_RENEWAL]);
+    });
+
+    it('allows an active org member who is neither the org creator nor a party to the exception', async () => {
+      const notes = makeNotes({
+        listExceptionRenewals: vi.fn().mockResolvedValue([PENDING_RENEWAL]),
+      });
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([
+          { userId: 'owner-1', role: 'viewer' },
+          { userId: 'invited-admin', role: 'admin' },
+        ]),
+      };
+      await expect(
+        makeController(notes, auth).listExceptionRenewals(reqAs('invited-admin'), 'exception-1'),
       ).resolves.toEqual([PENDING_RENEWAL]);
     });
 

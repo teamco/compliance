@@ -14,6 +14,10 @@ export default [
             '{projectRoot}/src/**/*.{spec,test}.{js,ts,jsx,tsx}',
             '{projectRoot}/src/**/__tests__/**/*.{js,ts,jsx,tsx}',
           ],
+          // `express` is imported type-only (`import type { Request, Response } from 'express'`)
+          // for compile-time types only; the runtime package is intentionally NOT a dependency
+          // of this library. `@types/express` (devDependency) satisfies the type resolution.
+          ignoredDependencies: ['express'],
         },
       ],
     },

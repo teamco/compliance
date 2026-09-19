@@ -58,6 +58,11 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     return this.toSession(data.session);
   }
 
+  async revokeSession(accessToken: string): Promise<void> {
+    const { error } = await this.client.auth.admin.signOut(accessToken, 'local');
+    if (error) throw new Error(error.message);
+  }
+
   async verifyToken(token: string): Promise<VerifiedToken> {
     const { data, error } = await this.client.auth.getUser(token);
     if (error || !data.user) {
@@ -284,7 +289,17 @@ export class SupabaseAuthStrategy implements AuthStrategy {
       .select()
       .single();
     if (error) throw new Error(error.message);
-    await this.sendInviteEmail(email, token);
+    try {
+      await this.sendInviteEmail(email, token);
+    } catch (emailError) {
+      // The invite row is already persisted with its token — a delivery
+      // failure (e.g. the email-send rate limit) must not surface as if
+      // creation itself failed. The admin can retry via resendOrgInvite.
+      console.warn(
+        `org invite email to ${email} failed to send:`,
+        emailError instanceof Error ? emailError.message : emailError,
+      );
+    }
     return this.toOrgInvite(data);
   }
 

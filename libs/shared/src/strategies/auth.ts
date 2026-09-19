@@ -72,6 +72,7 @@ export interface AuthStrategy {
   signIn(email: string, password: string): Promise<AuthSession>;
   signUp(email: string, password: string): Promise<AuthSession>;
   refresh(refreshToken: string): Promise<AuthSession>;
+  revokeSession(accessToken: string): Promise<void>;
   setRole(uid: string, role: string): Promise<void>;
   getRole(uid: string): Promise<string | null>;
   syncProfile(

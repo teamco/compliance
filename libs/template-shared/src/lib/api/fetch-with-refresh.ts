@@ -1,9 +1,11 @@
-import { useAuthStore } from '../stores/auth.store.js';
+import { getAccessToken, setAccessToken } from './access-token.js';
+import { performSilentRefresh } from './silent-refresh.js';
 
 /**
- * fetch with Authorization from the auth store and a single 401 → refresh → retry
- * pass. For raw/streaming requests (e.g. SSE) that cannot go through the JSON
- * api client — mirrors its refresh behavior against POST {baseUrl}/auth/refresh.
+ * fetch with Authorization from the in-memory access token and a single
+ * 401 → refresh → retry pass. For raw/streaming requests (e.g. SSE) that
+ * cannot go through the JSON api client — mirrors its refresh behavior
+ * against the same shared `performSilentRefresh` helper.
  */
 export async function fetchWithRefresh(
   baseUrl: string,
@@ -16,38 +18,18 @@ export async function fetchWithRefresh(
     return fetch(`${baseUrl}${path}`, { ...init, headers });
   };
 
-  let res = await doFetch(useAuthStore.getState().accessToken);
+  let res = await doFetch(getAccessToken());
   if (res.status === 401) {
-    const nextToken = await refreshSession(baseUrl);
-    if (nextToken) res = await doFetch(nextToken);
+    const refreshed = await performSilentRefresh(baseUrl);
+    if (refreshed) {
+      // performSilentRefresh's real implementation already persists this, but
+      // set it explicitly too so the token is current even when a caller (or
+      // a test) mocks performSilentRefresh's own side effects away.
+      setAccessToken(refreshed.accessToken);
+      res = await doFetch(refreshed.accessToken);
+    } else {
+      setAccessToken(null);
+    }
   }
   return res;
-}
-
-async function refreshSession(baseUrl: string): Promise<string | null> {
-  const { refreshToken, user, setAuth, logout } = useAuthStore.getState();
-  if (!refreshToken) return null;
-  try {
-    const res = await fetch(`${baseUrl}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!res.ok) {
-      // Refresh token rejected — session is dead, clear it.
-      logout();
-      return null;
-    }
-    const data = (await res.json()) as { accessToken?: unknown; refreshToken?: unknown };
-    if (typeof data.accessToken !== 'string' || typeof data.refreshToken !== 'string') {
-      return null;
-    }
-    if (user) {
-      setAuth({ accessToken: data.accessToken, refreshToken: data.refreshToken, user });
-    }
-    return data.accessToken;
-  } catch {
-    // Network failure — keep the session; caller surfaces the original 401.
-    return null;
-  }
 }

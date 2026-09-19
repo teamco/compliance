@@ -58,6 +58,9 @@ function makeNotes(overrides: Partial<NotesClientService> = {}): NotesClientServ
       ...ACCEPTANCE,
       approverId: 'ciso-2',
     }),
+    reviewRiskAcceptance: vi.fn().mockResolvedValue(ACCEPTANCE),
+    approveRiskAcceptance: vi.fn().mockResolvedValue({ ...ACCEPTANCE, status: 'approved' }),
+    rejectRiskAcceptance: vi.fn().mockResolvedValue({ ...ACCEPTANCE, status: 'rejected' }),
     ...overrides,
   } as unknown as NotesClientService;
 }
@@ -223,5 +226,80 @@ describe('NotesController — reassignRiskAcceptanceApprover', () => {
         { newApproverId: 'ciso-2' },
       ),
     ).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('NotesController — risk acceptance decision revocation gate', () => {
+  describe('reviewRiskAcceptance', () => {
+    it('rejects when the approver is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).reviewRiskAcceptance(reqAs('ciso-1'), 'acceptance-1', {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.reviewRiskAcceptance).not.toHaveBeenCalled();
+    });
+
+    it('proceeds when the approver is an active org member', async () => {
+      const notes = makeNotes();
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'ciso-1', role: 'viewer' }]),
+      };
+      await makeController(notes, auth).reviewRiskAcceptance(reqAs('ciso-1'), 'acceptance-1', {
+        reviewNotes: 'Looks fine',
+      });
+      expect(notes.reviewRiskAcceptance).toHaveBeenCalledWith(
+        'acceptance-1',
+        'ciso-1',
+        'Looks fine',
+      );
+    });
+
+    it('throws NotFound when the acceptance does not exist', async () => {
+      const notes = makeNotes({ getRiskAcceptance: vi.fn().mockResolvedValue(null) });
+      await expect(
+        makeController(notes).reviewRiskAcceptance(reqAs('ciso-1'), 'missing', {}),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('approveRiskAcceptance', () => {
+    it('rejects when the approver is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).approveRiskAcceptance(reqAs('ciso-1'), 'acceptance-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.approveRiskAcceptance).not.toHaveBeenCalled();
+    });
+
+    it('proceeds when the approver is an active org member', async () => {
+      const notes = makeNotes();
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'ciso-1', role: 'viewer' }]),
+      };
+      await makeController(notes, auth).approveRiskAcceptance(reqAs('ciso-1'), 'acceptance-1');
+      expect(notes.approveRiskAcceptance).toHaveBeenCalledWith('acceptance-1', 'ciso-1');
+    });
+  });
+
+  describe('rejectRiskAcceptance', () => {
+    it('rejects when the approver is not an active org member', async () => {
+      const notes = makeNotes();
+      const auth = { listOrgMembers: vi.fn().mockResolvedValue([]) };
+      await expect(
+        makeController(notes, auth).rejectRiskAcceptance(reqAs('ciso-1'), 'acceptance-1'),
+      ).rejects.toThrow(BadRequestException);
+      expect(notes.rejectRiskAcceptance).not.toHaveBeenCalled();
+    });
+
+    it('proceeds when the approver is an active org member', async () => {
+      const notes = makeNotes();
+      const auth = {
+        listOrgMembers: vi.fn().mockResolvedValue([{ userId: 'ciso-1', role: 'viewer' }]),
+      };
+      await makeController(notes, auth).rejectRiskAcceptance(reqAs('ciso-1'), 'acceptance-1');
+      expect(notes.rejectRiskAcceptance).toHaveBeenCalledWith('acceptance-1', 'ciso-1');
+    });
   });
 });

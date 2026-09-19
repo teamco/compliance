@@ -21,6 +21,13 @@ import type { Request, Response } from 'express';
 import { AuthClientService } from '@icore/auth-client';
 import { NotesClientService } from '@icore/notes-client';
 import type { Organization, OAuthProvider, OrgInviteRole, VerifiedToken } from '@icore/shared';
+import {
+  setAuthCookies,
+  clearAuthCookies,
+  generateCsrfToken,
+  readRefreshToken,
+  verifyCsrf,
+} from '@icore/shared';
 import { Public } from './public.decorator';
 import { CheckAbility } from '../abilities/check-ability.decorator';
 import { AbilityFactory } from '../abilities/ability.factory';
@@ -62,9 +69,19 @@ export class AuthController {
       },
     },
   })
-  async register(@Body() body: { email: string; password: string }) {
+  async register(
+    @Body() body: { email: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
     try {
-      return await this.authClient.signup(body.email, body.password);
+      const session = await this.authClient.signup(body.email, body.password);
+      const csrfToken = generateCsrfToken();
+      setAuthCookies(res, {
+        refreshToken: session.refreshToken,
+        csrfToken,
+        isProd: this.isProd(),
+      });
+      return { accessToken: session.accessToken, user: session.user };
     } catch (err) {
       const msg =
         (err as { message?: string; code?: string })?.message ??
@@ -90,22 +107,61 @@ export class AuthController {
       },
     },
   })
-  login(@Body() body: { email: string; password: string }) {
-    return this.authClient.login(body.email, body.password);
+  async login(
+    @Body() body: { email: string; password: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.authClient.login(body.email, body.password);
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
+    return { accessToken: session.accessToken, user: session.user };
   }
 
   @Public()
   @Post('refresh')
-  @ApiOperation({ summary: 'Exchange a refresh token for a fresh access token' })
-  @ApiBody({
-    schema: {
-      type: 'object',
-      required: ['refreshToken'],
-      properties: { refreshToken: { type: 'string' } },
-    },
-  })
-  refresh(@Body() body: { refreshToken: string }) {
-    return this.authClient.refresh(body.refreshToken);
+  @ApiOperation({ summary: 'Exchange the httpOnly refresh cookie for a fresh access token' })
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = readRefreshToken(req);
+    if (!refreshToken) throw new UnauthorizedException('invalid_refresh_token');
+    if (!verifyCsrf(req)) throw new ForbiddenException('csrf_mismatch');
+    const session = await this.authClient.refresh(refreshToken);
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Public()
+  @Post('logout')
+  @ApiOperation({ summary: 'Revoke this session and clear the refresh cookie' })
+  async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const authHeader = req.headers.authorization;
+    const accessToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
+    if (accessToken) {
+      try {
+        await this.authClient.revokeSession(accessToken);
+      } catch {
+        // Logout must always succeed for the caller -- swallow revoke failures
+        // (e.g. an already-expired access token) and still clear cookies below.
+      }
+    }
+
+    // This route is @Public() (no Authorization header required), so in prod
+    // (SameSite=None; Secure cookies) a cross-site request can ride the
+    // icore_rt/icore_csrf cookies here without a matching x-csrf-token header.
+    // Distinguish "no CSRF cookie at all" (benign -- already logged out, or a
+    // client defensively calling logout with no session) from "CSRF cookie
+    // present but the header is missing/mismatched" (a forged cross-site
+    // request, since only same-origin JS can read the cookie to echo it back
+    // in the header). Only the latter skips the cookie-clear; either way the
+    // response stays {ok:true} so a forged request learns nothing and a
+    // legitimate client's logout is never blocked.
+    const csrfCookie = (req.cookies as Record<string, string> | undefined)?.['icore_csrf'];
+    const csrfForged = !!csrfCookie && !verifyCsrf(req);
+    if (!csrfForged) {
+      clearAuthCookies(res, { isProd: this.isProd() });
+    }
+
+    return { ok: true };
   }
 
   @Public()
@@ -134,8 +190,42 @@ export class AuthController {
       properties: { token: { type: 'string' } },
     },
   })
-  verifyMagicLink(@Body() body: { token: string }) {
-    return this.authClient.verifyMagicLink(body.token);
+  async verifyMagicLink(
+    @Body() body: { token: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const session = await this.authClient.verifyMagicLink(body.token);
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
+    return { accessToken: session.accessToken, user: session.user };
+  }
+
+  @Public()
+  @Post('session/adopt')
+  @ApiOperation({
+    summary:
+      'Adopt a Supabase-issued session (from the magic-link/OAuth implicit-flow hash fragment) by setting httpOnly cookies',
+  })
+  async adoptSession(
+    @Body() body: { accessToken: string; refreshToken: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    let verified: VerifiedToken;
+    try {
+      verified = await this.authClient.verify(body.accessToken);
+    } catch {
+      throw new UnauthorizedException('invalid_token');
+    }
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, {
+      refreshToken: body.refreshToken,
+      csrfToken,
+      isProd: this.isProd(),
+    });
+    return {
+      accessToken: body.accessToken,
+      user: { id: verified.uid, email: verified.email, role: verified.role },
+    };
   }
 
   @Get('me')
@@ -286,7 +376,21 @@ export class AuthController {
     if (!invite) throw new NotFoundException('invite_not_found');
     const org = await this.notes.getOrganizationById(invite.orgId);
     if (org && org.userId === uid) throw new BadRequestException('invite_already_member');
-    return this.authClient.acceptOrgInvite(token, uid, email);
+    try {
+      return await this.authClient.acceptOrgInvite(token, uid, email);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (
+        msg === 'invite_not_found' ||
+        msg === 'invite_not_pending' ||
+        msg === 'invite_expired' ||
+        msg === 'invite_email_mismatch' ||
+        msg === 'invite_already_member'
+      ) {
+        throw new BadRequestException(msg);
+      }
+      throw err;
+    }
   }
 
   @Post('role')
@@ -346,10 +450,11 @@ export class AuthController {
     }
     const session = await this.authClient.completeOAuth(provider, code, state);
     res.clearCookie('oauth_state');
+    const csrfToken = generateCsrfToken();
+    setAuthCookies(res, { refreshToken: session.refreshToken, csrfToken, isProd: this.isProd() });
     const origin = this.cfg.get<string>('CLIENT_ORIGIN') ?? 'http://localhost:4200';
     const fragment = new URLSearchParams({
       accessToken: session.accessToken,
-      refreshToken: session.refreshToken,
       userId: session.user.id,
       email: session.user.email,
     });
@@ -400,5 +505,9 @@ export class AuthController {
   private uid(req: Request & { user?: VerifiedToken }): string {
     if (!req.user?.uid) throw new UnauthorizedException('missing_user');
     return req.user.uid;
+  }
+
+  private isProd(): boolean {
+    return this.cfg.get<string>('NODE_ENV') === 'production';
   }
 }

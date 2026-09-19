@@ -19,9 +19,12 @@
   "dependencies": {
     "@casl/ability": "^7.0.1",
     "@idevconn/nestjs-resilience": "^0.3.0",
-    "@nestjs/common": "^11.2.3",
-    "@nestjs/microservices": "^11.2.3",
+    "@nestjs/common": "^11.2.5",
+    "@nestjs/microservices": "^11.2.5",
     "rxjs": "^7.8.2",
     "tslib": "^2.8.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
   }
 }
