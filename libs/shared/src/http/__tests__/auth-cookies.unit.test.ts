@@ -13,7 +13,7 @@ function makeRes(): Response {
 }
 
 describe('setAuthCookies', () => {
-  it('sets icore_rt as httpOnly and icore_csrf as readable, both scoped to /api/auth', () => {
+  it('sets icore_rt as httpOnly scoped to /api/auth and icore_csrf as readable scoped to /', () => {
     const res = makeRes();
     setAuthCookies(res, { refreshToken: 'rt-1', csrfToken: 'csrf-1', isProd: false });
 
@@ -25,8 +25,25 @@ describe('setAuthCookies', () => {
     expect(res.cookie).toHaveBeenCalledWith(
       'icore_csrf',
       'csrf-1',
-      expect.objectContaining({ httpOnly: false, path: '/api/auth' }),
+      expect.objectContaining({ httpOnly: false, path: '/' }),
     );
+  });
+
+  it('scopes icore_csrf to path "/" (not /api/auth) so the SPA can read it via document.cookie from any route', () => {
+    const res = makeRes();
+    setAuthCookies(res, { refreshToken: 'rt-1', csrfToken: 'csrf-1', isProd: false });
+
+    const csrfCall = (res.cookie as unknown as { mock: { calls: unknown[][] } }).mock.calls.find(
+      (call) => call[0] === 'icore_csrf',
+    );
+    expect(csrfCall).toBeDefined();
+    expect((csrfCall as unknown[])[2]).toMatchObject({ path: '/' });
+
+    const refreshCall = (res.cookie as unknown as { mock: { calls: unknown[][] } }).mock.calls.find(
+      (call) => call[0] === 'icore_rt',
+    );
+    expect(refreshCall).toBeDefined();
+    expect((refreshCall as unknown[])[2]).toMatchObject({ path: '/api/auth' });
   });
 
   it('uses Secure + SameSite=None in production', () => {
@@ -53,7 +70,7 @@ describe('setAuthCookies', () => {
 });
 
 describe('clearAuthCookies', () => {
-  it('clears both cookies at the same path they were set on', () => {
+  it('clears each cookie at the same path it was set on: icore_rt at /api/auth, icore_csrf at /', () => {
     const res = makeRes();
     clearAuthCookies(res, { isProd: false });
 
@@ -63,7 +80,7 @@ describe('clearAuthCookies', () => {
     );
     expect(res.clearCookie).toHaveBeenCalledWith(
       'icore_csrf',
-      expect.objectContaining({ path: '/api/auth' }),
+      expect.objectContaining({ path: '/' }),
     );
   });
 });

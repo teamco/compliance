@@ -244,8 +244,9 @@ can't do what's needed — replace the import, keep every call site
    user}`.
 3. Backend responds with `Set-Cookie: icore_rt=...; HttpOnly; Secure;
    SameSite=None; Path=/api/auth` and `Set-Cookie: icore_csrf=...;
-   Secure; SameSite=None; Path=/api/auth` (not `HttpOnly` — JS must be
-   able to read this one), plus body `{accessToken, user}`.
+   Secure; SameSite=None; Path=/` (not `HttpOnly` — JS must be
+   able to read this one, from any SPA route, so it is scoped to `Path=/`
+   rather than `/api/auth`), plus body `{accessToken, user}`.
 4. Client stores `accessToken` in memory, `user` in `useAuthStore`.
 
 **Reload / new tab (silent refresh):**
@@ -264,9 +265,13 @@ can't do what's needed — replace the import, keep every call site
    the unauthenticated state directly, no error toast.
 
 **Ordinary API call:**
-- Unchanged: `Authorization: Bearer <in-memory token>`. The cookies'
-  `Path=/api/auth` scoping means they are never even sent on these
-  requests.
+- Unchanged: `Authorization: Bearer <in-memory token>`. `icore_rt`'s
+  `Path=/api/auth` scoping means it is never even sent on these
+  requests. `icore_csrf` is scoped to `Path=/` (so the SPA can read it
+  via `document.cookie` from any route) and so is attached on these
+  requests too, but the backend only ever compares it against the
+  `X-CSRF-Token` header on `/auth/refresh` and `/auth/logout` — it is
+  otherwise ignored.
 - A 401 triggers the same `performSilentRefresh`-based retry path as
   the boot sequence, from both call sites that need it (the forked
   `createApiClient` and `fetchWithRefresh`); final failure triggers the
