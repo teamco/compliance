@@ -49,6 +49,16 @@ describe('AuthClientService', () => {
     expect(send).toHaveBeenCalledWith('auth.setRole', { uid: 'u1', role: 'admin' });
   });
 
+  it('revokeSession() resolves void even though the RPC returns a value', async () => {
+    const send = vi.fn().mockReturnValue(of({ ok: true }));
+    const service = new AuthClientService(makeClient(send));
+
+    const result = await service.revokeSession('tok');
+
+    expect(result).toBeUndefined();
+    expect(send).toHaveBeenCalledWith('auth.revokeSession', { accessToken: 'tok' });
+  });
+
   it('propagates an RPC error', async () => {
     const send = vi.fn().mockReturnValue(throwError(() => new Error('invalid credentials')));
     const service = new AuthClientService(makeClient(send));

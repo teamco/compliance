@@ -28,8 +28,7 @@ vi.mock('@icore/template-shared', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@icore/template-shared')>();
   return {
     ...actual,
-    useAuthStore: (selector: (s: { accessToken: string | null }) => unknown) =>
-      selector({ accessToken: mockAccessToken }),
+    getAccessToken: () => mockAccessToken,
     useNotify: () => ({ success: vi.fn(), error: vi.fn() }),
   };
 });

@@ -62,6 +62,12 @@ export class AuthController {
     return this.strategy.refresh(payload.refreshToken);
   }
 
+  @MessagePattern('auth.revokeSession')
+  async revokeSession(@Payload() payload: { accessToken: string }): Promise<{ ok: boolean }> {
+    await this.strategy.revokeSession(payload.accessToken);
+    return { ok: true };
+  }
+
   @MessagePattern('auth.setRole')
   async setRole(@Payload() payload: { uid: string; role: string }): Promise<{ ok: boolean }> {
     await this.strategy.setRole(payload.uid, payload.role);

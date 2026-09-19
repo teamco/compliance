@@ -108,6 +108,22 @@ describe('FakeAuthStrategy.listOrgIdsForMember', () => {
   });
 });
 
+describe('FakeAuthStrategy.revokeSession', () => {
+  it('invalidates the access token so verifyToken rejects it afterward', async () => {
+    const strategy = new FakeAuthStrategy();
+    const session = await strategy.signUp('revoke@example.com', 'password123');
+
+    await strategy.revokeSession(session.accessToken);
+
+    await expect(strategy.verifyToken(session.accessToken)).rejects.toThrow('invalid_token');
+  });
+
+  it('is a no-op for an already-invalid access token (idempotent)', async () => {
+    const strategy = new FakeAuthStrategy();
+    await expect(strategy.revokeSession('never-issued')).resolves.toBeUndefined();
+  });
+});
+
 describe('FakeAuthStrategy.deactivateOrgMember', () => {
   it('flips isActive to false on the member row', async () => {
     const strategy = new FakeAuthStrategy();

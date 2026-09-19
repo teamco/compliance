@@ -2078,6 +2078,7 @@ __metadata:
     "@idevconn/nestjs-resilience": "npm:^0.3.0"
     "@nestjs/common": "npm:^11.2.5"
     "@nestjs/microservices": "npm:^11.2.5"
+    "@types/express": "npm:^5.0.6"
     rxjs: "npm:^7.8.2"
     tslib: "npm:^2.8.1"
   languageName: unknown
@@ -2100,7 +2101,7 @@ __metadata:
   dependencies:
     "@casl/react": "npm:^7.0.1"
     "@icore/shared": "npm:*"
-    "@idevconn/api-client": "npm:^0.3.2"
+    "@idevconn/api-client": "npm:^0.3.3"
     "@idevconn/use-draft": "npm:^0.2.3"
     i18next: "npm:^26.4.2"
     react-i18next: "npm:^17.0.14"
@@ -2172,10 +2173,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@idevconn/api-client@npm:^0.3.2":
-  version: 0.3.2
-  resolution: "@idevconn/api-client@npm:0.3.2"
-  checksum: 10c0/2360eea0fac182c2c5de0783e0d8012682a5a4acf17c899e4da5fda0a7c5b989f7d1b1b400b55e7c6491b859fbbbe51889c2d5cb725aed96996a312e25897be1
+"@idevconn/api-client@npm:^0.3.3":
+  version: 0.3.3
+  resolution: "@idevconn/api-client@npm:0.3.3"
+  checksum: 10c0/3fdf7d22534c93175a21c3023c0b84481ba6554385b5522f55baa8a447b0f5744a7a40c9c35ff5ddfcdb1952341b585bda5e7c116d5dced2de596a4828174e83
   languageName: node
   linkType: hard
 
@@ -9706,7 +9707,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@icore/vite-plugins": "workspace:*"
     "@idevconn/ai-usage": "npm:^0.4.0"
-    "@idevconn/api-client": "npm:^0.3.2"
+    "@idevconn/api-client": "npm:^0.3.3"
     "@idevconn/isubscribe-widget-react": "npm:^2.5.2"
     "@idevconn/use-draft": "npm:^0.2.3"
     "@nestjs/common": "npm:^11.2.5"

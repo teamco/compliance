@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { createFileRoute, useSearch, Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore } from '@icore/template-shared';
+import { getAccessToken } from '@icore/template-shared';
 import { useNotify } from '@icore/template-shared';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ export function AcceptInvitePage() {
   const { t } = useTranslation();
   const notify = useNotify();
   const { token } = useSearch({ from: '/accept-invite' });
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const accessToken = getAccessToken();
   const [preview, setPreview] = useState<InvitePreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [accepting, setAccepting] = useState(false);

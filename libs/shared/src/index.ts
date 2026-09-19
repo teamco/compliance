@@ -7,3 +7,4 @@ export * from './transport';
 export * from './types';
 export * from './hmac';
 export * from './resilience';
+export * from './http/auth-cookies';

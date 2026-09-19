@@ -21,6 +21,10 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.use(cookieParser());
+  app.enableCors({
+    origin: process.env['CLIENT_ORIGIN'] ?? 'http://localhost:4200',
+    credentials: true,
+  });
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('iCore API')

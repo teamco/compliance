@@ -1,6 +1,7 @@
-import { createIcoreApi } from '@icore/template-shared';
+import { createIcoreApi, useAuthStore } from '@icore/template-shared';
 
 let onUnauthorized = () => {
+  useAuthStore.getState().logout();
   window.location.assign('/login');
 };
 

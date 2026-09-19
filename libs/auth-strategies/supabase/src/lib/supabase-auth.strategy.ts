@@ -58,6 +58,11 @@ export class SupabaseAuthStrategy implements AuthStrategy {
     return this.toSession(data.session);
   }
 
+  async revokeSession(accessToken: string): Promise<void> {
+    const { error } = await this.client.auth.admin.signOut(accessToken, 'local');
+    if (error) throw new Error(error.message);
+  }
+
   async verifyToken(token: string): Promise<VerifiedToken> {
     const { data, error } = await this.client.auth.getUser(token);
     if (error || !data.user) {

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useAuthStore, useNotify } from '@icore/template-shared';
+import { setAccessToken, useAuthStore, useNotify } from '@icore/template-shared';
 import { Loader2 } from 'lucide-react';
 import { api } from '@/lib/api';
 
@@ -52,30 +52,60 @@ export function resolveHashSession(hash: string): HashSession | null {
   }
 }
 
-function CallbackPage() {
+export function CallbackPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const notify = useNotify();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const setUser = useAuthStore((s) => s.setUser);
   const [status, setStatus] = useState<Status>('verifying');
 
   useEffect(() => {
     const hashSession = resolveHashSession(window.location.hash);
     if (hashSession) {
-      setAuth(hashSession);
       void (async () => {
-        // The user/id/email above were decoded client-side, unverified — every
-        // real API call still re-verifies the access token server-side
-        // regardless, but backfill the server-confirmed role here too,
-        // mirroring auth.oauth.callback.tsx's identical pattern.
+        // hashSession's raw refresh token transited the URL hash (Supabase's
+        // implicit-flow redirect target is the SPA itself, not the gateway) --
+        // adopt it server-side so the gateway can re-host it as an httpOnly
+        // cookie and this session survives a reload, same as every other
+        // sign-in method.
+        let accessToken = hashSession.accessToken;
+        let user: { id: string; email: string; role?: string } = hashSession.user;
+        try {
+          const session = await api<{
+            accessToken: string;
+            user: { id: string; email: string; role?: string };
+          }>('/auth/session/adopt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              accessToken: hashSession.accessToken,
+              refreshToken: hashSession.refreshToken,
+            }),
+          });
+          accessToken = session.accessToken;
+          user = session.user;
+        } catch {
+          // Cookie adoption failed -- fall back to the unverified client-side
+          // session rather than stranding the user; the access token really
+          // is valid Supabase-issued, but the reload-persistence property is
+          // lost on this path (degraded, not insecure).
+        }
+        setAccessToken(accessToken);
+        setUser(user);
+
+        // /auth/session/adopt's auth.verify RPC reads the role straight off
+        // Supabase app_metadata, which is only populated once ensureRole has
+        // run for this uid -- unlike the query-param magic-link path, this
+        // hash-fragment path never calls it. Keep the /auth/me backfill so a
+        // brand-new user's role still gets assigned + reflected here.
         try {
           const res = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${hashSession.accessToken}` },
+            headers: { Authorization: `Bearer ${accessToken}` },
           });
           if (res.ok) {
             const me = (await res.json()) as { uid?: string; email?: string; role?: string };
             if (me.role) {
-              setAuth({ ...hashSession, user: { ...hashSession.user, role: me.role } });
+              setUser({ ...user, role: me.role });
             }
           }
         } catch {
@@ -104,7 +134,8 @@ function CallbackPage() {
       body: JSON.stringify({ token }),
     })
       .then((session) => {
-        setAuth(session);
+        setAccessToken(session.accessToken);
+        setUser(session.user);
         setStatus('done');
         void navigate({ to: '/dashboard' });
       })

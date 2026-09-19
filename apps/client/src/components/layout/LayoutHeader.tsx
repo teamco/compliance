@@ -1,13 +1,20 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useRouterState, Link } from '@tanstack/react-router';
-import { useAuthStore, setStoredLocale, SUPPORTED_LOCALES } from '@icore/template-shared';
+import {
+  useAuthStore,
+  setStoredLocale,
+  SUPPORTED_LOCALES,
+  setAccessToken,
+  readCsrfCookie,
+} from '@icore/template-shared';
 import { LogOut, Menu, User } from 'lucide-react';
 import { useSidebar } from '../../layouts/sidebar-context';
 import { useOnClickOutside } from '../../hooks/useOnClickOutside';
 import { useProfile } from '../../queries/profile';
 import { ThemeToggle } from '../ThemeToggle';
 import { OrgSwitcher } from '../org/OrgSwitcher';
+import { api } from '@/lib/api';
 
 const BREADCRUMB_KEYS: Array<{ prefix: string; key: string }> = [
   { prefix: '/admin/ai-usage', key: 'nav.aiUsage' },
@@ -40,7 +47,18 @@ export function LayoutHeader() {
   const pageTitle = breadcrumbKey ? t(breadcrumbKey) : '';
   const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : '??';
 
-  function handleLogout() {
+  async function handleLogout() {
+    try {
+      const csrf = readCsrfCookie();
+      await api('/auth/logout', {
+        method: 'POST',
+        headers: csrf ? { 'X-CSRF-Token': csrf } : {},
+      });
+    } catch {
+      // Best-effort: clear local state and navigate regardless — an already-
+      // expired/invalid session shouldn't block the user from reaching /login.
+    }
+    setAccessToken(null);
     logout();
     void navigate({ to: '/login' });
   }
@@ -131,7 +149,7 @@ export function LayoutHeader() {
               {/* Logout */}
               <button
                 type="button"
-                onClick={handleLogout}
+                onClick={() => void handleLogout()}
                 className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors cursor-pointer"
               >
                 <LogOut size={14} className={`shrink-0 ${isRtl ? 'rotate-180' : ''}`} />
