@@ -84,3 +84,4 @@ ruvector.db
 agentdb.rvf
 agentdb.rvf.lock
 .worktrees/
+.vitest
