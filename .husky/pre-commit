@@ -24,8 +24,9 @@ check_command() {
   fi
 }
 
-FILES_CHANGED=$(git diff --cached --name-only | wc -l)
-NON_MD_FILES=$(git diff --cached --name-only | grep -vic '\.md$')
+FILES_CHANGED=$(git diff --cached --name-only | wc -l | tr -d ' ')
+NON_MD_FILES=$(git diff --cached --name-only | grep -vic '\.md$' || true)
+NON_MD_FILES=$(echo "$NON_MD_FILES" | tr -d ' ')
 
 if [ "$FILES_CHANGED" -gt 0 ] && [ "$NON_MD_FILES" -eq 0 ]; then
   echo_print "📝 Only Markdown files staged. Skipping lint-staged + nx checks." "\033[34m"
@@ -42,7 +43,7 @@ fi
 
 echo_print "✅ Files staged: $FILES_CHANGED" "\033[32m"
 
-check_command "yarn lint-staged --concurrent false --relative" \
+check_command "yarn lint-staged --concurrent false --relative --allow-empty" \
   "lint-staged passed." \
   "lint-staged failed. Fix the issues before committing."
 
